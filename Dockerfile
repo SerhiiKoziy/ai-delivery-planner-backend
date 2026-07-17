@@ -6,6 +6,7 @@ COPY pyproject.toml ./
 RUN pip install --no-cache-dir .
 
 COPY app/ ./app/
+COPY alembic.ini ./
 
 EXPOSE 8000
 
