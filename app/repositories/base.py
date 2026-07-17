@@ -1,5 +1,7 @@
 """Generic base repository providing common async CRUD operations."""
 
+from __future__ import annotations
+
 from typing import Generic, TypeVar
 
 from sqlalchemy import select
@@ -18,6 +20,12 @@ class BaseRepository(Generic[ModelType]):
     async def get(self, id) -> ModelType | None:
         """Fetch a single record by id."""
         return await self.session.get(self.model, id)
+
+    async def get_many(self, ids) -> list[ModelType]:
+        """Fetch multiple records by id, in no particular order."""
+        stmt = select(self.model).where(self.model.id.in_(ids))
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
 
     async def list(self) -> list[ModelType]:
         """Fetch all records, newest first."""

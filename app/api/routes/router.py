@@ -5,20 +5,49 @@ resulting routes. The LLM is not involved in optimization — see
 services.route_optimizer.
 """
 
-from fastapi import APIRouter
+import uuid
 
-from app.schemas.route import OptimizeRequest, RouteRead
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.core.dependencies import get_route_optimizer_service
+from app.schemas.route import OptimizeRequest, OptimizeResult, RouteRead, RouteStopRead
+from app.services.route_optimizer.service import RouteOptimizerService
 
 router = APIRouter(tags=["routes"])
 
 
-@router.post("/optimize", response_model=RouteRead)
-async def optimize_routes(payload: OptimizeRequest) -> RouteRead:
+@router.post("/optimize", response_model=OptimizeResult)
+async def optimize_routes(
+    payload: OptimizeRequest,
+    service: RouteOptimizerService = Depends(get_route_optimizer_service),
+) -> OptimizeResult:
     """Run the OR-Tools solver to build optimized multi-driver routes."""
-    raise NotImplementedError
+    try:
+        return await service.optimize(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("/{route_id}", response_model=RouteRead)
-async def get_route(route_id: str) -> RouteRead:
-    """Fetch a previously computed route by id."""
-    raise NotImplementedError
+async def get_route(
+    route_id: uuid.UUID,
+    service: RouteOptimizerService = Depends(get_route_optimizer_service),
+) -> RouteRead:
+    """Fetch a previously computed route by id, including its stops."""
+    result = await service.get_route_with_stops(route_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Route not found")
+    route, stops = result
+    return RouteRead(
+        id=route.id,
+        driver_id=route.driver_id,
+        vehicle_id=route.vehicle_id,
+        depot_id=route.depot_id,
+        status=route.status,
+        return_to_depot=route.return_to_depot,
+        total_distance_km=route.total_distance_km,
+        total_duration_minutes=route.total_duration_minutes,
+        created_at=route.created_at,
+        updated_at=route.updated_at,
+        stops=[RouteStopRead.model_validate(s) for s in stops],
+    )

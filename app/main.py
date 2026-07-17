@@ -10,6 +10,7 @@ from app.api.ai.router import router as ai_router
 from app.api.auth.router import router as auth_router
 from app.api.dashboard.router import router as dashboard_router
 from app.api.deliveries.router import router as deliveries_router
+from app.api.depots.router import router as depots_router
 from app.api.drivers.router import router as drivers_router
 from app.api.routes.router import router as routes_router
 from app.api.vehicles.router import router as vehicles_router
@@ -34,6 +35,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router, prefix=f"{API_V1_PREFIX}/auth")
     app.include_router(deliveries_router, prefix=f"{API_V1_PREFIX}/deliveries")
+    app.include_router(depots_router, prefix=f"{API_V1_PREFIX}/depots")
     app.include_router(routes_router, prefix=f"{API_V1_PREFIX}/routes")
     app.include_router(drivers_router, prefix=f"{API_V1_PREFIX}/drivers")
     app.include_router(vehicles_router, prefix=f"{API_V1_PREFIX}/vehicles")
