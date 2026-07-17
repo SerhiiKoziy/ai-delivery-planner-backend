@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
 from app.repositories.delivery_repository import DeliveryRepository
+from app.repositories.driver_repository import DriverRepository
+from app.repositories.vehicle_repository import VehicleRepository
 from app.services.deliveries.service import DeliveryService
 from app.services.geocoding.client import GoogleGeocodingClient
 
@@ -35,3 +37,13 @@ def get_delivery_service(
 ) -> DeliveryService:
     """Provide a request-scoped DeliveryService."""
     return DeliveryService(repo, GoogleGeocodingClient())
+
+
+def get_driver_repository(db: AsyncSession = Depends(get_db)) -> DriverRepository:
+    """Provide a request-scoped DriverRepository bound to the request's DB session."""
+    return DriverRepository(db)
+
+
+def get_vehicle_repository(db: AsyncSession = Depends(get_db)) -> VehicleRepository:
+    """Provide a request-scoped VehicleRepository bound to the request's DB session."""
+    return VehicleRepository(db)

@@ -32,6 +32,8 @@ class Delivery(Base):
         default=DeliveryPriority.NORMAL,
     )
     unloading_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    weight_kg: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
+    volume_m3: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")
     delivery_window_start: Mapped[time | None] = mapped_column(Time, nullable=True)
     delivery_window_end: Mapped[time | None] = mapped_column(Time, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)

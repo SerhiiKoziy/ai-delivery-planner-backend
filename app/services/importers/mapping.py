@@ -16,6 +16,8 @@ _FIELD_ALIASES: dict[str, list[str]] = {
     "order_number": ["Order Number", "Order #", "Order"],
     "priority": ["Priority"],
     "unloading_minutes": ["Estimated unloading time", "Unloading Time", "Unloading"],
+    "weight_kg": ["Weight", "Weight (kg)", "Weight Kg"],
+    "volume_m3": ["Volume", "Volume (m3)", "Volume M3"],
     "delivery_window": ["Delivery window", "Delivery Window", "Time Window"],
     "notes": ["Notes", "Note", "Comment", "Comments"],
 }
@@ -51,6 +53,28 @@ def parse_unloading_minutes(raw) -> int:
     if not match:
         return 0
     return int(match.group())
+
+
+def parse_numeric_amount(raw) -> float:
+    """Parse a free-text/number amount value (e.g. weight/volume) into a float.
+
+    Accepts an int/float already, or a string like "12 kg", "0.5 m3", "10".
+    Returns 0.0 if raw is empty/None/unparseable.
+    """
+    if raw is None:
+        return 0.0
+    if isinstance(raw, (int, float)):
+        return float(raw)
+    text = str(raw).strip()
+    if not text:
+        return 0.0
+    match = re.search(r"[\d.]+", text)
+    if not match:
+        return 0.0
+    try:
+        return float(match.group())
+    except ValueError:
+        return 0.0
 
 
 def _parse_time_of_day(text: str) -> time:
@@ -136,6 +160,8 @@ def normalize_row(raw_row: dict) -> DeliveryImportRow:
 
     priority = _parse_priority(fields.get("priority"))
     unloading_minutes = parse_unloading_minutes(fields.get("unloading_minutes"))
+    weight_kg = parse_numeric_amount(fields.get("weight_kg"))
+    volume_m3 = parse_numeric_amount(fields.get("volume_m3"))
     window_start, window_end = parse_delivery_window(fields.get("delivery_window"))
 
     return DeliveryImportRow(
@@ -145,6 +171,8 @@ def normalize_row(raw_row: dict) -> DeliveryImportRow:
         order_number=order_number,
         priority=priority,
         unloading_minutes=unloading_minutes,
+        weight_kg=weight_kg,
+        volume_m3=volume_m3,
         delivery_window_start=window_start,
         delivery_window_end=window_end,
         notes=notes,

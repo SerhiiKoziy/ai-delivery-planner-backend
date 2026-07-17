@@ -25,6 +25,8 @@ class DeliveryCreate(BaseModel):
     order_number: str | None = None
     priority: DeliveryPriority = DeliveryPriority.NORMAL
     unloading_minutes: int = 0
+    weight_kg: float = 0.0
+    volume_m3: float = 0.0
     delivery_window_start: time | None = None
     delivery_window_end: time | None = None
     notes: str | None = None
@@ -39,6 +41,8 @@ class DeliveryUpdate(BaseModel):
     order_number: str | None = None
     priority: DeliveryPriority | None = None
     unloading_minutes: int | None = None
+    weight_kg: float | None = None
+    volume_m3: float | None = None
     delivery_window_start: time | None = None
     delivery_window_end: time | None = None
     notes: str | None = None
@@ -54,6 +58,8 @@ class DeliveryRead(BaseModel):
     order_number: str | None = None
     priority: DeliveryPriority
     unloading_minutes: int
+    weight_kg: float
+    volume_m3: float
     delivery_window_start: time | None = None
     delivery_window_end: time | None = None
     notes: str | None = None
@@ -75,6 +81,8 @@ class DeliveryImportRow(BaseModel):
     order_number: str | None = None
     priority: DeliveryPriority = DeliveryPriority.NORMAL
     unloading_minutes: int = 0
+    weight_kg: float = 0.0
+    volume_m3: float = 0.0
     delivery_window_start: time | None = None
     delivery_window_end: time | None = None
     notes: str | None = None
