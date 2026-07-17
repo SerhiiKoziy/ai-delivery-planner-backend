@@ -1,17 +1,21 @@
 """Shared FastAPI dependencies: DB session and current-user resolution."""
 
+import uuid
 from collections.abc import AsyncGenerator
 
-from fastapi import Depends
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import InvalidTokenError, decode_token
+from app.db.models.user import User
 from app.db.session import get_session
 from app.repositories.delivery_repository import DeliveryRepository
 from app.repositories.depot_repository import DepotRepository
 from app.repositories.driver_repository import DriverRepository
 from app.repositories.route_repository import RouteRepository
 from app.repositories.route_stop_repository import RouteStopRepository
+from app.repositories.user_repository import UserRepository
 from app.repositories.vehicle_repository import VehicleRepository
 from app.services.deliveries.service import DeliveryService
 from app.services.geocoding.client import GoogleGeocodingClient
@@ -26,9 +30,38 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
+def get_user_repository(db: AsyncSession = Depends(get_db)) -> UserRepository:
+    """Provide a request-scoped UserRepository bound to the request's DB session."""
+    return UserRepository(db)
+
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    user_repo: UserRepository = Depends(get_user_repository),
+) -> User:
     """Resolve the current authenticated user from a bearer JWT."""
-    raise NotImplementedError
+    credentials_error = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        claims = decode_token(token)
+    except InvalidTokenError as exc:
+        raise credentials_error from exc
+
+    if claims.get("type") != "access":
+        raise credentials_error
+
+    try:
+        user_id = uuid.UUID(claims["sub"])
+    except (KeyError, ValueError) as exc:
+        raise credentials_error from exc
+
+    user = await user_repo.get(user_id)
+    if user is None:
+        raise credentials_error
+    return user
 
 
 def get_delivery_repository(db: AsyncSession = Depends(get_db)) -> DeliveryRepository:
