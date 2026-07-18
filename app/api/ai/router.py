@@ -123,9 +123,17 @@ async def chat(
 @router.get("/chat/{route_id}/history", response_model=list[ChatMessageRead])
 async def chat_history(
     route_id: uuid.UUID,
+    route_repo: RouteRepository = Depends(get_route_repository),
     chat_message_repo: ChatMessageRepository = Depends(get_chat_message_repository),
 ) -> list[ChatMessageRead]:
-    """Return a route's persisted chat history, oldest first."""
+    """Return a route's persisted chat history, oldest first.
+
+    ChatMessage has no organization_id of its own — ownership is enforced by
+    requiring the route itself to resolve under the caller's organization
+    before any messages are read.
+    """
+    if await route_repo.get(route_id) is None:
+        raise HTTPException(status_code=404, detail="Route not found")
     messages = await chat_message_repo.list_by_route(route_id)
     return [ChatMessageRead.model_validate(m) for m in messages]
 

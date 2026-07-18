@@ -3,18 +3,19 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, Float, String, Uuid, func
+from sqlalchemy import DateTime, Float, ForeignKey, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.models.base import Base
 
-# TODO: full schema (org relationship, operating hours)
+# TODO: full schema (operating hours)
 
 
 class Depot(Base):
     __tablename__ = "depots"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("organizations.id"))
     address: Mapped[str] = mapped_column(String(500))
     latitude: Mapped[float] = mapped_column(Float)
     longitude: Mapped[float] = mapped_column(Float)

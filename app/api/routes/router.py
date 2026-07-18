@@ -12,8 +12,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.core.dependencies import (
     get_current_user,
     get_route_optimizer_service,
+    get_route_repository,
     get_route_stop_repository,
 )
+from app.repositories.route_repository import RouteRepository
 from app.repositories.route_stop_repository import RouteStopRepository
 from app.schemas.route import (
     OptimizeRequest,
@@ -70,9 +72,18 @@ async def update_stop_status(
     route_id: uuid.UUID,
     stop_id: uuid.UUID,
     payload: RouteStopStatusUpdate,
+    route_repository: RouteRepository = Depends(get_route_repository),
     route_stop_repository: RouteStopRepository = Depends(get_route_stop_repository),
 ) -> RouteStopRead:
-    """Mark a route stop as pending/completed/skipped."""
+    """Mark a route stop as pending/completed/skipped.
+
+    RouteStop has no organization_id of its own — ownership is enforced by
+    requiring the route itself to resolve under the caller's organization
+    before the stop is looked up.
+    """
+    if await route_repository.get(route_id) is None:
+        raise HTTPException(status_code=404, detail="Route not found")
+
     stop = await route_stop_repository.get(stop_id)
     if stop is None or stop.route_id != route_id:
         raise HTTPException(status_code=404, detail="Route stop not found")

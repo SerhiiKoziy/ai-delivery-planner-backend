@@ -19,6 +19,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models.organization import Organization
 from app.repositories.delivery_repository import DeliveryRepository
 from app.repositories.depot_repository import DepotRepository
 from app.repositories.driver_repository import DriverRepository
@@ -131,16 +132,19 @@ def _largest_route(routes: list[dict]) -> dict:
     return max(routes, key=lambda r: len(r["stops"]))
 
 
-def _build_service(db_session: AsyncSession) -> RouteOptimizerService:
+def _build_service(db_session: AsyncSession, organization_id) -> RouteOptimizerService:
     """Instantiate RouteOptimizerService directly, mirroring
     `get_route_optimizer_service`'s wiring, for tests that need to call
-    `replan()` without an `/ai/replan` endpoint (not built until Phase 2)."""
+    `replan()` without an `/ai/replan` endpoint (not built until Phase 2).
+    `organization_id` must match the org `scenario`'s data was created under
+    (i.e. `test_organization`, since `scenario` builds via the `client`
+    fixture which is authenticated as `test_user`)."""
     return RouteOptimizerService(
-        DeliveryRepository(db_session),
-        VehicleRepository(db_session),
-        DriverRepository(db_session),
-        DepotRepository(db_session),
-        RouteRepository(db_session),
+        DeliveryRepository(db_session, organization_id),
+        VehicleRepository(db_session, organization_id),
+        DriverRepository(db_session, organization_id),
+        DepotRepository(db_session, organization_id),
+        RouteRepository(db_session, organization_id),
         RouteStopRepository(db_session),
         db_session,
     )
@@ -153,13 +157,13 @@ def _build_service(db_session: AsyncSession) -> RouteOptimizerService:
 
 @pytest.mark.asyncio
 async def test_replan_no_changes_reproduces_equivalent_route(
-    scenario: dict, client: TestClient, db_session: AsyncSession
+    scenario: dict, client: TestClient, db_session: AsyncSession, test_organization: Organization
 ) -> None:
     routes = _optimize(client, scenario)
     route = _largest_route(routes)
     stop_count_before = len(route["stops"])
 
-    service = _build_service(db_session)
+    service = _build_service(db_session, test_organization.id)
     outcome = await service.replan(uuid.UUID(route["id"]))
 
     assert len(outcome.stops_before) == stop_count_before
@@ -169,7 +173,7 @@ async def test_replan_no_changes_reproduces_equivalent_route(
 
 @pytest.mark.asyncio
 async def test_replan_excludes_delivery_removes_it_from_pending_stops(
-    scenario: dict, client: TestClient, db_session: AsyncSession
+    scenario: dict, client: TestClient, db_session: AsyncSession, test_organization: Organization
 ) -> None:
     routes = _optimize(client, scenario)
     route = _largest_route(routes)
@@ -177,7 +181,7 @@ async def test_replan_excludes_delivery_removes_it_from_pending_stops(
 
     excluded_delivery_id = uuid.UUID(route["stops"][0]["delivery_id"])
 
-    service = _build_service(db_session)
+    service = _build_service(db_session, test_organization.id)
     outcome = await service.replan(
         uuid.UUID(route["id"]), excluded_delivery_ids=[excluded_delivery_id]
     )
@@ -189,7 +193,7 @@ async def test_replan_excludes_delivery_removes_it_from_pending_stops(
 
 @pytest.mark.asyncio
 async def test_replan_dry_run_does_not_change_db(
-    scenario: dict, client: TestClient, db_session: AsyncSession
+    scenario: dict, client: TestClient, db_session: AsyncSession, test_organization: Organization
 ) -> None:
     routes = _optimize(client, scenario)
     route = _largest_route(routes)
@@ -202,7 +206,7 @@ async def test_replan_dry_run_does_not_change_db(
         for s in stops_before
     ]
 
-    service = _build_service(db_session)
+    service = _build_service(db_session, test_organization.id)
     outcome = await service.replan(route_id, persist=False)
 
     # The dry run should still report a plausible simulated result...
@@ -219,13 +223,13 @@ async def test_replan_dry_run_does_not_change_db(
 
 @pytest.mark.asyncio
 async def test_replan_excluding_all_remaining_pending_does_not_crash(
-    scenario: dict, client: TestClient, db_session: AsyncSession
+    scenario: dict, client: TestClient, db_session: AsyncSession, test_organization: Organization
 ) -> None:
     routes = _optimize(client, scenario)
     route = _largest_route(routes)
     all_delivery_ids = [uuid.UUID(s["delivery_id"]) for s in route["stops"]]
 
-    service = _build_service(db_session)
+    service = _build_service(db_session, test_organization.id)
     outcome = await service.replan(
         uuid.UUID(route["id"]), excluded_delivery_ids=all_delivery_ids
     )
@@ -240,8 +244,10 @@ async def test_replan_excluding_all_remaining_pending_does_not_crash(
 
 
 @pytest.mark.asyncio
-async def test_replan_route_not_found_raises_value_error(db_session: AsyncSession) -> None:
-    service = _build_service(db_session)
+async def test_replan_route_not_found_raises_value_error(
+    db_session: AsyncSession, test_organization: Organization
+) -> None:
+    service = _build_service(db_session, test_organization.id)
     with pytest.raises(ValueError, match="Route not found"):
         await service.replan(uuid.uuid4())
 

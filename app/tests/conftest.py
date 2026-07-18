@@ -22,10 +22,12 @@ from app.core.dependencies import get_ai_model, get_current_user, get_db
 from app.core.security import hash_password
 from app.db.models.base import Base
 from app.db.models.delivery import DeliveryPriority
+from app.db.models.organization import Organization
 from app.db.models.user import User
 from app.main import app
 from app.repositories.delivery_repository import DeliveryRepository
 from app.repositories.depot_repository import DepotRepository
+from app.repositories.organization_repository import OrganizationRepository
 from app.repositories.route_repository import RouteRepository
 from app.repositories.route_stop_repository import RouteStopRepository
 from app.repositories.user_repository import UserRepository
@@ -54,12 +56,44 @@ async def db_session():
 
 
 @pytest_asyncio.fixture
-async def test_user(db_session: AsyncSession) -> User:
+async def test_organization(db_session: AsyncSession) -> Organization:
+    """Persist and return the organization `test_user` belongs to."""
+    now = datetime.now(UTC)
+    return await OrganizationRepository(db_session).create(
+        name="Test Organization", created_at=now, updated_at=now
+    )
+
+
+@pytest_asyncio.fixture
+async def test_user(db_session: AsyncSession, test_organization: Organization) -> User:
     """Persist and return a real user row to authenticate test requests as."""
     now = datetime.now(UTC)
     return await UserRepository(db_session).create(
         email="test.user@example.com",
         hashed_password=hash_password("test-password-123"),
+        organization_id=test_organization.id,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+@pytest_asyncio.fixture
+async def other_organization(db_session: AsyncSession) -> Organization:
+    """A second organization, distinct from `test_organization`, for tenant-isolation tests."""
+    now = datetime.now(UTC)
+    return await OrganizationRepository(db_session).create(
+        name="Other Organization", created_at=now, updated_at=now
+    )
+
+
+@pytest_asyncio.fixture
+async def other_user(db_session: AsyncSession, other_organization: Organization) -> User:
+    """A user belonging to `other_organization`, distinct from `test_user`."""
+    now = datetime.now(UTC)
+    return await UserRepository(db_session).create(
+        email="other.user@example.com",
+        hashed_password=hash_password("other-password-123"),
+        organization_id=other_organization.id,
         created_at=now,
         updated_at=now,
     )
@@ -253,12 +287,14 @@ def ai_client(client: TestClient, mock_openai_client: FakeOpenAIClient) -> TestC
 
 
 @pytest_asyncio.fixture
-async def route_with_stops(db_session: AsyncSession) -> dict:
-    """Persist a minimal Depot + Delivery + Route + RouteStop for AI route-context tests."""
-    depot = await DepotRepository(db_session).create(
+async def route_with_stops(db_session: AsyncSession, test_organization: Organization) -> dict:
+    """Persist a minimal Depot + Delivery + Route + RouteStop, owned by
+    `test_organization`, for AI route-context tests."""
+    org_id = test_organization.id
+    depot = await DepotRepository(db_session, org_id).create(
         address="Kyiv depot", latitude=50.4501, longitude=30.5234
     )
-    delivery = await DeliveryRepository(db_session).create(
+    delivery = await DeliveryRepository(db_session, org_id).create(
         customer_name="Acme LLC",
         address="Kyiv, Khreshchatyk 1",
         priority=DeliveryPriority.HIGH,
@@ -272,7 +308,7 @@ async def route_with_stops(db_session: AsyncSession) -> dict:
         latitude=50.46,
         longitude=30.53,
     )
-    route = await RouteRepository(db_session).create(
+    route = await RouteRepository(db_session, org_id).create(
         depot_id=depot.id,
         status="planned",
         return_to_depot=True,

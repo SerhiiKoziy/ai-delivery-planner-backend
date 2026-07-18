@@ -17,9 +17,14 @@ class _FixedClock:
 
     @staticmethod
     def now(tz=None):
-        return datetime_module.datetime.combine(
-            datetime_module.date.today(), datetime_module.time(23, 59), tzinfo=tz
-        )
+        # UTC date, not the local `date.today()` — `created_at` timestamps
+        # in this schema are always stored via `datetime.now(UTC)`, so the
+        # fixed clock must agree with that basis or this test itself becomes
+        # flaky near midnight UTC on machines with a local timezone ahead of
+        # UTC (exactly the bug this fixed clock exists to paper over for the
+        # real service, just one level up).
+        today_utc = datetime_module.datetime.now(datetime_module.UTC).date()
+        return datetime_module.datetime.combine(today_utc, datetime_module.time(23, 59), tzinfo=tz)
 
 
 @pytest.fixture

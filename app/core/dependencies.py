@@ -16,6 +16,7 @@ from app.repositories.chat_message_repository import ChatMessageRepository
 from app.repositories.delivery_repository import DeliveryRepository
 from app.repositories.depot_repository import DepotRepository
 from app.repositories.driver_repository import DriverRepository
+from app.repositories.organization_repository import OrganizationRepository
 from app.repositories.route_repository import RouteRepository
 from app.repositories.route_stop_repository import RouteStopRepository
 from app.repositories.user_repository import UserRepository
@@ -44,6 +45,11 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 def get_user_repository(db: AsyncSession = Depends(get_db)) -> UserRepository:
     """Provide a request-scoped UserRepository bound to the request's DB session."""
     return UserRepository(db)
+
+
+def get_organization_repository(db: AsyncSession = Depends(get_db)) -> OrganizationRepository:
+    """Provide a request-scoped OrganizationRepository bound to the request's DB session."""
+    return OrganizationRepository(db)
 
 
 async def get_current_user(
@@ -75,9 +81,12 @@ async def get_current_user(
     return user
 
 
-def get_delivery_repository(db: AsyncSession = Depends(get_db)) -> DeliveryRepository:
-    """Provide a request-scoped DeliveryRepository bound to the request's DB session."""
-    return DeliveryRepository(db)
+def get_delivery_repository(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> DeliveryRepository:
+    """Provide a request-scoped DeliveryRepository, scoped to the caller's organization."""
+    return DeliveryRepository(db, current_user.organization_id)
 
 
 def get_delivery_service(
@@ -87,24 +96,36 @@ def get_delivery_service(
     return DeliveryService(repo, GoogleGeocodingClient())
 
 
-def get_driver_repository(db: AsyncSession = Depends(get_db)) -> DriverRepository:
-    """Provide a request-scoped DriverRepository bound to the request's DB session."""
-    return DriverRepository(db)
+def get_driver_repository(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> DriverRepository:
+    """Provide a request-scoped DriverRepository, scoped to the caller's organization."""
+    return DriverRepository(db, current_user.organization_id)
 
 
-def get_vehicle_repository(db: AsyncSession = Depends(get_db)) -> VehicleRepository:
-    """Provide a request-scoped VehicleRepository bound to the request's DB session."""
-    return VehicleRepository(db)
+def get_vehicle_repository(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> VehicleRepository:
+    """Provide a request-scoped VehicleRepository, scoped to the caller's organization."""
+    return VehicleRepository(db, current_user.organization_id)
 
 
-def get_depot_repository(db: AsyncSession = Depends(get_db)) -> DepotRepository:
-    """Provide a request-scoped DepotRepository bound to the request's DB session."""
-    return DepotRepository(db)
+def get_depot_repository(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> DepotRepository:
+    """Provide a request-scoped DepotRepository, scoped to the caller's organization."""
+    return DepotRepository(db, current_user.organization_id)
 
 
-def get_route_repository(db: AsyncSession = Depends(get_db)) -> RouteRepository:
-    """Provide a request-scoped RouteRepository bound to the request's DB session."""
-    return RouteRepository(db)
+def get_route_repository(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> RouteRepository:
+    """Provide a request-scoped RouteRepository, scoped to the caller's organization."""
+    return RouteRepository(db, current_user.organization_id)
 
 
 def get_route_stop_repository(db: AsyncSession = Depends(get_db)) -> RouteStopRepository:
@@ -132,9 +153,12 @@ def get_route_optimizer_service(
     )
 
 
-def get_dashboard_service(db: AsyncSession = Depends(get_db)) -> DashboardService:
-    """Provide a request-scoped DashboardService bound to the request's DB session."""
-    return DashboardService(db)
+def get_dashboard_service(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> DashboardService:
+    """Provide a request-scoped DashboardService, scoped to the caller's organization."""
+    return DashboardService(db, current_user.organization_id)
 
 
 def get_ai_model() -> str:

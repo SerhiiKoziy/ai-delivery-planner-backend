@@ -3,7 +3,7 @@
 import uuid
 from datetime import UTC, datetime, time
 
-from sqlalchemy import DateTime, Integer, String, Time, Uuid, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Time, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.models.base import Base
@@ -13,6 +13,7 @@ class Driver(Base):
     __tablename__ = "drivers"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("organizations.id"))
     name: Mapped[str] = mapped_column(String(255))
     phone: Mapped[str] = mapped_column(String(50))
     status: Mapped[str] = mapped_column(String(50), default="active")

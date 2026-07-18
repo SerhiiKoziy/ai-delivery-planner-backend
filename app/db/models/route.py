@@ -13,6 +13,7 @@ class Route(Base):
     __tablename__ = "routes"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("organizations.id"))
     driver_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("drivers.id"), nullable=True
     )

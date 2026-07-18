@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core.dependencies import get_user_repository
+from app.core.dependencies import get_organization_repository, get_user_repository
 from app.core.security import (
     InvalidTokenError,
     create_access_token,
@@ -18,6 +18,7 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
+from app.repositories.organization_repository import OrganizationRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import RefreshRequest, Token, UserCreate, UserLogin
 
@@ -36,8 +37,12 @@ def _issue_tokens(user_id: uuid.UUID) -> Token:
 async def register(
     payload: UserCreate,
     user_repo: UserRepository = Depends(get_user_repository),
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
 ) -> Token:
-    """Create a new user account and return an access/refresh token pair."""
+    """Create a new user account (with its own new organization) and return
+    an access/refresh token pair. One user = one organization: there's no
+    invite/join-existing-org flow, so every registration starts a fresh
+    tenant named after the user's email."""
     existing = await user_repo.get_by_email(payload.email)
     if existing is not None:
         raise HTTPException(
@@ -46,9 +51,15 @@ async def register(
         )
 
     now = datetime.now(UTC)
+    organization = await org_repo.create(
+        name=f"{payload.email}'s Organization",
+        created_at=now,
+        updated_at=now,
+    )
     user = await user_repo.create(
         email=payload.email,
         hashed_password=hash_password(payload.password),
+        organization_id=organization.id,
         created_at=now,
         updated_at=now,
     )

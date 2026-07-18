@@ -13,6 +13,7 @@ class Vehicle(Base):
     __tablename__ = "vehicles"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("organizations.id"))
     plate_number: Mapped[str] = mapped_column(String(50))
     status: Mapped[str] = mapped_column(String(50), default="active")
     capacity_weight_kg: Mapped[float] = mapped_column(Float, default=0.0)

@@ -3,11 +3,11 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.driver import Driver
-from app.repositories.base import BaseRepository
+from app.repositories.base import TenantScopedRepository
 
 
-class DriverRepository(BaseRepository[Driver]):
-    """Repository for Driver records."""
+class DriverRepository(TenantScopedRepository[Driver]):
+    """Repository for Driver records, scoped to one organization."""
 
-    def __init__(self, session: AsyncSession) -> None:
-        super().__init__(session, Driver)
+    def __init__(self, session: AsyncSession, organization_id) -> None:
+        super().__init__(session, Driver, organization_id)
