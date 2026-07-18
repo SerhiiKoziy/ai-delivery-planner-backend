@@ -1,11 +1,11 @@
 """AI request/response schemas: delivery-list analysis and route Q&A."""
 
 import uuid
-from datetime import time
+from datetime import datetime, time
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class AddressCleaningResult(BaseModel):
@@ -51,6 +51,19 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
+
+
+class ChatRole(str, Enum):
+    USER = "user"
+    ASSISTANT = "assistant"
+
+
+class ChatMessageRead(BaseModel):
+    role: ChatRole
+    content: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ExplainRequest(BaseModel):

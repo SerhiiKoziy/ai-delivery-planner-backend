@@ -19,16 +19,23 @@ async def handle_chat_message(
     message: str,
     route: RouteRead,
     deliveries: list[DeliveryRead],
+    history: list[tuple[str, str]] | None = None,
     *,
     client: AsyncOpenAI,
     model: str,
 ) -> str:
-    """Answer a user question about a route/its deliveries, or suggest a replan."""
+    """Answer a user question about a route/its deliveries, or suggest a replan.
+
+    `history` is the route's prior (role, content) turns, oldest first, so the
+    model sees the full conversation rather than just the latest message.
+    """
     summary = build_route_summary(route, deliveries)
     messages = [
         {"role": "system", "content": _SYSTEM_PROMPT},
         {"role": "system", "content": f"Route context:\n{summary}"},
-        {"role": "user", "content": message},
     ]
+    for role, content in history or []:
+        messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": message})
     response = await client.chat.completions.create(model=model, messages=messages)
     return response.choices[0].message.content or ""

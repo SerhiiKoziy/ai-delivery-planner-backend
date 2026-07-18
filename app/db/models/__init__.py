@@ -3,6 +3,7 @@ for Alembic autogeneration.
 """
 
 from app.db.models.base import Base
+from app.db.models.chat_message import ChatMessage
 from app.db.models.delivery import Delivery
 from app.db.models.delivery_note import DeliveryNote
 from app.db.models.depot import Depot
@@ -15,6 +16,7 @@ from app.db.models.vehicle import Vehicle
 
 __all__ = [
     "Base",
+    "ChatMessage",
     "Delivery",
     "DeliveryNote",
     "Depot",

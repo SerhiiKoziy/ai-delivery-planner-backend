@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.core.security import InvalidTokenError, decode_token
 from app.db.models.user import User
 from app.db.session import get_session
+from app.repositories.chat_message_repository import ChatMessageRepository
 from app.repositories.delivery_repository import DeliveryRepository
 from app.repositories.depot_repository import DepotRepository
 from app.repositories.driver_repository import DriverRepository
@@ -110,6 +111,11 @@ def get_route_stop_repository(db: AsyncSession = Depends(get_db)) -> RouteStopRe
     return RouteStopRepository(db)
 
 
+def get_chat_message_repository(db: AsyncSession = Depends(get_db)) -> ChatMessageRepository:
+    """Provide a request-scoped ChatMessageRepository bound to the request's DB session."""
+    return ChatMessageRepository(db)
+
+
 def get_route_optimizer_service(
     delivery_repo: DeliveryRepository = Depends(get_delivery_repository),
     vehicle_repo: VehicleRepository = Depends(get_vehicle_repository),
@@ -159,9 +165,15 @@ class RouteChatService:
         self.client = client
         self.model = model
 
-    async def run(self, message: str, route: RouteRead, deliveries: list[DeliveryRead]) -> str:
+    async def run(
+        self,
+        message: str,
+        route: RouteRead,
+        deliveries: list[DeliveryRead],
+        history: list[tuple[str, str]] | None = None,
+    ) -> str:
         return await handle_chat_message(
-            message, route, deliveries, client=self.client, model=self.model
+            message, route, deliveries, history, client=self.client, model=self.model
         )
 
 

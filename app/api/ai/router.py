@@ -5,6 +5,9 @@ duplicate detection on import, and for conversational route Q&A and
 mid-route replanning. The LLM never performs route optimization itself.
 """
 
+import uuid
+from datetime import UTC, datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from openai import AsyncOpenAI
 
@@ -13,6 +16,7 @@ from app.core.dependencies import (
     RouteChatService,
     RouteExplainerService,
     get_ai_model,
+    get_chat_message_repository,
     get_current_user,
     get_delivery_analysis_service,
     get_delivery_repository,
@@ -23,10 +27,12 @@ from app.core.dependencies import (
     get_route_repository,
     get_route_stop_repository,
 )
+from app.repositories.chat_message_repository import ChatMessageRepository
 from app.repositories.delivery_repository import DeliveryRepository
 from app.repositories.route_repository import RouteRepository
 from app.repositories.route_stop_repository import RouteStopRepository
 from app.schemas.ai import (
+    ChatMessageRead,
     ChatRequest,
     ChatResponse,
     DeliveryAnalysisResult,
@@ -82,14 +88,46 @@ async def chat(
     route_repo: RouteRepository = Depends(get_route_repository),
     route_stop_repo: RouteStopRepository = Depends(get_route_stop_repository),
     delivery_repo: DeliveryRepository = Depends(get_delivery_repository),
+    chat_message_repo: ChatMessageRepository = Depends(get_chat_message_repository),
     service: RouteChatService = Depends(get_route_chat_service),
 ) -> ChatResponse:
-    """Conversational Q&A over route/delivery data, including replanning suggestions."""
+    """Conversational Q&A over route/delivery data, including replanning suggestions.
+
+    Prior turns for this route are persisted and replayed as context on every
+    call, so the conversation stays coherent across requests.
+    """
     route, deliveries = await get_route_context(
         payload.route_id, route_repo, route_stop_repo, delivery_repo
     )
-    reply = await service.run(payload.message, route, deliveries)
+    history = await chat_message_repo.list_by_route(payload.route_id)
+    history_turns = [(m.role, m.content) for m in history]
+
+    reply = await service.run(payload.message, route, deliveries, history_turns)
+
+    # Distinct timestamps (rather than one shared `now`) keep replay order
+    # deterministic regardless of the DB's timestamp precision.
+    now = datetime.now(UTC)
+    await chat_message_repo.create(
+        route_id=payload.route_id, role="user", content=payload.message, created_at=now
+    )
+    await chat_message_repo.create(
+        route_id=payload.route_id,
+        role="assistant",
+        content=reply,
+        created_at=now + timedelta(microseconds=1),
+    )
+
     return ChatResponse(reply=reply)
+
+
+@router.get("/chat/{route_id}/history", response_model=list[ChatMessageRead])
+async def chat_history(
+    route_id: uuid.UUID,
+    chat_message_repo: ChatMessageRepository = Depends(get_chat_message_repository),
+) -> list[ChatMessageRead]:
+    """Return a route's persisted chat history, oldest first."""
+    messages = await chat_message_repo.list_by_route(route_id)
+    return [ChatMessageRead.model_validate(m) for m in messages]
 
 
 @router.post("/explain", response_model=ExplainResponse)
