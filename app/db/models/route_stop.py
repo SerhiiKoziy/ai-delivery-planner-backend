@@ -3,7 +3,7 @@
 import uuid
 from datetime import UTC, datetime, time
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, Time, Uuid, func
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Time, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.models.base import Base
@@ -21,6 +21,7 @@ class RouteStop(Base):
     estimated_arrival: Mapped[time] = mapped_column(Time)
     estimated_departure: Mapped[time] = mapped_column(Time)
     distance_from_previous_km: Mapped[float] = mapped_column(Float, default=0.0)
+    status: Mapped[str] = mapped_column(String(20), default="pending", server_default="pending")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),

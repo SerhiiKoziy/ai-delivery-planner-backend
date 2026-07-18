@@ -184,11 +184,25 @@ def _fake_duplicate_detection(payload: dict) -> dict:
     return {"groups": groups}
 
 
+_DEFAULT_REPLAN_INTERPRETATION = {
+    "event_type": "unrecognized",
+    "affected_stop_sequence": None,
+    "new_window_start": None,
+    "new_window_end": None,
+    "delay_minutes": None,
+    "summary": "Default fake interpretation: no test override was set.",
+}
+
+
 class FakeOpenAIClient:
     """Fake AsyncOpenAI-shaped client standing in for `get_openai_client`."""
 
     def __init__(self, plain_reply: str = "This is a canned AI reply.") -> None:
         self.plain_reply = plain_reply
+        # Tests set this directly (mirroring `plain_reply`) to control what the
+        # fake "interprets" a dispatcher message as, since the fake can't
+        # actually understand free text the way a real model would.
+        self.replan_interpretation: dict = dict(_DEFAULT_REPLAN_INTERPRETATION)
         self.calls: list[dict] = []
         self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._create))
 
@@ -206,6 +220,8 @@ class FakeOpenAIClient:
             result = _fake_note_parsing(payload)
         elif schema_name == "duplicate_groups":
             result = _fake_duplicate_detection(payload)
+        elif schema_name == "replan_interpretation":
+            result = self.replan_interpretation
         else:  # pragma: no cover - defensive, unknown schema
             result = {}
         return _FakeCompletion(json.dumps(result))

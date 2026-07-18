@@ -2,6 +2,7 @@
 
 import uuid
 from datetime import datetime, time
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -20,8 +21,13 @@ class RouteStopRead(BaseModel):
     estimated_arrival: time
     estimated_departure: time
     distance_from_previous_km: float
+    status: str
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class RouteStopStatusUpdate(BaseModel):
+    status: Literal["pending", "completed", "skipped"]
 
 
 class RouteRead(BaseModel):

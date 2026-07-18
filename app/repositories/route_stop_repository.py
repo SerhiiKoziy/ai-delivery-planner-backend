@@ -1,5 +1,7 @@
 """RouteStop persistence access."""
 
+import uuid
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,3 +24,9 @@ class RouteStopRepository(BaseRepository[RouteStop]):
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def delete_by_ids(self, ids: list[uuid.UUID]) -> None:
+        """Delete multiple stops by id. Loop-delete, matching this codebase's
+        simplicity level — no bulk SQL statement."""
+        for stop_id in ids:
+            await self.delete(stop_id)

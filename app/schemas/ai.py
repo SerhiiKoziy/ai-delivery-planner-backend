@@ -1,6 +1,9 @@
 """AI request/response schemas: delivery-list analysis and route Q&A."""
 
 import uuid
+from datetime import time
+from enum import Enum
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -55,4 +58,51 @@ class ExplainRequest(BaseModel):
 
 
 class ExplainResponse(BaseModel):
+    explanation: str
+
+
+class ReplanEventType(str, Enum):
+    CUSTOMER_UNREACHABLE = "customer_unreachable"
+    DELIVERY_CANCELLED = "delivery_cancelled"
+    DELIVERY_RESCHEDULED = "delivery_rescheduled"
+    DRIVER_DELAYED = "driver_delayed"
+    UNRECOGNIZED = "unrecognized"
+
+
+class ReplanInterpretation(BaseModel):
+    event_type: ReplanEventType
+    affected_stop_sequence: int | None = None
+    new_window_start: str | None = None  # "HH:MM", only for DELIVERY_RESCHEDULED
+    new_window_end: str | None = None
+    delay_minutes: int | None = None  # only for DRIVER_DELAYED
+    summary: str
+
+
+class StopDiffEntry(BaseModel):
+    delivery_id: uuid.UUID
+    customer_name: str
+    change: Literal["unchanged", "reordered", "time_shifted", "removed", "window_updated"]
+    old_sequence: int | None = None
+    new_sequence: int | None = None
+    old_estimated_arrival: time | None = None
+    new_estimated_arrival: time | None = None
+    reason: str | None = None
+
+
+class ReplanRequest(BaseModel):
+    route_id: uuid.UUID
+    message: str
+    dry_run: bool = False
+
+
+class ReplanResult(BaseModel):
+    route_id: uuid.UUID
+    interpretation: ReplanInterpretation
+    applied: bool
+    diff: list[StopDiffEntry]
+    total_distance_km_before: float
+    total_distance_km_after: float
+    total_duration_minutes_before: int
+    total_duration_minutes_after: int
+    time_saved_minutes: float
     explanation: str
