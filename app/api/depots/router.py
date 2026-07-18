@@ -8,11 +8,11 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 
-from app.core.dependencies import get_depot_repository
+from app.core.dependencies import get_current_user, get_depot_repository
 from app.repositories.depot_repository import DepotRepository
 from app.schemas.depot import DepotCreate, DepotRead, DepotUpdate
 
-router = APIRouter(tags=["depots"])
+router = APIRouter(tags=["depots"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/", response_model=list[DepotRead])

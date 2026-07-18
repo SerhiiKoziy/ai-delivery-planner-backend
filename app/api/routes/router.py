@@ -9,11 +9,11 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.core.dependencies import get_route_optimizer_service
+from app.core.dependencies import get_current_user, get_route_optimizer_service
 from app.schemas.route import OptimizeRequest, OptimizeResult, RouteRead, RouteStopRead
 from app.services.route_optimizer.service import RouteOptimizerService
 
-router = APIRouter(tags=["routes"])
+router = APIRouter(tags=["routes"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/optimize", response_model=OptimizeResult)

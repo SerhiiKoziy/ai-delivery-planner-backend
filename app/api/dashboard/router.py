@@ -1,8 +1,10 @@
 """Dashboard API routes: high-level operational overview."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-router = APIRouter(tags=["dashboard"])
+from app.core.dependencies import get_current_user
+
+router = APIRouter(tags=["dashboard"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/overview")

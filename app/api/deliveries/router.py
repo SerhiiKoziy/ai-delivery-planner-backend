@@ -10,11 +10,11 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
 
-from app.core.dependencies import get_delivery_service
+from app.core.dependencies import get_current_user, get_delivery_service
 from app.schemas.delivery import DeliveryCreate, DeliveryImportResult, DeliveryRead, DeliveryUpdate
 from app.services.deliveries.service import DeliveryService
 
-router = APIRouter(tags=["deliveries"])
+router = APIRouter(tags=["deliveries"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/import", response_model=DeliveryImportResult)

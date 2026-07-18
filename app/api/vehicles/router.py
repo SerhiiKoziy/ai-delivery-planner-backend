@@ -10,11 +10,11 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 
-from app.core.dependencies import get_vehicle_repository
+from app.core.dependencies import get_current_user, get_vehicle_repository
 from app.repositories.vehicle_repository import VehicleRepository
 from app.schemas.vehicle import VehicleCreate, VehicleRead, VehicleUpdate
 
-router = APIRouter(tags=["vehicles"])
+router = APIRouter(tags=["vehicles"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/", response_model=list[VehicleRead])

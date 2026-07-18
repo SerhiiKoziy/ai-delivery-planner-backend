@@ -8,11 +8,11 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 
-from app.core.dependencies import get_driver_repository
+from app.core.dependencies import get_current_user, get_driver_repository
 from app.repositories.driver_repository import DriverRepository
 from app.schemas.driver import DriverCreate, DriverRead, DriverUpdate
 
-router = APIRouter(tags=["drivers"])
+router = APIRouter(tags=["drivers"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("/", response_model=list[DriverRead])

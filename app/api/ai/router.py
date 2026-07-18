@@ -5,9 +5,11 @@ duplicate detection on import, and for conversational route Q&A and
 mid-route replanning. The LLM never performs route optimization itself.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-router = APIRouter(tags=["ai"])
+from app.core.dependencies import get_current_user
+
+router = APIRouter(tags=["ai"], dependencies=[Depends(get_current_user)])
 
 
 @router.post("/analyze")
