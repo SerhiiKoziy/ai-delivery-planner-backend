@@ -18,7 +18,13 @@ from app.repositories.driver_repository import DriverRepository
 from app.repositories.route_repository import RouteRepository
 from app.repositories.route_stop_repository import RouteStopRepository
 from app.repositories.vehicle_repository import VehicleRepository
-from app.schemas.route import OptimizeRequest, OptimizeResult, RouteRead, RouteStopRead
+from app.schemas.route import (
+    OptimizeRequest,
+    OptimizeResult,
+    RouteRead,
+    RouteStopRead,
+    build_route_stop_read,
+)
 from app.services.route_optimizer.builder import build_routing_problem
 from app.services.route_optimizer.mapper import map_solution
 from app.services.route_optimizer.solver import RouteSolver
@@ -68,6 +74,7 @@ class RouteOptimizerService:
 
     async def optimize(self, payload: OptimizeRequest) -> OptimizeResult:
         deliveries = await self.delivery_repository.get_many(payload.delivery_ids)
+        deliveries_by_id = {d.id: d for d in deliveries}
         geocoded = [d for d in deliveries if d.latitude is not None and d.longitude is not None]
         skipped_not_geocoded = [d.id for d in deliveries if d not in geocoded]
 
@@ -143,7 +150,9 @@ class RouteOptimizerService:
                     total_duration_minutes=route_row.total_duration_minutes,
                     created_at=route_row.created_at,
                     updated_at=route_row.updated_at,
-                    stops=[RouteStopRead.model_validate(s) for s in stops],
+                    stops=[
+                        build_route_stop_read(s, deliveries_by_id.get(s.delivery_id)) for s in stops
+                    ],
                 )
             )
 
@@ -159,12 +168,18 @@ class RouteOptimizerService:
     async def get_route(self, route_id: uuid.UUID) -> Route | None:
         return await self.route_repository.get(route_id)
 
-    async def get_route_with_stops(self, route_id: uuid.UUID) -> tuple[Route, list] | None:
+    async def get_route_with_stops(self, route_id: uuid.UUID) -> tuple[Route, list, dict] | None:
         route = await self.route_repository.get(route_id)
         if route is None:
             return None
         stops = await self.route_stop_repository.list_by_route(route_id)
-        return route, stops
+        delivery_ids = [s.delivery_id for s in stops]
+        deliveries_by_id = (
+            {d.id: d for d in await self.delivery_repository.get_many(delivery_ids)}
+            if delivery_ids
+            else {}
+        )
+        return route, stops, deliveries_by_id
 
     async def replan(
         self,
@@ -192,6 +207,16 @@ class RouteOptimizerService:
         # Snapshot BEFORE any mutation.
         stops_before = await self.route_stop_repository.list_by_route(route_id)
 
+        # Every stop this call could ever build a RouteStopRead for (preserved,
+        # re-optimized, or simulated) points at a delivery already present in
+        # stops_before, so one fetch up front covers all of them.
+        stop_delivery_ids = [s.delivery_id for s in stops_before]
+        deliveries_by_id = (
+            {d.id: d for d in await self.delivery_repository.get_many(stop_delivery_ids)}
+            if stop_delivery_ids
+            else {}
+        )
+
         preserved_stops = [s for s in stops_before if s.status != "pending"]
         pending_stops = [s for s in stops_before if s.status == "pending"]
 
@@ -213,7 +238,7 @@ class RouteOptimizerService:
             # Nothing left to re-optimize (e.g. every remaining delivery was
             # excluded/cancelled) — skip the solver entirely.
             stops_after = sorted(
-                (RouteStopRead.model_validate(s) for s in preserved_stops),
+                (build_route_stop_read(s, deliveries_by_id.get(s.delivery_id)) for s in preserved_stops),
                 key=lambda s: s.sequence,
             )
             if persist and pending_stops:
@@ -225,7 +250,7 @@ class RouteOptimizerService:
                 unassigned_delivery_ids=[],
             )
 
-        deliveries = await self.delivery_repository.get_many(pending_delivery_ids)
+        deliveries = [deliveries_by_id[did] for did in pending_delivery_ids]
 
         # Working copies for solver input only — never the session-tracked
         # originals — so a dry run (persist=False) can never leak a mutation
@@ -327,7 +352,9 @@ class RouteOptimizerService:
             return ReplanOutcome(
                 route=refreshed_route,
                 stops_before=stops_before,
-                stops_after=[RouteStopRead.model_validate(s) for s in all_stops],
+                stops_after=[
+                    build_route_stop_read(s, deliveries_by_id.get(s.delivery_id)) for s in all_stops
+                ],
                 unassigned_delivery_ids=unassigned_delivery_ids,
             )
 
@@ -347,11 +374,16 @@ class RouteOptimizerService:
                 ),
                 distance_from_previous_km=mapped_stop.distance_from_previous_meters / 1000,
                 status="pending",
+                latitude=getattr(deliveries_by_id.get(uuid.UUID(mapped_stop.stop_id)), "latitude", None),
+                longitude=getattr(deliveries_by_id.get(uuid.UUID(mapped_stop.stop_id)), "longitude", None),
             )
             for mapped_stop in mapped_stops
         ]
         stops_after = sorted(
-            [RouteStopRead.model_validate(s) for s in preserved_stops] + simulated_new_stops,
+            [
+                build_route_stop_read(s, deliveries_by_id.get(s.delivery_id)) for s in preserved_stops
+            ]
+            + simulated_new_stops,
             key=lambda s: s.sequence,
         )
 

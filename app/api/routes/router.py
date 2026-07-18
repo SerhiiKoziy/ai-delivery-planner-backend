@@ -21,6 +21,7 @@ from app.schemas.route import (
     RouteRead,
     RouteStopRead,
     RouteStopStatusUpdate,
+    build_route_stop_read,
 )
 from app.services.route_optimizer.service import RouteOptimizerService
 
@@ -48,7 +49,7 @@ async def get_route(
     result = await service.get_route_with_stops(route_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Route not found")
-    route, stops = result
+    route, stops, deliveries_by_id = result
     return RouteRead(
         id=route.id,
         driver_id=route.driver_id,
@@ -60,7 +61,7 @@ async def get_route(
         total_duration_minutes=route.total_duration_minutes,
         created_at=route.created_at,
         updated_at=route.updated_at,
-        stops=[RouteStopRead.model_validate(s) for s in stops],
+        stops=[build_route_stop_read(s, deliveries_by_id.get(s.delivery_id)) for s in stops],
     )
 
 

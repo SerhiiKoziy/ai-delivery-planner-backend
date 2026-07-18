@@ -22,8 +22,32 @@ class RouteStopRead(BaseModel):
     estimated_departure: time
     distance_from_previous_km: float
     status: str
+    latitude: float | None = None
+    longitude: float | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+def build_route_stop_read(stop, delivery=None) -> RouteStopRead:
+    """Build a RouteStopRead from a RouteStop ORM row, enriched with the
+    linked Delivery's coordinates.
+
+    RouteStop itself has no lat/lng columns (a stop is just an ordering +
+    timing record); coordinates live on the Delivery it points to, which
+    callers fetch separately and pass in here so the map UI has something to
+    plot without adding a DB relationship/join for this alone.
+    """
+    return RouteStopRead(
+        id=stop.id,
+        delivery_id=stop.delivery_id,
+        sequence=stop.sequence,
+        estimated_arrival=stop.estimated_arrival,
+        estimated_departure=stop.estimated_departure,
+        distance_from_previous_km=stop.distance_from_previous_km,
+        status=stop.status,
+        latitude=getattr(delivery, "latitude", None),
+        longitude=getattr(delivery, "longitude", None),
+    )
 
 
 class RouteStopStatusUpdate(BaseModel):

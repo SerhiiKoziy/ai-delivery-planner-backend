@@ -116,12 +116,16 @@ def test_optimize_assigns_or_reports_every_requested_delivery(scenario: dict, cl
     covered_ids |= set(body["unassigned_delivery_ids"])
     assert covered_ids == requested_ids
 
+    deliveries_by_id = {d["id"]: d for d in scenario["deliveries"]}
     for route in body["routes"]:
         sequences = [s["sequence"] for s in route["stops"]]
         assert sequences == list(range(len(sequences)))
         for stop in route["stops"]:
             assert stop["estimated_arrival"] is not None
             assert stop["estimated_departure"] is not None
+            delivery = deliveries_by_id[stop["delivery_id"]]
+            assert stop["latitude"] == delivery["latitude"]
+            assert stop["longitude"] == delivery["longitude"]
 
 
 def test_get_route_returns_stops_matching_optimize_response(scenario: dict, client: TestClient) -> None:

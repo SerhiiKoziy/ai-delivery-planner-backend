@@ -22,11 +22,12 @@ from app.repositories.user_repository import UserRepository
 from app.repositories.vehicle_repository import VehicleRepository
 from app.schemas.ai import DeliveryAnalysisResult
 from app.schemas.delivery import DeliveryImportRow, DeliveryRead
-from app.schemas.route import RouteRead, RouteStopRead
+from app.schemas.route import RouteRead, build_route_stop_read
 from app.services.ai.chat import handle_chat_message
 from app.services.ai.client import get_openai_client
 from app.services.ai.explainer import explain_route
 from app.services.ai.planner import analyze_delivery_list
+from app.services.dashboard.service import DashboardService
 from app.services.deliveries.service import DeliveryService
 from app.services.geocoding.client import GoogleGeocodingClient
 from app.services.route_optimizer.service import RouteOptimizerService
@@ -131,6 +132,11 @@ def get_route_optimizer_service(
     )
 
 
+def get_dashboard_service(db: AsyncSession = Depends(get_db)) -> DashboardService:
+    """Provide a request-scoped DashboardService bound to the request's DB session."""
+    return DashboardService(db)
+
+
 def get_ai_model() -> str:
     """Return the configured OpenAI model name for the AI services (overridable in tests)."""
     return get_settings().OPENAI_MODEL
@@ -218,6 +224,7 @@ async def get_route_context(
     stops = await route_stop_repo.list_by_route(route_id)
     delivery_ids = [stop.delivery_id for stop in stops]
     deliveries = await delivery_repo.get_many(delivery_ids) if delivery_ids else []
+    deliveries_by_id = {d.id: d for d in deliveries}
 
     route_read = RouteRead(
         id=route.id,
@@ -230,7 +237,7 @@ async def get_route_context(
         total_duration_minutes=route.total_duration_minutes,
         created_at=route.created_at,
         updated_at=route.updated_at,
-        stops=[RouteStopRead.model_validate(stop) for stop in stops],
+        stops=[build_route_stop_read(stop, deliveries_by_id.get(stop.delivery_id)) for stop in stops],
     )
     delivery_reads = [DeliveryRead.model_validate(d) for d in deliveries]
     return route_read, delivery_reads
