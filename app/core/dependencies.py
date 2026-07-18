@@ -5,8 +5,10 @@ from collections.abc import AsyncGenerator
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.security import InvalidTokenError, decode_token
 from app.db.models.user import User
 from app.db.session import get_session
@@ -17,6 +19,13 @@ from app.repositories.route_repository import RouteRepository
 from app.repositories.route_stop_repository import RouteStopRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.vehicle_repository import VehicleRepository
+from app.schemas.ai import DeliveryAnalysisResult
+from app.schemas.delivery import DeliveryImportRow, DeliveryRead
+from app.schemas.route import RouteRead, RouteStopRead
+from app.services.ai.chat import handle_chat_message
+from app.services.ai.client import get_openai_client
+from app.services.ai.explainer import explain_route
+from app.services.ai.planner import analyze_delivery_list
 from app.services.deliveries.service import DeliveryService
 from app.services.geocoding.client import GoogleGeocodingClient
 from app.services.route_optimizer.service import RouteOptimizerService
@@ -114,3 +123,102 @@ def get_route_optimizer_service(
     return RouteOptimizerService(
         delivery_repo, vehicle_repo, driver_repo, depot_repo, route_repo, route_stop_repo, db
     )
+
+
+def get_ai_model() -> str:
+    """Return the configured OpenAI model name for the AI services (overridable in tests)."""
+    return get_settings().OPENAI_MODEL
+
+
+class DeliveryAnalysisService:
+    """Binds an OpenAI client/model to `analyze_delivery_list` for DI."""
+
+    def __init__(self, client: AsyncOpenAI, model: str) -> None:
+        self.client = client
+        self.model = model
+
+    async def run(self, rows: list[DeliveryImportRow]) -> DeliveryAnalysisResult:
+        return await analyze_delivery_list(rows, client=self.client, model=self.model)
+
+
+class RouteExplainerService:
+    """Binds an OpenAI client/model to `explain_route` for DI."""
+
+    def __init__(self, client: AsyncOpenAI, model: str) -> None:
+        self.client = client
+        self.model = model
+
+    async def run(self, route: RouteRead, deliveries: list[DeliveryRead]) -> str:
+        return await explain_route(route, deliveries, client=self.client, model=self.model)
+
+
+class RouteChatService:
+    """Binds an OpenAI client/model to `handle_chat_message` for DI."""
+
+    def __init__(self, client: AsyncOpenAI, model: str) -> None:
+        self.client = client
+        self.model = model
+
+    async def run(self, message: str, route: RouteRead, deliveries: list[DeliveryRead]) -> str:
+        return await handle_chat_message(
+            message, route, deliveries, client=self.client, model=self.model
+        )
+
+
+def get_delivery_analysis_service(
+    client: AsyncOpenAI = Depends(get_openai_client),
+    model: str = Depends(get_ai_model),
+) -> DeliveryAnalysisService:
+    """Provide a request-scoped DeliveryAnalysisService with client/model bound."""
+    return DeliveryAnalysisService(client, model)
+
+
+def get_route_explainer_service(
+    client: AsyncOpenAI = Depends(get_openai_client),
+    model: str = Depends(get_ai_model),
+) -> RouteExplainerService:
+    """Provide a request-scoped RouteExplainerService with client/model bound."""
+    return RouteExplainerService(client, model)
+
+
+def get_route_chat_service(
+    client: AsyncOpenAI = Depends(get_openai_client),
+    model: str = Depends(get_ai_model),
+) -> RouteChatService:
+    """Provide a request-scoped RouteChatService with client/model bound."""
+    return RouteChatService(client, model)
+
+
+async def get_route_context(
+    route_id: uuid.UUID,
+    route_repo: RouteRepository = Depends(get_route_repository),
+    route_stop_repo: RouteStopRepository = Depends(get_route_stop_repository),
+    delivery_repo: DeliveryRepository = Depends(get_delivery_repository),
+) -> tuple[RouteRead, list[DeliveryRead]]:
+    """Fetch a Route with its stops and linked deliveries, assembled for AI context.
+
+    Raises 404 if the route doesn't exist.
+    """
+    route = await route_repo.get(route_id)
+    if route is None:
+        raise HTTPException(status_code=404, detail="Route not found")
+
+    stops = await route_stop_repo.list_by_route(route_id)
+    delivery_ids = [stop.delivery_id for stop in stops]
+    deliveries = await delivery_repo.get_many(delivery_ids) if delivery_ids else []
+
+    route_read = RouteRead(
+        id=route.id,
+        driver_id=route.driver_id,
+        vehicle_id=route.vehicle_id,
+        depot_id=route.depot_id,
+        status=route.status,
+        return_to_depot=route.return_to_depot,
+        total_distance_km=route.total_distance_km,
+        total_duration_minutes=route.total_duration_minutes,
+        created_at=route.created_at,
+        updated_at=route.updated_at,
+        stops=[RouteStopRead.model_validate(stop) for stop in stops],
+    )
+    delivery_reads = [DeliveryRead.model_validate(d) for d in deliveries]
+    return route_read, delivery_reads

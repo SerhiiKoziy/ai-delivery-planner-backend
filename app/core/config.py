@@ -32,6 +32,7 @@ class Settings(BaseSettings):
 
     # Third-party APIs
     OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4.1-mini"
     GOOGLE_MAPS_API_KEY: str = ""
 
     # CORS

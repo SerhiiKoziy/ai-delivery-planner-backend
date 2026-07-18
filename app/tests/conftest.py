@@ -8,7 +8,9 @@ auth flow itself (register/login/refresh) and the "no token" 401 behavior
 are covered separately using a real token / the unauthenticated app.
 """
 
-from datetime import UTC, datetime
+import json
+from datetime import UTC, datetime, time
+from types import SimpleNamespace
 
 import pytest
 import pytest_asyncio
@@ -16,12 +18,18 @@ from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from app.core.dependencies import get_current_user, get_db
+from app.core.dependencies import get_ai_model, get_current_user, get_db
 from app.core.security import hash_password
 from app.db.models.base import Base
+from app.db.models.delivery import DeliveryPriority
 from app.db.models.user import User
 from app.main import app
+from app.repositories.delivery_repository import DeliveryRepository
+from app.repositories.depot_repository import DepotRepository
+from app.repositories.route_repository import RouteRepository
+from app.repositories.route_stop_repository import RouteStopRepository
 from app.repositories.user_repository import UserRepository
+from app.services.ai.client import get_openai_client
 
 engine = create_async_engine(
     "sqlite+aiosqlite:///:memory:",
@@ -98,3 +106,174 @@ def unauthenticated_client(db_session) -> TestClient:
         yield TestClient(app)
     finally:
         app.dependency_overrides.pop(get_db, None)
+
+
+# ---------------------------------------------------------------------------
+# AI service fixtures: a fake AsyncOpenAI-shaped client so app.services.ai
+# tests/endpoints never touch the network. Structured (json_schema) calls are
+# answered by inspecting the actual outgoing payload, so fixtures aren't tied
+# to a specific number/order of rows; plain (non-structured) chat calls used
+# by explain/chat return a canned reply string.
+# ---------------------------------------------------------------------------
+
+
+class _FakeMessage:
+    def __init__(self, content: str) -> None:
+        self.content = content
+
+
+class _FakeChoice:
+    def __init__(self, content: str) -> None:
+        self.message = _FakeMessage(content)
+
+
+class _FakeCompletion:
+    def __init__(self, content: str) -> None:
+        self.choices = [_FakeChoice(content)]
+
+
+def _fake_address_cleaning(payload: dict) -> dict:
+    return {
+        "addresses": [
+            {
+                "index": item["index"],
+                "normalized": item["address"].strip(),
+                "city": None,
+                "postal_code": None,
+                "confidence": 0.9,
+                "corrections": [],
+            }
+            for item in payload["addresses"]
+        ]
+    }
+
+
+def _fake_note_parsing(payload: dict) -> dict:
+    notes = []
+    for item in payload["notes"]:
+        text = item["text"]
+        text_lower = text.lower()
+        notes.append(
+            {
+                "index": item["index"],
+                "call_before": "call" in text_lower,
+                "call_before_minutes": None,
+                "gate_code": "3456" if "3456" in text else None,
+                "earliest_time": "16:00" if "16:00" in text else None,
+                "has_dog": "dog" in text_lower,
+                "other_instructions": [],
+            }
+        )
+    return {"notes": notes}
+
+
+def _fake_duplicate_detection(payload: dict) -> dict:
+    row_numbers_by_name: dict[str, list[int]] = {}
+    for row in payload["rows"]:
+        key = row["customer_name"].strip().lower()
+        row_numbers_by_name.setdefault(key, []).append(row["row_number"])
+    groups = [
+        {
+            "row_indices": row_numbers,
+            "customer_name": key,
+            "reason": "Same customer name appears on multiple rows",
+        }
+        for key, row_numbers in row_numbers_by_name.items()
+        if len(row_numbers) >= 2
+    ]
+    return {"groups": groups}
+
+
+class FakeOpenAIClient:
+    """Fake AsyncOpenAI-shaped client standing in for `get_openai_client`."""
+
+    def __init__(self, plain_reply: str = "This is a canned AI reply.") -> None:
+        self.plain_reply = plain_reply
+        self.calls: list[dict] = []
+        self.chat = SimpleNamespace(completions=SimpleNamespace(create=self._create))
+
+    async def _create(self, *, model, messages, response_format=None, **kwargs):
+        self.calls.append({"model": model, "messages": messages, "response_format": response_format})
+
+        if response_format is None:
+            return _FakeCompletion(self.plain_reply)
+
+        schema_name = response_format["json_schema"]["name"]
+        payload = json.loads(messages[-1]["content"])
+        if schema_name == "cleaned_addresses":
+            result = _fake_address_cleaning(payload)
+        elif schema_name == "parsed_delivery_notes":
+            result = _fake_note_parsing(payload)
+        elif schema_name == "duplicate_groups":
+            result = _fake_duplicate_detection(payload)
+        else:  # pragma: no cover - defensive, unknown schema
+            result = {}
+        return _FakeCompletion(json.dumps(result))
+
+
+@pytest.fixture
+def mock_openai_client() -> FakeOpenAIClient:
+    """A fresh fake OpenAI client instance, network-free and call-recording."""
+    return FakeOpenAIClient()
+
+
+@pytest.fixture
+def ai_client(client: TestClient, mock_openai_client: FakeOpenAIClient) -> TestClient:
+    """Extend `client` with the OpenAI dependency overridden by a fake client."""
+
+    def _override_get_openai_client() -> FakeOpenAIClient:
+        return mock_openai_client
+
+    def _override_get_ai_model() -> str:
+        return "gpt-4.1-mini-test"
+
+    app.dependency_overrides[get_openai_client] = _override_get_openai_client
+    app.dependency_overrides[get_ai_model] = _override_get_ai_model
+    try:
+        yield client
+    finally:
+        app.dependency_overrides.pop(get_openai_client, None)
+        app.dependency_overrides.pop(get_ai_model, None)
+
+
+@pytest_asyncio.fixture
+async def route_with_stops(db_session: AsyncSession) -> dict:
+    """Persist a minimal Depot + Delivery + Route + RouteStop for AI route-context tests."""
+    depot = await DepotRepository(db_session).create(
+        address="Kyiv depot", latitude=50.4501, longitude=30.5234
+    )
+    delivery = await DeliveryRepository(db_session).create(
+        customer_name="Acme LLC",
+        address="Kyiv, Khreshchatyk 1",
+        priority=DeliveryPriority.HIGH,
+        unloading_minutes=10,
+        weight_kg=5.0,
+        volume_m3=0.2,
+        delivery_window_start=time(10, 0),
+        delivery_window_end=time(12, 0),
+        notes="Please call before delivery.",
+        status="geocoded",
+        latitude=50.46,
+        longitude=30.53,
+    )
+    route = await RouteRepository(db_session).create(
+        depot_id=depot.id,
+        status="planned",
+        return_to_depot=True,
+        total_distance_km=12.5,
+        total_duration_minutes=45,
+    )
+    stop = await RouteStopRepository(db_session).create(
+        route_id=route.id,
+        delivery_id=delivery.id,
+        sequence=0,
+        estimated_arrival=time(9, 30),
+        estimated_departure=time(9, 40),
+        distance_from_previous_km=12.5,
+    )
+    return {
+        "depot_id": depot.id,
+        "delivery_id": delivery.id,
+        "route_id": route.id,
+        "stop_id": stop.id,
+    }
