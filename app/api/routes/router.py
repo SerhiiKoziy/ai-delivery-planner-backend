@@ -59,6 +59,29 @@ async def optimize_routes(
     return result
 
 
+@router.get("/", response_model=list[RouteRead])
+async def list_routes(
+    route_repository: RouteRepository = Depends(get_route_repository),
+) -> list[RouteRead]:
+    """List routes for the current organization, newest first."""
+    routes = await route_repository.list()
+    return [
+        RouteRead(
+            id=route.id,
+            driver_id=route.driver_id,
+            vehicle_id=route.vehicle_id,
+            depot_id=route.depot_id,
+            status=route.status,
+            return_to_depot=route.return_to_depot,
+            total_distance_km=route.total_distance_km,
+            total_duration_minutes=route.total_duration_minutes,
+            created_at=route.created_at,
+            updated_at=route.updated_at,
+        )
+        for route in routes
+    ]
+
+
 @router.get("/{route_id}", response_model=RouteRead)
 async def get_route(
     route_id: uuid.UUID,

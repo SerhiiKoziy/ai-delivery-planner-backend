@@ -104,7 +104,10 @@ def test_openai_failure_returns_clean_503_not_the_sdk_error(
             request=httpx.Request("POST", "https://api.openai.com/v1/chat/completions"),
         )
 
-    mock_openai_client._create = _raise_connection_error
+    # `chat.completions.create` is a SimpleNamespace attribute bound to the
+    # fake's `_create` method at construction time; reassigning `_create`
+    # itself wouldn't affect that already-captured reference.
+    mock_openai_client.chat.completions.create = _raise_connection_error
 
     response = lenient_ai_client.post(
         "/api/v1/ai/explain",
