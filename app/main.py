@@ -16,6 +16,7 @@ from app.api.organizations.router import router as organizations_router
 from app.api.routes.router import router as routes_router
 from app.api.vehicles.router import router as vehicles_router
 from app.core.config import get_settings
+from app.core.error_handlers import register_exception_handlers
 
 settings = get_settings()
 
@@ -33,6 +34,8 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    register_exception_handlers(app)
 
     app.include_router(auth_router, prefix=f"{API_V1_PREFIX}/auth")
     app.include_router(deliveries_router, prefix=f"{API_V1_PREFIX}/deliveries")

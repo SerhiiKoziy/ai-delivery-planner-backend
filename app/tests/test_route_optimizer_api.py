@@ -126,6 +126,8 @@ def test_optimize_assigns_or_reports_every_requested_delivery(scenario: dict, cl
             delivery = deliveries_by_id[stop["delivery_id"]]
             assert stop["latitude"] == delivery["latitude"]
             assert stop["longitude"] == delivery["longitude"]
+            assert stop["customer_name"] == delivery["customer_name"]
+            assert stop["address"] == delivery["address"]
 
 
 def test_get_route_returns_stops_matching_optimize_response(scenario: dict, client: TestClient) -> None:

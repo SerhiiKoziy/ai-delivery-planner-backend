@@ -8,9 +8,18 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 
-from app.core.dependencies import get_current_user, get_depot_repository
+from app.core.dependencies import (
+    get_current_organization,
+    get_current_user,
+    get_depot_repository,
+    get_organization_repository,
+)
+from app.core.plans import PLAN_GEOCODE_LIMITS
+from app.db.models.organization import Organization
 from app.repositories.depot_repository import DepotRepository
-from app.schemas.depot import DepotCreate, DepotRead, DepotUpdate
+from app.repositories.organization_repository import OrganizationRepository
+from app.schemas.depot import DepotCreate, DepotGeocodeRequest, DepotGeocodeResult, DepotRead, DepotUpdate
+from app.services.geocoding.client import GoogleGeocodingClient
 
 router = APIRouter(tags=["depots"], dependencies=[Depends(get_current_user)])
 
@@ -32,6 +41,44 @@ async def create_depot(
     """Register a new depot."""
     created = await repo.create(**payload.model_dump())
     return DepotRead.model_validate(created)
+
+
+@router.post("/geocode", response_model=DepotGeocodeResult)
+async def geocode_depot_address(
+    payload: DepotGeocodeRequest,
+    organization: Organization = Depends(get_current_organization),
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+) -> DepotGeocodeResult:
+    """Resolve a free-text address to coordinates, for the "find location"
+    step in the depot-creation form (the frontend then lets the user confirm
+    before actually creating the depot with the resolved coordinates).
+
+    Counts against the same `geocode_calls_count` plan quota as delivery
+    geocoding — it's the same paid Google API call, so it must be gated the
+    same way or it becomes an unmetered way to spam that API.
+    """
+    limit = PLAN_GEOCODE_LIMITS.get(organization.subscription_plan)
+    allowed = await org_repo.try_consume_quota(
+        organization.id, counter_column="geocode_calls_count", limit=limit
+    )
+    if not allowed:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"Geocoding limit reached for the '{organization.subscription_plan.value}' plan "
+                f"({limit} addresses). Upgrade your plan to geocode more addresses."
+            ),
+        )
+
+    result = await GoogleGeocodingClient().geocode_full(payload.address)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Could not find that address")
+
+    return DepotGeocodeResult(
+        latitude=result.latitude,
+        longitude=result.longitude,
+        formatted_address=result.formatted_address,
+    )
 
 
 @router.get("/{depot_id}", response_model=DepotRead)

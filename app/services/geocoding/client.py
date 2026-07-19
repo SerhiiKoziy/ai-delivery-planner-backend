@@ -1,10 +1,19 @@
 """Google Maps Geocoding API client."""
 
+from dataclasses import dataclass
+
 import httpx
 
 from app.core.config import get_settings
 
 GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
+
+
+@dataclass
+class GeocodeResult:
+    latitude: float
+    longitude: float
+    formatted_address: str
 
 
 class GoogleGeocodingClient:
@@ -25,6 +34,14 @@ class GoogleGeocodingClient:
         if the API responds with a non-OK status — geocoding failures are
         expected/recoverable, not exceptional.
         """
+        result = await self.geocode_full(address)
+        return (result.latitude, result.longitude) if result is not None else None
+
+    async def geocode_full(self, address: str) -> GeocodeResult | None:
+        """Resolve a free-text address to coordinates plus Google's
+        normalized formatted address — used where the caller needs to show
+        the user what was actually found (e.g. an interactive "confirm this
+        location" step), not just the raw coordinates `geocode()` returns."""
         if not self.api_key:
             return None
 
@@ -47,7 +64,12 @@ class GoogleGeocodingClient:
             return None
 
         try:
-            location = data["results"][0]["geometry"]["location"]
-            return float(location["lat"]), float(location["lng"])
+            result = data["results"][0]
+            location = result["geometry"]["location"]
+            return GeocodeResult(
+                latitude=float(location["lat"]),
+                longitude=float(location["lng"]),
+                formatted_address=result.get("formatted_address", address),
+            )
         except (KeyError, IndexError, TypeError, ValueError):
             return None

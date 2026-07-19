@@ -27,3 +27,13 @@ class DepotRead(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class DepotGeocodeRequest(BaseModel):
+    address: str
+
+
+class DepotGeocodeResult(BaseModel):
+    latitude: float
+    longitude: float
+    formatted_address: str

@@ -4,8 +4,18 @@ Uses the in-memory SQLite `client` fixture from conftest.py.
 """
 
 import uuid
+from unittest.mock import AsyncMock
 
+import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.plans import PLAN_GEOCODE_LIMITS, SubscriptionPlan
+from app.db.models.organization import Organization
+from app.repositories.organization_repository import OrganizationRepository
+from app.services.geocoding.client import GeocodeResult, GoogleGeocodingClient
+
+TRIAL_GEOCODE_LIMIT = PLAN_GEOCODE_LIMITS[SubscriptionPlan.TRIAL]
 
 
 def _make_payload(**overrides) -> dict:
@@ -87,3 +97,54 @@ def test_delete_depot(client: TestClient) -> None:
 def test_delete_depot_not_found(client: TestClient) -> None:
     response = client.delete(f"/api/v1/depots/{uuid.uuid4()}")
     assert response.status_code == 404
+
+
+def test_geocode_depot_address_returns_coordinates(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        GoogleGeocodingClient,
+        "geocode_full",
+        AsyncMock(
+            return_value=GeocodeResult(
+                latitude=50.4501, longitude=30.5234, formatted_address="Khreshchatyk St, Kyiv, Ukraine"
+            )
+        ),
+    )
+    response = client.post("/api/v1/depots/geocode", json={"address": "Kyiv, Khreshchatyk 1"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["latitude"] == 50.4501
+    assert body["longitude"] == 30.5234
+    assert body["formatted_address"] == "Khreshchatyk St, Kyiv, Ukraine"
+
+
+def test_geocode_depot_address_not_found(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(GoogleGeocodingClient, "geocode_full", AsyncMock(return_value=None))
+    response = client.post("/api/v1/depots/geocode", json={"address": "Nowhere"})
+    assert response.status_code == 404
+
+
+async def test_geocode_depot_address_blocked_once_quota_exhausted(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    test_organization: Organization,
+    db_session: AsyncSession,
+) -> None:
+    monkeypatch.setattr(
+        GoogleGeocodingClient,
+        "geocode_full",
+        AsyncMock(
+            return_value=GeocodeResult(latitude=50.45, longitude=30.52, formatted_address="Kyiv")
+        ),
+    )
+    await OrganizationRepository(db_session).try_consume_quota(
+        test_organization.id,
+        counter_column="geocode_calls_count",
+        limit=None,
+        amount=TRIAL_GEOCODE_LIMIT,
+    )
+
+    response = client.post("/api/v1/depots/geocode", json={"address": "Kyiv, Khreshchatyk 1"})
+    assert response.status_code == 403
+    assert "limit" in response.json()["detail"].lower()
