@@ -26,6 +26,7 @@ from app.core.dependencies import (
     get_route_optimizer_service,
     get_route_repository,
     get_route_stop_repository,
+    require_ai_quota,
 )
 from app.repositories.chat_message_repository import ChatMessageRepository
 from app.repositories.delivery_repository import DeliveryRepository
@@ -52,7 +53,7 @@ from app.services.route_optimizer.service import RouteOptimizerService
 router = APIRouter(tags=["ai"], dependencies=[Depends(get_current_user)])
 
 
-@router.post("/analyze", response_model=DeliveryAnalysisResult)
+@router.post("/analyze", response_model=DeliveryAnalysisResult, dependencies=[Depends(require_ai_quota)])
 async def analyze_deliveries(
     file: UploadFile,
     service: DeliveryAnalysisService = Depends(get_delivery_analysis_service),
@@ -82,7 +83,7 @@ async def analyze_deliveries(
     return await service.run(rows)
 
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/chat", response_model=ChatResponse, dependencies=[Depends(require_ai_quota)])
 async def chat(
     payload: ChatRequest,
     route_repo: RouteRepository = Depends(get_route_repository),
@@ -138,7 +139,7 @@ async def chat_history(
     return [ChatMessageRead.model_validate(m) for m in messages]
 
 
-@router.post("/explain", response_model=ExplainResponse)
+@router.post("/explain", response_model=ExplainResponse, dependencies=[Depends(require_ai_quota)])
 async def explain(
     payload: ExplainRequest,
     route_repo: RouteRepository = Depends(get_route_repository),
@@ -154,7 +155,7 @@ async def explain(
     return ExplainResponse(explanation=explanation)
 
 
-@router.post("/replan", response_model=ReplanResult)
+@router.post("/replan", response_model=ReplanResult, dependencies=[Depends(require_ai_quota)])
 async def replan(
     payload: ReplanRequest,
     route_repo: RouteRepository = Depends(get_route_repository),

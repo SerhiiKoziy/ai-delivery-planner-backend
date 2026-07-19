@@ -11,10 +11,14 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.dependencies import (
     get_current_user,
+    get_organization_repository,
     get_route_optimizer_service,
     get_route_repository,
     get_route_stop_repository,
+    require_route_quota,
 )
+from app.db.models.organization import Organization
+from app.repositories.organization_repository import OrganizationRepository
 from app.repositories.route_repository import RouteRepository
 from app.repositories.route_stop_repository import RouteStopRepository
 from app.schemas.route import (
@@ -33,13 +37,26 @@ router = APIRouter(tags=["routes"], dependencies=[Depends(get_current_user)])
 @router.post("/optimize", response_model=OptimizeResult)
 async def optimize_routes(
     payload: OptimizeRequest,
+    organization: Organization = Depends(require_route_quota),
     service: RouteOptimizerService = Depends(get_route_optimizer_service),
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
 ) -> OptimizeResult:
-    """Run the OR-Tools solver to build optimized multi-driver routes."""
+    """Run the OR-Tools solver to build optimized multi-driver routes.
+
+    `require_route_quota` blocks the call up front once the org's plan quota
+    is exhausted; each route actually created below then counts against it,
+    so a single multi-driver call may push the count slightly past the limit
+    rather than only ever landing exactly on it.
+    """
     try:
-        return await service.optimize(payload)
+        result = await service.optimize(payload)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    if result.routes:
+        await org_repo.increment_route_count(organization.id, by=len(result.routes))
+
+    return result
 
 
 @router.get("/{route_id}", response_model=RouteRead)

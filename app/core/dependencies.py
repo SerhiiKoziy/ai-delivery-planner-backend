@@ -9,7 +9,9 @@ from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.plans import PLAN_AI_CALL_LIMITS, PLAN_ROUTE_LIMITS
 from app.core.security import InvalidTokenError, decode_token
+from app.db.models.organization import Organization
 from app.db.models.user import User
 from app.db.session import get_session
 from app.repositories.chat_message_repository import ChatMessageRepository
@@ -81,6 +83,17 @@ async def get_current_user(
     return user
 
 
+async def get_current_organization(
+    current_user: User = Depends(get_current_user),
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+) -> Organization:
+    """Resolve the caller's Organization row (plan, usage counters)."""
+    organization = await org_repo.get(current_user.organization_id)
+    if organization is None:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    return organization
+
+
 def get_delivery_repository(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -91,9 +104,11 @@ def get_delivery_repository(
 
 def get_delivery_service(
     repo: DeliveryRepository = Depends(get_delivery_repository),
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+    organization: Organization = Depends(get_current_organization),
 ) -> DeliveryService:
-    """Provide a request-scoped DeliveryService."""
-    return DeliveryService(repo, GoogleGeocodingClient())
+    """Provide a request-scoped DeliveryService, quota-guarded per organization."""
+    return DeliveryService(repo, GoogleGeocodingClient(), org_repo, organization)
 
 
 def get_driver_repository(
@@ -136,6 +151,55 @@ def get_route_stop_repository(db: AsyncSession = Depends(get_db)) -> RouteStopRe
 def get_chat_message_repository(db: AsyncSession = Depends(get_db)) -> ChatMessageRepository:
     """Provide a request-scoped ChatMessageRepository bound to the request's DB session."""
     return ChatMessageRepository(db)
+
+
+async def require_route_quota(
+    organization: Organization = Depends(get_current_organization),
+) -> Organization:
+    """Reject route generation once the caller's organization has hit its
+    plan's lifetime route quota (e.g. 5 for TRIAL). Unlimited plans
+    (`PLAN_ROUTE_LIMITS[plan] is None`) always pass through.
+
+    Returns the organization so the caller can increment its counter after a
+    successful generation without a second fetch.
+    """
+    limit = PLAN_ROUTE_LIMITS.get(organization.subscription_plan)
+    if limit is not None and organization.routes_generated_count >= limit:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"Route generation limit reached for the "
+                f"'{organization.subscription_plan.value}' plan ({limit} routes). "
+                "Upgrade your plan to generate more routes."
+            ),
+        )
+    return organization
+
+
+async def require_ai_quota(
+    organization: Organization = Depends(get_current_organization),
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+) -> None:
+    """Consume one unit of the caller's lifetime AI-call quota (e.g. 20 for
+    TRIAL) before an OpenAI-backed endpoint runs — checked and consumed
+    atomically up front, so a request that's rejected never reaches OpenAI.
+
+    Counts per HTTP call, not per underlying OpenAI request (e.g. /replan's
+    up-to-2 internal calls still cost 1 unit), matching how route generation
+    is counted per POST /optimize call rather than per solver invocation.
+    """
+    limit = PLAN_AI_CALL_LIMITS.get(organization.subscription_plan)
+    allowed = await org_repo.try_consume_quota(
+        organization.id, counter_column="ai_calls_count", limit=limit
+    )
+    if not allowed:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"AI usage limit reached for the '{organization.subscription_plan.value}' plan "
+                f"({limit} calls). Upgrade your plan to continue using AI features."
+            ),
+        )
 
 
 def get_route_optimizer_service(

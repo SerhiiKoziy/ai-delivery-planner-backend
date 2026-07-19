@@ -11,6 +11,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
 
 from app.core.dependencies import get_current_user, get_delivery_service
+from app.core.plans import QuotaExceededError
 from app.schemas.delivery import DeliveryCreate, DeliveryImportResult, DeliveryRead, DeliveryUpdate
 from app.services.deliveries.service import DeliveryService
 
@@ -36,7 +37,10 @@ async def create_delivery(
     service: DeliveryService = Depends(get_delivery_service),
 ) -> DeliveryRead:
     """Create a single delivery manually."""
-    created = await service.create(payload)
+    try:
+        created = await service.create(payload)
+    except QuotaExceededError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     return DeliveryRead.model_validate(created)
 
 
@@ -68,7 +72,10 @@ async def update_delivery(
     service: DeliveryService = Depends(get_delivery_service),
 ) -> DeliveryRead:
     """Update an existing delivery."""
-    updated = await service.update(delivery_id, payload)
+    try:
+        updated = await service.update(delivery_id, payload)
+    except QuotaExceededError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
     if updated is None:
         raise HTTPException(status_code=404, detail="Delivery not found")
     return DeliveryRead.model_validate(updated)

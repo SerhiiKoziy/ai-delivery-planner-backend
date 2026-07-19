@@ -21,3 +21,17 @@ class Token(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class RegisterResponse(BaseModel):
+    """Returned by POST /auth/register — no tokens yet: the account is
+    unverified until POST /auth/verify-email is called with the token
+    "emailed" to `email`."""
+
+    user_id: str
+    email: EmailStr
+    message: str = "Verification email sent. Please verify your email before logging in."
+
+
+class EmailVerificationRequest(BaseModel):
+    token: str

@@ -43,6 +43,12 @@ def create_refresh_token(subject: str, expires_delta: timedelta | None = None) -
     return _create_token(subject, "refresh", delta)
 
 
+def create_email_verification_token(subject: str, expires_delta: timedelta | None = None) -> str:
+    """Create a signed JWT for confirming a new account's email address."""
+    delta = expires_delta or timedelta(hours=24)
+    return _create_token(subject, "email_verification", delta)
+
+
 def decode_token(token: str) -> dict:
     """Decode and verify a JWT, returning its claims."""
     try:

@@ -8,6 +8,8 @@ real JWT-decoding implementation.
 
 from fastapi.testclient import TestClient
 
+from app.core.security import create_email_verification_token
+
 PROTECTED_ENDPOINTS = [
     ("GET", "/api/v1/deliveries/"),
     ("GET", "/api/v1/drivers/"),
@@ -25,7 +27,8 @@ def test_public_auth_endpoints_do_not_require_a_token(
         json={"email": "new.user@example.com", "password": "s3cret-password"},
     )
     assert response.status_code == 201
-    assert "access_token" in response.json()
+    assert response.json()["email"] == "new.user@example.com"
+    assert "user_id" in response.json()
 
 
 def test_protected_endpoints_reject_missing_token(unauthenticated_client: TestClient) -> None:
@@ -47,7 +50,14 @@ def test_protected_endpoint_accepts_a_real_token(unauthenticated_client: TestCli
         json={"email": "authed.user@example.com", "password": "s3cret-password"},
     )
     assert register_response.status_code == 201
-    access_token = register_response.json()["access_token"]
+    user_id = register_response.json()["user_id"]
+
+    verify_response = unauthenticated_client.post(
+        "/api/v1/auth/verify-email",
+        json={"token": create_email_verification_token(user_id)},
+    )
+    assert verify_response.status_code == 200
+    access_token = verify_response.json()["access_token"]
 
     response = unauthenticated_client.get(
         "/api/v1/deliveries/",

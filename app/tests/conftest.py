@@ -18,7 +18,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from app.core.config import get_settings
 from app.core.dependencies import get_ai_model, get_current_user, get_db
+from app.core.rate_limiting import login_rate_limiter, register_rate_limiter
 from app.core.security import hash_password
 from app.db.models.base import Base
 from app.db.models.delivery import DeliveryPriority
@@ -40,6 +42,13 @@ engine = create_async_engine(
 )
 
 TestSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _disable_real_email_sending():
+    """Tests must never hit the real Resend API, regardless of what's in the
+    local .env — force the no-provider (log-only) path for the whole run."""
+    get_settings().RESEND_API_KEY = ""
 
 
 @pytest_asyncio.fixture
@@ -114,13 +123,24 @@ def client(db_session, test_user: User) -> TestClient:
     async def _override_get_current_user() -> User:
         return test_user
 
+    async def _no_op() -> None:
+        return None
+
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_current_user] = _override_get_current_user
+    # Register/login rate limiting is tested in isolation (test_rate_limiting.py)
+    # against its own raw client — overridden here so unrelated tests calling
+    # /auth/register or /auth/login a handful of times don't trip a shared,
+    # process-lifetime in-memory window.
+    app.dependency_overrides[register_rate_limiter] = _no_op
+    app.dependency_overrides[login_rate_limiter] = _no_op
     try:
         yield TestClient(app)
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_current_user, None)
+        app.dependency_overrides.pop(register_rate_limiter, None)
+        app.dependency_overrides.pop(login_rate_limiter, None)
 
 
 @pytest.fixture
@@ -135,11 +155,18 @@ def unauthenticated_client(db_session) -> TestClient:
     async def _override_get_db():
         yield db_session
 
+    async def _no_op() -> None:
+        return None
+
     app.dependency_overrides[get_db] = _override_get_db
+    app.dependency_overrides[register_rate_limiter] = _no_op
+    app.dependency_overrides[login_rate_limiter] = _no_op
     try:
         yield TestClient(app)
     finally:
         app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(register_rate_limiter, None)
+        app.dependency_overrides.pop(login_rate_limiter, None)
 
 
 # ---------------------------------------------------------------------------

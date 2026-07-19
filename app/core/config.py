@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4.1-mini"
     GOOGLE_MAPS_API_KEY: str = ""
 
+    # Email (Resend) — RESEND_API_KEY empty means "no provider configured",
+    # in which case the verification link is only logged, never sent.
+    RESEND_API_KEY: str = ""
+    EMAIL_FROM: str = "onboarding@resend.dev"
+    FRONTEND_BASE_URL: str = "http://localhost:5173"
+
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 

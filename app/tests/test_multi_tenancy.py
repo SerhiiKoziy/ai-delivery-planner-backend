@@ -18,6 +18,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.security import create_email_verification_token
+
 from app.db.models.organization import Organization
 from app.repositories.delivery_repository import DeliveryRepository
 from app.repositories.depot_repository import DepotRepository
@@ -308,15 +310,19 @@ def test_dashboard_overview_is_per_organization(
 # ---------------------------------------------------------------------------
 
 
+def _register_and_verify(client: TestClient, email: str, password: str) -> dict:
+    """Register a new account and immediately redeem its verification token,
+    mirroring what a real user does after clicking the emailed link."""
+    register_body = client.post(
+        "/api/v1/auth/register", json={"email": email, "password": password}
+    ).json()
+    verify_token = create_email_verification_token(register_body["user_id"])
+    return client.post("/api/v1/auth/verify-email", json={"token": verify_token}).json()
+
+
 def test_real_registration_isolates_orgs(unauthenticated_client: TestClient) -> None:
-    user_a = unauthenticated_client.post(
-        "/api/v1/auth/register",
-        json={"email": "org.a@example.com", "password": "password-123"},
-    ).json()
-    user_b = unauthenticated_client.post(
-        "/api/v1/auth/register",
-        json={"email": "org.b@example.com", "password": "password-123"},
-    ).json()
+    user_a = _register_and_verify(unauthenticated_client, "org.a@example.com", "password-123")
+    user_b = _register_and_verify(unauthenticated_client, "org.b@example.com", "password-123")
 
     headers_a = {"Authorization": f"Bearer {user_a['access_token']}"}
     headers_b = {"Authorization": f"Bearer {user_b['access_token']}"}

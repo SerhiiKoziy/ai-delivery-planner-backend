@@ -13,3 +13,8 @@ celery_app = Celery(
 )
 
 celery_app.autodiscover_tasks(["app.workers"])
+
+# TODO: no periodic (celery beat) tasks exist yet — everything currently
+# runs either synchronously in-request or as an on-demand task. Add a
+# `beat_schedule` here (and a beat service in infra's docker-compose) once
+# a real recurring job is needed (e.g. cleaning up stale routes).
