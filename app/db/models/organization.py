@@ -18,7 +18,19 @@ class Organization(Base):
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255))
     subscription_plan: Mapped[SubscriptionPlan] = mapped_column(
-        Enum(SubscriptionPlan, native_enum=False, length=20, validate_strings=True),
+        Enum(
+            SubscriptionPlan,
+            native_enum=False,
+            length=20,
+            validate_strings=True,
+            # Without this, SQLAlchemy binds/reads by enum MEMBER NAME
+            # ("TRIAL"), not `.value` ("trial") — but every DB default and
+            # every JSON response elsewhere uses `.value`. Mismatched storage
+            # (some rows "trial" from server_default, some "TRIAL" from the
+            # ORM's own default) makes reading either kind fail with a
+            # LookupError depending on which convention the column expects.
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
         default=DEFAULT_SUBSCRIPTION_PLAN,
         server_default=DEFAULT_SUBSCRIPTION_PLAN.value,
     )

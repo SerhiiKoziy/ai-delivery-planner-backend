@@ -29,7 +29,7 @@ class QuotaExceededError(Exception):
 # how many OR-Tools/geocoding-backed generation requests an unpaid org can
 # rack up; the paid tiers are unlimited until real per-tier quotas are set.
 PLAN_ROUTE_LIMITS: dict[SubscriptionPlan, int | None] = {
-    SubscriptionPlan.TRIAL: 5,
+    SubscriptionPlan.TRIAL: 50,
     SubscriptionPlan.FREE: 5,
     SubscriptionPlan.SMALL: None,
     SubscriptionPlan.MEDIUM: None,
@@ -38,10 +38,10 @@ PLAN_ROUTE_LIMITS: dict[SubscriptionPlan, int | None] = {
 
 # Lifetime cap on how many addresses an organization may geocode (delivery
 # create/update/import all call the paid Google Geocoding API once per
-# address). Sized a bit above PLAN_ROUTE_LIMITS' 5 since one route typically
-# covers several deliveries.
+# address). Sized a bit above PLAN_ROUTE_LIMITS' TRIAL cap since one route
+# typically covers several deliveries.
 PLAN_GEOCODE_LIMITS: dict[SubscriptionPlan, int | None] = {
-    SubscriptionPlan.TRIAL: 50,
+    SubscriptionPlan.TRIAL: 500,
     SubscriptionPlan.FREE: 50,
     SubscriptionPlan.SMALL: None,
     SubscriptionPlan.MEDIUM: None,
@@ -61,5 +61,6 @@ PLAN_AI_CALL_LIMITS: dict[SubscriptionPlan, int | None] = {
 
 # Flat safety cap on rows per single import request (CSV/XLSX), independent
 # of plan — bounds how many geocode calls one HTTP request can trigger in a
-# single shot, regardless of remaining quota.
-MAX_IMPORT_ROWS_PER_REQUEST = 500
+# single shot, regardless of remaining quota. Kept comfortably above every
+# PLAN_GEOCODE_LIMITS value so the two caps don't collide for any plan.
+MAX_IMPORT_ROWS_PER_REQUEST = 1000

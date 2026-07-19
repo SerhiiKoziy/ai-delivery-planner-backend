@@ -6,8 +6,11 @@ from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.plans import PLAN_ROUTE_LIMITS, SubscriptionPlan
+from app.db.models.organization import Organization
+from app.repositories.organization_repository import OrganizationRepository
 from app.services.geocoding.client import GoogleGeocodingClient
 
 DEPOT_LAT, DEPOT_LNG = 50.4501, 30.5234
@@ -17,11 +20,12 @@ TRIAL_LIMIT = PLAN_ROUTE_LIMITS[SubscriptionPlan.TRIAL]
 @pytest.fixture
 def mock_geocode(monkeypatch: pytest.MonkeyPatch) -> None:
     # A single, distinct coordinate is handed out per geocode call, in the
-    # order deliveries are created below.
+    # order deliveries are created below. Sized generously above any
+    # realistic TRIAL_LIMIT so this fixture never needs revisiting again.
     monkeypatch.setattr(
         GoogleGeocodingClient,
         "geocode",
-        AsyncMock(side_effect=[(50.46 + i * 0.001, 30.53 + i * 0.001) for i in range(50)]),
+        AsyncMock(side_effect=[(50.46 + i * 0.001, 30.53 + i * 0.001) for i in range(1000)]),
     )
 
 
@@ -110,13 +114,22 @@ def test_optimize_increments_quota_counter(client: TestClient, single_driver_sce
     assert org["routesRemaining"] == TRIAL_LIMIT - 1
 
 
-def test_optimize_blocked_once_trial_quota_is_exhausted(
-    client: TestClient, single_driver_scenario: dict
+async def test_optimize_blocked_once_trial_quota_is_exhausted(
+    client: TestClient,
+    single_driver_scenario: dict,
+    test_organization: Organization,
+    db_session: AsyncSession,
 ) -> None:
-    for i in range(TRIAL_LIMIT):
-        delivery = _create_delivery(client, f"Customer {i}")
-        response = _optimize(client, single_driver_scenario, delivery)
-        assert response.status_code == 200, response.text
+    # Seed the org straight to one-short-of-the-cap instead of driving
+    # TRIAL_LIMIT real optimize() calls through the OR-Tools solver — this
+    # test only needs to prove the boundary, not replay the whole climb.
+    await OrganizationRepository(db_session).increment_route_count(
+        test_organization.id, by=TRIAL_LIMIT - 1
+    )
+
+    last_allowed_delivery = _create_delivery(client, "Last Allowed")
+    response = _optimize(client, single_driver_scenario, last_allowed_delivery)
+    assert response.status_code == 200, response.text
 
     org = client.get("/api/v1/organizations/me").json()
     assert org["routesGeneratedCount"] == TRIAL_LIMIT
