@@ -302,6 +302,11 @@ def test_dashboard_overview_is_per_organization(
         "activeDrivers": 0,
         "totalDistanceKm": 0.0,
         "lateDeliveries": 0,
+        "activeVehicles": 0,
+        "driversOnRouteToday": 0,
+        "driversIdleToday": 0,
+        "vehiclesInUseToday": 0,
+        "vehiclesAvailableToday": 0,
     }
 
 

@@ -1,15 +1,17 @@
-"""Dashboard overview: aggregate operational stats across today's activity."""
+"""Dashboard overview and usage-history: aggregate operational stats from
+current DB state."""
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import Date, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.delivery import Delivery
 from app.db.models.driver import Driver
 from app.db.models.route import Route
 from app.db.models.route_stop import RouteStop
-from app.schemas.dashboard import DashboardOverview
+from app.db.models.vehicle import Vehicle
+from app.schemas.dashboard import DailyUsagePoint, DashboardOverview, DashboardUsageHistory
 
 
 class DashboardService:
@@ -61,6 +63,17 @@ class DashboardService:
             or 0
         )
 
+        active_vehicles = (
+            await self.session.scalar(
+                select(func.count())
+                .select_from(Vehicle)
+                .where(
+                    Vehicle.organization_id == self.organization_id, Vehicle.status == "active"
+                )
+            )
+            or 0
+        )
+
         total_distance_km = (
             await self.session.scalar(
                 select(func.coalesce(func.sum(Route.total_distance_km), 0.0)).where(
@@ -86,9 +99,102 @@ class DashboardService:
             or 0
         )
 
+        drivers_on_route_today = (
+            await self.session.scalar(
+                select(func.count(func.distinct(Route.driver_id))).where(
+                    Route.organization_id == self.organization_id,
+                    func.date(Route.created_at) == today,
+                    Route.driver_id.is_not(None),
+                )
+            )
+            or 0
+        )
+
+        vehicles_in_use_today = (
+            await self.session.scalar(
+                select(func.count(func.distinct(Route.vehicle_id))).where(
+                    Route.organization_id == self.organization_id,
+                    func.date(Route.created_at) == today,
+                    Route.vehicle_id.is_not(None),
+                )
+            )
+            or 0
+        )
+
         return DashboardOverview(
             deliveries_today=deliveries_today,
             active_drivers=active_drivers,
             total_distance_km=round(total_distance_km, 1),
             late_deliveries=late_deliveries,
+            active_vehicles=active_vehicles,
+            drivers_on_route_today=drivers_on_route_today,
+            drivers_idle_today=max(active_drivers - drivers_on_route_today, 0),
+            vehicles_in_use_today=vehicles_in_use_today,
+            vehicles_available_today=max(active_vehicles - vehicles_in_use_today, 0),
         )
+
+    async def get_usage_history(self, days: int = 30) -> DashboardUsageHistory:
+        """Return a zero-filled, day-bucketed usage series for the last
+        `days` days (inclusive of today, UTC), built from existing
+        `Delivery`/`Route` rows — there is no separate per-request usage
+        log, so this approximates "usage" via domain events that already
+        carry a `created_at` timestamp.
+        """
+        today = datetime.now(UTC).date()
+        start_date = today - timedelta(days=days - 1)
+
+        # `type_=Date` is required, not cosmetic: without it, `func.date(...)`
+        # has no declared result type, so SQLite (which has no native DATE
+        # type) returns the grouped column as a plain string instead of a
+        # `date` object — the dict keys below would then never match
+        # `start_date + timedelta(...)`, silently zero-filling everything.
+        delivery_day = func.date(Delivery.created_at, type_=Date)
+        route_day = func.date(Route.created_at, type_=Date)
+
+        deliveries_by_day = dict(
+            (
+                await self.session.execute(
+                    select(delivery_day.label("day"), func.count().label("count"))
+                    .where(
+                        Delivery.organization_id == self.organization_id,
+                        delivery_day >= start_date,
+                    )
+                    .group_by(delivery_day)
+                )
+            ).all()
+        )
+
+        routes_by_day = {
+            row.day: (row.routes_count, row.distance_km)
+            for row in (
+                await self.session.execute(
+                    select(
+                        route_day.label("day"),
+                        func.count().label("routes_count"),
+                        func.coalesce(func.sum(Route.total_distance_km), 0.0).label(
+                            "distance_km"
+                        ),
+                    )
+                    .where(
+                        Route.organization_id == self.organization_id,
+                        route_day >= start_date,
+                    )
+                    .group_by(route_day)
+                )
+            ).all()
+        }
+
+        points = []
+        for offset in range(days):
+            day = start_date + timedelta(days=offset)
+            routes_count, distance_km = routes_by_day.get(day, (0, 0.0))
+            points.append(
+                DailyUsagePoint(
+                    date=day,
+                    deliveries_count=deliveries_by_day.get(day, 0),
+                    routes_generated=routes_count,
+                    distance_km=round(distance_km, 1),
+                )
+            )
+
+        return DashboardUsageHistory(points=points)

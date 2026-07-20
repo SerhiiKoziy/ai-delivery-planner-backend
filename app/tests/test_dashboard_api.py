@@ -55,6 +55,11 @@ def test_overview_reflects_current_state(
         "activeDrivers": 1,
         "totalDistanceKm": 12.5,
         "lateDeliveries": 1,
+        "activeVehicles": 0,
+        "driversOnRouteToday": 0,
+        "driversIdleToday": 1,
+        "vehiclesInUseToday": 0,
+        "vehiclesAvailableToday": 0,
     }
 
 
@@ -66,4 +71,42 @@ def test_overview_with_no_data(client: TestClient) -> None:
         "activeDrivers": 0,
         "totalDistanceKm": 0.0,
         "lateDeliveries": 0,
+        "activeVehicles": 0,
+        "driversOnRouteToday": 0,
+        "driversIdleToday": 0,
+        "vehiclesInUseToday": 0,
+        "vehiclesAvailableToday": 0,
+    }
+
+
+def test_usage_history_zero_filled_with_no_data(client: TestClient) -> None:
+    response = client.get("/api/v1/dashboard/usage-history")
+    assert response.status_code == 200
+    points = response.json()["points"]
+    assert len(points) == 30
+    assert all(
+        p["deliveriesCount"] == 0 and p["routesGenerated"] == 0 and p["distanceKm"] == 0.0
+        for p in points
+    )
+    # Dates are contiguous and end on today (UTC).
+    dates = [datetime_module.date.fromisoformat(p["date"]) for p in points]
+    assert dates == sorted(dates)
+    assert dates[-1] == datetime_module.datetime.now(datetime_module.UTC).date()
+
+
+def test_usage_history_reflects_todays_activity(
+    client: TestClient, route_with_stops: dict
+) -> None:
+    response = client.get("/api/v1/dashboard/usage-history?days=7")
+    assert response.status_code == 200
+    points = response.json()["points"]
+    assert len(points) == 7
+
+    today = datetime_module.datetime.now(datetime_module.UTC).date().isoformat()
+    today_point = next(p for p in points if p["date"] == today)
+    assert today_point == {
+        "date": today,
+        "deliveriesCount": 1,
+        "routesGenerated": 1,
+        "distanceKm": 12.5,
     }
