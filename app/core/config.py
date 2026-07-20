@@ -35,10 +35,14 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4.1-mini"
     GOOGLE_MAPS_API_KEY: str = ""
 
-    # Email (Resend) — RESEND_API_KEY empty means "no provider configured",
-    # in which case the verification link is only logged, never sent.
-    RESEND_API_KEY: str = ""
-    EMAIL_FROM: str = "onboarding@resend.dev"
+    # Email (Gmail SMTP) — GMAIL_ADDRESS/GMAIL_APP_PASSWORD empty means "no
+    # provider configured", in which case the verification link is only
+    # logged, never sent. GMAIL_ADDRESS is both the SMTP login and the
+    # "From" address — Gmail rejects sending as anyone else unless a "Send
+    # As" alias is configured on the account, so keeping one field avoids a
+    # config combination that would silently fail.
+    GMAIL_ADDRESS: str = ""
+    GMAIL_APP_PASSWORD: str = ""
     FRONTEND_BASE_URL: str = "http://localhost:5173"
 
     # CORS

@@ -46,9 +46,10 @@ TestSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_o
 
 @pytest.fixture(autouse=True, scope="session")
 def _disable_real_email_sending():
-    """Tests must never hit the real Resend API, regardless of what's in the
+    """Tests must never hit real Gmail SMTP, regardless of what's in the
     local .env — force the no-provider (log-only) path for the whole run."""
-    get_settings().RESEND_API_KEY = ""
+    get_settings().GMAIL_ADDRESS = ""
+    get_settings().GMAIL_APP_PASSWORD = ""
 
 
 @pytest_asyncio.fixture
