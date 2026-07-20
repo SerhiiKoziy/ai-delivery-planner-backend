@@ -113,7 +113,7 @@ def test_optimize_assigns_or_reports_every_requested_delivery(scenario: dict, cl
 
     requested_ids = {d["id"] for d in scenario["deliveries"]}
     covered_ids = {sid for route in body["routes"] for sid in [s["delivery_id"] for s in route["stops"]]}
-    covered_ids |= set(body["unassigned_delivery_ids"])
+    covered_ids |= {d["id"] for d in body["unassigned_deliveries"]}
     assert covered_ids == requested_ids
 
     deliveries_by_id = {d["id"]: d for d in scenario["deliveries"]}

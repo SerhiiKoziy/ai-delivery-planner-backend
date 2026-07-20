@@ -19,10 +19,12 @@ from app.repositories.route_repository import RouteRepository
 from app.repositories.route_stop_repository import RouteStopRepository
 from app.repositories.vehicle_repository import VehicleRepository
 from app.schemas.route import (
+    DeliveryRef,
     OptimizeRequest,
     OptimizeResult,
     RouteRead,
     RouteStopRead,
+    VehicleRef,
     build_route_stop_read,
 )
 from app.services.route_optimizer.builder import build_routing_problem
@@ -76,11 +78,17 @@ class RouteOptimizerService:
         deliveries = await self.delivery_repository.get_many(payload.delivery_ids)
         deliveries_by_id = {d.id: d for d in deliveries}
         geocoded = [d for d in deliveries if d.latitude is not None and d.longitude is not None]
-        skipped_not_geocoded = [d.id for d in deliveries if d not in geocoded]
+        skipped_not_geocoded = [
+            DeliveryRef(id=d.id, customer_name=d.customer_name, address=d.address)
+            for d in deliveries
+            if d not in geocoded
+        ]
 
         vehicles = await self.vehicle_repository.get_many(payload.vehicle_ids)
         usable_vehicles = [v for v in vehicles if v.driver_id is not None]
-        vehicles_without_driver = [v.id for v in vehicles if v.driver_id is None]
+        vehicles_without_driver = [
+            VehicleRef(id=v.id, plate_number=v.plate_number) for v in vehicles if v.driver_id is None
+        ]
 
         driver_ids = [v.driver_id for v in usable_vehicles]
         drivers = await self.driver_repository.get_many(driver_ids) if driver_ids else []
@@ -93,7 +101,10 @@ class RouteOptimizerService:
         if not geocoded or not usable_vehicles:
             return OptimizeResult(
                 routes=[],
-                unassigned_delivery_ids=[d.id for d in geocoded],
+                unassigned_deliveries=[
+                    DeliveryRef(id=d.id, customer_name=d.customer_name, address=d.address)
+                    for d in geocoded
+                ],
                 skipped_not_geocoded=skipped_not_geocoded,
                 vehicles_without_driver=vehicles_without_driver,
             )
@@ -156,11 +167,16 @@ class RouteOptimizerService:
                 )
             )
 
-        unassigned_delivery_ids = [uuid.UUID(sid) for sid in mapped.unassigned_stop_ids]
+        unassigned_deliveries = []
+        for sid in mapped.unassigned_stop_ids:
+            delivery = deliveries_by_id[uuid.UUID(sid)]
+            unassigned_deliveries.append(
+                DeliveryRef(id=delivery.id, customer_name=delivery.customer_name, address=delivery.address)
+            )
 
         return OptimizeResult(
             routes=created_routes,
-            unassigned_delivery_ids=unassigned_delivery_ids,
+            unassigned_deliveries=unassigned_deliveries,
             skipped_not_geocoded=skipped_not_geocoded,
             vehicles_without_driver=vehicles_without_driver,
         )

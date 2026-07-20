@@ -75,8 +75,22 @@ class RouteRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class DeliveryRef(BaseModel):
+    """Enough of a Delivery to identify it in an optimize-result diagnostic
+    list, without pulling in fields the UI doesn't need there."""
+
+    id: uuid.UUID
+    customer_name: str | None = None
+    address: str | None = None
+
+
+class VehicleRef(BaseModel):
+    id: uuid.UUID
+    plate_number: str | None = None
+
+
 class OptimizeResult(BaseModel):
     routes: list[RouteRead]
-    unassigned_delivery_ids: list[uuid.UUID]
-    skipped_not_geocoded: list[uuid.UUID]
-    vehicles_without_driver: list[uuid.UUID]
+    unassigned_deliveries: list[DeliveryRef]
+    skipped_not_geocoded: list[DeliveryRef]
+    vehicles_without_driver: list[VehicleRef]

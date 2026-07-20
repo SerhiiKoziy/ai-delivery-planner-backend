@@ -253,8 +253,8 @@ def test_optimize_silently_drops_cross_org_delivery(
     # not routed, not unassigned, not even flagged as un-geocoded. It's
     # treated exactly as if it never existed.
     assert body["routes"] == []
-    assert str(other_org_delivery.id) not in body["unassigned_delivery_ids"]
-    assert str(other_org_delivery.id) not in body["skipped_not_geocoded"]
+    assert str(other_org_delivery.id) not in {d["id"] for d in body["unassigned_deliveries"]}
+    assert str(other_org_delivery.id) not in {d["id"] for d in body["skipped_not_geocoded"]}
 
 
 def test_vehicle_cannot_link_to_foreign_driver(client: TestClient, other_org_driver) -> None:
