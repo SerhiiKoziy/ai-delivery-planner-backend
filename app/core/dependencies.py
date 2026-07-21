@@ -9,7 +9,7 @@ from openai import AsyncOpenAI
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.plans import PLAN_AI_CALL_LIMITS, PLAN_ROUTE_LIMITS
+from app.core.plans import PLAN_AI_CALL_LIMITS, PLAN_API_REQUEST_LIMITS, PLAN_ROUTE_LIMITS
 from app.core.security import InvalidTokenError, decode_token
 from app.db.models.organization import Organization
 from app.db.models.user import User
@@ -173,6 +173,21 @@ async def require_route_quota(
                 "Upgrade your plan to generate more routes."
             ),
         )
+
+    combined_limit = PLAN_API_REQUEST_LIMITS.get(organization.subscription_plan)
+    combined_used = (
+        organization.routes_generated_count
+        + organization.geocode_calls_count
+        + organization.ai_calls_count
+    )
+    if combined_limit is not None and combined_used >= combined_limit:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"API request limit reached for the '{organization.subscription_plan.value}' "
+                f"plan ({combined_limit} total calls). Upgrade your plan to continue."
+            ),
+        )
     return organization
 
 
@@ -188,15 +203,32 @@ async def require_ai_quota(
     up-to-2 internal calls still cost 1 unit), matching how route generation
     is counted per POST /optimize call rather than per solver invocation.
     """
-    limit = PLAN_AI_CALL_LIMITS.get(organization.subscription_plan)
+    plan = organization.subscription_plan
+    limit = PLAN_AI_CALL_LIMITS.get(plan)
+    combined_limit = PLAN_API_REQUEST_LIMITS.get(plan)
+
+    combined_used = (
+        organization.routes_generated_count
+        + organization.geocode_calls_count
+        + organization.ai_calls_count
+    )
+    if combined_limit is not None and combined_used >= combined_limit:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                f"API request limit reached for the '{plan.value}' plan "
+                f"({combined_limit} total calls). Upgrade your plan to continue."
+            ),
+        )
+
     allowed = await org_repo.try_consume_quota(
-        organization.id, counter_column="ai_calls_count", limit=limit
+        organization.id, counter_column="ai_calls_count", limit=limit, combined_limit=combined_limit
     )
     if not allowed:
         raise HTTPException(
             status_code=403,
             detail=(
-                f"AI usage limit reached for the '{organization.subscription_plan.value}' plan "
+                f"AI usage limit reached for the '{plan.value}' plan "
                 f"({limit} calls). Upgrade your plan to continue using AI features."
             ),
         )

@@ -6,7 +6,12 @@ CSV/Excel importers + row-mapping normalization.
 
 import uuid
 
-from app.core.plans import MAX_IMPORT_ROWS_PER_REQUEST, PLAN_GEOCODE_LIMITS, QuotaExceededError
+from app.core.plans import (
+    MAX_IMPORT_ROWS_PER_REQUEST,
+    PLAN_API_REQUEST_LIMITS,
+    PLAN_GEOCODE_LIMITS,
+    QuotaExceededError,
+)
 from app.db.models.delivery import Delivery
 from app.db.models.organization import Organization
 from app.repositories.delivery_repository import DeliveryRepository
@@ -41,16 +46,34 @@ class DeliveryService:
 
     async def _consume_geocode_quota(self) -> None:
         """Reject with `QuotaExceededError` once the organization's plan has
-        exhausted its lifetime geocoding allowance — checked and consumed
+        exhausted its lifetime geocoding allowance, or its combined
+        API-request allowance (if the plan has one) — checked and consumed
         atomically, immediately before the paid Google Geocoding API call."""
-        limit = PLAN_GEOCODE_LIMITS.get(self.organization.subscription_plan)
+        plan = self.organization.subscription_plan
+        limit = PLAN_GEOCODE_LIMITS.get(plan)
+        combined_limit = PLAN_API_REQUEST_LIMITS.get(plan)
+
+        combined_used = (
+            self.organization.routes_generated_count
+            + self.organization.geocode_calls_count
+            + self.organization.ai_calls_count
+        )
+        if combined_limit is not None and combined_used >= combined_limit:
+            raise QuotaExceededError(
+                f"API request limit reached for the '{plan.value}' plan "
+                f"({combined_limit} total calls). Upgrade your plan to continue."
+            )
+
         allowed = await self.org_repo.try_consume_quota(
-            self.organization.id, counter_column="geocode_calls_count", limit=limit
+            self.organization.id,
+            counter_column="geocode_calls_count",
+            limit=limit,
+            combined_limit=combined_limit,
         )
         if not allowed:
             raise QuotaExceededError(
-                f"Geocoding limit reached for the '{self.organization.subscription_plan.value}' "
-                f"plan ({limit} addresses). Upgrade your plan to geocode more addresses."
+                f"Geocoding limit reached for the '{plan.value}' plan ({limit} addresses). "
+                "Upgrade your plan to geocode more addresses."
             )
 
     async def _create_from_fields(self, fields: dict) -> Delivery:

@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import plans
 from app.core.plans import PLAN_ROUTE_LIMITS, SubscriptionPlan
 from app.db.models.organization import Organization
 from app.repositories.organization_repository import OrganizationRepository
@@ -15,6 +16,16 @@ from app.services.geocoding.client import GoogleGeocodingClient
 
 DEPOT_LAT, DEPOT_LNG = 50.4501, 30.5234
 TRIAL_LIMIT = PLAN_ROUTE_LIMITS[SubscriptionPlan.TRIAL]
+
+
+@pytest.fixture(autouse=True)
+def _disable_combined_quota_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    """This module drives routes_generated_count up toward TRIAL_LIMIT (50)
+    to test PLAN_ROUTE_LIMITS in isolation. TRIAL also has a much lower
+    combined cap (see PLAN_API_REQUEST_LIMITS / test_api_request_quota.py)
+    which would otherwise block these calls long before the route-specific
+    limit is reached."""
+    monkeypatch.setitem(plans.PLAN_API_REQUEST_LIMITS, SubscriptionPlan.TRIAL, None)
 
 
 @pytest.fixture

@@ -59,6 +59,20 @@ PLAN_AI_CALL_LIMITS: dict[SubscriptionPlan, int | None] = {
     SubscriptionPlan.LARGE: None,
 }
 
+# Explicit combined cap on total usage (routes + geocode + ai_calls
+# together), enforced in addition to the per-category limits above. A plan
+# absent from this dict (or mapped to `None`) has no combined cap — its
+# headline "API requests" number is then derived by summing the three
+# per-category limits instead (see app/api/organizations/router.py).
+#
+# TRIAL's combined cap of 15 is intentionally far below the sum of its
+# per-category caps (50 + 500 + 20 = 570): it's meant to be the binding
+# constraint that actually gates an unpaid trial, with the per-category caps
+# acting as a secondary safety net rather than the real limit.
+PLAN_API_REQUEST_LIMITS: dict[SubscriptionPlan, int | None] = {
+    SubscriptionPlan.TRIAL: 15,
+}
+
 # Flat safety cap on rows per single import request (CSV/XLSX), independent
 # of plan — bounds how many geocode calls one HTTP request can trigger in a
 # single shot, regardless of remaining quota. Kept comfortably above every

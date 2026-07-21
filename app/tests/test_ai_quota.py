@@ -3,11 +3,23 @@
 (each consumes 1 unit up front, before any OpenAI call), but NOT to the
 read-only GET /ai/chat/{route_id}/history."""
 
+import pytest
 from fastapi.testclient import TestClient
 
+from app.core import plans
 from app.core.plans import PLAN_AI_CALL_LIMITS, SubscriptionPlan
 
 TRIAL_AI_LIMIT = PLAN_AI_CALL_LIMITS[SubscriptionPlan.TRIAL]
+
+
+@pytest.fixture(autouse=True)
+def _disable_combined_quota_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    """This module drives ai_calls_count up to TRIAL_AI_LIMIT (20) to test
+    PLAN_AI_CALL_LIMITS in isolation. TRIAL also has a much lower combined
+    cap (see PLAN_API_REQUEST_LIMITS / test_api_request_quota.py) which would
+    otherwise block these calls long before the AI-specific limit is reached.
+    """
+    monkeypatch.setitem(plans.PLAN_API_REQUEST_LIMITS, SubscriptionPlan.TRIAL, None)
 
 
 def test_explain_blocked_once_ai_quota_is_exhausted(

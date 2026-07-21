@@ -8,12 +8,23 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core import plans
 from app.core.plans import MAX_IMPORT_ROWS_PER_REQUEST, PLAN_GEOCODE_LIMITS, SubscriptionPlan
 from app.db.models.organization import Organization
 from app.repositories.organization_repository import OrganizationRepository
 from app.services.geocoding.client import GoogleGeocodingClient
 
 TRIAL_GEOCODE_LIMIT = PLAN_GEOCODE_LIMITS[SubscriptionPlan.TRIAL]
+
+
+@pytest.fixture(autouse=True)
+def _disable_combined_quota_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    """This module drives geocode_calls_count up toward TRIAL_GEOCODE_LIMIT
+    (500) to test PLAN_GEOCODE_LIMITS in isolation. TRIAL also has a much
+    lower combined cap (see PLAN_API_REQUEST_LIMITS / test_api_request_quota.py)
+    which would otherwise block these calls long before the geocode-specific
+    limit is reached."""
+    monkeypatch.setitem(plans.PLAN_API_REQUEST_LIMITS, SubscriptionPlan.TRIAL, None)
 
 
 async def _seed_geocode_count(db_session: AsyncSession, organization: Organization, amount: int) -> None:

@@ -5,7 +5,12 @@ remaining allowance."""
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.dependencies import get_current_user, get_organization_repository
-from app.core.plans import PLAN_AI_CALL_LIMITS, PLAN_GEOCODE_LIMITS, PLAN_ROUTE_LIMITS
+from app.core.plans import (
+    PLAN_AI_CALL_LIMITS,
+    PLAN_API_REQUEST_LIMITS,
+    PLAN_GEOCODE_LIMITS,
+    PLAN_ROUTE_LIMITS,
+)
 from app.db.models.user import User
 from app.repositories.organization_repository import OrganizationRepository
 from app.schemas.organization import OrganizationRead
@@ -39,10 +44,17 @@ async def get_my_organization(
         + organization.geocode_calls_count
         + organization.ai_calls_count
     )
-    # A combined limit only means something if every underlying quota is
-    # itself capped — if any one of them is unlimited, the combined total is
-    # unbounded too.
-    api_requests_limit = None if None in limits else sum(limits)  # type: ignore[arg-type]
+    # PLAN_API_REQUEST_LIMITS gives a plan an explicit combined cap (TRIAL's
+    # is intentionally below the sum of its per-category caps). Absent an
+    # explicit entry, fall back to summing the three per-category limits —
+    # which only means something if every one of them is itself capped; if
+    # any is unlimited, the combined total is unbounded too.
+    explicit_limit = PLAN_API_REQUEST_LIMITS.get(plan)
+    api_requests_limit = (
+        explicit_limit
+        if explicit_limit is not None
+        else (None if None in limits else sum(limits))  # type: ignore[arg-type]
+    )
 
     return OrganizationRead(
         id=str(organization.id),

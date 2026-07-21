@@ -24,7 +24,7 @@ class GoogleGeocodingClient:
         api_key: str | None = None,
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
-        self.api_key = api_key or get_settings().GOOGLE_MAPS_API_KEY
+        self.api_key = api_key if api_key is not None else get_settings().GOOGLE_MAPS_API_KEY
         self._http_client = http_client
 
     async def geocode(self, address: str) -> tuple[float, float] | None:

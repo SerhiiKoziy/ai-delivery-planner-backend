@@ -39,19 +39,29 @@ class OrganizationRepository(BaseRepository[Organization]):
         counter_column: str,
         limit: int | None,
         amount: int = 1,
+        combined_limit: int | None = None,
     ) -> bool:
         """Atomically add `amount` to `counter_column`, but only if doing so
-        would not exceed `limit` (`None` = unlimited, always succeeds).
+        would not exceed `limit` (`None` = unlimited, always succeeds) nor,
+        when given, `combined_limit` on the sum of all three usage counters
+        (routes + geocode + ai_calls) together.
 
-        A single conditional `UPDATE ... WHERE column + amount <= limit`, not
-        a separate check-then-write, so concurrent requests against the same
-        organization can't race past the cap. Returns whether the increment
-        was applied.
+        A single conditional `UPDATE ... WHERE ...`, not a separate
+        check-then-write, so concurrent requests against the same
+        organization can't race past either cap. Returns whether the
+        increment was applied.
         """
         column = getattr(Organization, counter_column)
         stmt = update(Organization).where(Organization.id == organization_id)
         if limit is not None:
             stmt = stmt.where(column + amount <= limit)
+        if combined_limit is not None:
+            combined_total = (
+                Organization.routes_generated_count
+                + Organization.geocode_calls_count
+                + Organization.ai_calls_count
+            )
+            stmt = stmt.where(combined_total + amount <= combined_limit)
         stmt = stmt.values(**{counter_column: column + amount})
         result = await self.session.execute(stmt)
         await self.session.commit()

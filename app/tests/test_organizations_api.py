@@ -21,16 +21,18 @@ def test_me_reports_trial_plan_and_quotas(client: TestClient) -> None:
     assert body["aiCallsLimit"] == 20
     assert body["aiCallsRemaining"] == 20
     assert body["apiRequestsUsed"] == 0
-    assert body["apiRequestsLimit"] == 570
-    assert body["apiRequestsRemaining"] == 570
+    # TRIAL has an explicit combined cap (15) below the sum of its
+    # per-category limits (570) — see PLAN_API_REQUEST_LIMITS.
+    assert body["apiRequestsLimit"] == 15
+    assert body["apiRequestsRemaining"] == 15
 
 
 async def test_me_reflects_consumed_quota(
     client: TestClient, db_session: AsyncSession, test_organization: Organization
 ) -> None:
-    test_organization.routes_generated_count = 10
-    test_organization.geocode_calls_count = 100
-    test_organization.ai_calls_count = 5
+    test_organization.routes_generated_count = 3
+    test_organization.geocode_calls_count = 5
+    test_organization.ai_calls_count = 2
     db_session.add(test_organization)
     await db_session.commit()
 
@@ -38,9 +40,9 @@ async def test_me_reflects_consumed_quota(
     assert response.status_code == 200
 
     body = response.json()
-    assert body["apiRequestsUsed"] == 115
-    assert body["apiRequestsLimit"] == 570
-    assert body["apiRequestsRemaining"] == 455
+    assert body["apiRequestsUsed"] == 10
+    assert body["apiRequestsLimit"] == 15
+    assert body["apiRequestsRemaining"] == 5
 
 
 async def test_me_unlimited_plan_has_no_combined_limit(
