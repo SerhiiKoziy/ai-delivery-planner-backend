@@ -11,7 +11,6 @@ prove the isolation holds end-to-end through the actual register/login flow
 too, not just against fixture-constructed users.
 """
 
-import uuid
 from datetime import time
 
 import pytest
