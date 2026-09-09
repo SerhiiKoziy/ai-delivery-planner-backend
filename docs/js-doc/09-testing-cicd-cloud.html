@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>9. Тести, CI/CD, хмара — JS Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{max-width:1180px; margin:0 auto; padding:14px 24px;}
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--fun); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:780px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+
+  article section{margin-bottom:44px; scroll-margin-top:80px;}
+  .cat-head{display:flex; align-items:center; gap:12px; margin-bottom:4px;}
+  .cat-letter{
+    width:34px; height:34px; border-radius:10px; background:var(--accent-soft); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;
+  }
+  article h2{font-size:22px; margin:0; letter-spacing:-.01em;}
+  article p{color:var(--fg); margin:10px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:16px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+
+  .legend{display:flex; gap:14px; flex-wrap:wrap; margin:16px 0 22px; font-size:12.8px; color:var(--fg-muted);}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .codecard{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:14px 0; background:var(--code-bg);}
+  .codecard .bar{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%); border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);}
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre; font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-def{color:#ffc66d;}
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">📚 JS Interview Prep <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">JS Doc · Категорія 9</div>
+  <h1>Тестування, CI/CD, моніторинг, хмара</h1>
+  <p class="lead">
+    Юніт-тестування й базовий CI/CD уже підтверджені як сильна сторона в реальних технічних
+    інтерв'ю — прогалини концентруються вужче: глибина E2E-тестування, моніторинг помилок у
+    продакшені та практична обізнаність з хмарними сервісами.
+  </p>
+  <div class="pills">
+    <span class="pill">🟡 Точкові прогалини навколо сильної бази</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/05-python-types.html">5. Типи</a>
+        <a href="../python-tutorials/06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="../python-tutorials/07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="../python-tutorials/08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="../python-tutorials/09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/10-logging.html">10. Логування</a>
+        <a href="../python-tutorials/11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="../python-tutorials/13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="../python-tutorials/14-design-patterns.html">14. Патерни</a>
+        <a href="../python-tutorials/15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="00-methodology.html">0. Методологія</a>
+        <a href="01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="02-browser-internals.html">2. Браузер зсередини</a>
+        <a href="03-frontend-security.html">3. Безпека фронтенду</a>
+        <a href="04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="05-react-deep-dive.html">5. React углиб</a>
+        <a href="06-nextjs-architecture.html">6. Next.js та архітектура</a>
+        <a href="07-nextjs-interview-qa.html">7. Next.js: Q&amp;A</a>
+        <a href="08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="09-testing-cicd-cloud.html" class="active">9. Тести, CI/CD, хмара</a>
+        <a href="10-ai-tools.html">10. AI-інструменти</a>
+        <a href="11-http-anatomy.html">11. HTTP: анатомія запитів</a>
+        <a href="12-this.html">12. this</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#t1">1. Юніт-тести, лінтери, CI/CD</a></li>
+      <li><a href="#t2">2. E2E-тестування глибше</a></li>
+      <li><a href="#t3">3. Моніторинг помилок у продакшені</a></li>
+      <li><a href="#t4">4. Базові хмарні сервіси (AWS)</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="t1">
+      <div class="topic-head"><span class="tag strength">✅</span><h2>Юніт-тестування (Jest/RTL), лінтери, CI/CD пайплайни</h2></div>
+      <p>Цей блок уже підтверджений як сильна сторона в реальних технічних інтерв'ю: досвід написання
+      юніт-тестів через Jest і React Testing Library, налаштування лінтерів та інших інструментів
+      якості коду, робота з CI/CD-пайплайнами — усе це не потребує додаткового форсування підготовки
+      саме на рівні "чи вмію я це робити".</p>
+      <p>Наступний рівень запиту на співбесідах — не "чи писали ви тести", а чи можете ви впевнено
+      <b>розповісти про побудову CI-пайплайна з нуля</b>: не лише роботу у вже готовому пайплайні, а
+      усвідомлення послідовності стадій і того, навіщо кожна з них існує саме в цьому порядку —
+      лінт і тайпчек мають провалитись раніше й дешевше, ніж збірка; збірка — раніше й дешевше, ніж
+      деплой.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">приклад: типові стадії CI-пайплайна</span></div>
+        <pre><code>stages:
+  - lint        # ESLint/Prettier — найшвидша й найдешевша перевірка, провалюємось тут першими
+  - typecheck   # tsc --noEmit — ловить помилки типів ще до запуску будь-якого коду
+  - test        # unit-тести (Jest) — швидкі, ізольовані, без реальної мережі/БД
+  - build       # production-збірка (напр. next build / vite build)
+  - deploy      # публікація build-артефактів на CDN (напр. S3 + CloudFront, Vercel, Netlify)</code></pre>
+      </div>
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body"><b>Чому саме такий порядок:</b> кожна наступна стадія дорожча за часом і
+        ресурсами за попередню — немає сенсу чекати на повну збірку (хвилини), щоб дізнатись про
+        забуту крапку з комою, яку лінтер знайшов би за секунди. Провал "дешево і рано" — принцип,
+        а не формальність.</div>
+      </div>
+    </section>
+
+    <section id="t2">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>E2E-тестування глибше</h2></div>
+      <p>На відміну від юніт-рівня, досвід з end-to-end тестуванням виявився обмеженішим — а це саме
+      той рівень тестів, що перевіряє реальний користувацький сценарій через увесь стек: UI, роутинг,
+      мережеві запити, разом узяті, а не одну ізольовану функцію чи компонент.</p>
+      <p>Практично варто розібрати один інструмент — Cypress або Playwright — на рівні структури
+      тесту: <b>arrange</b> (підготувати стан, відкрити сторінку), <b>act</b> (виконати дії
+      користувача — клік, ввід тексту), <b>assert</b> (перевірити результат у вже відрендереному DOM
+      реального застосунку, що працює в реальному чи headless-браузері).</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">приклад: структура E2E-тесту (Playwright-подібний синтаксис)</span></div>
+        <pre><code>test('користувач бачить створену доставку у списку', async ({ page }) => {
+  // arrange
+  await page.goto('/deliveries')
+
+  // act
+  await page.getByRole('button', { name: 'Додати доставку' }).click()
+  await page.getByLabel('Адреса').fill('вул. Хрещатик, 1')
+  await page.getByRole('button', { name: 'Зберегти' }).click()
+
+  // assert
+  await expect(page.getByText('вул. Хрещатик, 1')).toBeVisible()
+})</code></pre>
+      </div>
+      <p>Ключова практична проблема E2E-тестів — <b>мережеві залежності</b> й <b>нестабільність
+      (flaky tests)</b>. Якщо тест б'є в реальний бекенд, він стає повільним і залежним від чужого
+      стану (даних у тестовій БД, доступності стороннього сервісу); тому мережеві запити зазвичай
+      мокають на рівні браузера (перехоплення запитів), лишаючи реальним лише сам фронтенд.
+      Нестабільність найчастіше походить від тестів, що покладаються на фіксовані затримки
+      (<code>sleep</code>/<code>setTimeout</code>) замість очікування конкретної умови — сучасні
+      інструменти (Cypress, Playwright) вирішують це вбудованим <b>auto-waiting</b>: асершн сам
+      повторює спробу, поки елемент не з'явиться або не мине таймаут, замість одноразової перевірки
+      одразу після фіксованої паузи.</p>
+    </section>
+
+    <section id="t3">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>Моніторинг і трекінг помилок у продакшені</h2></div>
+      <p>Конкретного досвіду з інструментами на кшталт Sentry чи Datadog не було зафіксовано —
+      хоча базовий принцип роботи таких систем варто розуміти навіть без глибокого практичного
+      досвіду, бо питання про них дедалі частіше зустрічається саме як "а як ви дізнаєтесь про
+      помилку користувача, якого ви фізично не бачите".</p>
+      <p>Механізм у Sentry (і подібних інструментів) простий і важливий: вони підписуються на
+      глобальні браузерні обробники — <code>window.onerror</code> для необроблених синхронних
+      помилок і <code>window.onunhandledrejection</code> для промісів, які впали, але їхній
+      <code>.catch()</code> ніхто не написав. Це означає, що помилка потрапляє в моніторинг
+      <i>автоматично</i>, навіть якщо розробник явно її ніде не залогував.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">приклад: чому необроблений reject не завжди "тихий"</span></div>
+        <pre><code>fetchUserProfile().then(profile => render(profile))
+// якщо fetchUserProfile() впаде, а .catch() не додано —
+// це "unhandled promise rejection": користувач нічого не побачить,
+// але window.onunhandledrejection його зловить і надішле в Sentry</code></pre>
+      </div>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Source maps — не опційна деталь.</b> Мінімізований продакшн-код (одна
+        літера замість імені змінної, стиснуті рядки) робить сирий стек-трейс майже нечитабельним.
+        Source map — файл-відповідність між мінімізованим кодом і оригінальним — дозволяє
+        моніторингу показати справжні імена файлів, функцій і номери рядків з вихідного коду,
+        замість <code>a.js:1:48213</code>.</div>
+      </div>
+      <p>Це напряму пов'язано з темою async-помилок із категорії Core JS (<a href="01-core-js-engine.html">1</a>):
+      помилка, тихо загублена всередині ланцюжка промісів без явного <code>.catch()</code> чи
+      <code>try/catch</code> навколо <code>await</code>, не дійде ані до користувача, ані до
+      моніторингу як щось зрозуміле — вона повинна бути явно "піднята на поверхню", а не просто
+      статись.</p>
+    </section>
+
+    <section id="t4">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>Базові хмарні сервіси (AWS)</h2></div>
+      <p>Прямого практичного досвіду з конкретними сервісами AWS не зафіксовано — і мета тут не
+      "вивчити AWS", а мати достатню широту знань, щоб впевнено підтримати розмову про типову
+      інфраструктуру хостингу фронтенд-застосунку, коли про неї запитають.</p>
+      <table>
+        <tr><th>Сервіс</th><th>Роль у типовому фронтенд-стеку</th></tr>
+        <tr><td><b>S3</b></td><td>Об'єктне сховище — тримає статичні білд-артефакти (HTML/JS/CSS/зображення) як звичайні файли.</td></tr>
+        <tr><td><b>CloudFront</b></td><td>CDN перед S3 — кешує ці файли ближче до користувача географічно, зменшуючи латентність завантаження.</td></tr>
+        <tr><td><b>Lambda@Edge</b></td><td>Код, що виконується на самих edge-вузлах CloudFront під час запиту — типово для редіректів, підміни заголовків, A/B-логіки ще до того, як запит дійде до основного застосунку.</td></tr>
+      </table>
+      <div class="callout info">
+        <div class="ic">🎯</div>
+        <div class="body">Мета цієї теми — не глибока експертиза з AWS, а достатня обізнаність, щоб
+        впевнено підтримати розмову про типову архітектуру хостингу: "статичні файли в S3, роздача
+        через CloudFront, точкова логіка на edge через Lambda@Edge" — цього рівня деталізації
+        зазвичай достатньо.</div>
+      </div>
+    </section>
+
+    <div class="card">
+      <a href="08-data-realtime.html">← 8. Дані й реальний час</a>
+      &nbsp;·&nbsp;
+      <a href="10-ai-tools.html">Далі: 10. AI-інструменти в роботі →</a>
+    </div>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Теми узагальнені з патернів реального фідбеку технічних інтерв'ю — без імен, компаній чи
+  контактних даних, лише самі теми для цілеспрямованої підготовки.
+</footer>
+
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

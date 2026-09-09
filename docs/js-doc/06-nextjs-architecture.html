@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>6. Next.js та архітектура — JS Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{max-width:1180px; margin:0 auto; padding:14px 24px;}
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--fun); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:780px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+
+  article section{margin-bottom:44px; scroll-margin-top:80px;}
+  .cat-head{display:flex; align-items:center; gap:12px; margin-bottom:4px;}
+  .cat-letter{
+    width:34px; height:34px; border-radius:10px; background:var(--accent-soft); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;
+  }
+  article h2{font-size:22px; margin:0; letter-spacing:-.01em;}
+  article p{color:var(--fg); margin:10px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:16px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+
+  .legend{display:flex; gap:14px; flex-wrap:wrap; margin:16px 0 22px; font-size:12.8px; color:var(--fg-muted);}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .codecard{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:14px 0; background:var(--code-bg);}
+  .codecard .bar{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%); border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);}
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre; font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-def{color:#ffc66d;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">📚 JS Interview Prep <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">JS Doc · Категорія 6</div>
+  <h1>Next.js та архітектура застосунків</h1>
+  <p class="lead">
+    Практичне використання Next.js уже оцінене добре на реальних співбесідах — прогалина не в
+    тому, "як писати" на фреймворку, а в архітектурному мисленні навколо нього: коли яка
+    стратегія рендерингу виправдана і коли застосунок дійсно переростає моноліт. Окремо —
+    механіка SSR "під капотом" і гідратація, розібрані на рівні кроків запиту, а не лише
+    визначень.
+  </p>
+  <div class="pills">
+    <span class="pill">🟡 Точкові прогалини</span>
+    <span class="pill">🔴 SSR/гідратація — поглиблено</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/05-python-types.html">5. Типи</a>
+        <a href="../python-tutorials/06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="../python-tutorials/07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="../python-tutorials/08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="../python-tutorials/09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/10-logging.html">10. Логування</a>
+        <a href="../python-tutorials/11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="../python-tutorials/13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="../python-tutorials/14-design-patterns.html">14. Патерни</a>
+        <a href="../python-tutorials/15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="00-methodology.html">0. Методологія</a>
+        <a href="01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="02-browser-internals.html">2. Браузер зсередини</a>
+        <a href="03-frontend-security.html">3. Безпека фронтенду</a>
+        <a href="04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="05-react-deep-dive.html">5. React углиб</a>
+        <a href="06-nextjs-architecture.html" class="active">6. Next.js та архітектура</a>
+        <a href="07-nextjs-interview-qa.html">7. Next.js: Q&amp;A</a>
+        <a href="08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="09-testing-cicd-cloud.html">9. Тести, CI/CD, хмара</a>
+        <a href="10-ai-tools.html">10. AI-інструменти</a>
+        <a href="11-http-anatomy.html">11. HTTP: анатомія запитів</a>
+        <a href="12-this.html">12. this</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#t1">1. Next.js — практичне використання</a></li>
+      <li><a href="#t2">2. Стратегії рендерингу й оптимізації</a></li>
+      <li><a href="#t3">3. SSR під капотом</a></li>
+      <li><a href="#t4">4. Гідратація та регідратація</a></li>
+      <li><a href="#t5">5. Типи архітектури й масштабування</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="t1">
+      <div class="topic-head"><span class="tag strength">✅</span><h2>Next.js — практичне використання</h2></div>
+      <p>Практичні навички роботи з Next.js — маршрутизація, data fetching, базова структура
+      проєкту — вже оцінені на реальних технічних співбесідах на високому рівні. Це не та тема,
+      де варто витрачати основний час підготовки: додаткове читання документації API навряд чи
+      підвищить враження, яке вже склалось.</p>
+      <p>"Поглиблення" тут означає не більше API-поверхні фреймворка, а саме <b>архітектурне
+      мислення навколо нього</b> — те, які рішення про рендеринг і структуру застосунку
+      приймаються на рівні продукту, а не окремого компонента. Це предмет наступних двох тем.</p>
+    </section>
+
+    <section id="t2">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>Стратегії рендерингу й оптимізації Next.js глибше</h2></div>
+      <p>Next.js пропонує кілька принципово різних стратегій отримання даних для сторінки, і
+      кожна — свідомий компроміс між свіжістю даних, швидкістю віддачі й навантаженням на
+      сервер. Розуміти лише "як зробити" запит у компоненті недостатньо — важливо вміти
+      пояснити, <i>чому</i> для конкретної сторінки обрано саме цю стратегію.</p>
+
+      <table>
+        <tr><th>Стратегія</th><th>Коли отримуються дані</th><th>Найкраще для</th><th>Компроміс</th></tr>
+        <tr>
+          <td><b>SSR</b> (Server-Side Rendering)</td>
+          <td>На кожен запит, на сервері</td>
+          <td>Персоналізований або часто змінний контент (дашборд, авторизований профіль)</td>
+          <td>Найповільніший TTFB — сервер щоразу виконує повний рендер</td>
+        </tr>
+        <tr>
+          <td><b>SSG</b> (Static Site Generation)</td>
+          <td>Один раз, під час білду</td>
+          <td>Контент, що майже не змінюється (лендінг, документація, блог-пост)</td>
+          <td>Дані можуть застаріти до наступного білду й деплою</td>
+        </tr>
+        <tr>
+          <td><b>ISR</b> (Incremental Static Regeneration)</td>
+          <td>Під час білду, потім періодично перегенеровується у фоні</td>
+          <td>Контент, що змінюється нечасто, але має "самооновлюватись" без повного редеплою (каталог товарів)</td>
+          <td>Проміжна свіжість — читач може на короткий час побачити застарілу версію, поки йде фонова регенерація</td>
+        </tr>
+        <tr>
+          <td><b>App Router / Server Components</b></td>
+          <td>На сервері, компонент за компонентом, з дрібнішою гранулярністю кешування</td>
+          <td>Змішані сторінки, де частина дерева статична, а частина — динамічна, без падіння всієї сторінки до найповільнішої стратегії</td>
+          <td>Складніша ментальна модель: потрібно свідомо розділяти server- і client-компоненти (<code>"use client"</code>)</td>
+        </tr>
+      </table>
+
+      <p>Ключова відмінність App Router — не просто "нова файлова структура", а можливість
+      змішувати ці стратегії <i>всередині однієї сторінки</i>: частина дерева компонентів
+      рендериться на сервері й кешується статично, а інтерактивна частина (наприклад, кошик
+      покупок) залишається клієнтським компонентом. Це усуває стару дилему "вся сторінка або SSR,
+      або вся SSG".</p>
+
+      <p>Оптимізація на рівні фреймворка йде далі за ручний <code>React.lazy</code>:</p>
+      <ul style="padding-left:22px;">
+        <li style="margin:6px 0;"><b>Оптимізація зображень</b> — компонент <code>next/image</code>
+        автоматично віддає зображення в сучасних форматах (WebP/AVIF), генерує потрібні розміри
+        під viewport і лениво завантажує позаекранні зображення без ручної настройки.</li>
+        <li style="margin:6px 0;"><b>Оптимізація шрифтів</b> — вбудований механізм самостійно
+        хостить шрифти Google Fonts разом зі статикою застосунку, усуваючи окремий мережевий
+        запит до стороннього хосту й пов'язаний з ним "стрибок" тексту при завантаженні.</li>
+        <li style="margin:6px 0;"><b>Розбиття коду на рівні фреймворка</b> — кожен маршрут
+        (route) автоматично стає окремим JS-чанком: користувач довантажує код лише тієї сторінки,
+        яку відвідує, без ручного розставляння <code>React.lazy</code> на кожен великий
+        компонент.</li>
+      </ul>
+
+      <div class="callout info">
+        <div class="ic">🎯</div>
+        <div class="body"><b>Що перевіряють:</b> чи можете ви для конкретної сторінки реального
+        продукту (наприклад, сторінка товару в інтернет-магазині) аргументовано обрати між SSG,
+        ISR і SSR — а не просто перелічити визначення трьох абревіатур.</div>
+      </div>
+    </section>
+
+    <section id="t3">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>SSR під капотом</h2></div>
+      <p>Таблиця вище показує <i>наслідки</i> кожної стратегії — але на співбесіді сеньйорського
+      рівня частіше просять пояснити <i>механізм</i>: що конкретно відбувається між моментом,
+      коли браузер надсилає запит, і моментом, коли користувач бачить готову сторінку.</p>
+
+      <div class="flow">
+        <div class="step">Запит до сервера</div>
+        <div class="arrow">→</div>
+        <div class="step">Сервер виконує React-дерево</div>
+        <div class="arrow">→</div>
+        <div class="step">HTML згенеровано</div>
+        <div class="arrow">→</div>
+        <div class="step">HTML + дані надіслано</div>
+        <div class="arrow">→</div>
+        <div class="step">Браузер малює HTML (ще не інтерактивний)</div>
+        <div class="arrow">→</div>
+        <div class="step">JS-бандл завантажується</div>
+        <div class="arrow">→</div>
+        <div class="step">Гідратація</div>
+        <div class="arrow">→</div>
+        <div class="step">Інтерактивно</div>
+      </div>
+
+      <p>Крок за кроком: (1) сервер зіставляє URL із маршрутом; (2) виконує дерево React-компонентів
+      просто в Node.js і викликає серверний рендер-API React — історично <code>renderToString</code>,
+      у сучасних застосунках частіше стрімінгові <code>renderToPipeableStream</code> /
+      <code>renderToReadableStream</code> — щоб отримати HTML-рядок або потік; (3) сервер вставляє
+      цей HTML у повний документ разом із <code>&lt;script&gt;</code>-тегами клієнтського бандла й
+      серіалізованими початковими даними, які знадобляться клієнту; (4) відповідь (можливо,
+      частинами, якщо застосовано стрімінг) іде до браузера, який малює її одразу — саме тому SSR
+      дає швидкий First Contentful Paint і повний контент "з коробки" для пошукових роботів.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Критичний нюанс:</b> намальований HTML на цьому кроці —
+        <i>ще не інтерактивний</i>. Жоден обробник подій ще не прикріплений: клік по кнопці поки
+        що нічого не робить. Прикріплення обробників — це вже робота гідратації (наступна тема).</div>
+      </div>
+
+      <p>Тепер точно, на рівні механізму, а не лише результату: <b>CSR</b> — браузер завантажує
+      майже порожню HTML-оболонку і JS-бандл, і весь DOM будується з нуля вже в браузері, без
+      жодного серверного кроку рендерингу. <b>SSG</b> — той самий крок рендерингу, що й у SSR,
+      просто виконується <i>один раз</i>, під час білду, на білд-машині, і видає статичні
+      HTML-файли, які CDN віддає як є, без виконання серверного коду на кожен запит. <b>SSR</b> —
+      цей самий крок рендерингу виконується на живому сервері <i>окремо для кожного вхідного
+      запиту</i>.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">приклад: стрімінговий серверний рендер (спрощено)</span></div>
+        <pre><code>import { renderToPipeableStream } from 'react-dom/server';
+
+function handleRequest(req, res) {
+  const { pipe } = renderToPipeableStream(&lt;App /&gt;, {
+    onShellReady() {
+      res.setHeader('Content-Type', 'text/html');
+      pipe(res); // перший, швидкий шматок HTML іде одразу
+    },
+    onError(err) {
+      console.error(err);
+    },
+  });
+}</code></pre>
+      </div>
+
+      <div class="callout info">
+        <div class="ic">🎯</div>
+        <div class="body">Стрімінговий SSR (<code>renderToPipeableStream</code> разом із межами
+        <code>&lt;Suspense&gt;</code>) дозволяє повільним частинам дерева "дострімитись" пізнішими
+        шматками HTML замість того, щоб уся відповідь чекала на найповільніший запит даних. Саме
+        на цьому механізмі побудований стрімінг App Router у Next.js — докладніше про
+        Suspense-межі й UX-ефект — у супутньому <a href="07-nextjs-interview-qa.html">Q&amp;A-туторіалі</a>.</div>
+      </div>
+    </section>
+
+    <section id="t4">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>Гідратація та регідратація</h2></div>
+      <p><b>Гідратація</b> — клієнтський процес, коли React "приєднується" до вже готового DOM,
+      який згенерував сервер, замість того щоб викинути цей HTML і побудувати все заново. React
+      проходить наявне дерево DOM і віртуальне дерево, яке видали б ті самі компонент-функції, і
+      зіставляє їх один з одним, прикріплюючи обробники подій та внутрішній стан без повторного
+      створення вузлів, що вже збігаються. Якби клієнт наївно рендерив усе з нуля поверх серверного
+      HTML, це означало б повне перебудування дерева, видимий "блимок" інтерфейсу і втрату всієї
+      користі від швидкого SSR-малювання.</p>
+
+      <p><b>Помилки неузгодженості гідратації (hydration mismatch)</b> — найчастіший реальний баг
+      цього механізму: якщо компонент під час рендеру звертається до чогось, що відрізняється між
+      сервером і клієнтом (наприклад, <code>new Date().toLocaleString()</code> чи
+      <code>Math.random()</code> прямо в тілі рендеру), клієнтський прогін тієї самої функції видає
+      інше значення, ніж те, що реально прийшло в HTML із сервера. React виявляє розбіжність DOM,
+      логує попередження про гідратацію і в багатьох випадках відкидає невідповідний піддерево,
+      перерендерюючи його вже суто на клієнті — тобто саме в цьому місці частина користі SSR
+      втрачається.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">до: значення різне на сервері й клієнті</span></div>
+        <pre><code>function LastUpdated() {
+  // сервер видасть один рядок часу, клієнт при гідратації — інший
+  return &lt;span&gt;Оновлено: {new Date().toLocaleString()}&lt;/span&gt;;
+}</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">після: значення однакове під час самої гідратації</span></div>
+        <pre><code>function LastUpdated() {
+  const [text, setText] = useState('');
+
+  useEffect(() => {
+    // виконується лише після монтування на клієнті —
+    // сервер і початковий клієнтський рендер збігаються (порожній рядок)
+    setText(new Date().toLocaleString());
+  }, []);
+
+  return &lt;span&gt;Оновлено: {text}&lt;/span&gt;;
+}</code></pre>
+      </div>
+
+      <p>Інші типові причини неузгодженості: звернення під час рендеру до браузерних API
+      (<code>window</code>, <code>localStorage</code>), яких просто не існує під час серверного
+      виконання; розбіжність часового поясу чи локалі між сервером і клієнтом при форматуванні
+      дат; розширення браузера, що встигає вставити власну розмітку в DOM ще до того, як
+      відбудеться гідратація.</p>
+
+      <p><b>Регідратація</b> — окреме поняття від першої, "стартової" гідратації сторінки:
+      повторне приєднання React до нового серверно згенерованого фрагмента після, наприклад,
+      клієнтської навігації. У App Router навігація може підвантажити свіжий вивід Server
+      Components і влити його в уже змонтоване клієнтське дерево — це саме регідратація нового
+      шматка, а не гідратація сторінки "з нуля".</p>
+
+      <p><b>Продуктивність:</b> розрив між "HTML намальовано" (швидко, завдяки SSR) і "сторінка
+      справді інтерактивна" (потрібно довантажити, розпарсити й виконати весь JS-бандл, а тоді
+      завершити гідратацію) — реальна, іменована UX-проблема: користувач бачить кнопку, що виглядає
+      клікабельною, ще до того, як вона реально під'єднана. Саме тому Time To Interactive (TTI)
+      відстежують окремо від First Contentful Paint (FCP) — це різні моменти в часі.</p>
+
+      <p><b>Сучасні пом'якшення:</b> стрімінговий SSR разом із вибірковою/поступовою гідратацією в
+      React 18 — високопріоритетні інтерактивні частини (наприклад, поле пошуку) гідруються першими,
+      а менш критичні (футер) — пізніше або лише за фактичної взаємодії користувача з ними. Більш
+      радикальна альтернатива, яку використовують фреймворки на кшталт Astro, —
+      <b>islands architecture</b>: лише окремі "острівці" інтерактивності на здебільшого статичній
+      сторінці взагалі отримують JS і проходять гідратацію, решта сторінки лишається чистим HTML
+      без жодного клієнтського JS.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Найчастіший реальний баг:</b> hydration mismatch через недетерміновані
+        значення (час, випадкові числа, звернення до <code>window</code>) прямо в тілі рендеру.
+        Правило: усе, що відрізняється між сервером і клієнтом, обчислюйте в <code>useEffect</code>
+        після монтування, а не під час самого рендеру.</div>
+      </div>
+    </section>
+
+    <section id="t5">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>Типи архітектури вебзастосунків і масштабування</h2></div>
+      <p>Коли один Next.js/React-застосунок і одна команда переростають у кілька команд з різними
+      циклами релізів, постає питання архітектури на рівень вище окремого фреймворка. Тут
+      важливо не "знати всі підходи", а розуміти реальний компроміс кожного — і головне, коли
+      складність виправдана, а коли це передчасна інженерія.</p>
+
+      <p><b>Моноліт vs мікрофронтенди (module federation).</b> Моноліт — один білд, один деплой,
+      спільні залежності й версії React/бібліотек за замовчуванням узгоджені. Мікрофронтенди
+      (наприклад, через Webpack Module Federation) дозволяють кільком командам деплоїти свої
+      частини UI незалежно одна від одної — ціна цього: кожна частина може тягнути власну копію
+      важких залежностей (або потрібна ретельна координація спільних версій), а налагодження
+      проблем, що перетинають межі частин, стає складнішим. Головний тригер для переходу —
+      <i>організаційний</i> (кілька автономних команд, що заважають одна одній у спільному
+      репозиторії/білді), а не суто технічний масштаб трафіку.</p>
+
+      <p><b>Мікросервіси через iframe.</b> Історично найпростіший спосіб ізолювати команди —
+      кожна частина продукту живе у власному застосунку, вбудованому через <code>&lt;iframe&gt;</code>.
+      Це дає повну ізоляцію стилів і рантайму "безкоштовно", але ціна — погана інтеграція в UX
+      (складно зробити спільний скрол, модалки поверх межі iframe, узгоджену навігацію) і
+      незручна комунікація між частинами (лише через <code>postMessage</code>, без прямого
+      доступу до DOM чи стану одна одної). Це радше обмежений, часто застарілий підхід, ніж
+      цільова архітектура для нового проєкту.</p>
+
+      <p><b>Web Components.</b> Фреймворк-агностичні кастомні елементи (<code>customElements.define</code>)
+      дозволяють ізолювати частину UI (включно зі стилями через Shadow DOM) так, щоб її можна було
+      вставити в застосунок на будь-якому фреймворку — корисно, коли частину продукту потрібно
+      "продавати" як вбудовуваний віджет для чужих сайтів, а не лише всередині власного застосунку
+      на React.</p>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Головне правило вибору:</b> кожен із цих підходів вирішує проблему
+        <i>організаційного</i> масштабу (незалежні команди, незалежний деплой, чужі середовища
+        вбудовування), а не проблему продуктивності чи трафіку. Додавати мікрофронтенди чи
+        iframe-ізоляцію в застосунок з однією командою — це купувати складність координації
+        версій і збірки без відповідної проблеми, яку вона мала б вирішувати.</div>
+      </div>
+    </section>
+
+    <div class="card">
+      ← <a href="05-react-deep-dive.html">5. React углиб</a> · Далі:
+      <b><a href="07-nextjs-interview-qa.html">7. Next.js: Q&amp;A →</a></b>
+      <p class="section-desc" style="margin:10px 0 0;">📋 Практичне продовження цього туторіалу —
+      20 питань для співбесіди по Next.js, включно з Middleware, Edge Runtime та Next.js 15/16.</p>
+    </div>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Теми узагальнені з патернів реального фідбеку технічних інтерв'ю — без імен, компаній чи
+  контактних даних, лише самі теми для цілеспрямованої підготовки.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

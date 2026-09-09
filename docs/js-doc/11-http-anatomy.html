@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>11. HTTP: анатомія запитів — JS Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{max-width:1180px; margin:0 auto; padding:14px 24px;}
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--fun); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:780px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+
+  article section{margin-bottom:44px; scroll-margin-top:80px;}
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  article h2{font-size:22px; margin:0; letter-spacing:-.01em;}
+  article h3{font-size:16px; margin:22px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:16px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .codecard{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:14px 0; background:var(--code-bg);}
+  .codecard .bar{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%); border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);}
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre; font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-def{color:#ffc66d;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.9px; display:flex; align-items:baseline; gap:10px;
+  }
+  .qa summary .qnum{
+    color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700;
+    flex-shrink:0;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 18px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .a p{margin:8px 0; color:var(--fg-muted);}
+  .qa .a p:first-child{margin-top:0;}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:2px; vertical-align:middle; flex-shrink:0;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .qa .difficulty.sys{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+
+  .legend{display:flex; gap:14px; flex-wrap:wrap; margin:16px 0 22px; font-size:12.8px; color:var(--fg-muted);}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">📚 JS Interview Prep <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">JS Doc · Категорія 11</div>
+  <h1>HTTP: анатомія запитів і відповідей</h1>
+  <p class="lead">
+    Ця тема почалась як один абзац усередині туторіалу про браузер — і виросла в окремий
+    туторіал, бо виявилась оманливо простою: усі "знають" HTTP, поки не доводиться пояснити,
+    чому CORS-помилка все одно показує відповідь у DevTools, чи чому <code>PATCH</code> не
+    гарантовано ідемпотентний. Це базовий мережевий фундамент, на якому стоїть буквально кожен
+    запит із фронтенду — і реальне місце, де кандидати неочікувано спотикались.
+  </p>
+  <div class="pills">
+    <span class="pill">🌐 Мережевий фундамент</span>
+    <span class="pill">💻 Живі приклади коду</span>
+    <span class="pill">🎯 20 питань для співбесіди</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/05-python-types.html">5. Типи</a>
+        <a href="../python-tutorials/06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="../python-tutorials/07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="../python-tutorials/08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="../python-tutorials/09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/10-logging.html">10. Логування</a>
+        <a href="../python-tutorials/11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="../python-tutorials/13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="../python-tutorials/14-design-patterns.html">14. Патерни</a>
+        <a href="../python-tutorials/15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="00-methodology.html">0. Методологія</a>
+        <a href="01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="02-browser-internals.html">2. Браузер зсередини</a>
+        <a href="03-frontend-security.html">3. Безпека фронтенду</a>
+        <a href="04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="05-react-deep-dive.html">5. React углиб</a>
+        <a href="06-nextjs-architecture.html">6. Next.js та архітектура</a>
+        <a href="07-nextjs-interview-qa.html">7. Next.js: Q&amp;A</a>
+        <a href="08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="09-testing-cicd-cloud.html">9. Тести, CI/CD, хмара</a>
+        <a href="10-ai-tools.html">10. AI-інструменти</a>
+        <a href="11-http-anatomy.html" class="active">11. HTTP: анатомія запитів</a>
+        <a href="12-this.html">12. this</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#t1">1. Структура HTTP-запиту</a></li>
+      <li><a href="#t2">2. Структура HTTP-відповіді</a></li>
+      <li><a href="#t3">3. Методи: safe і idempotent</a></li>
+      <li><a href="#t4">4. Заголовки в коді</a></li>
+      <li><a href="#t5">5. CORS насправді</a></li>
+      <li><a href="#t6">6. Кешування й умовні запити</a></li>
+      <li><a href="#t7">7. Content negotiation</a></li>
+      <li><a href="#t8">8. Cookies і Set-Cookie</a></li>
+      <li><a href="#t9">9. HTTP/1.1 vs 2 vs 3</a></li>
+      <li><a href="#qa">20 питань для співбесіди</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="t1">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>Структура HTTP-запиту</h2></div>
+      <p>
+        Кожен HTTP-запит складається з трьох частин: <b>рядка запиту</b> (request line) —
+        метод, шлях і версія протоколу; <b>заголовків</b> — метадані запиту у форматі
+        "ключ: значення"; і опційного <b>тіла</b> — фактичні дані, які надсилаються разом із
+        запитом.
+      </p>
+      <div class="codecard">
+        <div class="bar"><span class="path">структура запиту</span></div>
+        <pre><code>POST /api/v1/routes/optimize HTTP/1.1      ← метод + шлях + версія протоколу
+Host: example.com                          ← заголовки (метадані запиту)
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOi...
+
+{"delivery_ids": [...], "vehicle_ids": [...]}   ← тіло (не обов'язкове для GET)</code></pre>
+      </div>
+      <p>
+        Дані потрапляють у запит трьома різними шляхами, і те, який шлях обрати — не випадковість,
+        а конвенція:
+      </p>
+      <table>
+        <tr><th>Спосіб</th><th>Приклад</th><th>Коли ідіоматично</th></tr>
+        <tr><td>Query-параметри</td><td><code>/search?q=react&amp;page=2</code></td><td>Фільтрація, пагінація, сортування на <code>GET</code> — те, що логічно "не обов'язкове" й людині зручно бачити прямо в URL</td></tr>
+        <tr><td>Path-параметри</td><td><code>/users/42/orders</code></td><td>Ідентифікація конкретного ресурсу — <code>42</code> тут не фільтр, а сама адреса ресурсу</td></tr>
+        <tr><td>Тіло запиту</td><td><code>{"email": "...", "name": "..."}</code></td><td>Корисне навантаження <code>POST</code>/<code>PUT</code>/<code>PATCH</code> — структуровані дані, які не мають природного місця в URL (і не повинні там опинятись — URL логуються, кешуються, зберігаються в історії браузера)</td></tr>
+      </table>
+    </section>
+
+    <section id="t2">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>Структура HTTP-відповіді</h2></div>
+      <p>
+        Відповідь дзеркальна за формою: <b>рядок статусу</b> (версія протоколу + код +
+        текстова фраза), <b>заголовки</b> відповіді, і опційне <b>тіло</b>.
+      </p>
+      <div class="codecard">
+        <div class="bar"><span class="path">структура відповіді</span></div>
+        <pre><code>HTTP/1.1 200 OK                            ← версія протоколу + статус-код + фраза
+Content-Type: application/json             ← заголовки відповіді
+Cache-Control: no-store
+
+{"routes": [...], "unassigned_deliveries": []}  ← тіло відповіді</code></pre>
+      </div>
+      <p>Статус-коди групуються в п'ять класів за першою цифрою — і в кожному класі є кілька кодів, які варто знати саме за номером, а не лише за класом:</p>
+      <table>
+        <tr><th>Код</th><th>Клас</th><th>Що саме відрізняє</th></tr>
+        <tr><td><code>200 OK</code></td><td>2xx — успіх</td><td>Стандартний успіх із тілом відповіді</td></tr>
+        <tr><td><code>201 Created</code></td><td>2xx — успіх</td><td>Успішний <code>POST</code>, що створив новий ресурс — часто разом із заголовком <code>Location</code> на цей ресурс</td></tr>
+        <tr><td><code>204 No Content</code></td><td>2xx — успіх</td><td>Успіх без тіла відповіді — типово для <code>DELETE</code></td></tr>
+        <tr><td><code>301 Moved Permanently</code></td><td>3xx — редирект</td><td><b>Постійний</b> редирект — браузери й пошукові боти кешують його надовго, наступного разу підуть напряму за новою адресою</td></tr>
+        <tr><td><code>302 Found</code></td><td>3xx — редирект</td><td><b>Тимчасовий</b> редирект — не кешується так само агресивно, наступний запит знову піде на стару адресу</td></tr>
+        <tr><td><code>304 Not Modified</code></td><td>3xx — редирект</td><td>Ресурс не змінився з часу останнього запиту — тіла немає, клієнт використовує кешовану копію (розділ 6)</td></tr>
+        <tr><td><code>400 Bad Request</code></td><td>4xx — помилка клієнта</td><td>Запит структурно некоректний (не парситься, не той формат)</td></tr>
+        <tr><td><code>401 Unauthorized</code></td><td>4xx — помилка клієнта</td><td>Клієнт <b>не автентифікований</b> — сервер не знає, хто ви (незважаючи на назву, це саме про автентифікацію)</td></tr>
+        <tr><td><code>403 Forbidden</code></td><td>4xx — помилка клієнта</td><td>Клієнт <b>автентифікований, але не авторизований</b> — сервер знає, хто ви, і саме тому відмовляє</td></tr>
+        <tr><td><code>404 Not Found</code></td><td>4xx — помилка клієнта</td><td>Ресурсу за цією адресою не існує</td></tr>
+        <tr><td><code>409 Conflict</code></td><td>4xx — помилка клієнта</td><td>Запит конфліктує з поточним станом ресурсу (наприклад, версія застаріла)</td></tr>
+        <tr><td><code>422 Unprocessable Entity</code></td><td>4xx — помилка клієнта</td><td>Запит структурно коректний (валідний JSON), але семантично невалідний (не пройшла бізнес-валідація полів)</td></tr>
+        <tr><td><code>429 Too Many Requests</code></td><td>4xx — помилка клієнта</td><td>Спрацював rate limiting — забагато запитів за проміжок часу</td></tr>
+        <tr><td><code>500 Internal Server Error</code></td><td>5xx — помилка сервера</td><td>Невідома/необроблена помилка на сервері</td></tr>
+        <tr><td><code>502 Bad Gateway</code></td><td>5xx — помилка сервера</td><td>Проміжний сервер (проксі/балансувальник) отримав невалідну відповідь від бекенда</td></tr>
+        <tr><td><code>503 Service Unavailable</code></td><td>5xx — помилка сервера</td><td>Сервер тимчасово не може обробити запит (перевантаження, обслуговування)</td></tr>
+      </table>
+    </section>
+
+    <section id="t3">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>Методи: властивості safe і idempotent</h2></div>
+      <p>
+        Це дві <b>різні</b> властивості, які часто плутають між собою. <b>Safe</b> (безпечний) —
+        метод не змінює стан сервера, лише читає дані. <b>Idempotent</b> (ідемпотентний) —
+        повторний виклик із тими самими параметрами дає той самий кінцевий стан сервера, що й
+        один виклик (сам результат виклику може відрізнятись, але стан — ні).
+      </p>
+      <table>
+        <tr><th>Метод</th><th>Safe?</th><th>Idempotent?</th><th>Має тіло?</th></tr>
+        <tr><td><code>GET</code></td><td>Так</td><td>Так</td><td>Ні</td></tr>
+        <tr><td><code>HEAD</code></td><td>Так</td><td>Так</td><td>Ні</td></tr>
+        <tr><td><code>OPTIONS</code></td><td>Так</td><td>Так</td><td>Ні</td></tr>
+        <tr><td><code>PUT</code></td><td>Ні</td><td>Так</td><td>Так</td></tr>
+        <tr><td><code>DELETE</code></td><td>Ні</td><td>Так</td><td>Зазвичай ні</td></tr>
+        <tr><td><code>POST</code></td><td>Ні</td><td><b>Ні</b></td><td>Так</td></tr>
+        <tr><td><code>PATCH</code></td><td>Ні</td><td><b>Зазвичай ні</b></td><td>Так</td></tr>
+      </table>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Найчастіше плутають саме <code>PATCH</code>:</b> формально специфікація
+        не гарантує його ідемпотентність, і на практиці це залежить від семантики конкретного
+        запиту. <code>PATCH {"status": "paid"}</code> — ідемпотентний (повторний виклик дає той
+        самий кінцевий стан). Але <code>PATCH {"$inc": {"balance": 100}}</code> ("додати 100 до
+        балансу") — ні: кожен повторний виклик змінює стан по-новому. <code>PUT</code>, навпаки,
+        ідемпотентний за визначенням, бо він завжди <i>замінює</i> весь ресурс цілком тим самим
+        значенням, а не застосовує дельту.</div>
+      </div>
+      <p>
+        Саме тому мережеві тайм-аути з автоматичним повтором (retry) найнебезпечніші для
+        не-ідемпотентних запитів без окремого захисту: якщо <code>POST /payments</code> "завис",
+        а клієнт автоматично повторив запит, є ризик списати гроші двічі. Захист — <b>ключ
+        ідемпотентності</b> (<code>Idempotency-Key</code>): клієнт генерує унікальний ключ на
+        одну логічну операцію, сервер запам'ятовує результат для цього ключа й при повторному
+        запиті з тим самим ключем повертає той самий збережений результат, не виконуючи операцію
+        вдруге.
+      </p>
+    </section>
+
+    <section id="t4">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>Заголовки: як з ними реально взаємодіяти в коді</h2></div>
+      <p>
+        Знати, що заголовки існують — недостатньо; варто впевнено читати й писати їх у коді
+        обома основними API браузера.
+      </p>
+      <div class="codecard">
+        <div class="bar"><span class="path">Fetch API — об'єкт Headers</span></div>
+        <pre><code>const headers = new Headers();
+headers.set('Content-Type', 'application/json');
+headers.append('X-Request-Id', 'abc-123');
+
+const response = await fetch('/api/users', { headers });
+
+// читання заголовків відповіді — назви регістронезалежні
+console.log(response.headers.get('content-type')); // те саме, що 'Content-Type'
+console.log(response.headers.has('Content-Type'));
+
+for (const [key, value] of response.headers.entries()) {
+  console.log(key, value);
+}</code></pre>
+      </div>
+      <p class="muted">
+        <code>Headers</code> сам нормалізує регістр назв — <code>get('content-type')</code> і
+        <code>get('Content-Type')</code> завжди повертають те саме значення, бо специфікація
+        HTTP явно визначає назви заголовків як регістронезалежні.
+      </p>
+      <div class="codecard">
+        <div class="bar"><span class="path">XMLHttpRequest — старіший API, усе ще трапляється в легасі-коді</span></div>
+        <pre><code>const xhr = new XMLHttpRequest();
+xhr.open('POST', '/api/users');
+xhr.setRequestHeader('Content-Type', 'application/json'); // ДО .send()
+xhr.onload = () => {
+  console.log(xhr.getResponseHeader('Content-Type'));
+  console.log(xhr.getAllResponseHeaders()); // весь список одним рядком
+};
+xhr.send(JSON.stringify({ name: 'Ada' }));</code></pre>
+      </div>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>"Заборонені" заголовки (forbidden header names):</b> код на JS не
+        може вручну виставити деякі заголовки через <code>fetch</code>/<code>XMLHttpRequest</code>
+        — наприклад, <code>Host</code>, <code>Content-Length</code>, <code>Origin</code>,
+        <code>Cookie</code>, <code>Connection</code>. Ними керує сам браузер — і не з примхи:
+        якщо би JS міг підмінити <code>Origin</code>, це повністю знецінило б увесь механізм
+        CORS (розділ 5), бо сервер вирішує, довіряти запиту чи ні, саме на основі цього
+        заголовка. Типовий симптом цієї пастки — код, що намагається виставити такий заголовок
+        вручну, і браузер його просто мовчки ігнорує (без помилки), що спантеличує ще більше.</div>
+      </div>
+    </section>
+
+    <section id="t5">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>CORS: що це і як насправді працює</h2></div>
+      <p>
+        Відправна точка — <b>same-origin policy</b>: браузер за замовчуванням забороняє JS-коду
+        на одній сторінці читати відповіді з запитів на інший <b>origin</b>. Origin — це
+        комбінація трьох речей одночасно: <b>схема + хост + порт</b>. Якщо хоч одне з трьох
+        відрізняється — це вже інший origin, навіть якщо решта виглядає ідентично.
+      </p>
+      <table>
+        <tr><th>URL A</th><th>URL B</th><th>Той самий origin?</th></tr>
+        <tr><td><code>https://app.example.com</code></td><td><code>http://app.example.com</code></td><td>Ні — інша схема</td></tr>
+        <tr><td><code>https://app.example.com</code></td><td><code>https://app.example.com:8443</code></td><td>Ні — інший порт</td></tr>
+        <tr><td><code>https://app.example.com</code></td><td><code>https://api.example.com</code></td><td>Ні — інший хост (субдомен важить)</td></tr>
+      </table>
+      <p>
+        <b>CORS</b> (Cross-Origin Resource Sharing) — це механізм, яким сервер явно <i>дозволяє
+        виняток</i> із цієї заборони для конкретних інших origin-ів, через заголовки відповіді:
+        <code>Access-Control-Allow-Origin</code>, <code>Access-Control-Allow-Methods</code>,
+        <code>Access-Control-Allow-Headers</code>, <code>Access-Control-Allow-Credentials</code>.
+      </p>
+      <div class="callout info">
+        <div class="ic">🎯</div>
+        <div class="body"><b>Найважливіший і найчастіше незрозумілий факт:</b> CORS перевіряє й
+        застосовує <i>браузер</i>, а не сервер. Запит найчастіше реально <i>доходить</i> до
+        сервера й обробляється — сервер навіть може повернути валідну відповідь. Просто браузер
+        відмовляється віддати цю відповідь коду, що її запросив, якщо заголовки не дозволяють
+        саме цей origin. Тому у вкладці Network в DevTools цілком реально побачити успішну
+        відповідь (200, з тілом) — а в консолі водночас червону помилку CORS у JS.</div>
+      </div>
+      <p>
+        Із цього прямо випливає: <b>CORS неможливо "полагодити" з клієнтського коду</b> — це
+        заголовок відповіді, який має надіслати сервер. Немає жодного налаштування
+        <code>fetch</code>, яке змусить чужий сервер повернути потрібний
+        <code>Access-Control-Allow-Origin</code>.
+      </p>
+
+      <h3>Simple requests vs preflight</h3>
+      <p>
+        Не кожен cross-origin запит трактується однаково. <b>"Простий" (simple) запит</b> —
+        <code>GET</code>/<code>HEAD</code>/<code>POST</code> із вузьким дозволеним набором
+        заголовків і типів вмісту (<code>application/x-www-form-urlencoded</code>,
+        <code>multipart/form-data</code>, <code>text/plain</code>) — браузер надсилає одразу, без
+        додаткових перевірок. Усе інше (кастомні заголовки на кшталт <code>Authorization</code>,
+        методи <code>PUT</code>/<code>DELETE</code>/<code>PATCH</code>,
+        <code>Content-Type: application/json</code>) вимагає <b>preflight</b>: браузер САМ
+        автоматично шле попередній запит методом <code>OPTIONS</code>, питаючи дозволу — і лише
+        якщо відповідь на нього дозволяє, надсилає справжній запит.
+      </p>
+      <div class="codecard">
+        <div class="bar"><span class="path">preflight — OPTIONS-запит і відповідь</span></div>
+        <pre><code>// Браузер автоматично шле ПЕРЕД реальним PUT-запитом:
+OPTIONS /api/users/42 HTTP/1.1
+Origin: https://app.example.com
+Access-Control-Request-Method: PUT
+Access-Control-Request-Headers: content-type, authorization
+
+// Якщо сервер дозволяє — відповідає:
+HTTP/1.1 204 No Content
+Access-Control-Allow-Origin: https://app.example.com
+Access-Control-Allow-Methods: GET, PUT, DELETE
+Access-Control-Allow-Headers: Content-Type, Authorization
+
+// І лише ТЕПЕР браузер надсилає справжній PUT-запит</code></pre>
+      </div>
+      <p>
+        Заголовки <code>Access-Control-Request-Method</code> і
+        <code>Access-Control-Request-Headers</code> у preflight-запиті — це браузер повідомляє
+        серверу, який метод і які заголовки хоче використати справжній запит, ще ДО того, як
+        його надіслати.
+      </p>
+
+      <h3>Credentials (cookies) і CORS</h3>
+      <p>
+        Щоб cross-origin запит міг нести cookie, потрібні узгоджені дії з обох боків:
+        клієнт мусить явно попросити про це — <code>fetch(url, { credentials: 'include' })</code>
+        — а сервер мусить відповісти <code>Access-Control-Allow-Credentials: true</code>.
+        Критичне обмеження: коли задіяні credentials,
+        <code>Access-Control-Allow-Origin</code> <b>не може бути wildcard</b> (<code>*</code>) —
+        сервер зобов'язаний повернути конкретний, явний origin.
+      </p>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Найпоширеніша реальна помилка:</b> побачивши CORS-помилку, поставити
+        <code>Access-Control-Allow-Origin: *</code> всюди "щоб просто запрацювало" — не
+        усвідомлюючи, що це одразу ламає будь-які запити з <code>credentials: 'include'</code>
+        (браузер сам відхилить відповідь із wildcard-origin, якщо запит був credentialed). Друга
+        поширена помилка — намагатись "виправити CORS" на стороні клієнта: це неможливо в
+        принципі, бо це заголовок <i>відповіді сервера</i>, який лише читає й застосовує браузер.</div>
+      </div>
+    </section>
+
+    <section id="t6">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>Кешування: заголовки й умовні запити</h2></div>
+      <p>
+        <code>Cache-Control</code> керує тим, чи й як довго можна використовувати кешовану
+        копію відповіді. Дві директиви системно плутають:
+      </p>
+      <table>
+        <tr><th>Директива</th><th>Що означає</th></tr>
+        <tr><td><code>no-store</code></td><td>Не кешувати <b>взагалі ніколи</b> — ані в браузері, ані в проміжних кешах</td></tr>
+        <tr><td><code>no-cache</code></td><td>Кешувати <b>можна</b>, але перед кожним використанням кешованої копії треба заново звернутись до сервера й перевірити, чи вона ще актуальна (revalidate)</td></tr>
+        <tr><td><code>max-age=N</code></td><td>Використовувати кешовану копію без звернення до сервера протягом N секунд</td></tr>
+        <tr><td><code>private</code> / <code>public</code></td><td>Чи можуть проміжні спільні кеші (CDN, проксі) кешувати відповідь, чи лише кеш конкретного браузера користувача</td></tr>
+      </table>
+      <p>
+        <b>Умовні запити</b> — спосіб перевірити свіжість кешу дешево, без повторного
+        завантаження всього тіла: сервер віддає <code>ETag</code> (відбиток версії ресурсу) або
+        <code>Last-Modified</code> разом із першою відповіддю; наступного разу клієнт надсилає
+        цей самий відбиток назад у заголовку <code>If-None-Match</code> (або
+        <code>If-Modified-Since</code>). Якщо ресурс не змінився — сервер відповідає
+        <code>304 Not Modified</code> із <b>порожнім тілом</b>, економлячи трафік, але мережевий
+        запит усе одно відбувається (на відміну від <code>max-age</code>, де запиту взагалі не
+        буде).
+      </p>
+    </section>
+
+    <section id="t7">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>Content negotiation: Accept-заголовки</h2></div>
+      <p>
+        <code>Accept</code> повідомляє серверу, які формати відповіді клієнт готовий прийняти
+        (наприклад, <code>application/json</code> проти <code>text/html</code>);
+        <code>Accept-Language</code> — якою мовою; <code>Accept-Encoding</code> — яке стиснення
+        (<code>gzip</code>, <code>br</code>) клієнт уміє розпаковувати. Сервер обирає підходящий
+        варіант відповіді на основі цих заголовків — це і є content negotiation.
+      </p>
+      <p>
+        Якщо сервер не може задовольнити <code>Accept</code> (наприклад, клієнт просить лише
+        <code>application/xml</code>, а сервер уміє тільки JSON), коректна відповідь —
+        <code>406 Not Acceptable</code>.
+      </p>
+      <p class="muted">
+        Заголовок <code>Vary</code> у відповіді каже проміжним кешам, які саме заголовки запиту
+        вплинули на обраний варіант відповіді (наприклад, <code>Vary: Accept-Language</code>) —
+        без цього кеш міг би помилково віддати англійську версію сторінки користувачу, що просив
+        французьку, бо для кешу URL виглядав однаковим.
+      </p>
+    </section>
+
+    <section id="t8">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>Cookies і атрибути Set-Cookie</h2></div>
+      <p>
+        Сервер встановлює cookie через заголовок відповіді <code>Set-Cookie</code>. Три
+        атрибути визначають, наскільки cookie захищена: <code>HttpOnly</code> (JS не має доступу
+        до значення — <code>document.cookie</code> його не покаже), <code>Secure</code>
+        (передається лише по HTTPS), <code>SameSite=Strict/Lax/None</code> (чи надсилається
+        cookie разом із cross-site запитами — існує саме як механізм пом'якшення CSRF-атак).
+        Повний розбір моделі атак і чому саме така комбінація атрибутів вважається безпечною для
+        авторизаційних токенів — у <a href="03-frontend-security.html">туторіалі 3</a>.
+      </p>
+    </section>
+
+    <section id="t9">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>Коротко: HTTP/1.1 vs HTTP/2 vs HTTP/3</h2></div>
+      <p>Досить знати, що вони існують, і одну ключову різницю кожного — не протокольні деталі:</p>
+      <table>
+        <tr><th>Версія</th><th>Ключова відмінність</th></tr>
+        <tr><td><b>HTTP/1.1</b></td><td>Одне з'єднання обробляє по одному запиту за раз — тому браузери відкривають кілька паралельних TCP-з'єднань на один origin, щоб завантажувати ресурси одночасно</td></tr>
+        <tr><td><b>HTTP/2</b></td><td><b>Мультиплексування</b> — багато запитів одночасно через одне з'єднання, плюс стиснення заголовків (HPACK). Прибрало потребу в старих трюках на кшталт спрайтів/конкатенації файлів "щоб зменшити кількість запитів"</td></tr>
+        <tr><td><b>HTTP/3</b></td><td>Працює поверх <b>QUIC</b> (на UDP, а не TCP) — головна мета: прибрати head-of-line blocking на рівні самого TCP, який усе ще залишався проблемою навіть у HTTP/2 (загублений один TCP-пакет блокує весь мультиплексований потік)</td></tr>
+      </table>
+    </section>
+
+    <section id="qa">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>20 найчастіших і найважчих питань про HTTP</h2></div>
+      <p class="section-desc">Від базових визначень до питань, на яких плаваю навіть досвідчені кандидати — саме тому, що тема здається "занадто простою, щоб готуватись".</p>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--info)"></span>База</span>
+        <span><span class="dot" style="background:var(--interview)"></span>Пастка</span>
+        <span><span class="dot" style="background:var(--fun)"></span>Просунуте</span>
+        <span><span class="dot" style="background:var(--good)"></span>Системний дизайн</span>
+      </div>
+
+      <details class="qa">
+        <summary><span class="qnum">01</span><span class="difficulty trick">Пастка</span>Чим "safe" відрізняється від "idempotent"?</summary>
+        <div class="a">
+          <p>Це дві незалежні властивості, які легко переплутати. <b>Safe</b> — метод не змінює
+          стан сервера взагалі (лише <code>GET</code>/<code>HEAD</code>/<code>OPTIONS</code>).
+          <b>Idempotent</b> — повторний виклик із тими самими параметрами залишає сервер у тому
+          самому кінцевому стані, що й один виклик, навіть якщо сам метод змінює дані
+          (<code>PUT</code>, <code>DELETE</code>). Кожен safe-метод автоматично ідемпотентний,
+          але не навпаки — <code>PUT</code> ідемпотентний, хоч і не safe.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">02</span><span class="difficulty trick">Пастка</span>Чому <code>PATCH</code> не гарантовано ідемпотентний?</summary>
+        <div class="a">
+          <p>Бо <code>PATCH</code> описує <i>часткову зміну</i>, а не заміну всього ресурсу —
+          і форма цієї зміни вирішує все. <code>PATCH {"status": "paid"}</code> ідемпотентний
+          (той самий кінцевий стан при повторі). <code>PATCH {"$inc": {"views": 1}}</code> — ні,
+          кожен повтор додає ще одиницю. На відміну від <code>PUT</code>, який ідемпотентний за
+          визначенням протоколу, ідемпотентність <code>PATCH</code> — питання конкретної
+          семантики API, а не гарантія специфікації.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">03</span><span class="difficulty core">База</span>Чим відрізняються 401 і 403?</summary>
+        <div class="a">
+          <p><code>401 Unauthorized</code> — сервер не знає, хто ви (немає валідних
+          credentials узагалі, або вони прострочені/невалідні). <code>403 Forbidden</code> —
+          сервер точно знає, хто ви, і саме тому відмовляє: у вас недостатньо прав на цю дію.
+          Практичне правило: 401 виправляється логіном, 403 — ні (потрібні інші права).</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">04</span><span class="difficulty core">База</span>Чим відрізняються 301 і 302 — і чому це важливо для кешування?</summary>
+        <div class="a">
+          <p><code>301 Moved Permanently</code> сигналізує, що стара адреса більше ніколи не
+          буде дійсною — браузери й пошукові боти кешують це агресивно й довго, наступного разу
+          підуть напряму на нову адресу (і SEO-вага "переносить" на нову адресу). <code>302
+          Found</code> — тимчасовий редирект, кешується не так довго/агресивно, наступний запит
+          цілком може знову піти на стару адресу. Використання 301 замість 302 (чи навпаки) для
+          тимчасового обслуговування — реальна помилка, яка "прилипає" в кешах браузерів і
+          CDN надовго.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">05</span><span class="difficulty trick">Пастка</span>Чому CORS-помилка все одно показує відповідь у вкладці Network?</summary>
+        <div class="a">
+          <p>Бо CORS — це обмеження на рівні <i>браузера</i>, застосоване вже <i>після</i> того,
+          як мережевий запит реально відбувся і сервер відповів. Сервер найчастіше не в курсі
+          жодного "CORS-порушення" — він обробив запит і повернув відповідь як завжди. Браузер
+          просто відмовляється передати цю вже отриману відповідь коду, що її ініціював, якщо
+          заголовки відповіді не дозволяють викликаючий origin. Тому в Network — повна відповідь
+          з тілом і статусом 200, а в консолі JS — помилка "blocked by CORS policy".</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">06</span><span class="difficulty trick">Пастка</span>Чи можна "виправити" CORS з клієнтського коду?</summary>
+        <div class="a">
+          <p>Ні, у принципі. <code>Access-Control-Allow-Origin</code> та інші CORS-заголовки —
+          це заголовки <i>відповіді сервера</i>, які лише зчитує й застосовує браузер. Жодна
+          опція <code>fetch</code>, жоден заголовок запиту з боку клієнта не змусить чужий
+          сервер повернути потрібний дозвіл. Єдиний реальний спосіб "обійти" CORS з клієнта —
+          проксіювати запит через свій власний сервер (той-таки origin для браузера), який уже
+          сам звертається до чужого API без обмежень CORS (вони застосовуються лише в
+          браузерах, не в серверному коді).</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">07</span><span class="difficulty adv">Просунуте</span>Що саме перетворює звичайний запит на "preflighted"?</summary>
+        <div class="a">
+          <p>Запит виходить за межі "simple request", якщо: метод не входить у
+          <code>GET</code>/<code>HEAD</code>/<code>POST</code>; або є заголовок поза вузьким
+          дозволеним списком (наприклад, <code>Authorization</code>, будь-який кастомний
+          <code>X-*</code>); або <code>Content-Type</code> не входить у
+          <code>application/x-www-form-urlencoded</code>/<code>multipart/form-data</code>/<code>text/plain</code>
+          (зокрема, <code>application/json</code> завжди викликає preflight). У будь-якому з цих
+          випадків браузер автоматично вставляє попередній <code>OPTIONS</code>-запит.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">08</span><span class="difficulty adv">Просунуте</span>Що конкретно міститься в preflight-запиті?</summary>
+        <div class="a">
+          <p>Метод <code>OPTIONS</code> плюс два спеціальні заголовки, якими браузер заздалегідь
+          повідомляє, що саме планує зробити справжній запит: <code>Access-Control-Request-Method</code>
+          (який метод буде використано) і <code>Access-Control-Request-Headers</code> (які
+          нестандартні заголовки будуть надіслані). Сервер відповідає списком дозволеного у
+          відповідних <code>Access-Control-Allow-*</code> заголовках — і лише якщо реальний
+          метод/заголовки входять у цей дозволений список, браузер надсилає справжній запит.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">09</span><span class="difficulty trick">Пастка</span>Чому <code>Access-Control-Allow-Origin: *</code> і credentials несумісні?</summary>
+        <div class="a">
+          <p>Це свідоме обмеження безпеки специфікації: якщо сервер міг би відповідати
+          wildcard-origin і водночас дозволяти credentials (cookies), будь-який сайт у світі міг
+          би зробити credentialed-запит від імені залогіненого користувача й отримати відповідь
+          — практично CSRF, узаконений самим CORS. Тому браузер відхиляє відповідь, якщо запит
+          був <code>credentials: 'include'</code>, а <code>Access-Control-Allow-Origin</code>
+          дорівнює <code>*</code> — сервер зобов'язаний повернути конкретний, явний origin.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">10</span><span class="difficulty core">База</span>Чим <code>no-cache</code> відрізняється від <code>no-store</code>?</summary>
+        <div class="a">
+          <p>Назви оманливо схожі, а поведінка різна. <code>no-store</code> — не кешувати
+          <b>взагалі</b>, кожен запит іде на сервер по повну відповідь. <code>no-cache</code> —
+          кешувати <b>можна</b>, але кешовану копію не можна використати без попереднього
+          звернення до сервера для перевірки актуальності (revalidate) — фактично завжди мережевий
+          запит, але потенційно з порожньою <code>304</code>-відповіддю замість повного тіла.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">11</span><span class="difficulty adv">Просунуте</span>Як саме ETag економить трафік, якщо запит усе одно йде на сервер?</summary>
+        <div class="a">
+          <p>Економія не в кількості запитів, а в розмірі відповіді. Клієнт надсилає збережений
+          <code>ETag</code> назад у заголовку <code>If-None-Match</code>. Сервер порівнює його з
+          поточним відбитком ресурсу: якщо збігається — повертає <code>304 Not Modified</code> з
+          <b>порожнім тілом</b> (лише заголовки), а не заново все тіло відповіді. Для великих
+          відповідей (списки, зображення) це суттєва економія трафіку, навіть попри те, що
+          мережевий раунд-тріп усе одно відбувається.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">12</span><span class="difficulty trick">Пастка</span>Чому JS-код не може вручну виставити заголовок <code>Origin</code> у fetch-запиті?</summary>
+        <div class="a">
+          <p>Тому що <code>Origin</code> — один із "заборонених" (forbidden) заголовків, якими
+          керує сам браузер, а не код застосунку. Якщо би це можна було підмінити з JS, увесь
+          механізм CORS втратив би сенс — будь-який сайт міг би прикинутись іншим origin і
+          отримати дозвіл, на який не мав права. Спроба виставити такий заголовок вручну
+          звичайно просто мовчки ігнорується браузером, без явної помилки.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">13</span><span class="difficulty core">База</span>Чому назви HTTP-заголовків регістронезалежні — і що це означає для коду?</summary>
+        <div class="a">
+          <p>Так визначено самою специфікацією HTTP — <code>Content-Type</code> і
+          <code>content-type</code> це той самий заголовок. Практичний наслідок для коду:
+          <code>Headers.get()</code>/<code>.set()</code>/<code>.has()</code> самі нормалізують
+          регістр, тому шукати заголовок точним порівнянням рядків (<code>if (key ===
+          'Content-Type')</code> по сирому об'єкту, а не через <code>Headers</code>) — крихкий
+          код, який зламається, щойно сервер (чи проксі на шляху) віддасть той самий заголовок в
+          іншому регістрі.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">14</span><span class="difficulty trick">Пастка</span>Чи будуть <code>https://shop.example.com</code> і <code>https://shop.example.com:8443</code> одним origin?</summary>
+        <div class="a">
+          <p>Ні. Origin — це строго <b>схема + хост + порт</b> одночасно; порт входить у
+          порівняння так само, як схема й хост. Навіть коли схема і хост візуально ідентичні,
+          різний порт (у прикладі — явний <code>8443</code> проти імпліцитного <code>443</code>
+          для HTTPS) робить це двома різними origin-ами з погляду same-origin policy й CORS.
+          Так само різними origin є різні субдомени (<code>app.example.com</code> проти
+          <code>api.example.com</code>) — попри спільний батьківський домен.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">15</span><span class="difficulty adv">Просунуте</span>У чому різниця між "будь-який заголовок працює" і <code>Access-Control-Allow-Headers</code>?</summary>
+        <div class="a">
+          <p><code>Access-Control-Allow-Headers</code> у відповіді на preflight — це явний
+          білий список нестандартних заголовків, які сервер дозволяє клієнту надсилати в
+          справжньому cross-origin запиті. Якщо клієнт спробує надіслати заголовок, якого немає
+          в цьому списку, браузер заблокує сам запит ще до відправки (preflight не пройде) —
+          сервер навіть не побачить цей запит. Це протилежність до "будь-який заголовок
+          автоматично працює" — навпаки, усе поза вузьким simple-списком за замовчуванням
+          заборонено, поки явно не дозволено.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">16</span><span class="difficulty core">База</span>Наведіть конкретний приклад, чому <code>POST</code> не ідемпотентний, а <code>PUT</code> — так</summary>
+        <div class="a">
+          <p><code>POST /orders {"item": "book"}</code>, викликаний двічі, зазвичай створює
+          <b>два</b> окремі замовлення — кожен виклик додає новий ресурс. <code>PUT
+          /orders/42 {"item": "book"}</code>, викликаний двічі, обидва рази встановлює замовлення
+          <code>42</code> в один і той самий стан — другий виклик нічого додатково не змінює.
+          Різниця в самій семантиці методів: <code>POST</code> означає "створи щось нове",
+          <code>PUT</code> — "нехай ресурс за цією адресою буде саме таким".</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">17</span><span class="difficulty core">База</span>Що відбувається, якщо сервер не може задовольнити заголовок <code>Accept</code> клієнта?</summary>
+        <div class="a">
+          <p>Коректна відповідь у такому разі — <code>406 Not Acceptable</code>: сервер явно
+          повідомляє, що жоден із запитаних клієнтом форматів відповіді він видати не може.
+          На практиці багато API спрощують це й просто завжди повертають один формат (зазвичай
+          JSON) незалежно від <code>Accept</code>, ігноруючи повноцінне узгодження змісту —
+          але знати про існування <code>406</code> і сам механізм негоціації вартий уваги.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">18</span><span class="difficulty adv">Просунуте</span>Навіщо потрібен заголовок <code>Vary</code>?</summary>
+        <div class="a">
+          <p><code>Vary</code> каже проміжним і браузерним кешам, які саме заголовки <i>запиту</i>
+          вплинули на те, яку саме версію відповіді сервер обрав і повернув —
+          наприклад, <code>Vary: Accept-Language</code>. Без цього кеш бачить лише URL і може
+          помилково віддати збережену раніше англійську версію користувачу, чий запит просив
+          французьку — бо для кешу, який не знає про <code>Vary</code>, URL виглядає однаковим
+          незалежно від мовних заголовків запиту.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">19</span><span class="difficulty sys">Системний дизайн</span>Як спроєктувати ключ ідемпотентності для платіжного API?</summary>
+        <div class="a">
+          <p>Клієнт генерує унікальний ідентифікатор (наприклад, UUID) <b>один раз на одну
+          логічну спробу оплати</b> і надсилає його в заголовку на кшталт
+          <code>Idempotency-Key</code>. Сервер, отримавши запит із цим ключем уперше, виконує
+          операцію і зберігає пару "ключ → результат". Якщо той самий ключ прийде повторно
+          (мережевий тайм-аут і клієнтський retry) — сервер не виконує оплату вдруге, а просто
+          повертає раніше збережений результат. Критично: ключ генерується на стороні
+          <i>клієнта</i> й лишається незмінним для всіх спроб retry однієї й тієї ж
+          користувацької дії, інакше весь захист втрачає сенс.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">20</span><span class="difficulty adv">Просунуте</span>Як HTTP/2 і HTTP/3 по-різному вирішують head-of-line blocking?</summary>
+        <div class="a">
+          <p>HTTP/1.1 мав head-of-line blocking на рівні застосунку: одне з'єднання обробляло
+          запити по черзі. HTTP/2 вирішив це <b>мультиплексуванням</b> — багато запитів
+          одночасно в одному TCP-з'єднанні. Але лишилась проблема на рівень нижче: TCP сам
+          гарантує порядок доставки байтів, тож один загублений TCP-пакет блокує <i>всі</i>
+          мультиплексовані потоки в цьому з'єднанні, поки він не буде повторно доставлений — це
+          head-of-line blocking на рівні транспорту. HTTP/3 усуває це, перейшовши на QUIC
+          (поверх UDP), де кожен потік обробляє втрату пакетів незалежно від інших, не
+          блокуючи все з'єднання цілком.</p>
+        </div>
+      </details>
+    </section>
+
+    <div class="card">
+      ← <a href="02-browser-internals.html">2. Браузер зсередини — де ця тема раніше жила коротко</a>
+      &nbsp;·&nbsp;
+      ↑ <a href="00-methodology.html">Карта всіх тем</a>
+    </div>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Теми узагальнені з патернів реального фідбеку технічних інтерв'ю — без імен, компаній чи
+  контактних даних, лише самі теми для цілеспрямованої підготовки.
+</footer>
+
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>
