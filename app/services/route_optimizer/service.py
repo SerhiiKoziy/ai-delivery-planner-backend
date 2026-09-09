@@ -3,6 +3,7 @@ builder, the OR-Tools solver, and the solution mapper together, then
 persists the resulting Route/RouteStop rows.
 """
 
+import asyncio
 import copy
 import uuid
 from dataclasses import dataclass
@@ -34,6 +35,14 @@ from app.services.route_optimizer.solver import RouteSolver
 
 def _time_to_minutes(t: time) -> int:
     return t.hour * 60 + t.minute
+
+
+def _build_and_solve(solver: RouteSolver):
+    """Runs the blocking OR-Tools build/solve on a worker thread so it
+    doesn't stall the event loop for the duration of the search.
+    """
+    solver.build_model()
+    return solver.solve()
 
 
 @dataclass
@@ -114,8 +123,7 @@ class RouteOptimizerService:
         )
 
         solver = RouteSolver(problem)
-        solver.build_model()
-        result = solver.solve()
+        result = await asyncio.to_thread(_build_and_solve, solver)
 
         if result.assignment is None:
             raise ValueError("No feasible solution found for the given deliveries/vehicles")
@@ -321,8 +329,7 @@ class RouteOptimizerService:
             working_deliveries, [vehicle], {str(driver.id): solver_driver}, depot, route.return_to_depot
         )
         solver = RouteSolver(problem)
-        solver.build_model()
-        result = solver.solve()
+        result = await asyncio.to_thread(_build_and_solve, solver)
 
         if result.assignment is None:
             raise ValueError("No feasible solution found for the given deliveries/vehicle")
