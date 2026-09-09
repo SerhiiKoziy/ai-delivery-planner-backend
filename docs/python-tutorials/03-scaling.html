@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3. Масштабування — AI Delivery Planner</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--accent); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:760px; margin:0;}
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .badge.step{background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent-soft); font-size:12px;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  .ladder{display:flex; flex-direction:column; gap:0; margin:20px 0;}
+  .ladder .rung{
+    display:grid; grid-template-columns:34px 1fr; gap:14px; padding:16px 0;
+    border-left:2px solid var(--border); margin-left:16px; padding-left:24px; position:relative;
+  }
+  .ladder .rung:last-child{border-left:2px solid transparent;}
+  .ladder .rung .dot{
+    position:absolute; left:-9px; top:16px; width:16px; height:16px; border-radius:50%;
+    background:var(--accent); border:3px solid var(--bg);
+  }
+  .ladder .rung h4{margin:0 0 4px; font-size:15.5px;}
+  .ladder .rung p{margin:0; color:var(--fg-muted); font-size:14px;}
+
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Туторіал 3 з 3</div>
+  <h1>Як масштабувати цей проєкт</h1>
+  <p class="lead">
+    Наскільки великий цей проєкт зараз, де реальна стеля навантаження, і що конкретно змінювати
+    по черзі, коли трафік почне її наближати — від найдешевшого кроку до архітектурних змін.
+  </p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🎯 До співбесіди</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html" class="active">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Поточний розмір деплою</a></li>
+      <li><a href="#s2">2. Чому саме 1 машина</a></li>
+      <li><a href="#s3">3. Celery/Redis: риштування на майбутнє</a></li>
+      <li><a href="#s4">4. Драбина масштабування, крок за кроком</a></li>
+      <li><a href="#s5">5. Аналогія з фронтенд-масштабуванням</a></li>
+      <li><a href="#s6">6. Інші архітектурні підходи</a></li>
+      <li><a href="#s7">7. Коли справді масштабувати</a></li>
+      <li><a href="#s8">8. Підсумок трьох туторіалів</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Наскільки великий цей проєкт зараз</h2>
+      <p class="section-desc">Реальна конфігурація production-деплою на Fly.io.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">fly.toml</span></div>
+        <pre><code>[deploy]
+  release_command = "alembic upgrade head"   <span class="cmt"># міграції БД перед кожним деплоєм</span>
+
+[http_service]
+  internal_port = 8000
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1        <span class="cmt">&lt;-- рівно одна машина, завжди</span>
+  processes = ["app"]
+
+[[vm]]
+  size = "shared-cpu-1x"          <span class="cmt"># наймінімальніший платний тариф Fly</span>
+  memory = "512mb"</code></pre>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat"><div class="k">Машин</div><div class="v">1</div></div>
+        <div class="stat"><div class="k">CPU</div><div class="v">shared 1x</div></div>
+        <div class="stat"><div class="k">RAM</div><div class="v">512 MB</div></div>
+      </div>
+
+      <p>Це — конфігурація "для одного продукту на ранній стадії", а не "для масштабу".
+      Один Docker-контейнер (<code>Dockerfile</code>) запускає один процес
+      <code>uvicorn app.main:app</code> без <code>--workers N</code> — тобто буквально один
+      Python-процес з одним event loop обробляє <i>всі</i> HTTP-запити.</p>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Чому саме одна машина — і чому це не випадковість</h2>
+      <p class="section-desc">Два незалежні місця в коді прямо тримають систему прив'язаною до single-instance деплою.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Причина 1 — rate limiter у пам'яті процесу</b> (докладно в туторіалі 2).
+        <code>app/core/rate_limiting.py</code> зберігає лічильники запитів у звичайному Python
+        <code>dict</code>. Два інстанси = два незалежні лічильники = реальний ліміт подвоюється,
+        і зловмисник може обійти захист, просто "влучаючи" в різні машини за балансувальником.</div>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Причина 2 — блокуючий OR-Tools солвер</b> (докладно в туторіалі 2).
+        <code>solver.solve()</code> виконується синхронно всередині <code>async def optimize()</code>
+        і може займати до 5 секунд, увесь цей час монополізуючи єдиний потік event loop. При
+        кількох uvicorn-воркерах у межах <i>однієї</i> машини це частково пом'якшується
+        (кожен воркер — окремий процес з власним event loop), але сам факт блокування
+        нікуди не зникає — просто "стеля" одночасних важких запитів зростає разом із кількістю
+        воркерів, а не зникає.</div>
+      </div>
+
+      <p>Тобто: <code>min_machines_running = 1</code> — не забудькуватість, а пряме
+      відображення двох конкретних архітектурних рішень у коді. Це важливий урок: <b>інфраструктурні
+      обмеження часто "закодовані" не в конфігах деплою, а в самому застосунку.</b></p>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Celery + Redis вже підключені — але поки не використовуються</h2>
+      <p class="section-desc">У проєкті вже є "риштування" під фонові задачі — саме те, що знадобиться на кроці масштабування "d" нижче.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/workers/tasks.py</span></div>
+        <pre><code>@celery_app.task(name="optimize_routes_task")
+def optimize_routes_task(route_request_id: str) -> None:
+    <span class="cmt">"""Run route optimization asynchronously and persist the result."""</span>
+    raise NotImplementedError
+
+@celery_app.task(name="analyze_delivery_list_task")
+def analyze_delivery_list_task(import_batch_id: str) -> None:
+    raise NotImplementedError</code></pre>
+      </div>
+
+      <p><code>REDIS_URL</code> уже є в <code>Settings</code>, <code>celery_app.py</code>
+      налаштований (Redis як broker і result backend), але самі задачі — заглушки. Сьогодні
+      <b>все</b>, включно з 5-секундним солвером, виконується синхронно всередині HTTP-запиту.
+      Це нормально для поточного навантаження, але саме тут — готовий, недобудований шлях до
+      кроку "f" у драбині нижче.</p>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Драбина масштабування — крок за кроком</h2>
+      <p class="section-desc">Від найдешевшого й найшвидшого кроку до архітектурних змін. Кожен наступний крок стає потрібним лише тоді, коли попередній вичерпав себе.</p>
+
+      <div class="ladder">
+        <div class="rung">
+          <div class="dot"></div>
+          <div><span class="badge step">Крок A</span>
+          <h4>Вертикальне масштабування (більша машина)</h4>
+          <p>Замінити <code>shared-cpu-1x / 512mb</code> на, наприклад, <code>performance-cpu-2x / 2gb</code>
+          у <code>fly.toml</code>. Один рядок конфігурації, нуль змін коду. Дає більше "запасу",
+          але <b>не</b> вирішує ні проблему in-memory rate limiter, ні блокуючий солвер — це все
+          ще один процес, просто на потужнішому залізі. Стеля піднімається, але лишається стелею.</p></div>
+        </div>
+        <div class="rung">
+          <div class="dot"></div>
+          <div><span class="badge step">Крок B</span>
+          <h4>Прибрати стан із процесу (rate limiter → Redis)</h4>
+          <p>Необхідна передумова для будь-якого горизонтального масштабування. Замінити
+          <code>_WINDOWS: dict</code> на Redis-лічильник (наприклад, через <code>INCR</code> +
+          <code>EXPIRE</code>, чи бібліотеку на кшталт <code>slowapi</code>/<code>limits</code>
+          з Redis-бекендом) — тоді всі інстанси бачать один спільний рахунок. Redis уже є в
+          інфраструктурі (для Celery) — просто ще не використовується для цього.</p></div>
+        </div>
+        <div class="rung">
+          <div class="dot"></div>
+          <div><span class="badge step">Крок C</span>
+          <h4>Прибрати CPU-важку роботу з event loop</h4>
+          <p>Обгорнути <code>solver.solve()</code> в <code>asyncio.to_thread(...)</code>
+          (найпростіше) або офлоадити оптимізацію в Celery-воркер (надійніше — окремий процес,
+          не ділить GIL з веб-сервером; клієнт отримує <code>202 Accepted</code> і опитує статус
+          чи отримує результат через WebSocket/polling). Без цього кроку додавання машин лише
+          зменшує <i>ймовірність</i> зіткнення двох важких запитів одночасно — не усуває саму
+          проблему для кожної окремої машини.</p></div>
+        </div>
+        <div class="rung">
+          <div class="dot"></div>
+          <div><span class="badge step">Крок D</span>
+          <h4>Горизонтальне масштабування (кілька машин/воркерів)</h4>
+          <p>Після B і C — можна безпечно збільшити <code>min_machines_running</code> у
+          <code>fly.toml</code> і/або додати <code>--workers N</code> до uvicorn. Fly.io сам
+          балансує трафік між машинами. Застосунок стає <b>stateless</b>: будь-який інстанс може
+          обробити будь-який запит, бо весь стан (сесії, квоти, rate limit) живе в Postgres/Redis,
+          а не в пам'яті процесу.</p></div>
+        </div>
+        <div class="rung">
+          <div class="dot"></div>
+          <div><span class="badge step">Крок E</span>
+          <h4>Пул з'єднань до бази даних</h4>
+          <p>Кожен інстанс тримає власний пул <code>asyncpg</code>-з'єднань. N інстансів ×
+          розмір пулу не повинно перевищувати <code>max_connections</code> Postgres. Тут стає в
+          пригоді pgbouncer/вбудований пулер хмарного Postgres (звідси й
+          <code>statement_cache_size=0</code> у <code>db/session.py</code> — код уже готовий
+          працювати за пулером у transaction-режимі).</p></div>
+        </div>
+        <div class="rung">
+          <div class="dot"></div>
+          <div><span class="badge step">Крок F</span>
+          <h4>Реальні фонові задачі через Celery</h4>
+          <p>Активувати <code>optimize_routes_task</code>/<code>analyze_delivery_list_task</code>
+          (прибрати <code>NotImplementedError</code>), запустити окремий Celery-воркер-процес
+          (окремий Fly-машина або <code>docker-compose</code> сервіс). Довгі AI/оптимізаційні
+          запити перестають блокувати HTTP-запит взагалі — API одразу повертає id задачі,
+          фронтенд опитує статус.</p></div>
+        </div>
+        <div class="rung">
+          <div class="dot"></div>
+          <div><span class="badge step">Крок G</span>
+          <h4>Кешування й read-репліки</h4>
+          <p>Дашборд (<code>services/dashboard/service.py</code>) — типовий read-heavy
+          ендпоінт. Кеш у Redis (з коротким TTL) чи read-репліка Postgres знімають навантаження
+          з основної БД, не чіпаючи логіку запису.</p></div>
+        </div>
+      </div>
+
+      <div class="callout info">
+        <div class="ic">🎯</div>
+        <div class="body">Порядок важливий: <b>B і C — обов'язкові передумови</b> перед D.
+        Додавання машин (D) без прибирання in-memory стану (B) і блокуючого коду (C) не дає
+        того масштабування, яке очікується — і навіть послаблює захист від зловживань
+        (подвоєний rate-limit ліміт з туторіалу 2).</div>
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Аналогія з тим, як масштабується фронтенд</h2>
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Фронтенд масштабується здебільшого "безкоштовно" — статичні файли на CDN розходяться
+        по edge-серверах по всьому світу, і кожен користувач звертається до найближчого. Бекенд
+        так просто не копіюється: він тримає <i>стан</i> (з'єднання з БД, чергу задач,
+        лічильники) — тому "скопіювати" бекенд-процес на кілька машин безпечно можна лише
+        <b>після</b> того, як увесь цей стан винесено в спільне зовнішнє сховище (БД, Redis).
+        Це і є ключова відмінність: фронтенд масштабується копіюванням статики,
+        бекенд — копіюванням <i>stateless</i>-обчислень навколо спільного стану.
+      </div>
+      <table>
+        <tr><th>Фронтенд</th><th>Бекенд (цей проєкт)</th></tr>
+        <tr><td>CDN / edge caching статичних файлів</td><td>Read-репліки / Redis-кеш для читання (крок G)</td></tr>
+        <tr><td>Static Site Generation / ISR</td><td>Попередньо пораховані/закешовані відповіді дашборда</td></tr>
+        <tr><td>Кожен клієнт — своя ізольована вкладка/стан</td><td>Спільний стан (БД, Redis) між усіма інстансами — потребує явної синхронізації</td></tr>
+        <tr><td>Web Worker для важких обчислень у браузері</td><td><code>asyncio.to_thread</code> / Celery-воркер для важких обчислень на сервері (крок C, F)</td></tr>
+      </table>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Інші архітектурні підходи для масштабування</h2>
+      <p class="section-desc">Куди можна рухатись далі "драбини", якщо навантаження продовжить рости на порядки.</p>
+
+      <table>
+        <tr><th>Підхід</th><th>Ідея</th><th>Компроміс</th></tr>
+        <tr>
+          <td><b>Одна VM (поточний стан)</b></td>
+          <td>Один процес, вся логіка разом</td>
+          <td>Найпростіше в експлуатації; жорстка стеля навантаження й ризик единої точки відмови</td>
+        </tr>
+        <tr>
+          <td><b>Кілька VM за балансувальником</b></td>
+          <td>Горизонтальні репліки одного й того ж застосунку (кроки B–E)</td>
+          <td>Потрібен stateless-дизайн; складніше налагоджувати ("на якій машині це сталось?")</td>
+        </tr>
+        <tr>
+          <td><b>Керовані контейнери (ECS / Kubernetes)</b></td>
+          <td>Автоскейлінг за метриками, self-healing, rolling deploy</td>
+          <td>Значно більша операційна складність; виправдано при десятках сервісів/високому й змінному навантаженні</td>
+        </tr>
+        <tr>
+          <td><b>Serverless-функції</b></td>
+          <td>Кожен запит — окремий короткоживучий виклик, платиш лише за використання</td>
+          <td>Погано підходить для OR-Tools-солвера: cold start + типові ліміти по часу виконання
+          (десятки секунд) конфліктують із CPU-важким 5-секундним пошуком рішення; добре підходить
+          для легких, епізодичних ендпоінтів</td>
+        </tr>
+        <tr>
+          <td><b>Event-driven мікросервіси</b></td>
+          <td>Окремі сервіси (auth, routing, AI, notifications) спілкуються через чергу подій, а не прямі виклики</td>
+          <td>Виправдано лише при дуже великій команді/навантаженні; для одного продукту такого розміру — передчасна складність</td>
+        </tr>
+      </table>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body">Правильний наступний крок для цього проєкту — <b>не</b> стрибати
+        одразу до Kubernetes чи мікросервісів, а пройти драбину A→G вище. Вона дає на порядки
+        більший запас навантаження за набагато меншу операційну ціну.</div>
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Коли справді масштабувати (а коли — ще рано)</h2>
+      <p class="section-desc">Масштабування "про запас" коштує складності вже сьогодні. Орієнтуйтесь на сигнали, а не на страх.</p>
+      <ul>
+        <li><b>P95/P99 латентність</b> ендпоінтів росте попри те, що запитів не побільшало — сигнал, що поточний процес уже "давиться".</li>
+        <li><b>Кілька важких <code>/routes/optimize</code>-запитів поспіль</b> помітно сповільнюють прості ендпоінти (наприклад, <code>/health</code>) — пряме підтвердження проблеми з розділу 2 туторіалу про async.</li>
+        <li><b>Memory/CPU інстансу</b> стабільно впирається у стелю (512 MB тут — досить тісно вже для одного OR-Tools-розрахунку + pandas-парсингу Excel одночасно).</li>
+        <li><b>Rate limit false positives</b> — легітимні користувачі за спільним корпоративним IP/NAT впираються у ліміти, розраховані на "одну людину".</li>
+      </ul>
+      <p class="muted">Без цих сигналів — інвестиція часу краще йде в фічі, а не в передчасну інфраструктуру.</p>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Підсумок усіх трьох туторіалів</h2>
+      <div class="card">
+        <p><b>1. Архітектура</b> — шарувата структура (api → services → repositories → db) з
+        DI через <code>Depends</code> і структурною ізоляцією тенантів через
+        <code>TenantScopedRepository</code>.</p>
+        <p><b>2. Async і безпека</b> — event loop той самий, що в JS; блокуючий код правильно
+        винесений у потік для email, але не для OR-Tools-солвера (реальне вузьке місце);
+        безпека спирається на JWT з типізованими токенами, атомарні SQL-квоти й централізовану
+        обробку помилок.</p>
+        <p><b>3. Масштабування</b> — сьогодні проєкт навмисно single-instance через два
+        конкретні місця в коді (rate limiter, солвер); шлях вперед — драбина з явним порядком
+        кроків, а не "просто додати більше машин".</p>
+      </div>
+      <p>Усі три теми одна в одну впираються: <i>архітектурні</i> межі (тур. 1) визначають,
+      <i>де</i> шукати проблеми з блокуванням і безпекою (тур. 2), а ці проблеми, своєю чергою,
+      напряму визначають <i>стелю масштабування</i> (тур. 3).</p>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал згенеровано на основі реального коду репозиторію <code>ai-delivery-planner-backend</code> —
+  усі приклади й конфігурація відповідають фактичному стану проєкту на момент генерації.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

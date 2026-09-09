@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>16. ООП та SOLID — AI Delivery Planner</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+  .part-divider{
+    display:flex; align-items:center; gap:14px; margin:64px 0 40px;
+  }
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+  .badge-level{
+    display:inline-block; font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px;
+    background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);
+    text-transform:uppercase; letter-spacing:.04em; margin-left:10px; vertical-align:middle;
+  }
+  .solid-letter{
+    display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px;
+    border-radius:10px; background:var(--accent-soft); color:var(--accent); font-weight:800;
+    font-size:16px; margin-right:10px; flex-shrink:0;
+  }
+  .solid-head{display:flex; align-items:center; gap:2px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  .vs{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:16px 0;}
+  @media (max-width:700px){.vs{grid-template-columns:1fr;}}
+  .vs .side{border-radius:var(--radius); padding:16px 18px; border:1px solid;}
+  .vs .side.good{background:var(--good-bg); border-color:var(--good-border);}
+  .vs .side.bad{background:var(--bad-bg); border-color:var(--bad-border);}
+  .vs .side .lbl{font-weight:700; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px;}
+  .vs .side.good .lbl{color:var(--good);}
+  .vs .side.bad .lbl{color:var(--bad);}
+  .vs .side code{display:block; margin:4px 0; font-size:13px;}
+
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · ООП та SOLID</div>
+  <h1>ООП, чотири стовпи та SOLID <span class="badge-level">Середня складність</span></h1>
+  <p class="lead">
+    Не абстрактні означення з підручника, а п'ять принципів SOLID, показані на реальному коді
+    цього самого проєкту — і чому DI з туторіалу 1, Adapter з туторіалу 14 та шар
+    <code>schemas/</code> насправді вже слідують їм, навіть коли ніхто не називав їх вголос.
+  </p>
+  <div class="pills">
+    <span class="pill">🏛️ 4 стовпи ООП</span>
+    <span class="pill">🔠 SOLID на реальному коді</span>
+    <span class="pill">💼 Каверзні питання</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🎯 До співбесіди</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html" class="active">16. ООП &amp; SOLID</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — Чотири стовпи ООП</div>
+    <ol>
+      <li><a href="#s1">1. Інкапсуляція — без "справжнього" private</a></li>
+      <li><a href="#s2">2. Абстракція — ABC vs Protocol</a></li>
+      <li><a href="#s3">3. Успадкування — коротко</a></li>
+      <li><a href="#s4">4. Поліморфізм — duck typing</a></li>
+    </ol>
+    <div class="toc-group">Частина II — SOLID</div>
+    <ol>
+      <li><a href="#s5">5. S — Single Responsibility</a></li>
+      <li><a href="#s6">6. O — Open/Closed</a></li>
+      <li><a href="#s7">7. L — Liskov Substitution</a></li>
+      <li><a href="#s8">8. I — Interface Segregation</a></li>
+      <li><a href="#s9">9. D — Dependency Inversion</a></li>
+    </ol>
+    <div class="toc-group">Частина III — Практика й пастки</div>
+    <ol>
+      <li><a href="#s10">10. Міксини — успадкування заради здатності</a></li>
+      <li><a href="#s11">11. God Object — масштабне порушення SRP</a></li>
+      <li><a href="#s12">12. Коли SOLID шкодить</a></li>
+    </ol>
+    <div class="toc-group">Підсумок</div>
+    <ol>
+      <li><a href="#s13">13. Каверзні питання співбесіди</a></li>
+      <li><a href="#s14">14. Шпаргалка</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Чотири стовпи ООП</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">1</span> Інкапсуляція — без "справжнього" <code>private</code></h2>
+      <p class="section-desc">Перше, що спантеличує розробників з мов із жорсткими модифікаторами доступу (Java <code>private</code>, TS <code>#field</code>).</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>class Account:
+    def __init__(self, balance):
+        self._balance = balance     <span class="cmt"># "protected" — ЛИШЕ домовленість, ніщо не блокує доступ</span>
+        self.__secret = "x"          <span class="cmt"># "приватне" — насправді ІМ'Я ПЕРЕЙМЕНОВАНЕ компілятором</span>
+
+a = Account(100)
+a._balance          <span class="out"># 100 -- працює, Python нічого не забороняє</span>
+a.__secret           <span class="out"># AttributeError!</span>
+a._Account__secret    <span class="out"># "x" -- але ось так — працює!</span></code></pre>
+      </div>
+
+      <p>Один підкреслений (<code>_balance</code>) — <b>лише домовленість</b> "не чіпай ззовні",
+      яку Python ніяк не забезпечує технічно. Два підкреслені (<code>__secret</code>) —
+      спрацьовує <b>name mangling</b>: компілятор перейменовує атрибут на
+      <code>_ClassName__secret</code>, головна мета — уникнути випадкового конфлікту імен у
+      підкласах, <b>не</b> справжня безпека доступу — атрибут завжди можна дістати за повним
+      перейменованим ім'ям.</p>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Каверзне питання</span>
+        "Чи є в Python справжня інкапсуляція?" — правильна відповідь: технічно немає жодного
+        механізму, що робить атрибут недосяжним ззовні (на відміну від Java <code>private</code>).
+        Python покладається на <b>дисципліну спільноти</b> ("ми всі дорослі люди" — цитата з
+        офіційної документації) і домовленості (одне підкреслення = "не чіпай"), а не на
+        примусовий захист компілятором.</div>
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">2</span> Абстракція — два різні відповіді Python</h2>
+      <div class="vs">
+        <div class="side good">
+          <div class="lbl">abc.ABC — номінативна</div>
+          <code>class Shape(ABC):</code>
+          <code>    @abstractmethod</code>
+          <code>    def area(self): ...</code>
+          <code>Shape()  # TypeError одразу</code>
+        </div>
+        <div class="side good">
+          <div class="lbl">typing.Protocol — структурна</div>
+          <code>class HasArea(Protocol):</code>
+          <code>    def area(self) -> float: ...</code>
+          <code># жодного успадкування не потрібно</code>
+        </div>
+      </div>
+      <p><code>abc.ABC</code> — класична, "номінативна" абстракція: підклас <b>явно</b>
+      успадковує абстрактний базовий клас і <b>зобов'язаний</b> реалізувати всі
+      <code>@abstractmethod</code>, інакше інстанціювання одразу впаде з
+      <code>TypeError</code> — перевірка в рантаймі. <code>typing.Protocol</code> (туторіал 6) —
+      структурна абстракція: клас підходить під протокол просто маючи потрібні методи, без
+      жодного явного успадкування — перевірка типово статична (mypy/pyright), не в рантаймі.</p>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">3</span> Успадкування — коротко</h2>
+      <p>Повністю розібрано в <a href="07-classes-decorators-syntax.html#s5">туторіалі 7</a>
+      (<code>super()</code>) та <a href="06-senior-interview-qa.html">туторіалі 6</a>
+      (MRO, C3-лінеаризація). Тут — лише нагадування ролі в чотирьох стовпах: дозволяє
+      підкласу перевикористати й розширити поведінку батьківського класу, не переписуючи її.</p>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">4</span> Поліморфізм — по-пайтонівськи через duck typing</h2>
+      <p>У статично типізованих мовах поліморфізм зазвичай вимагає спільного базового класу чи
+      інтерфейсу. У Python (туторіал 5, розділ 4) досить, щоб об'єкт мав потрібний метод —
+      <code>for item in container:</code> працює однаково для <code>list</code>,
+      <code>tuple</code>, генератора чи власного класу з <code>__iter__</code>, незалежно від
+      того, чи є між ними хоч якийсь спільний предок.</p>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · SOLID</div><div class="line"></div></div>
+
+    <section id="s5">
+      <h2><span class="solid-head"><span class="solid-letter">S</span><span class="num">5</span></span> Single Responsibility Principle</h2>
+      <p class="section-desc">"У класу має бути лише одна причина для зміни" (Роберт Мартін).</p>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Уже застосовано в архітектурі проєкту</b> (туторіал 1): роутер
+        відповідає лише за HTTP, сервіс — лише за бізнес-логіку, репозиторій — лише за SQL.
+        Зміна формату відповіді API не вимагає чіпати жодного рядка в репозиторії; зміна схеми
+        БД не вимагає чіпати роутер. Кожен шар має рівно <b>одну</b> причину змінитись.</div>
+      </div>
+
+      <div class="vs">
+        <div class="side bad">
+          <div class="lbl">❌ Порушення</div>
+          <code>class DeliveryService:</code>
+          <code>    def create(self, data):</code>
+          <code>        # валідація + геокодування</code>
+          <code>        # + SQL-запит + відправка email</code>
+          <code>        # + форматування HTTP-відповіді</code>
+        </div>
+        <div class="side good">
+          <div class="lbl">✅ Дотримано (як у проєкті)</div>
+          <code>class DeliveryService:</code>
+          <code>    def __init__(self, repo, geocoder, ...): ...</code>
+          <code>    async def create(self, payload):</code>
+          <code>        # оркеструє, не РОБИТЬ усе сам</code>
+        </div>
+      </div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="solid-head"><span class="solid-letter">O</span><span class="num">6</span></span> Open/Closed Principle</h2>
+      <p class="section-desc">"Відкритий для розширення, закритий для модифікації" (Бертран Мейєр).</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/plans.py — реальний код з проєкту</span></div>
+        <pre><code>PLAN_ROUTE_LIMITS: dict[SubscriptionPlan, int | None] = {
+    SubscriptionPlan.TRIAL: 50,
+    SubscriptionPlan.FREE: 5,
+    SubscriptionPlan.SMALL: None,
+    <span class="cmt"># додати новий тарифний план -- ДОДАТИ рядок у словник,</span>
+    <span class="cmt"># жодна функція, що ЧИТАЄ цей словник, не змінюється</span>
+}</code></pre>
+      </div>
+
+      <p>Новий тарифний план додається <b>без зміни</b> жодної функції, що перевіряє квоту
+      (<code>require_route_quota</code>) — вона й далі просто читає словник за ключем. Це і є
+      "закритий для модифікації" (наявний код перевірки не чіпається) + "відкритий для
+      розширення" (новий план — це нові дані, не новий код). Порушенням був би
+      <code>if plan == "trial": ... elif plan == "free": ...</code> ланцюжок, що доводилось би
+      правити на кожен новий план.</p>
+    </section>
+
+    <section id="s7">
+      <h2><span class="solid-head"><span class="solid-letter">L</span><span class="num">7</span></span> Liskov Substitution Principle</h2>
+      <p class="section-desc">"Об'єкти підкласу мають бути взаємозамінні з об'єктами базового класу, не ламаючи коректність програми" (Барбара Лісков).</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">класичний приклад порушення (не з цього проєкту, канонічний)</span></div>
+        <pre><code>class Rectangle:
+    def set_width(self, w): self.width = w
+    def set_height(self, h): self.height = h
+
+class Square(Rectangle):           <span class="cmt"># математично "квадрат Є прямокутник" -- та ООП тут зраджує</span>
+    def set_width(self, w):
+        self.width = self.height = w   <span class="cmt"># порушує ОЧІКУВАННЯ коду, що працює з Rectangle</span>
+    def set_height(self, h):
+        self.width = self.height = h
+
+def resize(rect: Rectangle):
+    rect.set_width(5)
+    rect.set_height(10)
+    assert rect.width * rect.height == 50   <span class="cmt"># ПАДАЄ для Square -- підклас непередбачувано зламав контракт</span></code></pre>
+      </div>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Дотримано в проєкті:</b> <code>TenantScopedRepository</code>
+        (туторіал 1) успадковує <code>BaseRepository</code> й <b>додає</b> поведінку
+        (org-scoping), не порушуючи жодного очікування базового контракту — усюди, де
+        очікується <code>BaseRepository</code> з методами <code>get</code>/<code>create</code>/
+        <code>list</code>, <code>TenantScopedRepository</code> працює коректно, з тими самими
+        сигнатурами й тим самим сенсом методів.</div>
+      </div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="solid-head"><span class="solid-letter">I</span><span class="num">8</span></span> Interface Segregation Principle</h2>
+      <p class="section-desc">"Жоден клієнт не повинен залежати від методів, якими він не користується."</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/dependencies.py — реальний код з проєкту</span></div>
+        <pre><code><span class="cmt"># НЕ один "мега-провайдер усього" -- окремі, вузькі DI-функції на кожну потребу:</span>
+def get_delivery_repository(db=Depends(get_db), current_user=Depends(get_current_user)): ...
+def get_vehicle_repository(db=Depends(get_db), current_user=Depends(get_current_user)): ...
+def get_route_repository(db=Depends(get_db), current_user=Depends(get_current_user)): ...</code></pre>
+      </div>
+
+      <p>Ендпоінт, якому потрібен лише <code>VehicleRepository</code>, оголошує залежність саме
+      на нього — не отримує "про всяк випадок" доступ до <code>DeliveryRepository</code> чи
+      <code>RouteRepository</code>. Кожна DI-функція — вузький, сфокусований "інтерфейс", а не
+      один величезний об'єкт-контейнер із доступом до всього одразу.</p>
+
+      <div class="callout bad">
+        <div class="ic">❌</div>
+        <div class="body"><b>Порушення виглядало б так:</b> один
+        <code>get_all_repositories()</code>, що повертає об'єкт з усіма репозиторіями проєкту
+        одразу — кожен ендпоінт технічно отримував би доступ до всього, навіть якщо реально
+        використовує один метод одного репозиторію, ускладнюючи і тестування (треба мокати
+        "все"), і розуміння реальних залежностей коду.</div>
+      </div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="solid-head"><span class="solid-letter">D</span><span class="num">9</span></span> Dependency Inversion Principle</h2>
+      <p class="section-desc">"Модулі високого рівня не повинні залежати від модулів низького рівня — обидва повинні залежати від абстракцій." Найважливіший принцип для розуміння всієї архітектури проєкту.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/dependencies.py — реальний код з проєкту</span></div>
+        <pre><code>def get_delivery_service(
+    repo: DeliveryRepository = Depends(get_delivery_repository),
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+    organization: Organization = Depends(get_current_organization),
+) -> DeliveryService:
+    return DeliveryService(repo, GoogleGeocodingClient(), org_repo, organization)
+    <span class="cmt">#                      ^^^^^^^^^^^^^^^^^^^^^^^^^ -- ВСТАВЛЯЄТЬСЯ ззовні, не створюється ВСЕРЕДИНІ DeliveryService</span></code></pre>
+      </div>
+
+      <p><code>DeliveryService</code> (модуль високого рівня — бізнес-логіка) <b>не знає</b>,
+      як саме влаштований геокодер (модуль низького рівня — конкретний HTTP-клієнт до Google
+      Maps) — отримує його готовим ззовні, через конструктор. Це і є "інверсія залежності":
+      природний напрямок залежності був би "сервіс залежить від конкретного класу
+      geocoding-клієнта", DI розвертає це на "обидва залежать від форми методу
+      <code>geocode(address)</code>" (Adapter з туторіалу 14 + Protocol з туторіалу 6).</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Саме той самий принцип, на якому стоїть Angular DI чи React Context: компонент
+        оголошує "мені потрібен сервіс із такою формою", а хто саме його створює й з чим —
+        компонент не знає і не повинен знати (детально — туторіал 1, розділ 9).
+      </div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина III · Практика й пастки</div><div class="line"></div></div>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Міксини (Mixins) — успадкування заради здатності, не ієрархії</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>class TimestampMixin:
+    <span class="cmt">"""Додає created_at/updated_at -- НЕ призначений існувати сам по собі."""</span>
+    created_at: datetime
+    updated_at: datetime
+    def touch(self):
+        self.updated_at = datetime.now(UTC)
+
+class SoftDeleteMixin:
+    <span class="cmt">"""Додає позначку видалення БЕЗ реального DELETE-запиту."""</span>
+    deleted_at: datetime | None = None
+    def soft_delete(self):
+        self.deleted_at = datetime.now(UTC)
+
+class Delivery(Base, TimestampMixin, SoftDeleteMixin):
+    <span class="cmt"># успадковує ДВІ незалежні "здатності" одночасно, а не єдину лінію предків</span>
+    ...</code></pre>
+      </div>
+      <p>Міксин — клас, що <b>не призначений</b> існувати самостійно (лише в комбінації через
+      множинне успадкування) і додає одну конкретну, вузьку "здатність" (timestamp-поля,
+      серіалізацію, м'яке видалення). Це проміжна точка між "чистою композицією" й "класичною
+      ієрархією успадкування" (туторіал 6, розділ 12) — множинне успадкування, але кожен
+      предок абсолютно незалежний від інших, без спільної "лінії" походження.</p>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> God Object — коли SRP порушено масштабно</h2>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>God Object (антипатерн)</b> — один клас, що знає й робить
+        занадто багато: валідація, БД-доступ, HTTP, бізнес-правила, форматування — усе в
+        одному місці. Пряме, масштабоване порушення SRP (розділ 5). Симптоми: клас на тисячі
+        рядків, зміна в одній "темі" (наприклад, форматі email) регулярно ламає щось геть
+        не пов'язане (наприклад, розрахунок маршруту), бо все живе в тому самому файлі й
+        неявно пов'язане спільним станом.</div>
+      </div>
+      <p class="muted">Шарувата архітектура цього проєкту (туторіал 1) — структурний захист
+      саме від God Object: фізично складно "накопичити все в одному місці", коли API, логіка й
+      доступ до даних живуть у трьох різних пакетах з чіткими межами.</p>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Коли SOLID шкодить — передчасна абстракція</h2>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Той самий висновок, що й у туторіалі 14</b> (розділ 6, "коли
+        патерн — зайва складність"): DIP заради самого DIP — інтерфейс/абстракція для класу, у
+        якого й близько не передбачається друга реалізація — додає непряму складність без
+        жодної реальної вигоди. Якщо <code>GoogleGeocodingClient</code> ніколи не планується
+        міняти на інший сервіс, обгортання його в зайвий абстрактний інтерфейс "про всяк
+        випадок" — це вартість сьогодні заради гіпотетичної гнучкості, яка може ніколи не
+        знадобитись.</div>
+      </div>
+      <p>SOLID — набір евристик, що підказують, <i>де</i> варто закласти гнучкість, а не
+      обов'язкові правила, які треба застосувати <i>скрізь</i> одразу. Найкращий сигнал "тут
+      потрібна абстракція" — коли друга реалізація вже реально з'явилась чи ось-ось з'явиться,
+      а не абстрактне "а раптом колись".</p>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Каверзні питання співбесіди</h2>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чи існує в Python справжня інкапсуляція (private-атрибути)?</summary>
+        <div class="a">Ні — <code>_attr</code> це лише домовленість, <code>__attr</code>
+        технічно доступний через name mangling (<code>obj._ClassName__attr</code>). Python
+        покладається на дисципліну спільноти, а не на примусовий захист компілятором.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим <code>abc.ABC</code> відрізняється від <code>typing.Protocol</code> для абстракції?</summary>
+        <div class="a"><code>ABC</code> — номінативна: явне успадкування, перевірка при
+        інстанціюванні в рантаймі. <code>Protocol</code> — структурна: підходить будь-який
+        клас з потрібними методами, без явного успадкування, перевірка типово статична.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Класичний приклад Rectangle/Square — у чому саме порушення LSP?</summary>
+        <div class="a"><code>Square</code>, успадковуючи <code>Rectangle</code>, змінює
+        поведінку <code>set_width</code>/<code>set_height</code> так, що код, написаний під
+        контракт <code>Rectangle</code> (незалежна зміна ширини й висоти), ламається для
+        <code>Square</code> — підклас не є прозоро взаємозамінним із базовим класом.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Наведіть приклад порушення Open/Closed Principle.</summary>
+        <div class="a">Довгий ланцюжок <code>if plan == "trial": ... elif plan == "free": ...</code>,
+        який доводиться редагувати щоразу, коли з'являється новий тарифний план — код,
+        який має "закриватись" від змін, натомість змінюється щоразу разом із даними.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому Dependency Inversion — не те саме, що Dependency Injection?</summary>
+        <div class="a">Dependency Inversion — принцип ("залежати від абстракцій, не від
+        конкретики"). Dependency Injection — техніка, ЯК цього досягти на практиці
+        (передавати залежності ззовні через конструктор/параметр, а не створювати їх
+        усередині). DI — один із найпоширеніших способів реалізувати DIP, але не єдиний, і
+        це не синоніми.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що таке міксин і чим він відрізняється від звичайного базового класу?</summary>
+        <div class="a">Міксин не призначений існувати самостійно — додає одну вузьку,
+        незалежну "здатність" через множинне успадкування. Звичайний базовий клас зазвичай
+        описує "є" (is-a) відношення й може існувати сам по собі як повноцінний тип.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Коли застосування SOLID стає шкідливим?</summary>
+        <div class="a">Коли абстракція вводиться "про всяк випадок", без реальної другої
+        реалізації на горизонті — додає непряму складність (зайвий рівень індирекції,
+        складніше читати код) без жодної фактичної вигоди в конкретний момент.</div>
+      </details>
+
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Шпаргалка</h2>
+      <div class="cheat">
+        <table>
+          <tr><th>Принцип</th><th>Одне речення</th><th>Приклад із проєкту</th></tr>
+          <tr><td><b>S</b>ingle Responsibility</td><td>Одна причина для зміни</td><td>Шари api/services/repositories (туторіал 1)</td></tr>
+          <tr><td><b>O</b>pen/Closed</td><td>Розширення без модифікації</td><td><code>PLAN_ROUTE_LIMITS</code> — новий план = новий рядок словника</td></tr>
+          <tr><td><b>L</b>iskov Substitution</td><td>Підклас не ламає контракт базового</td><td><code>TenantScopedRepository extends BaseRepository</code></td></tr>
+          <tr><td><b>I</b>nterface Segregation</td><td>Вузькі, сфокусовані інтерфейси</td><td>Окрема DI-функція на кожен репозиторій</td></tr>
+          <tr><td><b>D</b>ependency Inversion</td><td>Залежати від абстракцій, не конкретики</td><td>DI через <code>Depends(...)</code> у всьому <code>dependencies.py</code></td></tr>
+        </table>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал побудований на класичних принципах ООП і SOLID (Роберт Мартін, Барбара Лісков,
+  Бертран Мейєр) та реальному коді репозиторію <code>ai-delivery-planner-backend</code>.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

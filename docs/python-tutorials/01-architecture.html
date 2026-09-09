@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1. Архітектура проєкту — AI Delivery Planner</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--accent); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:760px; margin:0;}
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0; counter-reset:tocnum;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout b, .callout strong{color:inherit;}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Туторіал 1 з 3</div>
+  <h1>Структура та архітектура проєкту</h1>
+  <p class="lead">
+    Покроковий тур по тому, як влаштований бекенд: куди дивитись першим ділом, де конфігурація,
+    який принцип побудови шарів і чому саме так. З порівнянням до інших підходів в індустрії
+    та аналогіями до фронтенд-світу, звідки ви прийшли.
+  </p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🎯 До співбесіди</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html" class="active">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s0">0. Загальна ідея (аналогія з фронтендом)</a></li>
+      <li><a href="#s1">1. Дерево каталогів</a></li>
+      <li><a href="#s2">2. Точка входу: app/main.py</a></li>
+      <li><a href="#s3">3. Шар api/ — HTTP і більше нічого</a></li>
+      <li><a href="#s4">4. Шар schemas/ — контракти даних</a></li>
+      <li><a href="#s5">5. Шар services/ — бізнес-логіка</a></li>
+      <li><a href="#s6">6. Шар repositories/ — доступ до БД</a></li>
+      <li><a href="#s7">7. db/models/ — ORM-моделі</a></li>
+      <li><a href="#s8">8. core/ — наскрізні речі й конфіг</a></li>
+      <li><a href="#s9">9. Dependency Injection у FastAPI</a></li>
+      <li><a href="#s10">10. Наскрізний приклад: один запит</a></li>
+      <li><a href="#s11">11. Добре / погано на реальному коді</a></li>
+      <li><a href="#s12">12. Інші підходи в індустрії</a></li>
+      <li><a href="#s13">13. Підсумок і що далі</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s0">
+      <h2><span class="num">00</span> Загальна ідея</h2>
+      <p class="section-desc">Перш ніж дивитись на файли — головна відмінність мислення бекенд- і фронтенд-розробника.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        У фронтенді ви звикли ділити код на <b>компоненти</b> (UI), <b>стор/хуки</b> (стан і логіка),
+        <b>API-клієнт</b> (запити). Бекенд ділиться дуже схоже, тільки замість UI —
+        <b>HTTP-шар</b>, замість стора — <b>сервіси</b> (бізнес-логіка), а замість API-клієнта —
+        <b>репозиторії</b>, які "розмовляють" із базою даних замість зовнішнього API.
+      </div>
+
+      <p>
+        Цей проєкт побудований як класична <b>шарувата (layered) архітектура</b>:
+        кожен шар знає тільки про шар одразу під собою і нічого не знає про шари вище.
+        Роутер не знає, як влаштована база даних. Репозиторій не знає, що таке HTTP.
+        Це дозволяє змінювати один шар (наприклад, перейти з Postgres на іншу БД),
+        не чіпаючи інші.
+      </p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 760 170" role="img" aria-label="Запит іде вниз через api, services, repositories, db/models; відповідь повертається назад одразу як типізована Pydantic-схема, не тим самим шляхом по одному й тому ж каналу">
+          <defs>
+            <marker id="a1-fwd" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+            <marker id="a1-back" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+            </marker>
+          </defs>
+          <g font-size="12.5">
+            <rect x="15" y="30" width="130" height="54" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="80" y="52" text-anchor="middle">HTTP</text>
+            <text x="80" y="67" text-anchor="middle">запит</text>
+
+            <rect x="162.5" y="30" width="130" height="54" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="227.5" y="52" text-anchor="middle">api/</text>
+            <text x="227.5" y="67" text-anchor="middle">(роутер)</text>
+
+            <rect x="310" y="30" width="130" height="54" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="375" y="52" text-anchor="middle">services/</text>
+            <text x="375" y="67" text-anchor="middle">(логіка)</text>
+
+            <rect x="457.5" y="30" width="130" height="54" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="522.5" y="52" text-anchor="middle">repositories/</text>
+            <text x="522.5" y="67" text-anchor="middle">(SQL)</text>
+
+            <rect x="605" y="30" width="130" height="54" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="670" y="52" text-anchor="middle">db/models/</text>
+            <text x="670" y="67" text-anchor="middle">(таблиця)</text>
+          </g>
+
+          <line x1="145" y1="57" x2="160" y2="57" stroke="currentColor" stroke-width="1.3" marker-end="url(#a1-fwd)"/>
+          <line x1="292.5" y1="57" x2="308" y2="57" stroke="currentColor" stroke-width="1.3" marker-end="url(#a1-fwd)"/>
+          <line x1="440" y1="57" x2="455.5" y2="57" stroke="currentColor" stroke-width="1.3" marker-end="url(#a1-fwd)"/>
+          <line x1="587.5" y1="57" x2="603" y2="57" stroke="currentColor" stroke-width="1.3" marker-end="url(#a1-fwd)"/>
+
+          <text x="375" y="128" text-anchor="middle" fill="var(--accent)" font-size="12.5">відповідь ← схема Pydantic (RouteRead, OptimizeResult...)</text>
+          <line x1="734" y1="144" x2="17" y2="144" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#a1-back)"/>
+        </svg>
+        <figcaption>Дані йдуть вниз через шари по черзі (жоден не пропускається) — і повертаються назад одразу типізованою Pydantic-схемою, а не сирими даними з БД.</figcaption>
+      </figure>
+    </section>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Дерево каталогів</h2>
+      <p class="section-desc">Ось реальна структура <code>app/</code> в цьому репозиторії. Читайте зверху вниз — саме в такому порядку варто знайомитись із кодом вперше.</p>
+
+      <div class="tree"><span class="c">app/</span>
+├── <span class="d">main.py</span>              <span class="c"># точка входу — FastAPI застосунок, реєстрація роутерів</span>
+├── <span class="d">core/</span>                <span class="c"># наскрізні речі: конфіг, DI, безпека, помилки, ліміти</span>
+│   ├── config.py           <span class="c"># Settings — усі env-змінні, типізовано</span>
+│   ├── dependencies.py     <span class="c"># DI-функції для FastAPI Depends(...)</span>
+│   ├── security.py         <span class="c"># хешування паролів, JWT</span>
+│   ├── rate_limiting.py    <span class="c"># захист від брутфорсу/спаму реєстрацій</span>
+│   ├── error_handlers.py   <span class="c"># єдиний формат помилок для всього API</span>
+│   └── plans.py            <span class="c"># тарифні плани й ліміти використання</span>
+├── <span class="d">api/</span>                 <span class="c"># HTTP-шар — по одному підпакету на "вертикаль"</span>
+│   ├── auth/router.py
+│   ├── deliveries/router.py
+│   ├── routes/router.py
+│   ├── depots/, drivers/, vehicles/, dashboard/, organizations/, ai/
+├── <span class="d">schemas/</span>             <span class="c"># Pydantic-моделі запитів/відповідей (DTO)</span>
+├── <span class="d">services/</span>            <span class="c"># бізнес-логіка й оркестрація</span>
+│   ├── deliveries/service.py
+│   ├── route_optimizer/     <span class="c"># OR-Tools солвер, розбитий на під-модулі</span>
+│   ├── ai/                  <span class="c"># виклики OpenAI (chat, planner, explainer...)</span>
+│   ├── geocoding/client.py  <span class="c"># Google Maps Geocoding API</span>
+│   ├── importers/           <span class="c"># CSV/Excel парсинг</span>
+│   └── notifications/email.py
+├── <span class="d">repositories/</span>        <span class="c"># доступ до БД, по одному на модель</span>
+│   ├── base.py             <span class="c"># BaseRepository + TenantScopedRepository</span>
+│   └── ...
+├── <span class="d">db/</span>
+│   ├── models/              <span class="c"># SQLAlchemy ORM-класи (таблиці)</span>
+│   ├── migrations/          <span class="c"># Alembic-міграції (версії схеми БД)</span>
+│   └── session.py           <span class="c"># async engine + фабрика сесій</span>
+├── <span class="d">workers/</span>             <span class="c"># Celery — фонові задачі (поки заготовка)</span>
+└── <span class="d">tests/</span>               <span class="c"># pytest + pytest-asyncio</span></div>
+
+      <div class="callout info">
+        <div class="ic">🧭</div>
+        <div class="body"><b>З чого почати читати код уперше:</b> <code>app/main.py</code> → один роутер у <code>app/api/</code>
+        (наприклад <code>routes/router.py</code>) → сервіс, який він викликає → репозиторій → модель. Це і є маршрут одного запиту.</div>
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Точка входу: <code>app/main.py</code></h2>
+      <p class="section-desc">Патерн "application factory" — застосунок збирається функцією, а не створюється як глобальний об'єкт напряму.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/main.py</span></div>
+        <pre><code>def create_app() -> FastAPI:
+    <span class="cmt">"""Build and configure the FastAPI application."""</span>
+    app = FastAPI(title=settings.APP_NAME)
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.CORS_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    register_exception_handlers(app)
+
+    app.include_router(auth_router, prefix=f"{API_V1_PREFIX}/auth")
+    app.include_router(deliveries_router, prefix=f"{API_V1_PREFIX}/deliveries")
+    <span class="cmt">... ще 7 роутерів ...</span>
+
+    @app.get("/health")
+    async def health() -> dict:
+        return {"status": "ok"}
+
+    return app
+
+app = create_app()</code></pre>
+      </div>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Це майже те саме, що функція <code>createApp()</code> у Vue або фабрика <code>configureStore()</code> у Redux —
+        збирає всі шматки (мідлвари, роутери, обробники помилок) в один об'єкт замість того, щоб
+        розкидати конфігурацію по імпортах з побічними ефектами.
+      </div>
+
+      <p><b>Чому це зручно:</b> у тестах можна викликати <code>create_app()</code> ще раз з іншими налаштуваннями
+      (наприклад, іншою тестовою БД), не чіпаючи глобальний стан. Один <code>app.py</code>-файл — і одразу видно
+      <i>весь</i> склад застосунку: які мідлвари, які роутери, які префікси URL.</p>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Шар <code>api/</code> — тільки HTTP</h2>
+      <p class="section-desc">Роутери відповідають за одну річ: перетворити HTTP-запит на виклик сервісу і сервісну відповідь — на HTTP-відповідь. Ніякої бізнес-логіки тут бути не повинно.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/api/routes/router.py</span></div>
+        <pre><code>router = APIRouter(tags=["routes"], dependencies=[Depends(get_current_user)])
+
+@router.post("/optimize", response_model=OptimizeResult)
+async def optimize_routes(
+    payload: OptimizeRequest,
+    organization: Organization = Depends(require_route_quota),
+    service: RouteOptimizerService = Depends(get_route_optimizer_service),
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+) -> OptimizeResult:
+    <span class="cmt">"""Run the OR-Tools solver to build optimized multi-driver routes."""</span>
+    try:
+        result = await service.optimize(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    if result.routes:
+        await org_repo.increment_route_count(organization.id, by=len(result.routes))
+
+    return result</code></pre>
+      </div>
+
+      <p>Зверніть увагу: <b>вся</b> логіка солвера (OR-Tools, побудова маршрутів) — усередині
+      <code>service.optimize(...)</code>. Роутер лише: перевіряє квоту (через DI-залежність
+      <code>require_route_quota</code>), викликає сервіс, конвертує <code>ValueError</code> у HTTP 422,
+      і оновлює лічильник. Це навмисно тонкий шар.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Роутер ≈ обробник маршруту в Next.js API route або контролер у NestJS: він "проводка", а не мозок.
+        Мозок — у сервісі, як бізнес-логіка в хуку/thunk-і, а не в JSX-компоненті.
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Шар <code>schemas/</code> — контракти даних</h2>
+      <p class="section-desc">Pydantic-моделі описують форму вхідних і вихідних даних — і одночасно валідують їх у рантаймі.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Уявіть <b>TypeScript interface + Zod-схему в одному файлі</b>, яка ще й реально виконується
+        на кожному запиті: якщо клієнт надішле <code>email</code> без "@" або пароль коротший за 8
+        символів — запит впаде з 422 ще <i>до</i> того, як код роутера взагалі почне виконуватись.
+        У TS такого немає "з коробки" — типи стираються в рантаймі, тут же вони живі.
+      </div>
+
+      <p>Схеми — це "прикордонний контроль" між зовнішнім світом (JSON з фронтенду) і внутрішнім
+      кодом (Python-об'єкти, ORM-моделі). Помилка валідації автоматично перетворюється на
+      читабельну відповідь — дивіться <code>app/core/error_handlers.py</code>, розділ про безпеку
+      в туторіалі 2.</p>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Шар <code>services/</code> — бізнес-логіка</h2>
+      <p class="section-desc">Тут живе те, "що насправді робить" фіча: оркестрація кількох репозиторіїв, зовнішніх API, розрахунки.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/services/deliveries/service.py</span></div>
+        <pre><code>class DeliveryService:
+    <span class="cmt">"""Application-level orchestration for the deliveries vertical slice."""</span>
+
+    def __init__(self, repository, geocoder, org_repo, organization):
+        self.repository = repository
+        self.geocoder = geocoder       <span class="cmt"># зовнішній HTTP-клієнт (Google Geocoding)</span>
+        self.org_repo = org_repo       <span class="cmt"># для перевірки квоти</span>
+        self.organization = organization
+
+    async def _create_from_fields(self, fields: dict) -> Delivery:
+        await self._consume_geocode_quota()          <span class="cmt"># 1. перевір ліміт</span>
+        coordinates = await self.geocoder.geocode(fields["address"])  <span class="cmt"># 2. зовнішній API</span>
+        fields["latitude"], fields["longitude"] = coordinates or (None, None)
+        return await self.repository.create(**fields) <span class="cmt"># 3. запиши в БД</span></code></pre>
+      </div>
+
+      <p>Один метод <code>_create_from_fields</code> координує <b>три різні системи</b>: тарифну логіку
+      (квота), зовнішній платний API (геокодування) і базу даних. Саме тому це не в роутері й
+      не в репозиторії — це "клей", специфічний для домену.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Сервіс ≈ Redux thunk або TanStack Query <code>mutationFn</code>, яка робить кілька кроків
+        і кілька запитів заради однієї користувацької дії — тільки тут це виконується на сервері,
+        а не в браузері.
+      </div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Шар <code>repositories/</code> — доступ до БД</h2>
+      <p class="section-desc">Repository pattern: усі SQL-запити для однієї моделі — в одному класі, замість того щоб розкидати <code>session.execute(...)</code> по всьому коду.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/repositories/base.py</span></div>
+        <pre><code>class BaseRepository(Generic[ModelType]):
+    <span class="cmt">"""Generic repository over a single SQLAlchemy model."""</span>
+
+    async def get(self, id) -> ModelType | None:
+        return await self.session.get(self.model, id)
+
+    async def create(self, **kwargs) -> ModelType:
+        instance = self.model(**kwargs)
+        self.session.add(instance)
+        await self.session.commit()
+        await self.session.refresh(instance)
+        return instance
+
+
+class TenantScopedRepository(BaseRepository[ModelType]):
+    <span class="cmt">"""A BaseRepository whose model has an `organization_id` column.
+
+    The organization is bound once at construction ... so every
+    read/write this repository makes is automatically confined to that
+    organization — there's no method call site where a caller could
+    forget to scope a query."""</span>
+
+    async def get(self, id) -> ModelType | None:
+        stmt = select(self.model).where(
+            self.model.id == id, self.model.organization_id == self.organization_id
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()</code></pre>
+      </div>
+
+      <p><code>TenantScopedRepository</code> — ключовий клас проєкту: організація (тенант)
+      прив'язується <b>один раз</b> при створенні репозиторію (в DI, з JWT-токена користувача),
+      і після цього <i>кожен</i> запит до БД автоматично фільтрується по <code>organization_id</code>.
+      Розробник фізично не може написати запит, що поверне чужі дані — бо він просто не має
+      доступу до "нескопованого" методу. Це не лише зручність, а й захист (детальніше — туторіал 2).</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Схоже на те, як `axios`-інстанс можна створити з "baseURL" і заголовком авторизації один раз,
+        і далі всі запити через нього автоматично його використовують — тільки тут "прив'язка" це
+        фільтр по орендарю (org), а не заголовок.
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> <code>db/models/</code> — ORM-моделі</h2>
+      <p class="section-desc">SQLAlchemy 2.0 style, типізовано через <code>Mapped[...]</code>. Кожен файл — одна таблиця.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/db/models/base.py</span></div>
+        <pre><code>class Base(DeclarativeBase):
+    <span class="cmt">"""Base class for all SQLAlchemy models."""</span></code></pre>
+      </div>
+      <p>Усе інше (organization, user, delivery, route, route_stop, vehicle, driver, depot,
+      chat_message, delivery_note) наслідується від цього класу. Зв'язок з реальною схемою БД
+      підтримується через Alembic-міграції в <code>db/migrations/versions/</code> — кожна зміна
+      моделі супроводжується окремим файлом-міграцією, який можна прогнати вперед і назад.
+      На проді <code>fly.toml</code> запускає <code>alembic upgrade head</code> автоматично перед
+      кожним деплоєм (<code>release_command</code>).</p>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> <code>core/</code> — наскрізні речі й конфіг</h2>
+      <p class="section-desc">Усе, що не належить конкретному домену (deliveries, routes...), а обслуговує весь застосунок.</p>
+
+      <table>
+        <tr><th>Файл</th><th>Відповідає за</th></tr>
+        <tr><td><code>config.py</code></td><td>Типізовані налаштування з env / <code>.env</code> (Pydantic <code>BaseSettings</code>)</td></tr>
+        <tr><td><code>dependencies.py</code></td><td>Усі DI-функції: сесія БД, поточний користувач, репозиторії, сервіси</td></tr>
+        <tr><td><code>security.py</code></td><td>Хешування паролів, створення/перевірка JWT</td></tr>
+        <tr><td><code>rate_limiting.py</code></td><td>Ліміти запитів по IP для реєстрації/логіну</td></tr>
+        <tr><td><code>error_handlers.py</code></td><td>Єдиний формат JSON-помилок для всього API</td></tr>
+        <tr><td><code>plans.py</code></td><td>Тарифні плани й ліміти використання (routes/geocode/AI)</td></tr>
+      </table>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/config.py</span></div>
+        <pre><code>class Settings(BaseSettings):
+    <span class="cmt">"""Typed application configuration."""</span>
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/..."
+    JWT_SECRET: str = "change-me"
+    OPENAI_API_KEY: str = ""
+    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    <span class="cmt"># ... і т.д, все типізовано</span>
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()</code></pre>
+      </div>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Це як типізований <code>import.meta.env</code> у Vite, тільки Pydantic ще й <b>валідує</b>
+        типи при старті застосунку: якщо хтось задасть <code>ACCESS_TOKEN_EXPIRE_MINUTES=abc</code>
+        замість числа — застосунок не запуститься взагалі, а не впаде десь посеред роботи.
+        <code>@lru_cache</code> означає "прочитати .env один раз і закешувати" — не на кожен запит.
+      </div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Dependency Injection у FastAPI</h2>
+      <p class="section-desc"><code>Depends(...)</code> — це серце того, як усі шари зшиваються докупи без глобальних синглтонів.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/dependencies.py</span></div>
+        <pre><code>def get_delivery_repository(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> DeliveryRepository:
+    return DeliveryRepository(db, current_user.organization_id)
+
+
+def get_delivery_service(
+    repo: DeliveryRepository = Depends(get_delivery_repository),
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+    organization: Organization = Depends(get_current_organization),
+) -> DeliveryService:
+    return DeliveryService(repo, GoogleGeocodingClient(), org_repo, organization)</code></pre>
+      </div>
+
+      <p>Це <b>ланцюжок залежностей</b>: щоб зібрати <code>DeliveryService</code>, FastAPI спочатку
+      сам розв'яже <code>get_delivery_repository</code>, який своєю чергою вимагає
+      <code>get_db</code> (сесія БД) і <code>get_current_user</code> (розкодований JWT). Кожна
+      функція — маленька і testable окремо; підмінити будь-яку ланку в тестах — тривіально
+      (<code>app.dependency_overrides[...]</code>).</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Найближчий аналог — <b>DI-контейнер Angular</b> або <b>React Context + custom hooks</b>,
+        де компонент оголошує "мені потрібен цей сервіс", а хто саме його створює й з чим —
+        компонент не знає і не повинен знати. FastAPI робить це на рівні функцій, а не класів
+        з декораторами <code>@Injectable()</code>.
+      </div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Наскрізний приклад: один запит від і до</h2>
+      <p class="section-desc">Простежимо <code>POST /api/v1/routes/optimize</code> через усі шари — це найкращий спосіб "відчути" архітектуру.</p>
+
+      <ol>
+        <li><b>HTTP</b> — клієнт шле JSON з <code>delivery_ids</code>, <code>vehicle_ids</code>, <code>depot_id</code>.</li>
+        <li><b>DI перед виконанням роутера</b> — FastAPI розкодовує JWT (<code>get_current_user</code>),
+        тягне організацію, перевіряє квоту (<code>require_route_quota</code>), збирає
+        <code>RouteOptimizerService</code> з шести репозиторіїв.</li>
+        <li><b>Роутер</b> (<code>api/routes/router.py</code>) валідує тіло запиту через схему
+        <code>OptimizeRequest</code>, викликає <code>service.optimize(payload)</code>.</li>
+        <li><b>Сервіс</b> (<code>services/route_optimizer/service.py</code>) тягне доставки, машини,
+        водіїв і депо через репозиторії; будує <code>RoutingProblem</code>; віддає його в
+        <code>RouteSolver</code> (OR-Tools); мапить рішення назад у доставки/зупинки; зберігає
+        нові <code>Route</code>/<code>RouteStop</code> через репозиторії.</li>
+        <li><b>Репозиторій</b> виконує реальний SQL: <code>INSERT INTO routes ...</code>,
+        <code>INSERT INTO route_stops ...</code>, скоуплено по <code>organization_id</code>.</li>
+        <li><b>Назад нагору</b>: сервіс повертає Pydantic-схему <code>OptimizeResult</code>,
+        роутер оновлює лічильник використаних маршрутів і віддає її як JSON — FastAPI сам
+        серіалізує схему у відповідь.</li>
+      </ol>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body">Жоден шар не "перестрибує" через сусідній: роутер ніколи не робить
+        <code>session.execute(...)</code> напряму, сервіс ніколи не читає <code>request.headers</code>.
+        Якщо колись побачите таке в PR — це сигнал, що архітектурна межа порушена.</div>
+      </div>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Добре / погано на реальному коді</h2>
+      <p class="section-desc">Конкретні рішення з цього проєкту — і чому вони саме такі.</p>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Добре — org-scoping вбудований у репозиторій, а не "згадується" у кожному запиті.</b>
+        <code>TenantScopedRepository.get()</code> завжди додає <code>WHERE organization_id = ...</code>.
+        Розробнику фізично ніде забути цей фільтр — немає методу, який його не має.</div>
+      </div>
+
+      <div class="callout bad">
+        <div class="ic">❌</div>
+        <div class="body"><b>Як було б погано (гіпотетично, не з цього проєкту):</b> якби кожен
+        роутер сам писав <code>select(Delivery).where(Delivery.id == id)</code> і <i>окремо</i>
+        десь перевіряв <code>if delivery.organization_id != current_user.organization_id: raise 403</code>
+        — рано чи пізно хтось забув би цю перевірку в одному з 30 ендпоінтів, і це стало б
+        витоком чужих даних (IDOR).</div>
+      </div>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Добре — роутери тонкі.</b> <code>api/routes/router.py</code> не містить
+        жодного рядка про OR-Tools чи алгоритми — тільки виклик сервісу й перетворення помилок
+        у HTTP-статуси. Це означає, що логіку оптимізації можна юніт-тестувати без піднятого
+        HTTP-сервера (дивіться <code>test_route_optimizer_unit.py</code>).</div>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Компроміс, який варто розуміти:</b> DI-функції в <code>dependencies.py</code>
+        напряму створюють конкретні класи сервісів (<code>GoogleGeocodingClient()</code>,
+        <code>DeliveryService(...)</code>) — це простіше, ніж повноцінний DI-контейнер з
+        інтерфейсами/абстракціями (як буває в Java/NestJS), але означає, що підміна реалізації
+        (наприклад, інший провайдер геокодування) вимагає правити <code>dependencies.py</code>,
+        а не конфіг. Для проєкту такого розміру це свідомий і розумний trade-off простоти
+        проти гнучкості.</div>
+      </div>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Інші підходи в індустрії</h2>
+      <p class="section-desc">Шарувата архітектура — не єдиний спосіб. Ось як цей вибір виглядає поруч з іншими популярними підходами.</p>
+
+      <table>
+        <tr><th>Підхід</th><th>Ідея</th><th>Коли доцільний</th></tr>
+        <tr>
+          <td><b>Layered (цей проєкт)</b></td>
+          <td>api → services → repositories → db, кожен шар знає лише сусідній нижче</td>
+          <td>Середні API-проєкти, команда 1-10 людей, чіткі бізнес-правила</td>
+        </tr>
+        <tr>
+          <td><b>MVC (напр. Django)</b></td>
+          <td>Model-View-Controller, часто "товсті моделі" з логікою прямо в ORM-класах</td>
+          <td>Швидка розробка CRUD-важких застосунків, готовий адмін-панель "з коробки"</td>
+        </tr>
+        <tr>
+          <td><b>Clean / Hexagonal (Ports &amp; Adapters)</b></td>
+          <td>Бізнес-логіка в центрі, зовсім не знає про БД/HTTP/фреймворк — вони "адаптери" ззовні</td>
+          <td>Складна доменна логіка, потрібно легко міняти інфраструктуру, довгоживучі проєкти</td>
+        </tr>
+        <tr>
+          <td><b>Vertical Slice / Feature-based</b></td>
+          <td>Код групується по фічі (усі шари для "deliveries" в одній папці), а не по технічному шару</td>
+          <td>Великі команди, багато незалежних фіч, менше конфліктів при мерджі</td>
+        </tr>
+        <tr>
+          <td><b>Мікросервіси</b></td>
+          <td>Кожен домен — окремий деплойований застосунок зі своєю БД</td>
+          <td>Дуже велика команда/навантаження, потрібне незалежне масштабування й деплой частин</td>
+        </tr>
+      </table>
+
+      <p class="muted">Цікаво: <code>services/route_optimizer/</code> у цьому проєкті — вже трохи
+      "vertical slice" усередині шару services (builder, constraints, distance, mapper, models,
+      solver — все про одну фічу в одній папці). Тобто підходи не взаємовиключні — можна
+      комбінувати шарувату архітектуру "зверху" з feature-групуванням "усередині" одного шару.</p>
+
+      <div class="callout info">
+        <div class="ic">🎯</div>
+        <div class="body">Для проєкту такого розміру (один бекенд-сервіс, невелика команда,
+        одна БД) шарувата архітектура — розумний і поширений вибір: досить структури, щоб код
+        не перетворився на "спагеті", без накладних витрат мікросервісів чи повного Clean
+        Architecture з інтерфейсами на кожен клас.</div>
+      </div>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Підсумок і що далі</h2>
+      <p class="section-desc">Головне з цього туторіалу:</p>
+      <ul>
+        <li>Дані йдуть вниз (api → services → repositories → db) і назад вгору через Pydantic-схеми.</li>
+        <li>Кожен шар має одну відповідальність: роутер — HTTP, сервіс — логіка, репозиторій — SQL.</li>
+        <li><code>TenantScopedRepository</code> робить ізоляцію орендарів структурною, а не "за домовленістю".</li>
+        <li>DI (<code>Depends</code>) збирає весь цей ланцюжок автоматично й робить кожну частину тестованою окремо.</li>
+      </ul>
+      <div class="card">
+        Далі: <b><a href="02-async-and-security.html">Туторіал 2 — асинхронність і захист від атак</a></b> —
+        як цей самий код виконується без блокування, і що реально захищає API від зловживань.
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал згенеровано на основі реального коду репозиторію <code>ai-delivery-planner-backend</code> —
+  усі приклади й номери рядків відповідають фактичному стану проєкту на момент генерації.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

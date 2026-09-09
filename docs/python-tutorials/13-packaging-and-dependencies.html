@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>13. Пакування та залежності — AI Delivery Planner</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+  .badge-level{
+    display:inline-block; font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px;
+    background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);
+    text-transform:uppercase; letter-spacing:.04em; margin-left:10px; vertical-align:middle;
+  }
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · Пакування та залежності</div>
+  <h1>Пакування та залежності <span class="badge-level">Середня складність</span></h1>
+  <p class="lead">
+    <code>pyproject.toml</code>, віртуальні середовища, <code>pip</code> vs <code>poetry</code>
+    vs <code>uv</code> — тема, яку рідко пояснюють системно, хоча вона стосується буквально
+    кожного Python-проєкту. Розберемо на прикладі реального <code>pyproject.toml</code> цього
+    репозиторію.
+  </p>
+  <div class="pills">
+    <span class="pill">📦 venv, lock-файли, семвер</span>
+    <span class="pill">⚛️ Аналогії до npm/yarn</span>
+    <span class="pill">🔗 Реальний pyproject.toml</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🎯 До співбесіди</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html" class="active">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Віртуальне середовище — навіщо</a></li>
+      <li><a href="#s2">2. pip — базовий інструмент і його межі</a></li>
+      <li><a href="#s3">3. Lock-файли: чому "requirements.txt" не досить</a></li>
+      <li><a href="#s4">4. pip vs Poetry vs uv</a></li>
+      <li><a href="#s5">5. pyproject.toml нашого проєкту, розібраний</a></li>
+      <li><a href="#s6">6. Семантичне версіонування й оператори версій</a></li>
+      <li><a href="#s7">7. wheel vs sdist — що реально встановлюється</a></li>
+      <li><a href="#s8">8. Наш Dockerfile — trade-off без lock-файлу</a></li>
+      <li><a href="#s9">9. Каверзні питання співбесіди</a></li>
+      <li><a href="#s10">10. Шпаргалка</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s1">
+      <h2><span class="num">1</span> Віртуальне середовище — навіщо воно взагалі</h2>
+      <p class="section-desc">Перша річ, яка спантеличує людину з фронтенду: у Python немає автоматичної ізоляції залежностей "за замовчуванням", як <code>node_modules</code> в кожній папці проєкту.</p>
+
+      <p>Без віртуального середовища (venv) усі пакети, встановлені через <code>pip install</code>,
+      йдуть в <b>один спільний</b> системний Python — два проєкти з різними версіями однієї й
+      тієї самої бібліотеки (наприклад, <code>fastapi==0.100</code> і <code>fastapi==0.115</code>)
+      не можуть співіснувати. <code>python -m venv .venv</code> створює ізольовану копію
+      інтерпретатора й окрему теку для пакетів саме для цього проєкту.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        venv ≈ <code>node_modules</code>, тільки не створюється автоматично при
+        <code>npm install</code> — Python вимагає явно "увійти" в середовище
+        (<code>source .venv/bin/activate</code>) перед тим, як команди <code>python</code>/<code>pip</code>
+        почнуть використовувати саме цю ізольовану копію, а не системний Python.
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">2</span> <code>pip</code> — базовий інструмент і його межі</h2>
+      <p><code>pip install fastapi</code> — найпростіший спосіб встановити пакет; читає
+      <code>requirements.txt</code> для списку залежностей. Обмеження, які й привели до появи
+      Poetry/uv:</p>
+      <ul>
+        <li><code>pip</code> сам по собі <b>не генерує lock-файл</b> — <code>requirements.txt</code>
+        зазвичай пишеться вручну й легко розходиться з тим, що реально встановлено.</li>
+        <li>Немає вбудованого поділу на "залежності для розробки" vs "для проду" без окремих
+        файлів (<code>requirements-dev.txt</code>) чи розділів.</li>
+        <li>Розв'язання конфліктів версій між транзитивними залежностями — базове, історично
+        слабше за сучасні резолвери.</li>
+      </ul>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">3</span> Lock-файли: чому просто "версії в requirements.txt" не досить</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">requirements.txt — недостатньо точно</span></div>
+        <pre><code>fastapi>=0.100
+<span class="cmt"># сьогодні поставить 0.104.1, через місяць -- вже 0.115.0 (обидва задовольняють >=0.100)</span>
+<span class="cmt"># транзитивні залежності fastapi теж не зафіксовані взагалі</span></code></pre>
+      </div>
+      <p>Lock-файл (<code>poetry.lock</code>, <code>uv.lock</code>, чи
+      <code>pip-compile</code>-згенерований <code>requirements.txt</code> з точними версіями)
+      фіксує <b>рівно ту саму</b> версію кожного пакета, <i>включно з транзитивними
+      залежностями</i>, для кожного встановлення — гарантує, що <code>pip install</code> сьогодні
+      і через рік поставить ідентичний набір версій.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Точний аналог різниці <code>package.json</code> (діапазони версій, <code>^4.2.0</code>)
+        і <code>package-lock.json</code>/<code>yarn.lock</code> (точні, зафіксовані версії
+        всього дерева залежностей) — та сама проблема, те саме рішення, інша мова.
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">4</span> <code>pip</code> vs <code>Poetry</code> vs <code>uv</code></h2>
+      <div class="cheat">
+        <table>
+          <tr><th></th><th>pip</th><th>Poetry</th><th>uv</th></tr>
+          <tr><td><b>Lock-файл</b></td><td>Ні (потрібен додатковий <code>pip-tools</code>)</td><td>Так, вбудовано</td><td>Так, вбудовано</td></tr>
+          <tr><td><b>Швидкість</b></td><td>Базова</td><td>Повільніший на великих деревах залежностей</td><td>Дуже швидкий (написаний на Rust)</td></tr>
+          <tr><td><b>Керує venv</b></td><td>Ні — окремо через <code>venv</code></td><td>Так, автоматично</td><td>Так, автоматично</td></tr>
+          <tr><td><b>Публікація пакета</b></td><td>Через окремий <code>twine</code></td><td>Вбудовано (<code>poetry publish</code>)</td><td>Вбудовано</td></tr>
+          <tr><td><b>Зрілість / поширеність</b></td><td>Найстаріший, скрізь є "з коробки"</td><td>Дуже поширений з 2018+</td><td>Новий (2024+), швидко набирає популярність</td></tr>
+        </table>
+      </div>
+      <p class="muted">Цей проєкт використовує "голий" <code>pip</code> + <code>pyproject.toml</code>
+      (розділ 5) — без Poetry чи uv, і без явного lock-файлу (докладніше — розділ 8).</p>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">5</span> <code>pyproject.toml</code> нашого проєкту, розібраний по частинах</h2>
+      <p class="section-desc"><code>pyproject.toml</code> (PEP 518/621) — сучасний єдиний файл конфігурації, що замінив історичну трійцю <code>setup.py</code> + <code>setup.cfg</code> + <code>requirements.txt</code>.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">pyproject.toml — реальний файл з проєкту</span></div>
+        <pre><code>[project]
+name = "ai-delivery-planner-backend"
+version = "0.1.0"
+description = "AI Delivery Planner — backend (FastAPI, OR-Tools, OpenAI)"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "sqlalchemy[asyncio]",
+    "asyncpg",
+    <span class="cmt">"... решта продакшн-залежностей ..."</span>
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "ruff==0.15.22",
+    "aiosqlite",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"</code></pre>
+      </div>
+
+      <ul>
+        <li><b><code>[project]</code></b> — метадані пакета (PEP 621, стандарт для всіх
+        інструментів): назва, версія, <b>обов'язкові</b> залежності для запуску.</li>
+        <li><b><code>[project.optional-dependencies]</code></b> — іменовані групи "додаткових"
+        залежностей; <code>dev</code> тут — лише для розробки/тестів
+        (<code>pip install ".[dev]"</code> встановить і їх).</li>
+        <li><b><code>[build-system]</code></b> — яким інструментом (<code>setuptools</code>,
+        альтернативи — <code>hatchling</code>, <code>poetry-core</code>) зібрати сам пакет.</li>
+        <li><b><code>[tool.ruff]</code></b> — конфігурація <i>стороннього</i> інструмента
+        (лінтера); будь-який інструмент може мати власну секцію <code>[tool.X]</code> у тому
+        самому файлі — саме тому <code>pyproject.toml</code> став єдиною точкою правди для
+        всієї конфігурації проєкту, не лише залежностей.</li>
+      </ul>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        <code>pyproject.toml</code> ≈ <code>package.json</code>: метадані пакета +
+        залежності + конфігурація інструментів (там — <code>eslintConfig</code>,
+        <code>prettier</code> ключі всередині того самого файлу; тут — секції
+        <code>[tool.ruff]</code>, <code>[tool.pytest.ini_options]</code>).
+      </div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">6</span> Семантичне версіонування й оператори версій</h2>
+      <table>
+        <tr><th>Формат SemVer</th><th>Значення</th></tr>
+        <tr><td><code>MAJOR.MINOR.PATCH</code></td><td>MAJOR — ламаючі зміни API; MINOR — нова функціональність, зворотно сумісна; PATCH — виправлення багів</td></tr>
+      </table>
+      <table>
+        <tr><th>Оператор у Python</th><th>Значення</th></tr>
+        <tr><td><code>fastapi</code></td><td>Будь-яка версія (як у цьому проєкті — навмисно "розв'язати" останню сумісну на момент встановлення)</td></tr>
+        <tr><td><code>fastapi==0.115.0</code></td><td>Рівно ця версія, і жодна інша</td></tr>
+        <tr><td><code>fastapi>=0.100,&lt;0.120</code></td><td>Діапазон</td></tr>
+        <tr><td><code>fastapi~=0.115.0</code></td><td>"Сумісний реліз" — дозволяє <code>0.115.x</code>, забороняє <code>0.116.0</code></td></tr>
+      </table>
+      <p class="muted">Оператор <code>~=</code> у Python — приблизний аналог <code>^</code> у
+      npm/semver (дозволяє patch/minor-оновлення, забороняє наступний major), хоча точні межі
+      трохи відрізняються залежно від того, скільки цифр версії вказано.</p>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">7</span> <code>wheel</code> vs <code>sdist</code> — що реально встановлюється</h2>
+      <ul>
+        <li><b>sdist</b> (source distribution, <code>.tar.gz</code>) — вихідний код пакета
+        "як є"; при встановленні може знадобитись локальна компіляція (для пакетів із
+        C-розширеннями, наприклад <code>asyncpg</code> чи <code>pandas</code>).</li>
+        <li><b>wheel</b> (<code>.whl</code>) — вже <b>зібраний</b> пакет, готовий до прямого
+        розпакування без компіляції — саме тому встановлення з wheel набагато швидше і не
+        вимагає компілятора на машині користувача.</li>
+      </ul>
+      <p><code>pip install fastapi</code> за замовчуванням шукає й ставить <b>wheel</b>, якщо
+      він є для вашої платформи (Linux/macOS/Windows, версія Python) — sdist використовується
+      як запасний варіант, коли підходящого wheel не знайдено.</p>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">8</span> Наш Dockerfile — реальний trade-off без lock-файлу</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">Dockerfile — реальний код з проєкту</span></div>
+        <pre><code>COPY pyproject.toml ./
+RUN pip install --no-cache-dir .
+
+COPY app/ ./app/</code></pre>
+      </div>
+
+      <p><code>pip install .</code> встановлює залежності напряму зі списку в
+      <code>[project.dependencies]</code> — <b>без</b> lock-файлу. Це означає: якщо
+      <code>fastapi</code> (вказаний без фіксованої версії) випустить нову мінорну версію між
+      двома білдами Docker-образу, наступний білд поставить іншу версію, ніж попередній —
+      навіть без жодної зміни коду проєкту.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Свідомий (чи принаймні прийнятний) trade-off для поточного
+        масштабу:</b> простіший <code>Dockerfile</code> й <code>pyproject.toml</code> без
+        додаткового інструменту (Poetry/uv) чи окремого lock-файлу для підтримки — ціною
+        відсутньої гарантії, що продакшн-білд сьогодні поставить <i>рівно ті самі</i> версії
+        пакетів, що й учора. Для більшого проєкту чи команди природним наступним кроком був би
+        lock-файл (<code>uv.lock</code> чи <code>pip-compile</code>-згенерований
+        <code>requirements.txt</code>), закомічений у репозиторій і використаний у Docker-білді
+        замість "голого" <code>pip install .</code>.</div>
+      </div>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Хороша відповідь на співбесіді</span>
+        "Як забезпечити відтворюваність (reproducibility) production-білдів?" — прямо
+        протилежність тому, що робить <code>Dockerfile</code> цього проєкту зараз: закомічений
+        lock-файл із точними версіями, встановлений замість "діапазону версій" з
+        <code>pyproject.toml</code> напряму.</div>
+      </div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">9</span> Каверзні питання співбесіди</h2>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Навіщо потрібне віртуальне середовище?</summary>
+        <div class="a">Ізолює залежності одного проєкту від системного Python і від інших
+        проєктів — дозволяє двом проєктам мати різні, потенційно несумісні версії однієї й тієї
+        самої бібліотеки одночасно на одній машині.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Якщо <code>requirements.txt</code> задає точні версії (<code>fastapi==0.115.0</code>), хіба це вже не lock-файл?</summary>
+        <div class="a">Ні — фіксує лише <i>прямі</i> залежності, а не весь транзитивний ланцюжок
+        (залежності ваших залежностей). Справжній lock-файл фіксує <b>кожен</b> пакет у дереві
+        встановлення з точною версією й хешем, гарантуючи побітово однакове встановлення.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Різниця <code>wheel</code> і <code>sdist</code>?</summary>
+        <div class="a">Wheel — вже зібраний, готовий до встановлення пакет (швидко, без
+        компіляції). Sdist — вихідний код, може вимагати локальної компіляції під час
+        встановлення (повільніше, потребує компілятора для пакетів із C-розширеннями).</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Що станеться, якщо задеплоїти цей проєкт двічі поспіль без змін коду, а <code>fastapi</code> тим часом випустить нову версію?</summary>
+        <div class="a">Другий білд поставить нову версію <code>fastapi</code>, бо
+        <code>pyproject.toml</code> не фіксує точну версію, а lock-файл у проєкті відсутній —
+        поведінка застосунку може змінитись без жодного коміту в самому репозиторії.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що описує кожна з трьох цифр у семантичному версіонуванні (SemVer)?</summary>
+        <div class="a">MAJOR — ламаючі, несумісні зміни API; MINOR — нова функціональність, що
+        не ламає існуючий код; PATCH — виправлення багів без зміни публічного API.</div>
+      </details>
+
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Шпаргалка</h2>
+      <div class="cheat">
+        <table>
+          <tr><th>Питання</th><th>Відповідь</th></tr>
+          <tr><td>Ізолювати залежності проєкту</td><td><code>python -m venv .venv</code> + <code>source .venv/bin/activate</code></td></tr>
+          <tr><td>Гарантувати ідентичне встановлення завжди</td><td>Lock-файл (Poetry/uv/pip-compile), не лише <code>requirements.txt</code></td></tr>
+          <tr><td>Єдиний файл конфігурації пакета+інструментів</td><td><code>pyproject.toml</code> (PEP 621)</td></tr>
+          <tr><td>Найшвидший сучасний менеджер пакетів</td><td><code>uv</code> (написаний на Rust)</td></tr>
+          <tr><td>Готовий до встановлення пакет без компіляції</td><td>wheel (<code>.whl</code>)</td></tr>
+          <tr><td>"Сумісний реліз" оператор версії в Python</td><td><code>~=</code> (аналог <code>^</code> у npm)</td></tr>
+        </table>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал побудований на PEP 517/518/621 та реальному <code>pyproject.toml</code>/<code>Dockerfile</code>
+  репозиторію <code>ai-delivery-planner-backend</code>.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>12. Утиліти стандартної бібліотеки — AI Delivery Planner</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+  .part-divider{
+    display:flex; align-items:center; gap:14px; margin:64px 0 40px;
+  }
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+  .badge-level{
+    display:inline-block; font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px;
+    background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);
+    text-transform:uppercase; letter-spacing:.04em; margin-left:10px; vertical-align:middle;
+  }
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .term{font-weight:700; font-size:15px; margin-bottom:6px; font-family:"SF Mono",ui-monospace,monospace;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:12.8px; color:var(--fg-muted); border-top:1px dashed var(--border); padding-top:9px;}
+
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · collections &amp; functools</div>
+  <h1>Утиліти стандартної бібліотеки <span class="badge-level">Середня складність</span></h1>
+  <p class="lead">
+    Ще до того, як писати власний клас чи цикл, варто перевірити — можливо, stdlib уже має
+    готовий, добре протестований інструмент саме для цієї задачі. <code>collections</code> і
+    <code>functools</code> — два модулі, звідки приходить найбільше "чому я сам це не
+    написав раніше" на практиці й на співбесіді.
+  </p>
+  <div class="pills">
+    <span class="pill">🧰 8 інструментів з прикладами</span>
+    <span class="pill">⚛️ Аналогії до JS</span>
+    <span class="pill">🔗 Реальний код з проєкту</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🎯 До співбесіди</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html" class="active">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — collections</div>
+    <ol>
+      <li><a href="#s1">1. Counter — підрахунок частот</a></li>
+      <li><a href="#s2">2. defaultdict — без KeyError</a></li>
+      <li><a href="#s3">3. namedtuple — легкий record-тип</a></li>
+      <li><a href="#s4">4. ChainMap — шаруваті конфігурації</a></li>
+      <li><a href="#s5">5. deque — O(1) з обох кінців</a></li>
+    </ol>
+    <div class="toc-group">Частина II — functools і не тільки</div>
+    <ol>
+      <li><a href="#s6">6. functools.partial</a></li>
+      <li><a href="#s7">7. functools.singledispatch</a></li>
+      <li><a href="#s8">8. functools.reduce — і чому його уникають</a></li>
+      <li><a href="#s9">9. heapq і bisect</a></li>
+    </ol>
+    <div class="toc-group">Підсумок</div>
+    <ol>
+      <li><a href="#s10">10. Каверзні питання співбесіди</a></li>
+      <li><a href="#s11">11. Шпаргалка</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · collections</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">1</span> <code>Counter</code> — підрахунок частот без ручних циклів</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>from collections import Counter
+
+statuses = ["geocoded", "geocoded", "geocode_failed", "geocoded"]
+Counter(statuses)
+<span class="out"># Counter({'geocoded': 3, 'geocode_failed': 1})</span>
+
+Counter(statuses).most_common(1)
+<span class="out"># [('geocoded', 3)]  -- найчастіше значення</span></code></pre>
+      </div>
+      <p><code>Counter</code> — підклас <code>dict</code>, спеціалізований для підрахунку.
+      Без нього довелось би вручну писати <code>defaultdict(int)</code> + цикл
+      <code>+= 1</code>. У цьому проєкті — природний кандидат для підсумку результатів
+      імпорту доставок: <code>Counter(row.status for row in import_result.rows)</code> дав би
+      "скільки успішних, скільки провалених" одним рядком.</p>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">2</span> <code>defaultdict</code> — уникнення <code>KeyError</code> без <code>.get()</code></h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/rate_limiting.py — реальний код з проєкту</span></div>
+        <pre><code>from collections import defaultdict, deque
+
+_WINDOWS: dict[str, deque] = defaultdict(deque)
+<span class="cmt"># звернення до НЕІСНУЮЧОГО ключа автоматично створює порожній deque() -- без if/KeyError</span>
+
+def _check_and_record(key, ...):
+    window = _WINDOWS[key]   <span class="cmt"># перший запит з нової IP -- deque() створюється сам</span></code></pre>
+      </div>
+      <p><code>defaultdict(factory)</code> викликає <code>factory()</code> автоматично при
+      зверненні до відсутнього ключа, замість кидати <code>KeyError</code>. У реальному коді
+      проєкту це прибирає потребу писати
+      <code>if key not in _WINDOWS: _WINDOWS[key] = deque()</code> перед кожним використанням.</p>
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Схоже на <code>obj[key] ??= []</code> в сучасному JS (nullish coalescing assignment) —
+        та сама ідея "якщо ключа нема, підстав дефолтне значення", тільки
+        <code>defaultdict</code> робить це автоматично на <i>кожному</i> зверненні, а не
+        разовим присвоєнням.
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">3</span> <code>namedtuple</code> — легкий record-тип</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>from collections import namedtuple
+
+Point = namedtuple("Point", ["x", "y"])
+p = Point(1, 2)
+p.x, p.y        <span class="out"># (1, 2) -- доступ за іменем, не лише за індексом</span>
+p == Point(1, 2) <span class="out"># True -- порівняння за значенням, як у tuple</span></code></pre>
+      </div>
+      <p><code>namedtuple</code> — незмінний (immutable, туторіал 5), легковісний record-тип:
+      займає стільки ж пам'яті, скільки звичайний <code>tuple</code>, але дозволяє звертатись
+      до полів за іменем. У сучасному коді для нових проєктів частіше обирають
+      <code>@dataclass(frozen=True)</code> (туторіал 7) — зручніший синтаксис визначення,
+      підтримка type hints — але <code>namedtuple</code> досі трапляється в старішому коді й у
+      бібліотеках, де важлива сумісність із звичайним <code>tuple</code> (розпакування,
+      індексація).</p>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">4</span> <code>ChainMap</code> — шаруваті конфігурації без злиття словників</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>from collections import ChainMap
+
+defaults = {"timeout": 10, "retries": 3}
+env_overrides = {"timeout": 30}   <span class="cmt"># напр., зі змінних середовища</span>
+
+config = ChainMap(env_overrides, defaults)
+config["timeout"]   <span class="out"># 30 -- бере з ПЕРШОЇ карти, де ключ знайдено</span>
+config["retries"]   <span class="out"># 3  -- відсутній в env_overrides, бере з defaults</span></code></pre>
+      </div>
+      <p><code>ChainMap</code> не копіює й не зливає словники — тримає посилання на всі й шукає
+      ключ по черзі в кожному, зупиняючись на першому знайденому. Зміна в
+      <code>env_overrides</code> одразу видно через <code>config</code>, без повторного
+      об'єднання. Типовий випадок використання — саме шарувата конфігурація: аргументи
+      командного рядка → змінні середовища → значення за замовчуванням.</p>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">5</span> <code>deque</code> — O(1) додавання й видалення з обох кінців</h2>
+      <p class="section-desc">Уже згадувалось у туторіалі 6 (Big O) — тут повний приклад того, чому саме <code>deque</code>, а не <code>list</code>, обраний для rate limiter-а проєкту.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/rate_limiting.py — реальний код з проєкту</span></div>
+        <pre><code>def _check_and_record(key, max_requests, window_seconds):
+    now = time.monotonic()
+    window = _WINDOWS[key]
+    while window and now - window[0] > window_seconds:
+        window.popleft()          <span class="cmt"># видалення з ПОЧАТКУ -- O(1) для deque, O(n) для list</span>
+    if len(window) >= max_requests:
+        raise HTTPException(...)
+    window.append(now)             <span class="cmt"># додавання в КІНЕЦЬ -- O(1) для обох</span></code></pre>
+      </div>
+      <p>Ковзне вікно rate limiter-а постійно видаляє "застарілі" мітки часу з <b>початку</b>
+      черги й додає нові в <b>кінець</b>. Зі звичайним <code>list</code>,
+      <code>list.pop(0)</code> — O(n) (весь список зсувається); з <code>deque</code> — O(1) в
+      обох напрямках, бо реалізований як двозв'язний список блоків, а не суцільний масив.</p>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · functools і не тільки</div><div class="line"></div></div>
+
+    <section id="s6">
+      <h2><span class="num">6</span> <code>functools.partial</code> — часткове застосування функції</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/rate_limiting.py — реальний патерн з проєкту (концептуально те саме)</span></div>
+        <pre><code>from functools import partial
+
+def rate_limit_by_ip(scope, max_requests, window_seconds):
+    def _dependency(request):
+        _check_and_record(f"{scope}:{request.client.host}", max_requests, window_seconds)
+    return _dependency
+
+<span class="cmt"># еквівалентно було б написати через partial:</span>
+register_rate_limiter = partial(_check_and_record, scope="register", max_requests=5, window_seconds=3600)</code></pre>
+      </div>
+      <p><code>functools.partial(fn, *args, **kwargs)</code> "заморожує" частину аргументів
+      функції наперед, повертаючи нову функцію, яка приймає лише решту. Проєкт досягає того
+      самого ефекту (розділ 10, туторіал 7 про декоратори) через фабрику функцій-замикань
+      <code>rate_limit_by_ip(...)</code> — обидва підходи ідіоматичні, <code>partial</code>
+      коротший для простих випадків без потреби в додатковій логіці всередині.</p>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">7</span> <code>functools.singledispatch</code> — поліморфізм без ланцюжка <code>isinstance</code></h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>from functools import singledispatch
+
+@singledispatch
+def to_response(value):
+    raise TypeError(f"unsupported type: {type(value)}")
+
+@to_response.register
+def _(value: DeliveryRef) -> dict:
+    return {"id": str(value.id), "customer": value.customer_name}
+
+@to_response.register
+def _(value: VehicleRef) -> dict:
+    return {"id": str(value.id), "plate": value.plate_number}
+
+to_response(some_delivery_ref)   <span class="cmt"># автоматично викликає ПРАВИЛЬНУ версію за типом аргументу</span></code></pre>
+      </div>
+      <p>Без <code>singledispatch</code> довелось би писати
+      <code>if isinstance(value, DeliveryRef): ... elif isinstance(value, VehicleRef): ...</code>
+      — ланцюжок, що росте й стає крихким з кожним новим типом. <code>singledispatch</code>
+      реєструє окрему реалізацію на кожен тип, і Python сам обирає потрібну під час виклику —
+      той самий принцип, що й перевантаження функцій (function overloading) у типізованих
+      мовах, тільки за одним аргументом і в рантаймі.</p>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">8</span> <code>functools.reduce</code> — і чому Python-спільнота його уникає</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>from functools import reduce
+
+total = reduce(lambda acc, d: acc + d.total_distance_km, routes, 0)
+
+<span class="cmt"># Pythonic-альтернатива, яку обере більшість ревʼюерів:</span>
+total = sum(d.total_distance_km for d in routes)</code></pre>
+      </div>
+      <p><code>reduce</code> — загальний "згорни список в одне значення" інструмент (той самий,
+      що <code>Array.prototype.reduce</code> у JS), але Гвідо ван Россум свого часу навіть
+      прибрав <code>reduce</code> з вбудованих функцій у Python 3 (лишивши в
+      <code>functools</code>), бо для більшості випадків <code>sum()</code>,
+      <code>max()</code>, чи звичайний цикл/comprehension (туторіал 7) читаються прозоріше.
+      <code>reduce</code> лишається доречним для дійсно нетривіальної згортки, яку не покриває
+      жоден вбудований варіант.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        JS-розробники часто зловживають <code>.reduce()</code> там, де підійшов би простіший
+        <code>.map()</code>/<code>.filter()</code> чи цикл — та сама культурна звичка "показати,
+        що знаю reduce" існує і в Python-спільноті, і так само вважається менш ідіоматичною,
+        коли є простіший варіант.
+      </div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">9</span> <code>heapq</code> і <code>bisect</code> — дві структури для впорядкованих даних</h2>
+      <div class="flashgrid">
+        <div class="flashcard">
+          <div class="term">heapq</div>
+          <div class="def">Мін-купа (min-heap) поверх звичайного списку. <code>heapq.heappush</code>/<code>heappop</code> — вставка й видалення найменшого елемента за O(log n).</div>
+          <div class="mnemo">Типовий випадок: черга з пріоритетом — "наступна задача на виконання" завжди найменша (найтерміновіша) без повторного сортування всього списку.</div>
+        </div>
+        <div class="flashcard">
+          <div class="term">bisect</div>
+          <div class="def"><code>bisect.insort</code>/<code>bisect_left</code> — бінарний пошук позиції у ВЖЕ відсортованому списку за O(log n), замість лінійного O(n) сканування.</div>
+          <div class="mnemo">Типовий випадок: вставити нову зупинку маршруту в список, уже відсортований за часом прибуття, не сортуючи список заново щоразу.</div>
+        </div>
+      </div>
+      <p class="muted">Обидва рятують від "давайте я просто відсортую весь список заново на
+      кожній вставці" — O(n log n) щоразу замість O(log n) чи O(n) один раз.</p>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Каверзні питання співбесіди</h2>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим <code>defaultdict</code> відрізняється від звичайного <code>dict.get(key, default)</code>?</summary>
+        <div class="a"><code>.get(key, default)</code> повертає дефолт, але <b>не зберігає</b>
+        його в словнику. <code>defaultdict</code> при зверненні до відсутнього ключа
+        автоматично <b>створює й записує</b> нове значення в словник — наступне звернення до
+        того самого ключа поверне вже збережене значення, а не щоразу новий дефолт.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому <code>deque</code>, а не <code>list</code>, для черги, з якої часто видаляють елементи з початку?</summary>
+        <div class="a"><code>list.pop(0)</code> — O(n): усі елементи зсуваються на одну
+        позицію. <code>deque.popleft()</code> — O(1), бо структура реалізована як зв'язка
+        блоків, оптимізована для операцій з обох кінців, а не лише з кінця, як звичайний список.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Навіщо потрібен <code>functools.singledispatch</code>, якщо можна просто написати ланцюжок <code>isinstance</code>?</summary>
+        <div class="a">Читабельність і розширюваність: кожен тип реєструє свою реалізацію
+        окремою, незалежною функцією (можна навіть в іншому модулі), замість одного великого
+        <code>if/elif</code>-блоку, що росте й стає крихким з кожним новим типом.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому Python-спільнота часто уникає <code>reduce</code>, хоча він потужний?</summary>
+        <div class="a">Для більшості поширених згорток (сума, максимум, конкатенація) уже є
+        прозоріші вбудовані варіанти (<code>sum()</code>, <code>max()</code>, comprehension) —
+        <code>reduce</code> з lambda часто читається гірше за еквівалентний цикл чи
+        comprehension, тому Гвідо ван Россум прибрав його з builtins у Python 3.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Коли варто обрати <code>heapq</code> замість повторного <code>list.sort()</code>?</summary>
+        <div class="a">Коли елементи додаються/видаляються часто, а потрібен лише найменший
+        (чи найбільший) елемент у будь-який момент — <code>heapq</code> підтримує цю операцію
+        за O(log n) на вставку/видалення, тоді як повторне повне сортування списку —
+        O(n log n) щоразу.</div>
+      </details>
+
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Шпаргалка</h2>
+      <div class="cheat">
+        <table>
+          <tr><th>Задача</th><th>Інструмент</th></tr>
+          <tr><td>Порахувати частоту значень</td><td><code>collections.Counter</code></td></tr>
+          <tr><td>Словник з дефолтним значенням на новий ключ</td><td><code>collections.defaultdict(factory)</code></td></tr>
+          <tr><td>Легкий незмінний record-тип</td><td><code>collections.namedtuple</code> (у новому коді — частіше <code>@dataclass(frozen=True)</code>)</td></tr>
+          <tr><td>Шарувата конфігурація (env → defaults)</td><td><code>collections.ChainMap</code></td></tr>
+          <tr><td>Черга з O(1) вставкою/видаленням з обох кінців</td><td><code>collections.deque</code></td></tr>
+          <tr><td>Заморозити частину аргументів функції</td><td><code>functools.partial</code></td></tr>
+          <tr><td>Різна поведінка залежно від типу аргументу</td><td><code>functools.singledispatch</code></td></tr>
+          <tr><td>Черга з пріоритетом</td><td><code>heapq</code></td></tr>
+          <tr><td>Вставка у вже відсортований список</td><td><code>bisect.insort</code></td></tr>
+        </table>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал побудований на документації stdlib-модулів <code>collections</code> та
+  <code>functools</code>, і реальному коді репозиторію <code>ai-delivery-planner-backend</code>
+  (<code>app/core/rate_limiting.py</code>).
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

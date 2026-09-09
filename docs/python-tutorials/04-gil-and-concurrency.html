@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4. GIL, конкурентність і паралелізм — AI Delivery Planner</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · Підготовка до співбесіди</div>
+  <h1>GIL, конкурентність і паралелізм</h1>
+  <p class="lead">
+    Найглибша й найчастіше "ламаюча" candidates тема на Python-співбесідах. Розберемо, що таке
+    GIL, звідки взялась назва, чим конкурентність відрізняється від паралелізму, коли що
+    використовувати — і які каверзні питання про це реально запитують.
+  </p>
+  <div class="pills">
+    <span class="pill">💼 Питання зі співбесід у кожному розділі</span>
+    <span class="pill">🎉 Цікаві факти й історія</span>
+    <span class="pill">🧪 Робочий код для перевірки</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🎯 До співбесіди</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html" class="active">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Що таке GIL і звідки назва</a></li>
+      <li><a href="#s2">2. Як GIL працює технічно</a></li>
+      <li><a href="#s3">3. Навіщо GIL взагалі існує</a></li>
+      <li><a href="#s4">4. Спроби прибрати GIL: Gilectomy → PEP 703</a></li>
+      <li><a href="#s5">5. Конкурентність vs Паралелізм</a></li>
+      <li><a href="#s6">6. Три моделі конкурентності в Python</a></li>
+      <li><a href="#s7">7. Коли що використовувати</a></li>
+      <li><a href="#s8">8. Пастка: GIL є, а race condition теж є</a></li>
+      <li><a href="#s9">9. asyncio трохи глибше</a></li>
+      <li><a href="#s10">10. Каверзні питання співбесіди (з відповідями)</a></li>
+      <li><a href="#s11">11. Шпаргалка (моделі конкурентності)</a></li>
+      <li><a href="#s12">12. Як запам'ятати терміни назавжди</a></li>
+      <li><a href="#s13">13. Своя історія для співбесіди (наш проєкт)</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Що таке GIL і звідки взялась назва</h2>
+      <p class="section-desc">Розберемо абревіатуру по літерах — і трохи історії.</p>
+
+      <p><b>GIL = Global Interpreter Lock</b>, тобто "глобальне блокування інтерпретатора".
+      Розберемо кожне слово окремо:</p>
+      <ul>
+        <li><b>Global</b> — один-єдиний lock (м'ютекс) на <i>увесь процес</i>, а не окремий
+        lock на кожен об'єкт чи структуру даних (як зробили б у Java чи C++).</li>
+        <li><b>Interpreter</b> — це lock саме навколо виконання байт-коду CPython-інтерпретатора,
+        а не навколо, скажімо, мережі чи диска.</li>
+        <li><b>Lock</b> — звичайний м'ютекс: у кожен момент часу лише <i>один</i> потік (thread)
+        може тримати цей lock і, відповідно, виконувати Python-байткод.</li>
+      </ul>
+
+      <div class="callout fun">
+        <div class="ic">🎉</div>
+        <div class="body"><span class="tag">Цікавий факт</span>
+        GIL вимовляють як звичайне слово — "джил" (римується з англ. <i>gill</i> — "зябра риби").
+        Це не офіційна назва, а прижилась як прізвисько абревіатури. Механізм існує в CPython
+        буквально з 1992 року (ще до релізу Python 1.0) — тобто GIL старший за саму публічну
+        історію мови як open-source проєкту.</div>
+      </div>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">На співбесіді запитають так</span>
+        "Що таке GIL?" — найчастіше очікують не дослівний переклад абревіатури, а розуміння
+        <b>наслідку</b>: "механізм CPython, який дозволяє лише одному потоку виконувати
+        Python-байткод одночасно, навіть на багатоядерному процесорі — тому <code>threading</code>
+        не дає справжнього паралелізму для CPU-важкого Python-коду". Якщо скажете тільки
+        розшифровку абревіатури — це мінімум-мінімум, покажіть саме наслідок.</div>
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Як GIL працює технічно</h2>
+      <p class="section-desc">Не просто "один потік за раз" — важливі деталі, коли саме lock звільняється.</p>
+
+      <ul>
+        <li>Потік тримає GIL, поки виконує Python-байткод, і <b>періодично</b> звільняє його
+        (за замовчуванням — кожні ~5 мілісекунд, керується
+        <code>sys.setswitchinterval()</code>), щоб дати шанс іншим потокам.</li>
+        <li>Потік <b>також</b> звільняє GIL, коли робить блокуючий системний виклик
+        (читання файлу, мережевий запит, <code>time.sleep()</code>) — саме тому I/O-очікування
+        в одному потоці не блокує роботу Python-коду в іншому потоці.</li>
+        <li>C-розширення (numpy, деякі частини pandas, hashlib) можуть <b>явно звільнити</b> GIL
+        зі свого C-коду під час важких обчислень — тому <code>numpy</code>-операції над великими
+        масивами можуть виконуватись у кількох потоках паралельно, попри GIL.</li>
+      </ul>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 760 225" role="img" aria-label="Три потоки одного процесу по черзі тримають єдиний GIL; потік, що йде в I/O, звільняє GIL достроково, і наступний потік продовжує одразу">
+          <rect x="10" y="8" width="740" height="182" rx="10" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="4,4" opacity="0.55"/>
+          <text x="22" y="26" font-size="11.5" opacity="0.7">Один процес → один GIL</text>
+
+          <g font-size="11.5">
+            <text x="20" y="59" text-anchor="start">Потік 1</text>
+            <text x="20" y="104" text-anchor="start">Потік 2</text>
+            <text x="20" y="149" text-anchor="start">Потік 3</text>
+          </g>
+
+          <g font-size="11">
+            <rect x="110" y="42" width="103" height="30" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="161.5" y="61" text-anchor="middle" fill="var(--accent)">GIL</text>
+            <rect x="419" y="42" width="103" height="30" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="470.5" y="61" text-anchor="middle" fill="var(--accent)">GIL</text>
+            <rect x="625" y="42" width="103" height="30" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="676.5" y="61" text-anchor="middle" fill="var(--accent)">GIL</text>
+
+            <rect x="213" y="87" width="103" height="30" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="264.5" y="106" text-anchor="middle" fill="var(--accent)">GIL</text>
+            <rect x="522" y="87" width="48" height="30" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="546" y="106" text-anchor="middle" fill="var(--accent)" font-size="9.5">GIL</text>
+
+            <rect x="316" y="132" width="103" height="30" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="367.5" y="151" text-anchor="middle" fill="var(--accent)">GIL</text>
+            <rect x="570" y="132" width="55" height="30" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="597.5" y="151" text-anchor="middle" fill="var(--accent)" font-size="9.5">GIL</text>
+          </g>
+
+          <line x1="570" y1="117" x2="570" y2="132" stroke="var(--good)" stroke-width="1.3" stroke-dasharray="2,2"/>
+          <text x="440" y="203" text-anchor="middle" font-size="11" fill="var(--good)">Потік 2 іде в I/O → звільняє GIL достроково, Потік 3 продовжує одразу</text>
+        </svg>
+        <figcaption>У кожен момент часу GIL тримає лише один потік — переключення відбувається кожні ~5мс або одразу, щойно потік іде в блокуючий I/O-виклик.</figcaption>
+      </figure>
+
+      <div class="callout fun">
+        <div class="ic">🎉</div>
+        <div class="body"><span class="tag">Цікавий факт з історії</span>
+        До Python 3.2 механізм перемикання GIL мав відомий баг, який спільнота називала
+        <b>"convoy effect"</b>: якщо один потік робив важкі CPU-обчислення, а інший чекав на
+        I/O, CPU-потік міг систематично "перехоплювати" GIL назад одразу після короткого
+        звільнення, фактично блокуючи I/O-потік на секунди навіть на багатоядерній машині.
+        Це детально показав Девід Бізлі (David Beazley) у знаменитій доповіді
+        <i>"Understanding the Python GIL"</i> (2010) — вона й досі одна з найцитованіших
+        доповідей про CPython. Python 3.2 переписав механізм перемикання (new GIL), щоб це
+        виправити.</div>
+      </div>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Каверзне питання</span>
+        "Чому <code>numpy</code> швидкий, якщо є GIL?" — правильна відповідь: numpy написаний на
+        C, і важкі числові цикли виконуються <i>поза</i> інтерпретатором Python — на цей час
+        numpy явно відпускає GIL, тому інший Python-потік (чи навіть інший numpy-виклик у
+        іншому потоці) може одночасно використовувати інше ядро CPU.</div>
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Навіщо GIL взагалі існує</h2>
+      <p class="section-desc">Це не "недогляд" авторів мови — а свідомий компроміс, який має конкретну технічну причину.</p>
+
+      <p>CPython керує пам'яттю через <b>підрахунок посилань (reference counting)</b>: у кожного
+      об'єкта є лічильник того, скільки місць на нього посилаються; коли лічильник падає до
+      нуля — об'єкт видаляється. Цей лічильник змінюється буквально на кожній Python-операції.
+      Без GIL два потоки могли б одночасно змінювати той самий лічильник — класичний race
+      condition, який призвів би до передчасного видалення об'єкта (і краху) або витоку пам'яті.</p>
+
+      <p>Альтернатива — дрібногранульоване блокування (окремий lock на кожен об'єкт, як у Java) —
+      технічно можлива, але:</p>
+      <ul>
+        <li>сповільнює однопотоковий код (а це переважна більшість Python-скриптів) через
+        накладні витрати на постійне блокування/розблокування;</li>
+        <li>значно ускладнює написання C-розширень (а екосистема Python історично тримається
+        саме на простих у написанні C-розширеннях — numpy, lxml тощо).</li>
+      </ul>
+
+      <p>Тобто GIL — це свідомий вибір "простота і швидкість однопотокового коду" ціною
+      "немає справжнього багатопотокового паралелізму для чистого Python-коду".</p>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">На співбесіді запитають так</span>
+        "Чому Python не прибере GIL?" — покаже, що ви розумієте це як <i>trade-off</i>, а не
+        баг: прибрати GIL "в лоб" ламає reference counting і сповільнює однопотоковий код
+        (детальніше — наступний розділ, "Gilectomy").</div>
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Спроби прибрати GIL: від "Gilectomy" до PEP 703</h2>
+      <p class="section-desc">GIL намагались прибрати неодноразово за 30+ років історії CPython — ось найвідоміші спроби.</p>
+
+      <div class="callout fun">
+        <div class="ic">🎉</div>
+        <div class="body"><span class="tag">Звідки назва "Gilectomy"</span>
+        У 2016 році core-розробник CPython Ларрі Гастінгс (Larry Hastings) запустив проєкт
+        з жартівливою назвою <b>"Gilectomy"</b> — за аналогією з медичними термінами на
+        <i>-ectomy</i> ("хірургічне видалення", як у "апендектомія" = видалення апендикса).
+        Тобто буквально — "хірургічне видалення GIL". Проєкт успішно прибрав GIL, але
+        однопотокова швидкість впала настільки суттєво (через потребу в дрібногранульованих
+        локах замість одного глобального), що злиття зі стандартним CPython так і не
+        відбулось — проєкт закрили близько 2018 року.</div>
+      </div>
+
+      <p>Головний висновок Gilectomy для індустрії: прибрати GIL <i>легко</i>, зробити це
+      <b>без втрати швидкості однопотокового коду</b> — дуже важко. Саме цю проблему й
+      вирішував наступний, значно успішніший підхід:</p>
+
+      <table>
+        <tr><th>Ініціатива</th><th>Суть</th><th>Статус</th></tr>
+        <tr>
+          <td><b>PEP 684</b> (per-interpreter GIL)</td>
+          <td>Кілька суб-інтерпретаторів в одному процесі, кожен зі своїм GIL</td>
+          <td>Прийнято, база в Python 3.12+</td>
+        </tr>
+        <tr>
+          <td><b>PEP 703</b> (Making the GIL Optional)</td>
+          <td>Опційна "free-threaded" збірка CPython без GIL узагалі, зі спеціальними механізмами
+          пам'яті замість простого reference counting</td>
+          <td>Експериментально від Python 3.13 (збірка <code>python3.13t</code>,
+          прапорець <code>--disable-gil</code>), продовжує стабілізуватись у наступних релізах</td>
+        </tr>
+      </table>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Важливо на співбесіді не сплутати:</b> free-threaded збірка — це
+        поки що <i>окрема, експериментальна</i> збірка інтерпретатора, а не поведінка "звичайного"
+        Python за замовчуванням. Стандартний <code>python3</code>, який запускається з
+        <code>python.org</code> чи через <code>pyenv</code>/<code>brew</code> — досі має GIL.</div>
+      </div>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Питання-пастка</span>
+        "У Python 3.13 прибрали GIL, так?" — трохи неточне формулювання, на яке варто
+        відповісти уточненням: "GIL стало можливо <i>вимкнути</i> в окремій експериментальній
+        збірці (PEP 703), але типова, найпоширеніша збірка CPython усе ще має GIL за
+        замовчуванням". Показує, що ви стежите за деталями, а не за заголовками новин.</div>
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Конкурентність vs Паралелізм</h2>
+      <p class="section-desc">Терміни, які плутають навіть досвідчені розробники — а на співбесіді це питання №1 після самого GIL.</p>
+
+      <div class="card">
+        <p><b>Паралелізм (parallelism)</b> — кілька задач виконуються <i>буквально одночасно</i>,
+        фізично на різних ядрах/процесорах у той самий момент часу.</p>
+        <p><b>Конкурентність (concurrency)</b> — структура коду, яка дозволяє <i>працювати з
+        кількома задачами одночасно</i> (в тому сенсі, що жодна не блокує інші), але не обов'язково
+        виконує їх у той самий фізичний момент — вони можуть перемежовуватись (interleaving) на
+        одному ядрі.</p>
+      </div>
+
+      <div class="callout fun">
+        <div class="ic">🎉</div>
+        <div class="body"><span class="tag">Класична цитата</span>
+        Роб Пайк (Rob Pike, співавтор мови Go) у знаменитій доповіді
+        <i>"Concurrency is not Parallelism"</i> (2012) сформулював це так:
+        <i>"Concurrency is about dealing with lots of things at once.
+        Parallelism is about doing lots of things at once"</i> — "конкурентність — про те, як
+        <b>працювати</b> з багатьма речами одночасно, паралелізм — про те, як <b>робити</b>
+        багато речей одночасно". Ця фраза — практично стандартна відповідь на співбесідах.</div>
+      </div>
+
+      <p><b>Приклад конкурентності без паралелізму:</b> один кухар (одне ядро CPU) готує три
+      страви, перемикаючись між ними — поки одна тушкується (чекає, "I/O"), він ріже овочі
+      для іншої. Роботу зроблено ефективно, але кухар фізично один і ріже овочі в один момент
+      часу для однієї страви. Це — точний опис <code>asyncio</code> в Python: один потік,
+      багато задач, перемикання під час очікування, а не справжня одночасність.</p>
+
+      <p><b>Приклад паралелізму:</b> три різні кухарі (три ядра CPU), кожен готує свою страву
+      одночасно, фізично в один момент часу. Це — точний опис
+      <code>multiprocessing</code> в Python: кілька процесів, кожен зі своїм інтерпретатором
+      і власним GIL, реально виконуються одночасно на різних ядрах.</p>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">На співбесіді запитають так</span>
+        "Дай визначення конкурентності і паралелізму одним реченням кожне — і приклад, де є
+        одне без іншого." Хороша відповідь: "asyncio в Python — конкурентність без
+        паралелізму (один потік); multiprocessing — і конкурентність, і паралелізм (кілька
+        процесів, справжня одночасність)". Ще краще — додати, що <b>паралелізм — окремий
+        випадок конкурентності</b>, а не протилежність їй.</div>
+      </div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Три моделі конкурентності в Python</h2>
+      <p class="section-desc">threading, multiprocessing, asyncio — три різні відповіді на "як робити кілька справ одночасно", кожна зі своєю ціною.</p>
+
+      <div class="cheat">
+        <table>
+          <tr><th></th><th>threading</th><th>multiprocessing</th><th>asyncio</th></tr>
+          <tr><td><b>Справжній CPU-паралелізм?</b></td><td>❌ Ні (GIL)</td><td>✅ Так (окремі процеси)</td><td>❌ Ні (один потік)</td></tr>
+          <tr><td><b>Найкраще для</b></td><td>I/O-bound (сумісність зі старими блокуючими бібліотеками)</td><td>CPU-bound (обчислення)</td><td>I/O-bound, багато одночасних задач (тисячі)</td></tr>
+          <tr><td><b>Накладні витрати на запуск</b></td><td>Середні (OS-потік, ~кілька MB стеку)</td><td>Високі (новий процес, копія пам'яті/інтерпретатора)</td><td>Дуже низькі (легка "корутина" в userspace)</td></tr>
+          <tr><td><b>Спільна пам'ять?</b></td><td>Так (обережно з race conditions)</td><td>Ні (потрібен IPC: pickling, Queue, Pipe)</td><td>Так (один потік — немає preemption, але є свої пастки)</td></tr>
+          <tr><td><b>Типовий ліміт</b></td><td>Сотні потоків</td><td>Стільки, скільки ядер CPU (більше — марно)</td><td>Тисячі-десятки тисяч задач</td></tr>
+        </table>
+      </div>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Часте питання</span>
+        "Чому multiprocessing повільніше стартує?" — кожен новий процес запускає окремий
+        інтерпретатор Python з нуля і (на деяких платформах, залежно від
+        <code>start method</code>: <code>fork</code>/<code>spawn</code>/<code>forkserver</code>)
+        копіює або переініціалізує стан; дані між процесами передаються через серіалізацію
+        (<code>pickle</code>) — набагато дорожче, ніж просте розділення пам'яті між потоками
+        в межах одного процесу.</div>
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Коли що використовувати — з реальними прикладами</h2>
+      <p class="section-desc">Практичне правило, яке варто озвучити на співбесіді дослівно.</p>
+
+      <div class="card">
+        <p><b>Правило:</b> визначте, чи задача <i>чекає</i> (I/O-bound) чи <i>рахує</i> (CPU-bound).</p>
+        <ul>
+          <li><b>I/O-bound</b> (мережеві запити, читання файлів, запити до БД, очікування
+          відповіді зовнішнього API) → <code>asyncio</code> — найдешевше й найбільш
+          масштабовано; <code>threading</code> теж працює (GIL звільняється під час I/O), але
+          дорожче на великій кількості задач.</li>
+          <li><b>CPU-bound</b> (обробка зображень, шифрування, розрахунки, парсинг великих
+          файлів, комбінаторна оптимізація) → <code>multiprocessing</code> (справжній
+          паралелізм) або офлоад у зовнішній сервіс/чергу задач (Celery-воркер на окремому
+          процесі/машині).</li>
+          <li><b>Мішаний випадок</b> (async-застосунок, всередині якого треба виконати щось
+          CPU-важке) → <code>asyncio.to_thread(...)</code> (простіше, підходить для короткої
+          CPU-роботи) або <code>loop.run_in_executor(ProcessPoolExecutor(), fn)</code>
+          (справжній паралелізм для CPU-роботи, обходить GIL повністю).</li>
+        </ul>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Реальний приклад із цього самого проєкту:</b> у бекенді
+        AI Delivery Planner є ендпоінт <code>POST /routes/optimize</code>, що запускає
+        солвер Google OR-Tools (комбінаторна оптимізація маршрутів) — чисто CPU-bound
+        задача, яка може тривати до 5 секунд. Метод <code>optimize()</code> — це
+        <code>async def</code>, але сам виклик <code>solver.solve()</code> зроблено
+        <i>синхронно</i>, без <code>asyncio.to_thread</code>. Це блокує єдиний потік event
+        loop на весь час розрахунку — жоден інший запит на цьому процесі не обробляється.
+        Детальний розбір цього самого місця — у
+        <a href="02-async-and-security.html#a6">туторіалі 2, розділ 6</a>. Це майже ідеальний
+        реальний приклад для співбесіди — див. розділ 12 нижче.</div>
+      </div>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Класична задача на живому кодингу</span>
+        "Напишіть функцію, яка паралельно рахує суму квадратів чисел від 1 до 40 000 000 на
+        4 ядрах" — типова пастка: кандидат хапається за <code>threading.Thread</code>, бо
+        "паралельно" звучить як "потоки". Правильна відповідь — <code>multiprocessing.Pool</code>
+        чи <code>concurrent.futures.ProcessPoolExecutor</code>, бо це чисто CPU-bound задача, і
+        threading через GIL не дасть жодного прискорення (може навіть сповільнити через
+        накладні витрати на перемикання потоків).</div>
+      </div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Пастка: GIL є, а race condition усе одно можливий</h2>
+      <p class="section-desc">Одне з найпопулярніших "trick questions" на співбесідах — і воно ловить навіть тих, хто добре знає, що таке GIL.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">race_condition_demo.py</span></div>
+        <pre><code>import threading
+
+counter = 0
+
+def increment():
+    global counter
+    for _ in range(1_000_000):
+        counter += 1   <span class="cmt"># виглядає як одна операція, а насправді — три байткоди:</span>
+                       <span class="cmt"># LOAD counter -> ADD 1 -> STORE counter</span>
+
+threads = [threading.Thread(target=increment) for _ in range(4)]
+for t in threads: t.start()
+for t in threads: t.join()
+
+print(counter)  <span class="out"># очікували 4_000_000, а вийде якесь менше число — нестабільно!</span></code></pre>
+      </div>
+
+      <p><code>counter += 1</code> виглядає як одна атомарна дія, але інтерпретатор виконує
+      її як три окремі байткод-інструкції: прочитати значення, додати 1, записати назад. GIL
+      гарантує, що <i>окрема Python-інструкція</i> виконається без переривання, але <b>не</b>
+      гарантує атомарність цілого виразу <code>counter += 1</code> — перемикання на інший потік
+      може відбутись <i>між</i> цими трьома кроками. Два потоки можуть обидва прочитати те саме
+      старе значення, і один інкремент "загубиться".</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">race_condition_fix.py</span></div>
+        <pre><code>import threading
+
+counter = 0
+lock = threading.Lock()
+
+def increment():
+    global counter
+    for _ in range(1_000_000):
+        with lock:            <span class="cmt"># явний lock робить "прочитати-додати-записати" атомарним</span>
+            counter += 1</code></pre>
+      </div>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Найкаверзніше питання на цю тему</span>
+        "Якщо є GIL, чи потрібні мені <code>Lock</code>-и в багатопотоковому коді?" — <b>так,
+        потрібні</b>, для будь-якої операції над спільним станом, що складається з кількох
+        кроків (read-modify-write, зміна кількох пов'язаних змінних, ітерація по спільній
+        структурі під час її модифікації іншим потоком). GIL захищає лише внутрішній стан
+        самого інтерпретатора (наприклад, не дасть пам'яті "фізично" пошкодитись), а не
+        <i>логічну</i> атомарність вашого коду.</div>
+      </div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> asyncio трохи глибше</h2>
+      <p class="section-desc">Кілька деталей, які часто спливають на технічних співбесідах середнього+ рівня.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">time.sleep vs asyncio.sleep — класична пастка</span></div>
+        <pre><code>import asyncio, time
+
+async def bad():
+    time.sleep(2)          <span class="cmt"># ❌ БЛОКУЄ увесь event loop на 2 секунди —</span>
+                           <span class="cmt">#    жодна інша корутина в процесі не виконається</span>
+
+async def good():
+    await asyncio.sleep(2) <span class="cmt"># ✅ віддає керування event loop-у, інші задачі</span>
+                           <span class="cmt">#    продовжують виконуватись під час очікування</span></code></pre>
+      </div>
+
+      <ul>
+        <li><b>Корутина (coroutine)</b> — функція, оголошена через <code>async def</code>;
+        виклик такої функції <i>не</i> виконує її одразу, а повертає об'єкт-корутину, який
+        треба <code>await</code>-нути або передати в <code>asyncio.create_task(...)</code>.</li>
+        <li><b>Task</b> — обгортка над корутиною, яку event loop почав виконувати <i>прямо
+        зараз, у фоні</i> (на відміну від "голого" <code>await</code>, який чекає результат
+        синхронно в поточному місці коду).</li>
+        <li><b>Історична деталь:</b> синтаксис <code>async</code>/<code>await</code> з'явився в
+        Python 3.5 (PEP 492). До того асинхронний код писали через генератори й декоратор
+        <code>@asyncio.coroutine</code> з <code>yield from</code> — той самий механізм
+        "призупинити й повернутись пізніше", лежав в основі генераторів ще з Python 2.5.</li>
+      </ul>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Питання-пастка</span>
+        "Чи <code>async</code>/<code>await</code> автоматично прискорює код?" — ні. Сам по собі
+        <code>async</code> нічого не прискорює — він дає <i>концепцію</i> для дешевого
+        перемикання між задачами під час I/O-очікування. Якщо код нічого не чекає (чистий
+        CPU), обгортання його в <code>async def</code> без реального паралелізму (потоки/процеси)
+        не дасть жодного приросту швидкості — і навіть додасть невеликі накладні витрати на сам
+        event loop.</div>
+      </div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Каверзні питання співбесіди — з відповідями</h2>
+      <p class="section-desc">Натисніть на питання, щоб побачити відповідь. Спробуйте спершу відповісти самі.</p>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чи Python "справді" багатопотоковий?</summary>
+        <div class="a">Так, потоки (<code>threading.Thread</code>) реально існують і є
+        справжніми OS-потоками. Але через GIL лише один з них виконує Python-байткод у
+        конкретний момент — тому <b>для CPU-роботи</b> вони не дають паралелізму. Для
+        I/O-роботи (де потоки більшість часу чекають, а не рахують) вони працюють ефективно,
+        бо GIL звільняється на час очікування.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чому numpy/pandas швидкі попри GIL?</summary>
+        <div class="a">Важкі числові операції виконуються в C-коді, який явно звільняє GIL на
+        час обчислень. Тобто "повільна" частина роботи взагалі відбувається поза
+        Python-інтерпретатором — GIL її не стосується.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Якщо є GIL, чи потрібен мені <code>Lock</code> для спільних змінних?</summary>
+        <div class="a">Так, потрібен. GIL гарантує атомарність окремих байткод-інструкцій, але
+        не композитних операцій на кшталт <code>x += 1</code> чи модифікації структури даних
+        у кілька кроків. Детальніше — розділ 8 вище.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Що станеться, якщо покласти <code>time.sleep(5)</code> всередині <code>async def</code>-функції?</summary>
+        <div class="a">Заблокує весь event loop на 5 секунд — жодна інша корутина/задача в
+        цьому процесі не виконається, навіть якщо вони чекають на щось швидке (наприклад,
+        відповідь з БД, яка вже прийшла). Треба <code>await asyncio.sleep(5)</code>, або, якщо
+        це справді блокуюча операція, — <code>await asyncio.to_thread(time.sleep, 5)</code>.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що станеться, якщо всередині <code>async def</code> виконати важкий CPU-цикл (10 млн ітерацій без I/O)?</summary>
+        <div class="a">Так само заблокує event loop — навіть без жодного блокуючого виклику,
+        сам факт "не віддавати керування" достатній. async не рятує від CPU-bound роботи сам
+        по собі — тільки явний офлоад (to_thread/ProcessPoolExecutor) рятує.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>GIL — це властивість мови Python чи конкретної реалізації?</summary>
+        <div class="a">Конкретної реалізації — <b>CPython</b>. Специфікація мови Python нічого не
+        каже про GIL. Інші реалізації влаштовані інакше: Jython (на JVM) і IronPython (на .NET)
+        історично не мали GIL і використовували нативні механізми паралелізму своєї платформи;
+        PyPy (JIT-реалізація) теж історично має власний GIL-подібний механізм. Це чудова деталь,
+        яка показує розуміння "мова vs реалізація".</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чи є в Node.js "свій GIL"?</summary>
+        <div class="a">Ні, і питання трохи некоректне за формулюванням, що варто пояснити на
+        співбесіді: Node.js виконує JS-код в <b>одному-єдиному</b> потоці за дизайном — там
+        просто немає інших потоків, які могли б конкурувати за виконання, тому й немає
+        потреби в м'ютексі, що обмежує кілька потоків. Python, навпаки, дозволяє створювати
+        реальні OS-потоки, але GIL серіалізує їхнє виконання Python-коду. Схожий
+        <i>результат</i> для чистого CPU-коду (немає паралелізму в одному процесі), різна
+        <i>причина</i>.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чи можна мати кілька GIL в одному Python-процесі?</summary>
+        <div class="a">Так, з PEP 684 (база в Python 3.12+) — суб-інтерпретатори
+        (sub-interpreters) можуть кожен мати власний, ізольований GIL в межах одного процесу.
+        Це відкриває шлях до справжнього паралелізму без окремих OS-процесів, але API для
+        зручного використання з чистого Python усе ще розвивається.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Просунуте</span>Що таке "free-threaded" Python і чи це вже стандарт?</summary>
+        <div class="a">PEP 703 — опційна збірка CPython (з Python 3.13, прапорець
+        <code>--disable-gil</code> / збірка <code>python3.13t</code>), де GIL можна вимкнути
+        зовсім, ціною складніших механізмів пам'яті замість простого reference counting. Це
+        <b>не</b> поведінка звичайної збірки за замовчуванням — усе ще експериментальна,
+        окрема опція, яка продовжує стабілізуватись.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Дай визначення конкурентності і паралелізму одним реченням кожне.</summary>
+        <div class="a">Конкурентність — структура коду, що працює з багатьма задачами, не
+        блокуючись жодною з них (необов'язково одночасно). Паралелізм — буквально одночасне
+        виконання кількох задач на різних ядрах/процесорах. Приклад першого без другого:
+        <code>asyncio</code> в одному потоці.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Живий кодинг</span>Напишіть функцію, яка паралельно порахує суму квадратів на 4 ядрах.</summary>
+        <div class="a"><code>concurrent.futures.ProcessPoolExecutor</code> або
+        <code>multiprocessing.Pool</code> — <b>не</b> <code>threading</code>, оскільки це
+        чисто CPU-bound задача, і GIL не дасть потокам прискорення. Розбити діапазон на 4
+        частини, порахувати кожну в окремому процесі, підсумувати результати в головному
+        процесі.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим <code>asyncio.gather</code> для паралельних HTTP-запитів краще за <code>threading</code>?</summary>
+        <div class="a">Обидва підходи дають конкурентність для I/O-очікування (GIL звільняється
+        під час мережевого виклику в обох випадках). Але <code>asyncio</code> дешевший: не
+        створює реальні OS-потоки (немає накладних витрат на контекст-світчинг ОС, стек
+        пам'яті на потік), тому легко масштабується до тисяч одночасних запитів, тоді як
+        сотні-тисячі OS-потоків уже помітно навантажують систему.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Історія</span>Що таке "convoy effect" у старому GIL?</summary>
+        <div class="a">Баг у механізмі перемикання GIL до Python 3.2: CPU-важкий потік міг
+        систематично "перехоплювати" GIL назад одразу після короткого звільнення, фактично
+        не даючи I/O-потоку виконатись навіть на багатоядерній машині. Виправлено в Python 3.2
+        новим механізмом перемикання (детальніше показав Девід Бізлі у доповіді 2010 року —
+        див. розділ 2).</div>
+      </details>
+
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Шпаргалка на одну сторінку</h2>
+      <div class="cheat">
+        <table>
+          <tr><th>Ситуація</th><th>Обирайте</th><th>Чому</th></tr>
+          <tr><td>Багато одночасних мережевих запитів / DB-запитів</td><td><code>asyncio</code></td><td>Найдешевше, масштабується до тисяч задач</td></tr>
+          <tr><td>Треба викликати стару блокуючу бібліотеку з async-коду</td><td><code>await asyncio.to_thread(fn)</code></td><td>Не блокує event loop, легко для коротких викликів</td></tr>
+          <tr><td>Важкі обчислення (CPU-bound) — обробка зображень, парсинг, солвери</td><td><code>multiprocessing</code> / <code>ProcessPoolExecutor</code></td><td>Єдиний спосіб отримати справжній паралелізм у чистому Python</td></tr>
+          <tr><td>CPU-bound робота всередині вже async-застосунку</td><td><code>loop.run_in_executor(ProcessPoolExecutor(), fn)</code> або офлоад у Celery-воркер</td><td>Не блокує event loop і використовує кілька ядер</td></tr>
+          <tr><td>Проста паралельна робота зі спільним станом, переважно I/O</td><td><code>threading</code> + <code>Lock</code> для спільних змінних</td><td>Простіше за asyncio для сумісності зі старим синхронним кодом</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Як запам'ятати терміни назавжди</h2>
+      <p class="section-desc">П'ять базових слів, які найчастіше плутають — процес, потік, асинхронність, конкурентність, паралельність — плюс мнемонічні асоціації, щоб не зависати над відповіддю на співбесіді.</p>
+
+      <h3>Матрьошка: процес → потік → задача</h3>
+      <p class="muted">Головне, що варто "прошити" в пам'ять: це не три рівноправні терміни, а вкладені один в одного рівні — кожен наступний живе <i>всередині</i> попереднього.</p>
+
+      <div class="nest level1">
+        <span class="tag">Процес (Process)</span>
+        <p>Своя, повністю ізольована пам'ять і власний GIL. Найдорожчий за створення (новий інтерпретатор Python з нуля).</p>
+        <div class="nest level2">
+          <span class="tag">Потік (Thread)</span>
+          <p>Живе всередині процесу, ділить пам'ять з іншими потоками того ж процесу. Дешевший за процес, але обмежений спільним GIL цього процесу.</p>
+          <div class="nest level3">
+            <span class="tag">Задача / корутина (Task, у asyncio)</span>
+            <p>Найдешевша одиниця з усіх. Живе всередині ОДНОГО потоку й перемикається з іншими задачами того ж потоку на кожному <code>await</code> — без участі ОС узагалі.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Як це використати на співбесіді</span>
+        Якщо просять "розклади по рівнях" — намалюйте саме цю матрьошку. Вона миттєво показує,
+        що ви розумієте: два потоки одного процесу можуть напряму зіштовхнутись через спільну
+        пам'ять (race condition), а два процеси — ні (їм потрібен явний IPC, щоб взагалі
+        обмінятись даними).</div>
+      </div>
+
+      <h3>5 базових термінів — одне речення + асоціація</h3>
+      <div class="flashgrid">
+        <div class="flashcard">
+          <div class="fc-num">1</div>
+          <div class="term">Процес</div>
+          <div class="def">Окрема, ізольована копія програми зі своєю пам'яттю.</div>
+          <div class="mnemo"><b>Асоціація:</b> окремий будинок з власною адресою — нічого не ділить із сусідом без "листування" (IPC).</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">2</div>
+          <div class="term">Потік</div>
+          <div class="def">Одна "лінія виконання" всередині процесу, ділить пам'ять з іншими потоками.</div>
+          <div class="mnemo"><b>Асоціація:</b> кімната в тому самому будинку — спільна кухня (пам'ять), тому можна випадково зіткнутись.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">3</div>
+          <div class="term">Асинхронність</div>
+          <div class="def">Спосіб писати код, що не блокується в очікуванні — відкладає задачу й займається іншою.</div>
+          <div class="mnemo"><b>Асоціація:</b> офіціант, що не стоїть біля одного столика — приймає замовлення в іншого, поки перше готується.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">4</div>
+          <div class="term">Конкурентність</div>
+          <div class="def">Парасолька-термін: структура, що працює з багатьма задачами одночасно (необов'язково фізично).</div>
+          <div class="mnemo"><b>Асоціація:</b> жонглер із кількома м'ячами — встигає з усіма, але в конкретну мілісекунду тримає в руці лише один.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">5</div>
+          <div class="term">Паралельність</div>
+          <div class="def">Фізично одночасне виконання кількох задач на різних ядрах/процесорах.</div>
+          <div class="mnemo"><b>Асоціація:</b> кілька жонглерів одночасно — тепер справді кілька рук у русі в один і той самий момент.</div>
+        </div>
+      </div>
+
+      <div class="rule-box">
+        <b>Правило одного речення, яке варто вивчити дослівно:</b>
+        "Паралельність — окремий випадок конкурентності, коли одночасність не просто структурна,
+        а фізична; асинхронність — лише один з інструментів (поряд із потоками й процесами)
+        досягти конкурентності, і сама по собі, в Python, паралелізму не дає."
+      </div>
+
+      <h3>+5 термінів, які найчастіше плутають у темі async Python</h3>
+      <div class="flashgrid">
+        <div class="flashcard">
+          <div class="fc-num">6</div>
+          <div class="term">Event Loop (цикл подій)</div>
+          <div class="def">Диспетчер, що по колу перевіряє, яка задача готова продовжити виконання, і передає їй керування.</div>
+          <div class="mnemo"><b>Асоціація:</b> диригент оркестру — сам не грає жодної ноти, лише каже, хто вступає наступним.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">7</div>
+          <div class="term">Корутина (coroutine)</div>
+          <div class="def">Функція (<code>async def</code>), що вміє призупинитись на <code>await</code> і повернутись до виконання пізніше, з того самого місця.</div>
+          <div class="mnemo"><b>Асоціація:</b> закладка в книжці — читання можна перервати й продовжити рівно з того самого рядка.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">8</div>
+          <div class="term">Task vs Future</div>
+          <div class="def"><code>Future</code> — "обіцянка" результату, який з'явиться пізніше. <code>Task</code> — <code>Future</code> + вже запущена в фоні корутина, що цю обіцянку виконує.</div>
+          <div class="mnemo"><b>Асоціація:</b> Future — порожня коробка з номером квитанції; Task — та сама коробка, але замовлення вже готують на кухні.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">9</div>
+          <div class="term">Блокуючий vs неблокуючий виклик</div>
+          <div class="def">Блокуючий — потік/процес фізично чекає, нічого іншого не робить. Неблокуючий — задача "залишає заявку" й повертає керування одразу, результат прийде пізніше.</div>
+          <div class="mnemo"><b>Асоціація:</b> черга в банку без талончика (блокуючий) проти "залиш заявку онлайн, ми подзвонимо" (неблокуючий).</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">10</div>
+          <div class="term">Executor (Thread/ProcessPoolExecutor)</div>
+          <div class="def">Пул потоків або процесів "збоку" від event loop, куди async-код віддає синхронну/важку роботу, щоб не блокувати себе.</div>
+          <div class="mnemo"><b>Асоціація:</b> аутсорс-бригада — event loop не робить брудну роботу сам, а віддає її підряднику й забирає готовий результат.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Готова історія для співбесіди — з вашого власного проєкту</h2>
+      <p class="section-desc">Питання "розкажіть про реальний випадок, де ви розбирались з асинхронністю/паралелізмом" — дуже часте. Ось готова відповідь у форматі STAR, побудована на реальному коді цього репозиторію.</p>
+
+      <div class="card">
+        <p><b>Situation:</b> Бекенд на FastAPI має ендпоінт <code>POST /routes/optimize</code>,
+        що запускає Google OR-Tools для побудови оптимальних маршрутів доставки — чисто
+        CPU-bound задача, яка може рахувати до 5 секунд.</p>
+        <p><b>Task:</b> Розібратись, чому весь застосунок побудований на <code>async def</code>
+        і чи це дійсно дає неблокуючу поведінку для цього ендпоінту.</p>
+        <p><b>Action:</b> З'ясував, що метод <code>optimize()</code> — <code>async def</code> і
+        коректно робить <code>await</code> до бази даних (репозиторії), але сам виклик
+        <code>solver.solve()</code> — синхронний, без <code>asyncio.to_thread</code>. Оскільки
+        OR-Tools — чиста CPU-робота без I/O-очікувань, під час її виконання event loop не має
+        жодної можливості перемкнутись на інший запит — весь процес фактично "заморожується"
+        на час рахунку.</p>
+        <p><b>Result / рекомендація:</b> Найпростіший фікс — обгорнути виклик у
+        <code>await asyncio.to_thread(solver.solve)</code>, щоб звільнити event loop. Надійніший
+        варіант для CPU-важкої роботи — офлоадити в окремий процес
+        (<code>ProcessPoolExecutor</code>) або в Celery-воркер (черга на Redis уже підключена в
+        проєкті), бо потоки в Python усе одно обмежені GIL для самих обчислень — вигравати
+        починаємо лише коли event loop звільняється <i>раніше</i>, ніж передати роботу далі,
+        а справжнє паралельне виконання дає лише окремий процес.</p>
+      </div>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Чому ця історія працює на співбесіді</span>
+        Вона демонструє відразу три речі, які інтерв'юери шукають: (1) розуміння різниці
+        I/O-bound vs CPU-bound на практиці, а не в теорії, (2) вміння читати чужий код і
+        знаходити реальну, а не вигадану проблему, (3) знання конкретних інструментів
+        виправлення (<code>to_thread</code>, <code>ProcessPoolExecutor</code>, Celery) з
+        розумінням, коли який доречний.</div>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал побудований на основі публічно відомої історії й документації CPython (GIL, PEP 703,
+  PEP 684, доповідь Девіда Бізлі 2010 року, проєкт Gilectomy) та реального коду репозиторію
+  <code>ai-delivery-planner-backend</code>.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

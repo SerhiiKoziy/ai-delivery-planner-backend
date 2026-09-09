@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>7. Класи, декоратори, синтаксичний цукор — AI Delivery Planner</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+  .part-divider{
+    display:flex; align-items:center; gap:14px; margin:64px 0 40px;
+  }
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  .vs{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:16px 0;}
+  @media (max-width:700px){.vs{grid-template-columns:1fr;}}
+  .vs .side{border-radius:var(--radius); padding:16px 18px; border:1px solid;}
+  .vs .side.py{background:var(--good-bg); border-color:var(--good-border);}
+  .vs .side.js{background:var(--warn-bg); border-color:var(--warn-border);}
+  .vs .side .lbl{font-weight:700; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px;}
+  .vs .side.py .lbl{color:var(--good);}
+  .vs .side.js .lbl{color:var(--warn);}
+  .vs .side code{display:block; margin:4px 0; font-size:13px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · Класи, декоратори, синтаксичний цукор</div>
+  <h1>Класи, декоратори та інший синтаксичний цукор</h1>
+  <p class="lead">
+    <code>@decorator</code>, <code>with ... as ...</code>, <code>[x for x in y]</code>,
+    <code>@dataclass</code> — виглядають як магія, поки не побачиш, у що вони насправді
+    розгортаються. Жодного з цих прикладів не існує "тому що так вирішив Гвідо" — кожен
+    вирішує конкретну, нудну проблему і є короткою формою простішого коду, який ви й так
+    вмієте писати.
+  </p>
+  <div class="pills">
+    <span class="pill">🍬 Що ховається за цукром</span>
+    <span class="pill">⚛️ Аналогії до JS/TS</span>
+    <span class="pill">💼 Питання співбесіди</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🎯 До співбесіди</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html" class="active">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — Класи</div>
+    <ol>
+      <li><a href="#s1">1. Клас — це виклик <code>type()</code></a></li>
+      <li><a href="#s2">2. <code>__init__</code> і <code>self</code></a></li>
+      <li><a href="#s3">3. Магічні методи (dunder)</a></li>
+      <li><a href="#s4">4. <code>property</code> — цукор для геттерів</a></li>
+      <li><a href="#s5">5. Успадкування та <code>super()</code></a></li>
+      <li><a href="#s6">6. <code>@dataclass</code></a></li>
+    </ol>
+    <div class="toc-group">Частина II — Декоратори</div>
+    <ol>
+      <li><a href="#s7">7. Функції — звичайні об'єкти</a></li>
+      <li><a href="#s8">8. У що розгортається <code>@decorator</code></a></li>
+      <li><a href="#s9">9. Свій декоратор + <code>functools.wraps</code></a></li>
+      <li><a href="#s10">10. Декоратор з аргументами</a></li>
+      <li><a href="#s11">11. Стек декораторів</a></li>
+      <li><a href="#s12">12. Декоратори з вашого проєкту</a></li>
+    </ol>
+    <div class="toc-group">Частина III — Інший цукор</div>
+    <ol>
+      <li><a href="#s13">13. Comprehensions</a></li>
+      <li><a href="#s14">14. Розпакування: *args, **kwargs</a></li>
+      <li><a href="#s15">15. f-strings</a></li>
+      <li><a href="#s16">16. Walrus-оператор :=</a></li>
+      <li><a href="#s17">17. match/case</a></li>
+      <li><a href="#s18">18. <code>with</code> — цукор над try/finally</a></li>
+      <li><a href="#s19">19. Тернарний вираз</a></li>
+      <li><a href="#s20">20. Швидка перевірка (Q&amp;A)</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Класи</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">1</span> Клас — це виклик <code>type()</code></h2>
+      <p class="section-desc">Найважливіша ідея цього туторіалу з самого початку: <code>class</code> — не окрема сутність мови, а лише зручний синтаксис над одним викликом функції.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">ці два фрагменти роблять АБСОЛЮТНО те саме</span></div>
+        <pre><code><span class="cmt"># звичний синтаксис</span>
+class Point:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+<span class="cmt"># те саме, написане БЕЗ ключового слова class</span>
+def __init__(self, x, y):
+    self.x = x
+    self.y = y
+
+Point = type("Point", (), {"__init__": __init__})</code></pre>
+      </div>
+
+      <p><code>class Point: ...</code> — це синтаксичний цукор, який Python сам перетворює на
+      виклик <code>type(ім'я, батьки, простір_імен)</code>. <code>type</code> тут — не "тип
+      значення", а <b>metaclass</b>, фабрика класів (детальніше в
+      <a href="06-senior-interview-qa.html">туторіалі 6, питання 6</a>). Саме тому в Python
+      можна створювати класи повністю динамічно в рантаймі — це не хак, а той самий механізм,
+      яким користується звичайний <code>class</code>-синтаксис.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        <code>class</code> у сучасному JS — теж синтаксичний цукор, тільки над іншим
+        механізмом: прототипним ланцюжком (<code>Object.create</code>,
+        <code>obj.__proto__</code>). Ідея та сама (сховати низькорівневий механізм за звичним
+        ООП-синтаксисом), реалізація — принципово інша: JS-класи будують ланцюжок прототипів,
+        Python-класи — це буквально об'єкти класу <code>type</code>.
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">2</span> <code>__init__</code> і <code>self</code> — конструктор без прихованого "new"</h2>
+      <p class="section-desc">У JS <code>new</code> непомітно робить кілька речей одразу. У Python усі ці кроки видимі окремо.</p>
+
+      <div class="vs">
+        <div class="side py">
+          <div class="lbl">Python</div>
+          <code>obj = Point(1, 2)</code>
+          <code># 1) Python створює порожній екземпляр</code>
+          <code># 2) викликає Point.__init__(obj, 1, 2)</code>
+          <code># self — це і є той екземпляр, ЯВНО переданий першим аргументом</code>
+        </div>
+        <div class="side js">
+          <div class="lbl">JavaScript</div>
+          <code>const obj = new Point(1, 2);</code>
+          <code>// new робить те саме, але приховано:</code>
+          <code>// створює об'єкт, прив'язує this, викликає constructor</code>
+        </div>
+      </div>
+
+      <p><code>self</code> — не ключове слово (можна назвати як завгодно, це просто перший
+      параметр методу за домовленістю) і не magic: коли ви пишете <code>obj.method(1)</code>,
+      Python сам підставляє <code>obj</code> першим аргументом —
+      <code>Point.method(obj, 1)</code>. Це прямий наслідок того, що методи — звичайні функції,
+      прикріплені до класу (нон-дата дескриптори, <a href="06-senior-interview-qa.html">туторіал 6, п. 1</a>).</p>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Часте питання на співбесіді</span>
+        "Чому <code>self</code> треба писати явно в кожному методі?" — тому що в Python немає
+        прихованого <code>this</code>-байндингу: метод — звичайна функція, а <code>self</code> —
+        звичайний перший параметр, який автоматично отримує значення лише завдяки протоколу
+        дескрипторів при виклику через екземпляр. Це свідомий вибір "explicit is better than
+        implicit" (з Дзен Python), а не недогляд.</div>
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">3</span> Магічні методи (dunder) — "data model" Python</h2>
+      <p class="section-desc">Методи виду <code>__щось__</code> ("dunder" — double underscore) — не приватні хаки, а офіційний протокол, яким Python дає вашим об'єктам вбудовану поведінку: друк, порівняння, довжину, ітерацію, виклик.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python — data model на прикладі</span></div>
+        <pre><code>class Money:
+    def __init__(self, amount): self.amount = amount
+    def __repr__(self): return f"Money({self.amount})"      <span class="cmt"># для розробника (debug)</span>
+    def __str__(self): return f"${self.amount}"              <span class="cmt"># для користувача (print)</span>
+    def __eq__(self, other): return self.amount == other.amount
+    def __add__(self, other): return Money(self.amount + other.amount)  <span class="cmt"># перевантаження +</span>
+    def __len__(self): return self.amount
+
+m1, m2 = Money(10), Money(5)
+print(m1)          <span class="out"># $10          -- викликає __str__</span>
+m1 == Money(10)     <span class="out"># True          -- викликає __eq__</span>
+m1 + m2             <span class="out"># Money(15)     -- викликає __add__</span>
+[m1, m2]            <span class="out"># [Money(10), Money(5)]  -- список використовує __repr__</span></code></pre>
+      </div>
+
+      <table>
+        <tr><th>Dunder-метод</th><th>Вмикає</th></tr>
+        <tr><td><code>__repr__</code> / <code>__str__</code></td><td><code>repr(x)</code> / <code>print(x)</code></td></tr>
+        <tr><td><code>__eq__</code>, <code>__lt__</code> тощо</td><td><code>==</code>, <code>&lt;</code> та інші оператори порівняння</td></tr>
+        <tr><td><code>__len__</code></td><td><code>len(x)</code>, а також truthy/falsy, якщо немає <code>__bool__</code></td></tr>
+        <tr><td><code>__iter__</code> / <code>__next__</code></td><td><code>for item in x</code>, <code>list(x)</code></td></tr>
+        <tr><td><code>__getitem__</code></td><td><code>x[0]</code>, <code>x["key"]</code></td></tr>
+        <tr><td><code>__call__</code></td><td><code>x()</code> — робить екземпляр викликаним, як функцію</td></tr>
+        <tr><td><code>__enter__</code> / <code>__exit__</code></td><td><code>with x as y: ...</code> — розділ 18</td></tr>
+      </table>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Це — Python-аналог того, що в JS робиться через <code>Symbol</code>-и: <code>__iter__</code>
+        ≈ <code>[Symbol.iterator]</code> (той самий протокол ітерації, що дозволяє
+        <code>for...of</code> й спред-оператор), <code>__str__</code>/<code>__repr__</code> —
+        слабкий аналог <code>toString()</code>/<code>valueOf()</code>. Головна різниця: у JS
+        немає загального перевантаження операторів (<code>+</code>, <code>==</code> для
+        довільних об'єктів не можна кастомізувати), тоді як в Python <code>__add__</code>,
+        <code>__eq__</code> тощо — звичайна, дуже поширена практика.
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">4</span> <code>property</code> — цукор для геттерів/сеттерів</h2>
+      <p class="section-desc">Один із найточніших збігів синтаксису між Python і JS/TS з усього цього туторіалу.</p>
+
+      <div class="vs">
+        <div class="side py">
+          <div class="lbl">Python</div>
+          <code>class Circle:</code>
+          <code>    def __init__(self, r): self._r = r</code>
+          <code>    @property</code>
+          <code>    def area(self): return 3.14159 * self._r ** 2</code>
+          <code>c.area   # виклик БЕЗ дужок — виглядає як поле</code>
+        </div>
+        <div class="side js">
+          <div class="lbl">TypeScript / JS</div>
+          <code>class Circle {</code>
+          <code>    constructor(private r: number) {}</code>
+          <code>    get area() { return 3.14159 * this.r ** 2; }</code>
+          <code>}</code>
+          <code>c.area   // теж без дужок</code>
+        </div>
+      </div>
+
+      <p><code>@property</code> перетворює метод на дата-дескриптор (туторіал 6, п. 2) — доступ
+      виглядає як звичайне поле (<code>c.area</code>, без дужок), але насправді щоразу виконує
+      код методу. Пара <code>@area.setter</code> дозволяє додати логіку й на запис, з валідацією
+      всередині — так само, як <code>set area(v)</code> у TS/JS.</p>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Типовий сценарій використання:</b> почати із звичайного публічного
+        поля, і лише коли знадобиться валідація/обчислення при читанні — перетворити його на
+        <code>@property</code> без зміни зовнішнього API класу (виклики <code>c.area</code>
+        лишаються тими самими рядками коду).</div>
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">5</span> Успадкування та <code>super()</code></h2>
+      <p class="section-desc">Дозволяє класу розширити поведінку батьківського, не переписуючи її з нуля.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>class Vehicle:
+    def __init__(self, brand):
+        self.brand = brand
+    def describe(self):
+        return f"{self.brand} vehicle"
+
+class Car(Vehicle):
+    def __init__(self, brand, doors):
+        super().__init__(brand)     <span class="cmt"># делегує ініціалізацію батьківському __init__</span>
+        self.doors = doors
+    def describe(self):
+        return f"{super().describe()} with {self.doors} doors"  <span class="cmt"># розширює, не замінює</span></code></pre>
+      </div>
+
+      <p><code>super()</code> повертає проксі-об'єкт, що шукає метод у наступному класі за
+      MRO (туторіал 6, п. 3) — у простому одиничному успадкуванні це "просто батько", але при
+      множинному успадкуванні це може бути й "клас-сусід" у ланцюжку кооперативних викликів.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        <code>super().__init__(...)</code> ≈ <code>super(...)</code> у конструкторі TS/JS-класу
+        — та сама ідея "делегувати ініціалізацію батьківському класу перед тим, як додати своє".
+        Різниця — Python дозволяє <b>множинне</b> успадкування (<code>class C(A, B)</code>), а
+        JS/TS — ні (лише один <code>extends</code>, множинну поведінку JS імітує через міксини
+        вручну).
+      </div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">6</span> <code>@dataclass</code> — цукор для "класів-даних"</h2>
+      <p class="section-desc">Найбільш "окупний" декоратор для звичайного ООП-коду: прибирає купу одноманітного boilerplate.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">без @dataclass — вручну</span></div>
+        <pre><code>class Point:
+    def __init__(self, x: int, y: int):
+        self.x = x
+        self.y = y
+    def __repr__(self):
+        return f"Point(x={self.x!r}, y={self.y!r})"
+    def __eq__(self, other):
+        return isinstance(other, Point) and (self.x, self.y) == (other.x, other.y)</code></pre>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">з @dataclass — те саме, коротше</span></div>
+        <pre><code>from dataclasses import dataclass
+
+@dataclass
+class Point:
+    x: int
+    y: int
+<span class="cmt"># __init__, __repr__, __eq__ згенеровані АВТОМАТИЧНО з type hints полів</span></code></pre>
+      </div>
+
+      <p><code>@dataclass</code> читає анотації типів класу (ті самі, що самі по собі нічого не
+      перевіряють — туторіал 5, розділ 5) і генерує з них <code>__init__</code>,
+      <code>__repr__</code>, <code>__eq__</code>. <code>frozen=True</code> робить екземпляри
+      незмінними (і хешовними — туторіал 5, розділ 12); <code>field(default_factory=list)</code>
+      — правильний спосіб задати mutable-значення за замовчуванням, обходячи пастку з
+      туторіалу 5, розділ 9.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/services/route_optimizer/service.py — реальний код з проєкту</span></div>
+        <pre><code>@dataclass
+class ReplanOutcome:
+    <span class="cmt">"""Result of `RouteOptimizerService.replan()`."""</span>
+    route: Route
+    stops_before: list[RouteStop]
+    stops_after: list[RouteStopRead]
+    unassigned_delivery_ids: list[uuid.UUID]</code></pre>
+      </div>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        <code>@dataclass</code> — це той функціонал, який у TypeScript дає сама компіляція
+        <code>interface</code>/<code>type</code>: описати форму даних коротко, без ручного
+        конструктора. Різниця в тому, що TS-типи повністю стираються в рантаймі, а
+        <code>@dataclass</code> реально генерує робочі методи (<code>__init__</code> тощо), які
+        існують і виконуються під час роботи програми.
+      </div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · Декоратори</div><div class="line"></div></div>
+
+    <section id="s7">
+      <h2><span class="num">7</span> Передумова: функції — звичайні об'єкти</h2>
+      <p class="section-desc">Без цього факту декоратори виглядають магією; з ним — стають очевидною технікою.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python — функції як значення</span></div>
+        <pre><code>def greet(): return "hi"
+
+greet                  <span class="cmt"># &lt;function greet at 0x...&gt;  -- сам об'єкт функції</span>
+other = greet           <span class="cmt"># можна присвоїти змінній, як будь-яке значення</span>
+other()                 <span class="out"># "hi"</span>
+
+def call_twice(fn):
+    fn(); return fn()   <span class="cmt"># можна передати функцію АРГУМЕНТОМ в іншу функцію</span>
+
+def make_greeter():
+    def inner(): return "hello from inside"
+    return inner        <span class="cmt"># можна ПОВЕРНУТИ функцію з функції</span></code></pre>
+      </div>
+
+      <p>Функція в Python — такий самий об'єкт, як число чи рядок: її можна присвоїти змінній,
+      передати аргументом, повернути з іншої функції, зберегти в списку. Це властивість
+      <b>"functions as first-class citizens"</b> — і саме вона робить декоратори можливими.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Точнісінько як у JS — функції там теж first-class citizens (звідси <code>callback</code>-и,
+        <code>.map(fn)</code>, HOC-и в React). Якщо ви колись писали функцію вищого порядку
+        (higher-order function) у JS — ви вже інтуїтивно розумієте механізм, на якому
+        побудовані декоратори.
+      </div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">8</span> У що насправді розгортається <code>@decorator</code></h2>
+      <p class="section-desc">Одна єдина ідея, яку варто запам'ятати назавжди — решта деталей з неї випливають.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">@decorator — це просто присвоєння</span></div>
+        <pre><code>@my_decorator
+def say_hello():
+    print("hello")
+
+<span class="cmt"># ...буквально ідентично оцьому:</span>
+
+def say_hello():
+    print("hello")
+say_hello = my_decorator(say_hello)</code></pre>
+      </div>
+
+      <p><code>@decorator</code> над функцією означає: "визнач функцію як зазвичай, а потім
+      одразу перезапиши цю назву результатом виклику <code>decorator(функція)</code>". Декоратор
+      — це функція, що приймає функцію й повертає (зазвичай іншу) функцію.</p>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Питання-мінімум на будь-якій співбесіді з Python</span>
+        "Що робить <code>@decorator</code>?" — правильна відповідь одним реченням:
+        "<code>func = decorator(func)</code>, застосоване одразу після визначення функції".
+        Якщо кандидат може написати цей рядок — решта (декоратори з аргументами, стек
+        декораторів) стає лише деталями цієї єдиної ідеї.</div>
+      </div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">9</span> Пишемо свій декоратор — і навіщо <code>functools.wraps</code></h2>
+      <p class="section-desc">Найпростіший робочий декоратор — логування часу виконання функції.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>import time, functools
+
+def timed(func):
+    @functools.wraps(func)              <span class="cmt"># без цього __name__/__doc__ обгортки замінять оригінал</span>
+    def wrapper(*args, **kwargs):        <span class="cmt"># *args/**kwargs -- обгортка працює для БУДЬ-ЯКОЇ сигнатури</span>
+        start = time.perf_counter()
+        result = func(*args, **kwargs)   <span class="cmt"># виклик оригінальної функції всередині</span>
+        print(f"{func.__name__} took {time.perf_counter() - start:.4f}s")
+        return result
+    return wrapper
+
+@timed
+def slow_add(a, b):
+    time.sleep(1)
+    return a + b
+
+slow_add(2, 3)   <span class="out"># друкує "slow_add took 1.0003s", повертає 5</span></code></pre>
+      </div>
+
+      <p>Три ключові елементи: <code>*args, **kwargs</code> в обгортці — щоб декоратор працював
+      із функцією <i>будь-якої</i> сигнатури; виклик оригінальної функції всередині обгортки
+      (інакше декоратор просто замінює поведінку, а не доповнює); і
+      <code>@functools.wraps(func)</code> — копіює <code>__name__</code>, <code>__doc__</code>
+      та інші метадані оригіналу на обгортку, без чого дебаг і інтроспекція (наприклад,
+      автогенерація документації FastAPI з докстрінгів) сильно ламаються.</p>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Декоратор з аргументами (фабрика декораторів)</h2>
+      <p class="section-desc">Коли декоратору самому потрібні параметри — додається ще один рівень вкладеності функцій.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python — три рівні вкладеності</span></div>
+        <pre><code>def repeat(times: int):              <span class="cmt"># рівень 1: приймає аргументи ДЕКОРАТОРА</span>
+    def decorator(func):              <span class="cmt"># рівень 2: приймає САМУ функцію</span>
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs): <span class="cmt"># рівень 3: приймає аргументи ВИКЛИКУ функції</span>
+            for _ in range(times):
+                result = func(*args, **kwargs)
+            return result
+        return wrapper
+    return decorator
+
+@repeat(times=3)
+def say_hi(): print("hi")
+
+<span class="cmt"># @repeat(times=3) розгортається в: say_hi = repeat(times=3)(say_hi)</span></code></pre>
+      </div>
+
+      <p>Логіка та сама з розділу 8, просто <code>@repeat(times=3)</code> спершу викликає
+      <code>repeat(times=3)</code>, і <b>лише результат цього виклику</b> (сам
+      <code>decorator</code>) застосовується до <code>say_hi</code> — саме тому потрібні три
+      рівні вкладеності, а не два.</p>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Стек декораторів: порядок застосування і виконання</h2>
+      <p class="section-desc">Класична пастка на живому кодуванні — декоратори застосовуються знизу вгору, але виконуються назовні всередину.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>@a
+@b
+def f(): ...
+<span class="cmt"># еквівалент: f = a(b(f))  -- ЗАСТОСУВАННЯ йде знизу вгору (спершу b, потім a)</span>
+
+<span class="cmt"># але при ВИКЛИКУ f() порядок обертається:</span>
+<span class="cmt"># a's wrapper code (до виклику func) виконується ПЕРШИМ (він зовнішній)</span>
+<span class="cmt"># потім b's wrapper code</span>
+<span class="cmt"># потім сама f()</span>
+<span class="cmt"># потім b's wrapper code (після), потім a's wrapper code (після)</span></code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 760 240" role="img" aria-label="Декоратор a огортає декоратор b, який огортає f() — виконання йде шарами всередину (a до, b до, f()) і назовні (b після, a після)">
+          <defs>
+            <marker id="a11-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <rect x="20" y="20" width="720" height="200" rx="16" fill="none" stroke="currentColor" stroke-width="1.2"/>
+          <text x="42" y="42" font-size="12.5" font-weight="600">@a</text>
+
+          <rect x="70" y="55" width="620" height="130" rx="14" fill="none" stroke="currentColor" stroke-width="1.2"/>
+          <text x="92" y="76" font-size="12.5" font-weight="600">@b</text>
+
+          <rect x="280" y="95" width="200" height="50" rx="10" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.3"/>
+          <text x="380" y="125" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent)">f()</text>
+
+          <polyline points="56,36 106,71 380,90 654,139 704,204" fill="none" stroke="currentColor" stroke-width="1.1" stroke-dasharray="3,3" marker-end="url(#a11-arr)"/>
+
+          <g font-size="11.5" font-weight="700">
+            <circle cx="56" cy="36" r="12" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)"/>
+            <text x="56" y="40" text-anchor="middle" fill="var(--accent)">1</text>
+            <circle cx="106" cy="71" r="12" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)"/>
+            <text x="106" y="75" text-anchor="middle" fill="var(--accent)">2</text>
+            <circle cx="654" cy="139" r="12" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)"/>
+            <text x="654" y="143" text-anchor="middle" fill="var(--accent)">4</text>
+            <circle cx="704" cy="204" r="12" fill="var(--accent)" fill-opacity="0.18" stroke="var(--accent)"/>
+            <text x="704" y="208" text-anchor="middle" fill="var(--accent)">5</text>
+          </g>
+        </svg>
+        <figcaption><b>1</b> a: до виклику → <b>2</b> b: до виклику → <b>3</b> f() → <b>4</b> b: після виклику → <b>5</b> a: після виклику. Виконання йде шарами всередину, потім назовні — так само, як розгортається цибулина.</figcaption>
+      </figure>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Питання-пастка</span>
+        "У якому порядку виконаються декоратори в <code>@a @b def f()</code>?" — правильна
+        відповідь показує розуміння різниці "застосування" й "виконання": обгортання
+        відбувається знизу вгору (<code>a(b(f))</code>), але оскільки <code>a</code> стає
+        <b>зовнішньою</b> функцією, її код "до виклику" запускається першим при кожному
+        реальному виклику <code>f()</code> — тобто порядок виконання "до" збігається з порядком
+        застосування (знизу вгору читання коду = зовні всередину виконання).</div>
+      </div>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Декоратори, якими ви вже користуєтесь у цьому проєкті</h2>
+      <p class="section-desc">Той самий механізм із розділів 8-11 працює за кожним із цих прикладів — тепер ви бачите, що там немає нічого прихованого.</p>
+
+      <table>
+        <tr><th>Декоратор</th><th>Де в проєкті</th><th>Що робить</th></tr>
+        <tr><td><code>@router.post("/optimize", ...)</code></td><td><code>api/routes/router.py</code></td><td>Реєструє функцію як обробник HTTP-маршруту в таблиці роутера FastAPI</td></tr>
+        <tr><td><code>@app.exception_handler(...)</code></td><td><code>core/error_handlers.py</code></td><td>Реєструє функцію як обробник конкретного типу винятку</td></tr>
+        <tr><td><code>@celery_app.task(name=...)</code></td><td><code>workers/tasks.py</code></td><td>Реєструє функцію як Celery-задачу, викликану через чергу</td></tr>
+        <tr><td><code>@lru_cache</code></td><td><code>core/config.py</code></td><td>Кешує результат виклику без аргументів — Singleton-патерн (туторіал 6, п. 16)</td></tr>
+        <tr><td><code>@dataclass</code></td><td><code>route_optimizer/service.py</code>, <code>solver.py</code></td><td>Генерує <code>__init__</code>/<code>__repr__</code>/<code>__eq__</code> (розділ 6 вище)</td></tr>
+        <tr><td><code>@staticmethod</code> / <code>@classmethod</code></td><td>по коду</td><td>Змінює, що автоматично передається першим аргументом методу</td></tr>
+      </table>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body">Усі вони — той самий <code>func = decorator(func)</code>, лише
+        <code>@router.post(...)</code>/<code>@celery_app.task(...)</code> зазвичай <b>не
+        замінюють</b> функцію новою обгорткою, а лише <i>реєструють</i> її в якомусь внутрішньому
+        реєстрі (список маршрутів, черга задач) і повертають оригінал незміненим — теж цілком
+        законне використання декоратора, не обов'язково "обгортати" функцію.</div>
+      </div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина III · Інший синтаксичний цукор</div><div class="line"></div></div>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Comprehensions — цукор над циклами</h2>
+      <p class="section-desc">Найчастіше вживаний "цукор" у будь-якому реальному Python-коді, включно з цим проєктом.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">list comprehension — розгортання</span></div>
+        <pre><code>squares = [x * x for x in range(10) if x % 2 == 0]
+
+<span class="cmt"># буквально те саме, що:</span>
+squares = []
+for x in range(10):
+    if x % 2 == 0:
+        squares.append(x * x)</code></pre>
+      </div>
+
+      <p>Те саме працює для <code>{k: v for ...}</code> (dict comprehension) і
+      <code>{x for ...}</code> (set comprehension). Круглі дужки замість квадратних —
+      <code>(x for x in ...)</code> — дають <b>generator expression</b>: те саме, але не
+      будує список одразу в пам'яті, а видає значення по одному, лениво (детальніше — генератори
+      в розділі про <code>yield</code>, суміжна тема з асинхронністю в туторіалі 4).</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/services/route_optimizer/service.py — реальний код з проєкту</span></div>
+        <pre><code>skipped_not_geocoded = [
+    DeliveryRef(id=d.id, customer_name=d.customer_name, address=d.address)
+    for d in deliveries
+    if d not in geocoded
+]</code></pre>
+      </div>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Comprehension ≈ ланцюжок <code>.filter().map()</code> у JS, тільки в одному виразі й
+        без створення проміжного масиву на кожному кроці ланцюжка:
+        <code>deliveries.filter(d =&gt; !geocoded.includes(d)).map(d =&gt; ({id: d.id, ...}))</code>
+        робить те саме, що приклад вище, але Python-варіант читається "справа наліво" (спершу
+        видно, ЩО формується, потім — звідки й за якою умовою), а не як послідовність викликів
+        методів.
+      </div>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Розпакування: <code>*args</code>, <code>**kwargs</code>, зірочки в присвоєнні</h2>
+      <p class="section-desc">Зірочка (<code>*</code>) і подвійна зірочка (<code>**</code>) — один символ, кілька пов'язаних значень залежно від контексту.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>def f(*args, **kwargs):        <span class="cmt"># збирає "зайві" позиційні в tuple, іменовані — в dict</span>
+    print(args, kwargs)
+f(1, 2, x=3)                    <span class="out"># (1, 2) {'x': 3}</span>
+
+numbers = [1, 2, 3]
+f(*numbers)                     <span class="cmt"># розпаковує список назад в окремі аргументи -- f(1, 2, 3)</span>
+
+options = {"x": 3}
+f(**options)                    <span class="cmt"># розпаковує dict в іменовані аргументи -- f(x=3)</span>
+
+first, *rest = [1, 2, 3, 4]     <span class="cmt"># first=1, rest=[2, 3, 4] -- розпакування присвоєння</span>
+
+merged = {**dict1, **dict2}     <span class="cmt"># об'єднання словників "розпакуванням" (PEP 448)</span></code></pre>
+      </div>
+
+      <p>Той самий символ означає протилежні дії залежно від сторони: у <b>визначенні</b>
+      функції <code>*args</code> — "збери решту позиційних аргументів у tuple"; у <b>виклику</b>
+      функції <code>*iterable</code> — "розпакуй цей ітерований об'єкт назад в окремі аргументи".</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Прямий аналог JS spread/rest-оператора (<code>...</code>): <code>function f(...args)</code>
+        (rest) і <code>f(...numbers)</code> (spread), <code>const [first, ...rest] = arr</code>,
+        <code>{...obj1, ...obj2}</code> — усе те саме, просто інший символ (<code>...</code>
+        замість <code>*</code>/<code>**</code>) і в Python окремий символ для словників
+        (<code>**</code>), тоді як у JS spread однаковий і для масивів, і для об'єктів.
+      </div>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> f-strings — найшвидший спосіб форматування</h2>
+      <div class="vs">
+        <div class="side py">
+          <div class="lbl">Python (f-string)</div>
+          <code>name = "Olia"</code>
+          <code>f"Hello, {name}! {2 + 2} today."</code>
+        </div>
+        <div class="side js">
+          <div class="lbl">JavaScript (template literal)</div>
+          <code>const name = "Olia";</code>
+          <code>`Hello, ${name}! ${2 + 2} today.`</code>
+        </div>
+      </div>
+      <p>Практично 1:1 той самий інструмент — рядок з вбудованими виразами замість
+      конкатенації. Python f-strings додатково підтримують форматування прямо всередині дужок:
+      <code>f"{price:.2f}"</code>, <code>f"{value!r}"</code> (викликає <code>repr()</code> —
+      саме так побудовано <code>__repr__</code> у прикладі <code>Money</code> вище), і навіть
+      відладку одним символом: <code>f"{x=}"</code> друкує <code>"x=5"</code>.</p>
+    </section>
+
+    <section id="s16">
+      <h2><span class="num">16</span> Walrus-оператор <code>:=</code></h2>
+      <p class="section-desc">З'явився в Python 3.8 (PEP 572) — і вирішує проблему, якої в JS ніколи не існувало.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code><span class="cmt"># без walrus — виклик двічі АБО зайва проміжна змінна поза if</span>
+data = fetch()
+if data:
+    process(data)
+
+<span class="cmt"># з walrus — присвоєння прямо всередині виразу умови</span>
+if (data := fetch()):
+    process(data)</code></pre>
+      </div>
+
+      <div class="callout fun">
+        <div class="ic">🎉</div>
+        <div class="body"><span class="tag">Цікавий факт</span>
+        У JavaScript <code>=</code> — вже сам по собі вираз, що повертає присвоєне значення
+        (<code>if (data = fetch())</code> працює в JS без жодного спецсинтаксису — хоча лінтери
+        зазвичай сварять за це, бо легко переплутати з <code>==</code>). У Python
+        <code>=</code> — це <b>інструкція</b> (statement), не вираз, і взагалі не може стояти
+        всередині умови — саме тому знадобився окремий новий оператор <code>:=</code> спеціально
+        для цього одного випадку.</div>
+      </div>
+    </section>
+
+    <section id="s17">
+      <h2><span class="num">17</span> <code>match</code>/<code>case</code> — структурне зіставлення</h2>
+      <p class="section-desc">З'явився в Python 3.10 (PEP 634) — набагато потужніший за звичайний <code>switch</code>.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>match command:
+    case {"action": "move", "x": x, "y": y}:   <span class="cmt"># розпаковує СТРУКТУРУ словника прямо в патерні</span>
+        move(x, y)
+    case {"action": "stop"}:
+        stop()
+    case [first, *rest]:                        <span class="cmt"># розпаковує список, з rest-хвостом</span>
+        handle_list(first, rest)
+    case _:
+        raise ValueError("unknown command")</code></pre>
+      </div>
+
+      <p>На відміну від JS <code>switch</code> (лише порівняння на рівність одного значення),
+      <code>match</code> уміє <b>розпаковувати структуру</b> прямо в патерні — перевіряти форму
+      словника/списку/об'єкта й одразу діставати значення з неї в одному кроці. Ближчий аналог у
+      фронтенд-світі — деструктуризація в поєднанні з перевіркою типу/форми, яку в TS роблять
+      вручну через звуження типів (<i>discriminated unions</i> + <code>switch</code> по полю
+      <code>type</code>), тут же це вбудовано в саму мовну конструкцію.</p>
+    </section>
+
+    <section id="s18">
+      <h2><span class="num">18</span> <code>with</code> — цукор над try/finally</h2>
+      <p class="section-desc">Уже згадувалось у туторіалі 6 (п. 13) — тут детальний, покроковий розгортання.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">у що розгортається with</span></div>
+        <pre><code>with open("f.txt") as f:
+    process(f)
+
+<span class="cmt"># концептуально те саме, що:</span>
+mgr = open("f.txt")
+f = mgr.__enter__()
+try:
+    process(f)
+finally:
+    mgr.__exit__(*sys.exc_info())   <span class="cmt"># ГАРАНТОВАНО викликається, навіть при винятку</span></code></pre>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/db/session.py та app/services/notifications/email.py — реальний код з проєкту</span></div>
+        <pre><code>async with AsyncSessionLocal() as session:
+    yield session
+<span class="cmt"># сесія БД гарантовано закриється, навіть якщо запит впаде з винятком посередині</span>
+
+with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as smtp:
+    smtp.login(sender, app_password)
+    smtp.sendmail(sender, [to], message.as_string())
+<span class="cmt"># SMTP-з'єднання гарантовано закриється навіть при помилці логіну/відправки</span></code></pre>
+      </div>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        У JS прямого еквівалента історично не було — доводилось вручну писати
+        <code>try/finally</code>. У специфікацію мови вже давно просувається (TC39) схожа ідея —
+        <code>using</code>-декларації для явного, детермінованого звільнення ресурсів — прямо
+        натхненна тим самим принципом, що й Python <code>with</code> і C# <code>using</code>.
+      </div>
+    </section>
+
+    <section id="s19">
+      <h2><span class="num">19</span> Тернарний вираз — і чому порядок протилежний JS</h2>
+      <div class="vs">
+        <div class="side py">
+          <div class="lbl">Python</div>
+          <code>status = "ok" if response.ok else "error"</code>
+          <code># [значення] if [умова] else [значення]</code>
+        </div>
+        <div class="side js">
+          <div class="lbl">JavaScript</div>
+          <code>const status = response.ok ? "ok" : "error";</code>
+          <code>// [умова] ? [значення] : [значення]</code>
+        </div>
+      </div>
+      <p>Та сама ідея, дзеркальний порядок читання: Python читається майже як звичайне
+      речення англійською ("<i>ok, if response is ok, else error</i>"), C-подібні мови (і JS
+      разом з ними) читаються "умова спершу". Жодної функціональної різниці — лише синтаксис,
+      але легко переплутати порядок значень при швидкому перемиканні між мовами.</p>
+    </section>
+
+    <section id="s20">
+      <h2><span class="num">20</span> Швидка перевірка</h2>
+      <p class="section-desc">Натисніть на питання, щоб побачити відповідь.</p>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>У що розгортається <code>@decorator</code> над функцією?</summary>
+        <div class="a"><code>func = decorator(func)</code>, застосоване одразу після
+        визначення функції — decorator приймає функцію й повертає (зазвичай іншу) функцію.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>У якому порядку виконуються два декоратори, застосовані до однієї функції?</summary>
+        <div class="a">Застосування — знизу вгору (<code>@a @b def f()</code> = <code>a(b(f))</code>).
+        Виконання "до"-коду при виклику — теж у тому ж напрямку читання зверху вниз, бо
+        <code>a</code> стає зовнішньою обгорткою: спершу код <code>a</code>, потім код
+        <code>b</code>, потім сама <code>f</code>.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чому потрібен <code>functools.wraps</code> у власному декораторі?</summary>
+        <div class="a">Без нього обгортка (<code>wrapper</code>) замінює
+        <code>__name__</code>/<code>__doc__</code> оригінальної функції своїми власними —
+        ламає дебаг, інтроспекцію й автогенерацію документації (наприклад, у FastAPI).
+        <code>functools.wraps(func)</code> копіює ці метадані з оригіналу на обгортку.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим <code>class Foo: ...</code> насправді є "під капотом"?</summary>
+        <div class="a">Синтаксичним цукром над викликом <code>type("Foo", (базові_класи,),
+        {простір_імен_класу})</code>. <code>type</code> — метаклас, фабрика класів за
+        замовчуванням у Python.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Що згенерує <code>@dataclass</code> автоматично, а що — ні?</summary>
+        <div class="a">Автоматично: <code>__init__</code>, <code>__repr__</code>,
+        <code>__eq__</code> — на основі оголошених полів з type hints. НЕ генерує
+        <code>__hash__</code> за замовчуванням (клас лишається unhashable, доки не додати
+        <code>frozen=True</code> або <code>eq=False</code>) — прямий наслідок правила
+        "мутабельне не хешовне" з туторіалу 5.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому в Python знадобився окремий walrus-оператор <code>:=</code>, а в JS — ні?</summary>
+        <div class="a">У JS <code>=</code> вже є виразом, що повертає присвоєне значення, тому
+        <code>if (x = f())</code> і без того синтаксично можливий. У Python <code>=</code> —
+        інструкція (statement), яка не може стояти всередині виразу умови — тому знадобився
+        окремий оператор <code>:=</code> саме для цього вузького випадку.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що таке "generator expression" і чим відрізняється від list comprehension?</summary>
+        <div class="a"><code>(x for x in ...)</code> замість <code>[x for x in ...]</code> —
+        та сама ідея фільтрації/трансформації, але не будує весь список одразу в пам'яті: видає
+        значення по одному, ліниво, при ітерації. Корисно для великих або нескінченних
+        послідовностей, коли повний список не потрібен одразу.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Живе кодування</span>Напишіть найпростіший декоратор, який рахує, скільки разів викликалась функція.</summary>
+        <div class="a"><code>def count_calls(func):<br>&nbsp;&nbsp;&nbsp;&nbsp;@functools.wraps(func)<br>&nbsp;&nbsp;&nbsp;&nbsp;def wrapper(*a, **kw):<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;wrapper.calls += 1<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return func(*a, **kw)<br>&nbsp;&nbsp;&nbsp;&nbsp;wrapper.calls = 0<br>&nbsp;&nbsp;&nbsp;&nbsp;return wrapper</code> —
+        показує розуміння, що й сама обгортка (<code>wrapper</code>) — звичайний об'єкт, якому
+        можна прикріпити власний атрибут-лічильник.</div>
+      </details>
+
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал побудований на офіційній документації Python (data model, PEP 572, PEP 634, PEP 448)
+  та реальному коді репозиторію <code>ai-delivery-planner-backend</code>.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

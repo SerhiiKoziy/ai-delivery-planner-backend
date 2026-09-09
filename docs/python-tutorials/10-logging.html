@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10. Логування — AI Delivery Planner</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+  .badge-level{
+    display:inline-block; font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px;
+    background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);
+    text-transform:uppercase; letter-spacing:.04em; margin-left:10px; vertical-align:middle;
+  }
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · Логування</div>
+  <h1>Логування: чому не <code>print()</code> <span class="badge-level">Середня складність</span></h1>
+  <p class="lead">
+    Модуль <code>logging</code> — одна з тих речей, які "просто працюють", поки не потрібно
+    реально розібратись, чому одні повідомлення видно, а інші — ні. Розберемо ієрархію
+    логерів, конфігурацію, і чесно подивимось, як логування влаштоване в цьому самому проєкті —
+    включно з місцем, де воно налаштоване, але не підключене.
+  </p>
+  <div class="pills">
+    <span class="pill">🌳 Ієрархія логерів</span>
+    <span class="pill">🧩 Structured logging</span>
+    <span class="pill">🔎 Correlation ID</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🎯 До співбесіди</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html" class="active">10. Логування</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Чому не просто print()</a></li>
+      <li><a href="#s2">2. Ієрархія логерів і propagation</a></li>
+      <li><a href="#s3">3. Рівні логування — коли який</a></li>
+      <li><a href="#s4">4. Handler, Formatter, Filter</a></li>
+      <li><a href="#s5">5. basicConfig vs dictConfig</a></li>
+      <li><a href="#s6">6. Чесний розбір логування в нашому проєкті</a></li>
+      <li><a href="#s7">7. logger.exception vs exc_info=True</a></li>
+      <li><a href="#s8">8. Structured logging (JSON-логи)</a></li>
+      <li><a href="#s9">9. Correlation ID — трасування запиту</a></li>
+      <li><a href="#s10">10. Каверзні питання співбесіди</a></li>
+      <li><a href="#s11">11. Шпаргалка</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s1">
+      <h2><span class="num">1</span> Чому не просто <code>print()</code></h2>
+      <p class="section-desc">Різниця здається косметичною, поки застосунок не потрапляє на прод.</p>
+
+      <table>
+        <tr><th></th><th><code>print()</code></th><th><code>logging</code></th></tr>
+        <tr><td>Рівні важливості</td><td>Немає — усе однаково</td><td>DEBUG/INFO/WARNING/ERROR/CRITICAL</td></tr>
+        <tr><td>Куди йде вивід</td><td>Завжди stdout</td><td>Будь-куди: файл, stdout, зовнішній сервіс, кілька одразу</td></tr>
+        <tr><td>Вимкнути в проді, лишити в dev</td><td>Треба видаляти рядки коду</td><td>Один рядок конфігурації змінює рівень</td></tr>
+        <tr><td>Контекст (час, модуль, рівень)</td><td>Вручну дописувати самому</td><td>Formatter додає автоматично</td></tr>
+        <tr><td>Продуктивність при вимкненому рівні</td><td>Рядок все одно форматується</td><td>Лінива перевірка рівня — форматування не відбувається, якщо рівень вимкнено</td></tr>
+      </table>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Найпоширеніша практична причина:</b> <code>print()</code> у
+        production-застосунку неможливо вибірково вимкнути. З <code>logging</code> достатньо
+        підняти рівень логера з <code>DEBUG</code> до <code>WARNING</code> в один рядок
+        конфігурації — і всі "діагностичні" повідомлення зникають, не чіпаючи жодного рядка
+        коду.</div>
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">2</span> Ієрархія логерів і propagation</h2>
+      <p class="section-desc">Найважливіша, і найчастіше незрозуміла частина модуля — логери утворюють дерево, а не список.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>logging.getLogger("app.services.route_optimizer.solver")
+<span class="cmt"># ім'я з крапками автоматично будує ІЄРАРХІЮ, як шлях у файловій системі:</span>
+<span class="cmt">#   root</span>
+<span class="cmt">#    └── app</span>
+<span class="cmt">#         └── app.services</span>
+<span class="cmt">#              └── app.services.route_optimizer</span>
+<span class="cmt">#                   └── app.services.route_optimizer.solver</span></code></pre>
+      </div>
+
+      <p>Логер, названий за домовленістю <code>__name__</code> (тобто повним шляхом модуля,
+      наприклад <code>app.services.route_optimizer.solver</code>), автоматично стає "дитиною"
+      логера <code>app.services.route_optimizer</code>, той — дитиною <code>app.services</code>,
+      і так до кореневого <b>root</b>-логера. За замовчуванням запис логу, зроблений на
+      найглибшому логері, <b>піднімається</b> (propagate) вгору по всьому дереву — кожен предок
+      теж отримує шанс обробити цей запис своїми handler-ами, якщо вони є.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 760 220" role="img" aria-label="Запис логу з app.services.route_optimizer.solver піднімається через app.services.route_optimizer, app.services, app до root — кожен рівень з власним handler-ом теж його обробляє">
+          <defs>
+            <marker id="a10-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+            </marker>
+          </defs>
+          <g font-size="11.5">
+            <rect x="480" y="20" width="260" height="34" rx="7" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="610" y="42" text-anchor="middle" fill="var(--accent)">app.services.route_optimizer.solver</text>
+
+            <rect x="480" y="72" width="260" height="34" rx="7" fill="none" stroke="currentColor" stroke-width="1.1"/>
+            <text x="610" y="94" text-anchor="middle">app.services.route_optimizer</text>
+
+            <rect x="480" y="124" width="260" height="34" rx="7" fill="none" stroke="currentColor" stroke-width="1.1"/>
+            <text x="610" y="146" text-anchor="middle">app.services</text>
+
+            <rect x="480" y="176" width="120" height="34" rx="7" fill="none" stroke="currentColor" stroke-width="1.1"/>
+            <text x="540" y="198" text-anchor="middle">app</text>
+
+            <rect x="20" y="176" width="120" height="34" rx="7" fill="var(--fg)" fill-opacity="0.06" stroke="currentColor" stroke-width="1.3"/>
+            <text x="80" y="198" text-anchor="middle" font-weight="700">root</text>
+          </g>
+
+          <line x1="610" y1="54" x2="610" y2="70" stroke="var(--accent)" stroke-width="1.2" marker-end="url(#a10-arr)"/>
+          <line x1="610" y1="106" x2="610" y2="122" stroke="var(--accent)" stroke-width="1.2" marker-end="url(#a10-arr)"/>
+          <line x1="610" y1="158" x2="565" y2="174" stroke="var(--accent)" stroke-width="1.2" marker-end="url(#a10-arr)"/>
+          <line x1="480" y1="193" x2="142" y2="193" stroke="var(--accent)" stroke-width="1.2" marker-end="url(#a10-arr)"/>
+
+          <text x="640" y="66" font-size="10.5" fill="var(--accent)">propagate</text>
+        </svg>
+        <figcaption>Запис логу піднімається (propagate) від найглибшого логера через кожного предка до root — кожен рівень із власним handler-ом теж його побачить, якщо не встановлено <code>logger.propagate = False</code>.</figcaption>
+      </figure>
+
+      <p><b>Практичний наслідок:</b> зазвичай достатньо налаштувати handler-и лише <b>один раз</b>
+      на root-логері (чи на логері верхнього рівня <code>"app"</code>) — усі "дочірні" логери в
+      кожному модулі автоматично скористаються тим самим налаштуванням через propagation, без
+      повторної конфігурації в кожному файлі.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Схоже на CSS-каскад: властивість, не задана явно на елементі, "успадковується" від
+        батька. Тут — не властивість стилю, а сам факт "чи є кому обробити цей запис логу" —
+        успадковується вгору по дереву логерів, а не вниз, як у CSS, але ідея ланцюжка
+        відповідальності та сама.
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">3</span> Рівні логування — коли який</h2>
+      <table>
+        <tr><th>Рівень</th><th>Коли використовувати</th></tr>
+        <tr><td><code>DEBUG</code></td><td>Детальна діагностика для розробника — значення змінних, кроки алгоритму. Вимкнено за замовчуванням у проді.</td></tr>
+        <tr><td><code>INFO</code></td><td>Нормальний хід подій, вартий запису: "користувач зареєструвався", "маршрут оптимізовано".</td></tr>
+        <tr><td><code>WARNING</code></td><td>Щось незвичне, але застосунок продовжує працювати коректно — типовий рівень за замовчуванням.</td></tr>
+        <tr><td><code>ERROR</code></td><td>Операція не вдалась, потрібна увага — але процес живий.</td></tr>
+        <tr><td><code>CRITICAL</code></td><td>Застосунок (чи ключова його частина) не може продовжувати роботу.</td></tr>
+      </table>
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body">Логер з рівнем <code>WARNING</code> (типовий дефолт, якщо нічого не
+        налаштовано) просто <b>ігнорує</b> виклики <code>.debug(...)</code> і <code>.info(...)</code>
+        — і робить це дешево: рядок повідомлення взагалі не форматується, якщо рівень вимкнено
+        (на відміну від <code>print(f"...")</code>, де f-string обчислюється завжди, навіть
+        якщо результат нікуди не піде).</div>
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">4</span> Handler, Formatter, Filter — хто за що відповідає</h2>
+      <ul>
+        <li><b>Logger</b> — точка входу у ваш код (<code>logger.info(...)</code>); вирішує,
+        <i>чи взагалі</i> обробляти запис (за рівнем), і передає його своїм handler-ам і, через
+        propagation, — предкам.</li>
+        <li><b>Handler</b> — вирішує, <i>куди</i> йде запис: <code>StreamHandler</code>
+        (консоль), <code>FileHandler</code> (файл), <code>RotatingFileHandler</code> (файл з
+        ротацією за розміром), чи handler для зовнішнього сервісу логів.</li>
+        <li><b>Formatter</b> — вирішує, <i>як виглядає</i> рядок: які поля (час, рівень, ім'я
+        логера, повідомлення) і в якому порядку.</li>
+        <li><b>Filter</b> — додаткова, тонша умова: пропустити запис далі чи ні, за будь-якою
+        логікою понад простий рівень важливості.</li>
+      </ul>
+      <p class="muted">Один Logger може мати кілька Handler-ів одразу (наприклад: консоль для
+      розробки + файл для аудиту), і кожен Handler може мати власний Formatter і власний,
+      незалежний від логера, рівень.</p>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">5</span> <code>basicConfig</code> vs <code>dictConfig</code></h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/logger.py — реальний код з проєкту</span></div>
+        <pre><code>def configure_logging(level: int = logging.INFO) -> None:
+    <span class="cmt">"""Configure root logging handlers/formatters. Safe to call multiple times."""</span>
+    global _CONFIGURED
+    if _CONFIGURED:
+        return
+    logging.basicConfig(
+        level=level,
+        stream=sys.stdout,
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    )
+    _CONFIGURED = True</code></pre>
+      </div>
+
+      <p><code>logging.basicConfig(...)</code> — найшвидший спосіб налаштувати кореневий логер
+      одним викликом: рівень, формат, куди писати. Проєкт додатково захищає його прапорцем
+      <code>_CONFIGURED</code>, щоб повторний виклик нічого не зламав — сам
+      <code>basicConfig</code> і без цього по замовчуванню ігнорує повторні виклики, якщо
+      root-логер уже має handler-и, але явний прапорець тут прибирає будь-яку двозначність.</p>
+
+      <p>Для складніших сценаріїв (кілька handler-ів з різними форматами, окремі логери з
+      різними рівнями) використовують <code>logging.config.dictConfig({...})</code> —
+      декларативний словник (чи YAML/JSON-файл), що описує все дерево конфігурації одразу, а
+      не послідовністю Python-викликів.</p>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">6</span> Чесний розбір: як логування влаштоване саме в цьому проєкті</h2>
+      <p class="section-desc">Не теорія — реальний стан речей у репозиторії, включно з нюансом, який варто знати.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">Хто як отримує логер у проєкті</span></div>
+        <pre><code><span class="cmt"># app/core/error_handlers.py</span>
+logger = logging.getLogger("app.errors")
+
+<span class="cmt"># app/services/notifications/email.py</span>
+logger = logging.getLogger("app.notifications.email")
+
+<span class="cmt"># app/services/route_optimizer/solver.py</span>
+logger = logging.getLogger(__name__)</code></pre>
+      </div>
+
+      <p>Усі три модулі отримують логер напряму через <code>logging.getLogger(...)</code> —
+      стандартний stdlib-виклик, без жодних кастомних налаштувань поверх нього.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Цікавий, реальний нюанс:</b> у проєкті окремо існує
+        <code>app/core/logger.py</code> з функціями <code>configure_logging()</code> і
+        <code>get_logger(name)</code> (показано в розділі 5) — але жоден інший файл у проєкті
+        <b>не імпортує</b> <code>get_logger</code> з цього модуля. <code>error_handlers.py</code>,
+        <code>email.py</code> і <code>solver.py</code> викликають "голий"
+        <code>logging.getLogger(...)</code> напряму, минаючи <code>configure_logging()</code>
+        зовсім. Це означає: без явного виклику <code>configure_logging()</code> десь на старті
+        застосунку (а такого виклику в <code>main.py</code> цього проєкту зараз немає),
+        кастомний формат <code>"%(asctime)s | %(levelname)s | ..."</code> ніколи фактично не
+        застосовується — логи йдуть з поведінкою Python "за замовчуванням".</div>
+      </div>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Чому це не критично на практиці зараз:</b> Python має вбудований
+        "handler останньої надії" (<i>handler of last resort</i>), що виводить WARNING+
+        повідомлення в stderr навіть зовсім без конфігурації — тому <code>logger.exception(...)</code>
+        і <code>logger.error(...)</code> у <code>error_handlers.py</code> (обидва ≥ WARNING)
+        усе одно щось надрукують. Але без явного <code>configure_logging()</code> це виведення
+        не має ані формату з <code>configure_logging()</code>, ані гарантії, що менш важливі
+        рівні (<code>INFO</code>) взагалі колись покажуться.</div>
+      </div>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Хороша відповідь на співбесіді</span>
+        "Розкажіть про випадок, де ви знайшли неочевидну проблему в чужому коді" — це саме
+        такий приклад: код, що виглядає повністю налаштованим (є функція, є формат, є
+        прапорець від повторної конфігурації), але ніде фактично не підключений. Знайти це —
+        питання одного <code>grep</code> по імпортах, а не складного дебагу.</div>
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">7</span> <code>logger.exception</code> vs <code>exc_info=True</code></h2>
+      <p class="section-desc">Коротке нагадування з туторіалу 9, тут — з акцентом на саме логування, а не на винятки.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/error_handlers.py — реальний код з проєкту</span></div>
+        <pre><code>logger.error("OpenAI API error on %s %s: %s", request.method, request.url.path, exc)
+<span class="cmt"># -- звичайний рядок, БЕЗ traceback</span>
+
+logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+<span class="cmt"># -- еквівалент logger.error(msg, exc_info=True): traceback додається АВТОМАТИЧНО</span></code></pre>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Ще одна деталь, вартa уваги:</b> <code>logger.error("...: %s", exc)</code>
+        передає <code>exc</code> як звичайний аргумент форматування рядка (викликає
+        <code>str(exc)</code>) — це не те саме, що <code>exc_info=True</code>. Перше дає лише
+        текст повідомлення про помилку; друге додає повний traceback. Обидва підходи в цьому
+        проєкті навмисно різні (розділ 14, туторіал 9): очікувана зовнішня помилка (OpenAI) —
+        без traceback, непередбачена — з повним traceback.</div>
+      </div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">8</span> Structured logging (JSON-логи)</h2>
+      <p class="section-desc">Формат з <code>core/logger.py</code> — рядок тексту, зручний для читання людиною в консолі. У проді з централізованим збором логів частіше потрібен інший формат.</p>
+
+      <div class="vs" style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+        <div class="card">
+          <b>Рядковий формат (поточний)</b>
+          <pre style="margin-top:8px; font-size:12.5px; white-space:pre-wrap;">2026-07-19 14:02:11 | ERROR | app.errors | OpenAI API error on POST /ai/chat: rate limit</pre>
+          <p class="muted" style="margin-top:8px;">Легко читати очима в терміналі; важко фільтрувати/шукати програмно у великому обсязі логів з багатьох інстансів.</p>
+        </div>
+        <div class="card">
+          <b>Структурований (JSON) формат</b>
+          <pre style="margin-top:8px; font-size:12.5px; white-space:pre-wrap;">{"ts": "2026-07-19T14:02:11Z", "level": "ERROR", "logger": "app.errors", "msg": "OpenAI API error", "method": "POST", "path": "/ai/chat"}</pre>
+          <p class="muted" style="margin-top:8px;">Кожне поле — окремий ключ: система збору логів (ELK, Datadog, CloudWatch) може фільтрувати й агрегувати по <code>path</code>, <code>level</code> тощо без парсингу тексту.</p>
+        </div>
+      </div>
+
+      <p>Найпростіший шлях отримати структуровані логи в stdlib — власний <code>Formatter</code>,
+      що серіалізує <code>record.__dict__</code> (потрібні поля) у JSON замість форматованого
+      рядка; популярні готові бібліотеки — <code>python-json-logger</code>, <code>structlog</code>.</p>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">9</span> Correlation ID — трасування одного запиту через логи</h2>
+      <p class="section-desc">Проблема: у застосунку з багатьма одночасними запитами (а це — увесь сенс async, туторіал 2) логи від різних користувачів переплітаються в одному потоці виводу.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">типовий підхід — middleware генерує ID на початку запиту</span></div>
+        <pre><code>import uuid, contextvars
+
+request_id_var = contextvars.ContextVar("request_id", default="-")
+
+class RequestIdMiddleware:
+    async def __call__(self, scope, receive, send):
+        request_id_var.set(str(uuid.uuid4()))
+        <span class="cmt"># ...передати керування далі по ASGI-ланцюжку (туторіал 8)</span></code></pre>
+      </div>
+
+      <p><code>contextvars.ContextVar</code> — спеціально створений для async-коду аналог
+      "потік-локального" сховища (<code>threading.local</code>): значення, встановлене на
+      початку обробки запиту, лишається доступним у будь-якому <code>await</code>-виклику
+      всередині <i>того самого</i> запиту, навіть якщо кілька запитів обробляються
+      "паралельно" в одному event loop (туторіал 4) — кожен бачить лише своє власне значення.
+      Кастомний <code>Formatter</code> потім автоматично додає це значення до кожного рядка
+      логу — і всі логи одного запиту можна знайти одним фільтром по ID, навіть якщо вони
+      технічно перемежовані в загальному виводі з логами інших запитів.</p>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body">Цей проєкт наразі не генерує correlation ID — кожен запит логується
+        без спільного ідентифікатора між рядками. Для одного інстансу з невеликим
+        навантаженням це не критично; стає важливим, щойно з'являється кілька інстансів
+        (туторіал 3) і треба зрозуміти, які саме рядки логів належать одному й тому самому
+        користувацькому запиту.</div>
+      </div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Каверзні питання співбесіди</h2>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чому не варто використовувати <code>print()</code> для продакшн-логів?</summary>
+        <div class="a">Немає рівнів важливості, немає гнучкого напрямку виводу, неможливо
+        вибірково вимкнути без зміни коду, і рядок форматується завжди — навіть якщо результат
+        нікуди не піде.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Логер <code>"app.services.solver"</code> не має власних handler-ів. Куди піде його запис логу?</summary>
+        <div class="a">Піднімається (propagate) до найближчого предка з handler-ами — типово
+        аж до root-логера. Якщо ніде в дереві немає жодного handler-а, спрацьовує вбудований
+        "handler останньої надії" (виводить WARNING+ у stderr).</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Різниця <code>logger.error(msg)</code> і <code>logger.exception(msg)</code>?</summary>
+        <div class="a"><code>logger.exception</code> — те саме, що
+        <code>logger.error(msg, exc_info=True)</code>, і має сенс лише всередині
+        <code>except</code>-блоку: додає повний traceback поточного винятку. Звичайний
+        <code>logger.error(msg)</code> — просто рядок, без traceback.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Ви викликали <code>logger.getLogger(__name__).info("...")</code>, але нічого не вивелось. Чому?</summary>
+        <div class="a">Найімовірніша причина — рівень логера (чи кореневого логера) вищий за
+        <code>INFO</code> (типовий дефолт без конфігурації — <code>WARNING</code>), тому запис
+        просто відкидається ще до будь-якого handler-а. Друга можлива причина —
+        <code>logger.propagate = False</code> на якомусь проміжному логері обриває шлях до
+        handler-а, що міг би вивести запис.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Навіщо конвенція називати логер через <code>__name__</code>?</summary>
+        <div class="a">Ім'я модуля з крапками автоматично будує ієрархію логерів, що відповідає
+        структурі пакетів застосунку — дозволяє потім керувати рівнем логування для цілого
+        піддерева (наприклад, увімкнути DEBUG лише для <code>app.services.route_optimizer</code>,
+        не чіпаючи решту застосунку) без ручного перелічування кожного модуля окремо.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Навіщо потрібен <code>contextvars.ContextVar</code>, а не звичайна глобальна змінна, для correlation ID?</summary>
+        <div class="a">Звичайна глобальна змінна — одна на весь процес: у конкурентному
+        async-застосунку (туторіал 4) кілька запитів, що виконуються "одночасно" в одному
+        event loop, переписували б значення одне одному. <code>ContextVar</code> дає кожному
+        логічному потоку виконання (кожній async-задачі) власну, ізольовану копію значення.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим structured (JSON) logging кращий за звичайний текстовий формат у продакшені?</summary>
+        <div class="a">Система збору логів (ELK, Datadog тощо) може фільтрувати й агрегувати по
+        окремих полях (рівень, шлях запиту, id користувача) напряму, без потреби парсити
+        довільний текстовий рядок регулярними виразами.</div>
+      </details>
+
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Шпаргалка</h2>
+      <div class="cheat">
+        <table>
+          <tr><th>Питання</th><th>Відповідь</th></tr>
+          <tr><td>Як назвати логер у модулі?</td><td><code>logging.getLogger(__name__)</code> — автоматична ієрархія</td></tr>
+          <tr><td>Швидко налаштувати root-логер</td><td><code>logging.basicConfig(level=..., format=...)</code></td></tr>
+          <tr><td>Складна конфігурація з кількома handler-ами</td><td><code>logging.config.dictConfig({...})</code></td></tr>
+          <tr><td>Логувати з traceback усередині except</td><td><code>logger.exception(msg)</code></td></tr>
+          <tr><td>Ізолювати значення на конкурентний запит</td><td><code>contextvars.ContextVar</code>, не глобальна змінна</td></tr>
+          <tr><td>Логи для системи збору (ELK/Datadog)</td><td>Структурований JSON-формат, не вільний текст</td></tr>
+        </table>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал побудований на документації stdlib-модуля <code>logging</code> та реальному коді
+  репозиторію <code>ai-delivery-planner-backend</code> (<code>app/core/logger.py</code>,
+  <code>app/core/error_handlers.py</code>).
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

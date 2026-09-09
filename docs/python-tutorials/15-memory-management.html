@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>15. Пам'ять і збирач сміття — AI Delivery Planner</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+  .part-divider{
+    display:flex; align-items:center; gap:14px; margin:64px 0 40px;
+  }
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · Пам'ять і збирач сміття</div>
+  <h1>Пам'ять, очистка і трікі кейси</h1>
+  <p class="lead">
+    Reference counting в туторіалі 6 пояснено одним абзацом — тут повна картина: як CPython
+    насправді вирішує, коли об'єкт можна прибрати, де reference counting безсилий, і
+    найпоширеніші (і найнеприємніші в проді) способи випадково "тримати" пам'ять довше, ніж
+    здається.
+  </p>
+  <div class="pills">
+    <span class="pill">♻️ Reference counting + generational GC</span>
+    <span class="pill">🕳️ Реальні витоки пам'яті</span>
+    <span class="pill">🔗 Знахідка в коді проєкту</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🎯 До співбесіди</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="15-memory-management.html" class="active">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — Як це працює</div>
+    <ol>
+      <li><a href="#s1">1. Reference counting — основа основ</a></li>
+      <li><a href="#s2">2. Цикли — де refcounting безсилий</a></li>
+      <li><a href="#s3">3. Generational GC — три покоління</a></li>
+      <li><a href="#s4">4. __del__ і цикли — історія PEP 442</a></li>
+      <li><a href="#s5">5. weakref — розірвати цикл свідомо</a></li>
+      <li><a href="#s6">6. __slots__ — економія кількісно</a></li>
+      <li><a href="#s7">7. Чому RSS процесу не падає після del</a></li>
+      <li><a href="#s8">8. gc.freeze() і pre-fork воркери</a></li>
+    </ol>
+    <div class="toc-group">Частина II — Трікі кейси</div>
+    <ol>
+      <li><a href="#s9">9. del не гарантує звільнення пам'яті</a></li>
+      <li><a href="#s10">10. Незчищені кеші й підписки — реальні "витоки"</a></li>
+      <li><a href="#s11">11. Замикання, що тримають зайве живим</a></li>
+      <li><a href="#s12">12. __del__ ненадійний для ресурсів</a></li>
+      <li><a href="#s13">13. sys.getsizeof() бреше</a></li>
+      <li><a href="#s14">14. Інструменти: tracemalloc, objgraph</a></li>
+    </ol>
+    <div class="toc-group">Підсумок</div>
+    <ol>
+      <li><a href="#s15">15. Каверзні питання співбесіди</a></li>
+      <li><a href="#s16">16. Шпаргалка</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Як це працює</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">1</span> Reference counting — основа основ</h2>
+      <p class="section-desc">Кожен об'єкт у CPython носить із собою лічильник: скільки місць на нього зараз посилаються.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>import sys
+
+x = [1, 2, 3]
+sys.getrefcount(x)   <span class="out"># 2, не 1!</span>
+
+y = x
+sys.getrefcount(x)   <span class="out"># 3</span>
+del y
+sys.getrefcount(x)   <span class="out"># 2</span></code></pre>
+      </div>
+
+      <p>Щойно лічильник об'єкта падає до нуля, CPython звільняє пам'ять <b>негайно</b> — на
+      відміну від мов зі "справжнім" garbage collector-ом (Java, JS), де звільнення відкладене
+      до наступного циклу збирання сміття. Це й пояснює "зайву" одиницю у прикладі вище:
+      <code>sys.getrefcount(x)</code> сама по собі створює <b>тимчасове</b> посилання на
+      <code>x</code> — сам виклик функції передає <code>x</code> аргументом, і це вже друге
+      посилання (перше — сама змінна <code>x</code>).</p>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Класичне питання-пастка</span>
+        "Чому <code>sys.getrefcount(x)</code> одразу після створення <code>x</code> повертає 2,
+        а не 1?" — тимчасове посилання від самого виклику функції (аргумент передається за
+        посиланням) — не забудькуватість CPython, а прямий наслідок того, як працює виклик
+        функції в Python.</div>
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">2</span> Цикли — де reference counting безсилий</h2>
+      <p class="section-desc">Найважливіший факт цього туторіалу: reference counting сам по собі <b>ніколи</b> не звільнить об'єкти, що посилаються один на одного по колу.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python — класичний цикл</span></div>
+        <pre><code>class Node:
+    def __init__(self):
+        self.other = None
+
+a = Node()
+b = Node()
+a.other = b   <span class="cmt"># a посилається на b</span>
+b.other = a   <span class="cmt"># b посилається на a -- ЦИКЛ</span>
+
+del a
+del b
+<span class="cmt"># -- обидва об'єкти ВСЕ ЩЕ живі: a.other тримає b, b.other тримає a,</span>
+<span class="cmt"># refcount кожного = 1 (не 0!), хоча жодна змінна на них уже не вказує</span></code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 760 260" role="img" aria-label="Reference counting сам по собі не звільняє два об'єкти, що посилаються один на одного по колу, навіть коли жодна зовнішня змінна на них не вказує; generational GC сканує й знаходить такі недосяжні острівці">
+          <defs>
+            <marker id="a15-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <text x="15" y="18" font-size="13" font-weight="700" fill="var(--bad)">❌ Лише reference counting</text>
+          <text x="15" y="34" font-size="11" opacity="0.65">del a; del b — жодна змінна вже не вказує на них ззовні</text>
+
+          <g font-size="12">
+            <rect x="150" y="55" width="110" height="46" rx="8" fill="var(--bad)" fill-opacity="0.12" stroke="var(--bad)" stroke-width="1.2"/>
+            <text x="205" y="83" text-anchor="middle" fill="var(--bad)">a (refcount 1)</text>
+
+            <rect x="420" y="55" width="110" height="46" rx="8" fill="var(--bad)" fill-opacity="0.12" stroke="var(--bad)" stroke-width="1.2"/>
+            <text x="475" y="83" text-anchor="middle" fill="var(--bad)">b (refcount 1)</text>
+          </g>
+          <path d="M260,68 C340,50 340,50 418,68" fill="none" stroke="var(--bad)" stroke-width="1.2" marker-end="url(#a15-arr)"/>
+          <path d="M420,90 C340,108 340,108 262,90" fill="none" stroke="var(--bad)" stroke-width="1.2" marker-end="url(#a15-arr)"/>
+          <text x="367.5" y="122" text-anchor="middle" font-size="11" fill="var(--bad)">refcount ніколи не впаде до 0 — витік назавжди</text>
+
+          <line x1="15" y1="145" x2="745" y2="145" stroke="var(--border)" stroke-width="1"/>
+
+          <text x="15" y="172" font-size="13" font-weight="700" fill="var(--good)">✅ + generational GC</text>
+          <rect x="150" y="188" width="380" height="60" rx="10" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3,3" opacity="0.6"/>
+          <text x="340" y="182" text-anchor="middle" font-size="10.5" opacity="0.7">острівець, недосяжний від жодного "кореня" (стека, глобальних змінних)</text>
+          <g font-size="12">
+            <rect x="170" y="200" width="100" height="36" rx="7" fill="var(--good)" fill-opacity="0.15" stroke="var(--good)" stroke-width="1.1"/>
+            <text x="220" y="223" text-anchor="middle" fill="var(--good)">a</text>
+            <rect x="400" y="200" width="100" height="36" rx="7" fill="var(--good)" fill-opacity="0.15" stroke="var(--good)" stroke-width="1.1"/>
+            <text x="450" y="223" text-anchor="middle" fill="var(--good)">b</text>
+          </g>
+          <text x="620" y="222" text-anchor="start" font-size="12" fill="var(--good)">→ 🗑 gc.collect() звільняє обидва</text>
+        </svg>
+        <figcaption>Reference counting не бачить різниці між "живим" циклом і "мертвим" (недосяжним) — саме тому потрібен окремий, періодичний обхід (generational GC), що шукає такі острівці явно.</figcaption>
+      </figure>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">3</span> Generational GC — три покоління</h2>
+      <p class="section-desc">Окремий, додатковий механізм (модуль <code>gc</code>), який періодично шукає саме такі "острівці" — об'єкти, недосяжні від жодного кореня програми, але з ненульовим refcount через цикл.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>import gc
+
+gc.get_threshold()   <span class="out"># (700, 10, 10) -- типові дефолтні пороги</span>
+gc.collect()          <span class="cmt"># примусово запустити повне сканування всіх поколінь</span></code></pre>
+      </div>
+
+      <p>Ідея — <b>покоління (generational hypothesis)</b>: більшість об'єктів "помирають"
+      (стають непотрібними) дуже швидко після створення; ті, що пережили одне сканування,
+      з набагато більшою ймовірністю проживуть довго. CPython ділить відстежувані об'єкти на 3
+      покоління: нові об'єкти потрапляють у покоління 0; якщо об'єкт переживає збирання —
+      підвищується до покоління 1, потім 2. Покоління 0 скануються <b>найчастіше</b> (дешево,
+      бо там мало об'єктів і вони швидко відмирають), покоління 2 — рідко (дорожче сканувати,
+      але там мало сенсу — об'єкти вже довели, що живуть довго).</p>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body">Відстежуються (tracked) лише "контейнерні" типи, здатні утворити
+        цикл — списки, словники, класи, екземпляри користувацьких класів. Прості незмінні
+        об'єкти (<code>int</code>, <code>str</code>) не можуть посилатись самі на себе, тому
+        gc їх взагалі не сканує — reference counting сам по собі повністю достатній для них.</div>
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">4</span> <code>__del__</code> і цикли — коротка історія PEP 442</h2>
+      <div class="callout fun">
+        <div class="ic">🎉</div>
+        <div class="body"><span class="tag">Цікавий факт з історії</span>
+        До Python 3.4 цикл, що містив <b>хоч один</b> об'єкт із методом
+        <code>__del__</code>, взагалі <b>не міг</b> бути автоматично зібраний generational
+        GC — CPython не мав безпечного способу визначити <i>порядок</i> виклику
+        <code>__del__</code> для об'єктів циклу (виклик <code>__del__</code> одного міг би
+        "воскресити" інший через глобальне посилання). Такі об'єкти складались у список
+        <code>gc.garbage</code> — назавжди "підвішені", доки програма не завершиться.
+        <b>PEP 442</b> (Python 3.4, 2014, "Safe object finalization") розв'язав цю проблему
+        новим, безпечним протоколом фіналізації — відтоді цикли з <code>__del__</code>
+        збираються нормально.</div>
+      </div>
+      <p class="muted">Практичний висновок сьогодні: на сучасних версіях Python (3.4+) наявність
+      <code>__del__</code> у циклі вже не блокує збирання — але сам факт, що це колись було
+      справжньою production-проблемою, пояснює, чому досвідчені розробники досі обережні з
+      <code>__del__</code> у класах, здатних утворити цикл.</p>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">5</span> <code>weakref</code> — розірвати цикл свідомо</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>import weakref
+
+class Node:
+    def __init__(self):
+        self._other = None
+    @property
+    def other(self):
+        return self._other() if self._other else None   <span class="cmt"># weakref -- виклик як функція</span>
+    @other.setter
+    def other(self, node):
+        self._other = weakref.ref(node) if node else None
+
+a, b = Node(), Node()
+a.other = b   <span class="cmt"># ЗВИЧАЙНЕ посилання a -> b</span>
+b.other = a   <span class="cmt"># СЛАБКЕ посилання b -> a -- не збільшує refcount a</span></code></pre>
+      </div>
+      <p>Замість покладатись на те, що generational GC знайде цикл (розділ 2-3), можна
+      уникнути циклу взагалі — одна зі сторін тримає <b>слабке</b> посилання
+      (<code>weakref.ref</code>), яке не рахується в refcount. Об'єкт звільняється звичайним
+      reference counting, щойно останнє <i>сильне</i> посилання зникає — навіть якщо слабке
+      посилання ще технічно "існує" (воно просто почне повертати <code>None</code>).</p>
+      <p class="muted">Типове застосування — батько-дитина (дитина тримає weakref назад на
+      батька) і кеші, які не повинні самі утримувати об'єкт живим
+      (<code>WeakValueDictionary</code>).</p>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">6</span> <code>__slots__</code> — економія кількісно</h2>
+      <p class="section-desc">Уже згадувалось у туторіалі 6 — тут конкретна причина, <i>чому</i> це економить пам'ять.</p>
+      <p>Звичайний екземпляр класу зберігає атрибути у власному <code>__dict__</code> — а
+      словник, навіть порожній, має суттєвий базовий оверхед (виділена хеш-таблиця з запасом
+      під майбутній ріст). <code>__slots__</code> каже CPython узагалі не створювати
+      <code>__dict__</code> для екземплярів цього класу — значення зберігаються напряму у
+      фіксованих слотах, схожих на поля C-структури. На практиці економія для простих класів з
+      кількома атрибутами часто становить порядку <b>40-50% пам'яті на екземпляр</b> — суттєво,
+      коли створюються мільйони таких об'єктів (наприклад, вузли графа маршруту).</p>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Пастка з множинним успадкуванням:</b> якщо два базові класи
+        <b>обидва</b> оголошують непорожній <code>__slots__</code>, спроба успадкувати від
+        обох одразу кидає <code>TypeError: multiple bases have instance lay-out conflict</code>
+        — CPython не може узгодити два різні фіксовані layout-и пам'яті в одному екземплярі.</div>
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">7</span> Чому RSS процесу не падає одразу після <code>del</code></h2>
+      <p class="section-desc">Один із найчастіших "production-збиваючих з пантелику" фактів — і безпосередньо стосується деплою цього проєкту.</p>
+
+      <p>CPython не звертається до ОС за пам'яттю на кожен маленький об'єкт — це було б занадто
+      повільно. Замість цього для дрібних об'єктів (&lt;512 байт) працює власний аллокатор
+      <b>pymalloc</b>: він запитує в ОС великі шматки ("арени", типово по 1 МБ), ділить їх на
+      пули фіксованого розміру блоків, і видає/забирає блоки з цих пулів. Коли ви видаляєте
+      об'єкт, його блок повертається в пул CPython — але сама <b>арена</b> віддається назад
+      операційній системі лише тоді, коли <i>вся</i> вона стає порожньою. Якщо в арені лишився
+      хоч один живий, довгоживучий об'єкт серед тисяч уже звільнених — уся арена лишається
+      зарезервованою за процесом.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Пов'язано з проєктом:</b> цей бекенд задеплоєний на Fly.io з
+        <code>memory = "512mb"</code> (туторіал 3). Кожен важкий <code>POST /routes/optimize</code>
+        (OR-Tools) чи імпорт великого CSV/Excel через pandas створює й одразу звільняє
+        величезну кількість тимчасових об'єктів — але RSS процесу після такого запиту типово
+        <b>не повертається</b> до попереднього рівня, саме через фрагментацію арен вище. На
+        обмеженій 512 МБ машині це варто розуміти <i>перед</i> тим, як тлумачити графік
+        споживання пам'яті як "витік" — він може бути просто нормальною поведінкою аллокатора.</div>
+      </div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">8</span> <code>gc.freeze()</code> і pre-fork воркери</h2>
+      <p class="section-desc">Просунута, але дуже практична деталь — пряме продовження туторіалу 8 (Gunicorn pre-fork модель воркерів).</p>
+
+      <p>Коли Gunicorn-майстер-процес форкає кілька воркер-процесів (<code>--workers N</code>,
+      туторіал 8), діти спершу <b>ділять</b> усю пам'ять батька через механізм ОС
+      copy-on-write — фізично нова пам'ять не копіюється, доки якийсь процес не спробує
+      <i>записати</i> в спільну сторінку. Проблема: звичайний прохід generational GC регулярно
+      "торкається" (оновлює внутрішні лічильники) навіть довгоживучих об'єктів — а це запис,
+      який запускає copy-on-write і фактично дублює пам'ять для кожного воркера окремо, зводячи
+      нанівець економію від спільних сторінок.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">типовий production-патерн (не в цьому проєкті, для довідки)</span></div>
+        <pre><code><span class="cmt"># у Gunicorn post_fork/pre_fork хуках, ПІСЛЯ завантаження застосунку,</span>
+<span class="cmt"># але ДО форку воркерів:</span>
+import gc
+gc.freeze()   <span class="cmt"># все, що вже відстежується GC, переходить у "постійне" покоління —</span>
+              <span class="cmt"># наступні проходи GC більше НЕ торкаються цих об'єктів</span></code></pre>
+      </div>
+
+      <p><code>gc.freeze()</code> (Python 3.7+) переносить усі наразі відстежувані об'єкти в
+      окреме "заморожене" покоління, яке звичайні проходи <code>gc.collect()</code> більше не
+      сканують — воркери після форку не "бруднять" спільні сторінки лише через прохід GC,
+      реально економлячи пам'ять на багатоворкерному деплої.</p>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · Трікі кейси</div><div class="line"></div></div>
+
+    <section id="s9">
+      <h2><span class="num">9</span> <code>del</code> не гарантує негайного звільнення пам'яті</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>big_list = [0] * 10_000_000
+alias = big_list       <span class="cmt"># друге посилання на той самий список</span>
+
+del big_list
+<span class="cmt"># пам'ять НЕ звільнилась -- alias усе ще тримає той самий об'єкт живим!</span></code></pre>
+      </div>
+      <p><code>del x</code> прибирає лише <b>прив'язку імені</b> <code>x</code> у поточному
+      просторі імен — об'єкт звільняється, лише якщо це було <i>останнє</i> посилання на нього
+      (refcount падає до 0). Якщо десь ще існує посилання на той самий об'єкт (як
+      <code>alias</code> вище), <code>del</code> нічого фізично не звільняє.</p>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Незчищені кеші й підписки — реальні "витоки" в Python</h2>
+      <p class="section-desc">Python не має класичних C-style витоків пам'яті (забутий <code>free()</code>) — але має свій, дуже поширений клас: структура, що <i>навмисно</i> тримає посилання, і ніхто ніколи їх не прибирає.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/rate_limiting.py — реальна знахідка в цьому проєкті</span></div>
+        <pre><code>_WINDOWS: dict[str, deque] = defaultdict(deque)
+
+def _check_and_record(key, max_requests, window_seconds):
+    now = time.monotonic()
+    with _LOCK:
+        window = _WINDOWS[key]                      <span class="cmt"># створює запис у dict НАЗАВЖДИ на новий key</span>
+        while window and now - window[0] > window_seconds:
+            window.popleft()                          <span class="cmt"># видаляє СТАРІ мітки часу зсередини deque...</span>
+        <span class="cmt"># ...але сам порожній deque(), і сам ключ у _WINDOWS, НІКОЛИ не видаляється</span></code></pre>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Реальна, повільна знахідка:</b> кожен унікальний
+        <code>"scope:IP"</code> (наприклад, <code>"register:1.2.3.4"</code>), який хоч раз
+        звернувся до <code>/auth/register</code> чи <code>/auth/login</code>, лишає запис у
+        <code>_WINDOWS</code> <b>на весь час життя процесу</b> — навіть коли цей IP більше
+        ніколи не повертається, а його <code>deque</code> давно спорожнів. За довгий час
+        роботи одного процесу (туторіал 3: тут саме так задеплоєно) з великою кількістю
+        унікальних клієнтських IP цей словник повільно, необмежено росте. Не критичний, гострий
+        витік — лише в межах кількості <i>унікальних</i> IP-адрес за весь час роботи процесу —
+        але саме такий клас проблем важко помітити без спеціального пошуку.</div>
+      </div>
+
+      <p>Інші поширені варіанти того самого класу проблеми:</p>
+      <ul>
+        <li><b><code>@lru_cache</code> без <code>maxsize</code></b>
+        (<code>@lru_cache(maxsize=None)</code>) на функції з великою кількістю різних
+        аргументів — кеш росте необмежено, доки програма не впаде через нестачу пам'яті.
+        <code>get_settings()</code> у цьому проєкті безпечний саме тому, що не приймає жодних
+        аргументів — кеш обмежений одним-єдиним записом за дизайном.</li>
+        <li><b>Observer/pub-sub без відписки</b> (туторіал 14) — якщо суб'єкт тримає список
+        підписників і ніхто ніколи не викликає <code>unsubscribe</code>, кожен новий підписник
+        назавжди лишається живим через це посилання, навіть якщо решта коду про нього
+        забула.</li>
+      </ul>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Замикання, що тримають зайве живим</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>def make_handler(huge_dataset):
+    def handler(request):
+        return len(huge_dataset)   <span class="cmt"># використовує лише len(), але замикання тримає ВЕСЬ об'єкт</span>
+    return handler
+
+<span class="cmt"># huge_dataset живе стільки, скільки живе сам handler -- навіть якщо</span>
+<span class="cmt"># реально потрібне лише число len(huge_dataset), обчислене один раз</span></code></pre>
+      </div>
+      <p>Замикання (closure) утримує <b>посилання</b> на змінні з зовнішньої області видимості,
+      не копію значення — якщо handler лишається живим довго (зареєстрований як callback,
+      збережений у список маршрутів), увесь захоплений об'єкт теж лишається живим, навіть якщо
+      функції насправді потрібна лише крихітна частина інформації з нього.</p>
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Фікс тут простий:</b> обчислити потрібне значення один раз до
+        створення замикання (<code>size = len(huge_dataset)</code>) і захопити лише його —
+        тоді <code>huge_dataset</code> може звільнитись одразу після виходу з
+        <code>make_handler</code>.</div>
+      </div>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> <code>__del__</code> ненадійний для очищення ресурсів</h2>
+      <p class="section-desc">Пряме продовження туторіалу 7/9 (контекст-менеджери) — тепер із поясненням "чому саме <code>with</code>, а не покластись на GC".</p>
+      <p><code>__del__</code> викликається, коли refcount об'єкта падає до нуля — але
+      <b>коли саме</b> це станеться, ніколи не гарантовано наперед: залежить від того, коли
+      останнє посилання зникне (може бути одразу, а може — через generational GC, з
+      непередбачуваною затримкою в циклі). При завершенні інтерпретатора порядок фіналізації
+      об'єктів взагалі не визначений — покладатись на <code>__del__</code> для критичного
+      очищення (закрити файл, звільнити мережеве з'єднання, закомітити транзакцію) — ризиковано.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/db/session.py — реальний код з проєкту, правильний підхід</span></div>
+        <pre><code>async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    async with AsyncSessionLocal() as session:   <span class="cmt"># ГАРАНТОВАНЕ закриття через __exit__,</span>
+        yield session                              <span class="cmt"># а не "коли-небудь" через __del__</span></code></pre>
+      </div>
+      <p class="muted">Саме тому <code>with</code>/<code>async with</code> (детально —
+      туторіал 7, розділ 18; туторіал 9) — правильний інструмент для детермінованого очищення
+      ресурсів, а <code>__del__</code> лишається лише "останньою лінією оборони" для випадків,
+      коли явне закриття було пропущено.</p>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> <code>sys.getsizeof()</code> бреше (точніше — не бреше, а лише про дещо інше)</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>import sys
+
+big_strings = ["x" * 1_000_000 for _ in range(100)]
+sys.getsizeof(big_strings)
+<span class="out"># ~900 байт -- лише "обгортка" самого списку (масив покажчиків)!</span>
+<span class="cmt"># РЕАЛЬНІ 100 мільйонів символів у самих рядках НЕ враховані</span></code></pre>
+      </div>
+      <p><code>sys.getsizeof(obj)</code> повертає лише <b>власний, поверхневий</b> розмір
+      об'єкта — для контейнера це розмір масиву покажчиків на елементи, а не розмір самих
+      елементів. Щоб дізнатись реальний, "глибокий" розмір структури даних із усіма вкладеними
+      об'єктами, потрібно або рекурсивно підсумовувати самому, або сторонній інструмент
+      (<code>pympler.asizeof</code>).</p>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Інструменти: <code>tracemalloc</code>, <code>objgraph</code></h2>
+      <table>
+        <tr><th>Інструмент</th><th>Що робить</th></tr>
+        <tr><td><code>tracemalloc</code> (stdlib)</td><td>Знімки (snapshot) виділеної пам'яті за місцем у коді; порівняння двох знімків показує, ЩО і ДЕ саме почало рости між ними</td></tr>
+        <tr><td><code>gc.get_referrers(obj)</code></td><td>"Хто на мене посилається?" — знайти, що саме тримає об'єкт живим</td></tr>
+        <tr><td><code>gc.get_referents(obj)</code></td><td>Зворотне — на що посилається сам об'єкт</td></tr>
+        <tr><td><code>objgraph</code> (сторонній)</td><td>Візуалізує граф посилань — швидко бачити "острів" об'єктів, що ростуть, і чому вони не звільняються</td></tr>
+      </table>
+      <div class="codecard">
+        <div class="bar"><span class="path">python — типовий tracemalloc-workflow пошуку витоку</span></div>
+        <pre><code>import tracemalloc
+
+tracemalloc.start()
+snapshot1 = tracemalloc.take_snapshot()
+
+<span class="cmt"># ... запускаємо підозрювану операцію багато разів ...</span>
+
+snapshot2 = tracemalloc.take_snapshot()
+top_diffs = snapshot2.compare_to(snapshot1, "lineno")
+for stat in top_diffs[:5]:
+    print(stat)   <span class="cmt"># покаже РЯДКИ коду, де пам'ять виросла найбільше між знімками</span></code></pre>
+      </div>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Каверзні питання співбесіди</h2>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чому <code>sys.getrefcount(x)</code> одразу після створення <code>x</code> повертає 2, а не 1?</summary>
+        <div class="a">Сам виклик функції передає <code>x</code> як аргумент — це і є друге,
+        тимчасове посилання, що існує на час виконання <code>getrefcount</code>.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому reference counting сам по собі не звільняє циклічні посилання?</summary>
+        <div class="a">Об'єкти циклу посилаються один на одного — refcount кожного лишається
+        &gt;0 навіть коли жодна зовнішня змінна на них не вказує. Потрібен окремий механізм
+        (generational GC), що шукає такі "недосяжні від кореня" острівці явно.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty adv">Просунуте</span>Чому до Python 3.4 наявність <code>__del__</code> у циклі блокувала його збирання?</summary>
+        <div class="a">CPython не мав безпечного способу визначити порядок виклику
+        <code>__del__</code> для об'єктів циклу — виклик одного міг би "воскресити" інший через
+        глобальне посилання. PEP 442 (Python 3.4) увів безпечний протокол фіналізації, що
+        вирішив цю проблему.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Ви видалили всі свої посилання на великий об'єкт, але RSS процесу не зменшився. Це витік?</summary>
+        <div class="a">Не обов'язково — CPython (через pymalloc) повертає пам'ять ОС лише коли
+        <i>вся</i> арена (типово ~1 МБ) стає повністю порожньою. Фрагментація (один живий
+        об'єкт серед тисяч звільнених в тій самій арені) — нормальна, очікувана поведінка
+        аллокатора, не обов'язково витік.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чому не варто покладатись на <code>__del__</code> для закриття файлів/з'єднань?</summary>
+        <div class="a">Момент виклику <code>__del__</code> непередбачуваний (залежить від того,
+        коли впаде refcount, чи від затримки в generational GC при циклі), а при завершенні
+        інтерпретатора порядок фіналізації взагалі не визначений. <code>with</code>/
+        <code>async with</code> дають детерміноване, гарантоване закриття.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Що поверне <code>sys.getsizeof()</code> для списку з мільйоном великих рядків?</summary>
+        <div class="a">Лише розмір самого списку (масиву покажчиків) — не розмір рядків, на
+        які він посилається. Реальний "глибокий" розмір структури набагато більший і вимагає
+        рекурсивного підрахунку або спеціального інструменту (<code>pympler.asizeof</code>).</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty adv">Просунуте</span>Навіщо викликати <code>gc.freeze()</code> перед форком воркерів у Gunicorn?</summary>
+        <div class="a">Щоб звичайні проходи GC після форку не "торкались" (і тим самим не
+        запускали copy-on-write дублювання) об'єктів, які вже існували в батьківському процесі
+        до форку й мали б лишатись спільними між усіма воркерами через сторінки пам'яті ОС.</div>
+      </details>
+
+    </section>
+
+    <section id="s16">
+      <h2><span class="num">16</span> Шпаргалка</h2>
+      <div class="cheat">
+        <table>
+          <tr><th>Питання</th><th>Відповідь</th></tr>
+          <tr><td>Основний механізм звільнення пам'яті</td><td>Reference counting — негайне звільнення при refcount=0</td></tr>
+          <tr><td>Циклічні посилання</td><td>Не звільняються refcounting-ом — потрібен generational GC (<code>gc</code>)</td></tr>
+          <tr><td>Розірвати цикл свідомо</td><td><code>weakref.ref</code> / <code>WeakValueDictionary</code></td></tr>
+          <tr><td>Економія пам'яті на масові дрібні об'єкти</td><td><code>__slots__</code> (~40-50% на екземпляр)</td></tr>
+          <tr><td>Пам'ять процесу не падає після del</td><td>Нормально — pymalloc-арени звільняються ОС лише повністю порожніми</td></tr>
+          <tr><td>Гарантоване закриття ресурсу</td><td><code>with</code>/<code>async with</code>, ніколи <code>__del__</code></td></tr>
+          <tr><td>Необмежений кеш/підписки</td><td>Найчастіша реальна причина повільного росту пам'яті — завжди обмежуйте <code>maxsize</code>/чистіть підписки</td></tr>
+          <tr><td>Знайти, де росте пам'ять</td><td><code>tracemalloc</code> — знімки + <code>compare_to</code></td></tr>
+        </table>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал побудований на документації CPython (модулі <code>gc</code>, <code>sys</code>,
+  <code>weakref</code>, <code>tracemalloc</code>, PEP 442) та реальному коді репозиторію
+  <code>ai-delivery-planner-backend</code> (<code>app/core/rate_limiting.py</code>).
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

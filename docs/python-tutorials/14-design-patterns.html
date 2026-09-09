@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>14. Патерни проєктування — AI Delivery Planner</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+  .badge-level{
+    display:inline-block; font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px;
+    background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);
+    text-transform:uppercase; letter-spacing:.04em; margin-left:10px; vertical-align:middle;
+  }
+  .badge-pattern{
+    display:inline-block; font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px;
+    background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent-soft);
+    margin-left:8px; vertical-align:middle;
+  }
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · Патерни проєктування</div>
+  <h1>Патерни проєктування поза Singleton <span class="badge-level">Середня складність</span></h1>
+  <p class="lead">
+    Singleton уже розібраний у туторіалі 6 — тут решта класики GoF, яку реально шукають на
+    співбесідах: Adapter, Factory, Strategy, Observer. І головне — чому в Python вони часто
+    виглядають зовсім не так, як у підручнику з Java/C++.
+  </p>
+  <div class="pills">
+    <span class="pill">🔌 Adapter на реальному коді</span>
+    <span class="pill">🏭 Factory = функція, не клас</span>
+    <span class="pill">⚛️ Функції вищого порядку замість ієрархій</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🎯 До співбесіди</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html" class="active">14. Патерни</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Чому патерни в Python виглядають інакше</a></li>
+      <li><a href="#s2">2. Adapter — GoogleGeocodingClient</a></li>
+      <li><a href="#s3">3. Factory — DI-функції як фабрики</a></li>
+      <li><a href="#s4">4. Strategy — підмінна поведінка</a></li>
+      <li><a href="#s5">5. Observer — pub/sub без класів-спостерігачів</a></li>
+      <li><a href="#s6">6. Коли патерн — рішення, а коли — зайва складність</a></li>
+      <li><a href="#s7">7. Каверзні питання співбесіди</a></li>
+      <li><a href="#s8">8. Шпаргалка</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s1">
+      <h2><span class="num">1</span> Чому патерни в Python часто виглядають інакше, ніж у підручнику</h2>
+      <p class="section-desc">Класичні патерни GoF ("Банда чотирьох", 1994) описані для мов без функцій як значень першого класу (туторіал 7) — Java/C++ того часу. Python має цю можливість із самого початку.</p>
+
+      <p>У Java патерн Strategy майже завжди вимагає інтерфейсу й кількох класів, що його
+      реалізують. У Python те саме найчастіше — звичайна функція, передана як аргумент. Це не
+      "спрощена версія" патерна — це та сама ідея (підмінна поведінка), виражена
+      мовою, де для цього не потрібна ціла ієрархія класів.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Те саме, що й React: замість класичного патерна Strategy через ієрархію класів,
+        React-розробник просто передає функцію-пропс (<code>onSort={sortByPrice}</code>) —
+        функції як значення роблять формальний патерн непотрібним у більшості випадків.
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">2</span> Adapter <span class="badge-pattern">структурний</span></h2>
+      <p class="section-desc">Патерн, що вже присутній у цьому проєкті — просто раніше не був названий.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/services/geocoding/client.py — реальний код з проєкту</span></div>
+        <pre><code>class GoogleGeocodingClient:
+    <span class="cmt">"""Thin wrapper around the Google Maps Geocoding API."""</span>
+
+    async def geocode(self, address: str) -> tuple[float, float] | None:
+        <span class="cmt"># усередині -- HTTP-запит до Google Maps API зі своїм власним</span>
+        <span class="cmt"># форматом запиту/відповіді, які наш код НІКОЛИ не бачить напряму</span>
+        ...</code></pre>
+      </div>
+
+      <p><b>Adapter</b> — перетворює інтерфейс одного компонента на інтерфейс, який очікує
+      інший, не змінюючи жодного з них. <code>GoogleGeocodingClient</code> ховає за простим
+      методом <code>geocode(address) -> (lat, lng) | None</code> усю специфіку реального Google
+      Maps API — власний формат запиту, JSON-відповідь із вкладеними полями, коди помилок.
+      Решта проєкту (<code>DeliveryService</code>, туторіал 1) працює з чистим,
+      доменно-орієнтованим інтерфейсом, повністю не знаючи, що "під капотом" — саме конкретний
+      зовнішній HTTP API.</p>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Практична вигода:</b> завтра можна замінити Google Maps на інший
+        геосервіс (Mapbox, OpenStreetMap Nominatim), написавши новий клас із тим самим методом
+        <code>geocode(address)</code> — жодного рядка в <code>DeliveryService</code> міняти не
+        доведеться. Той самий принцип, що й <code>typing.Protocol</code> з туторіалу 4/6:
+        адаптер визначається формою методів, не успадкуванням.</div>
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">3</span> Factory <span class="badge-pattern">породжувальний</span></h2>
+      <p class="section-desc">У класичному ООП — окремий клас "фабрика". У Python FastAPI-проєкту — звичайна функція.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/dependencies.py — реальний код з проєкту</span></div>
+        <pre><code>def get_delivery_service(
+    repo: DeliveryRepository = Depends(get_delivery_repository),
+    org_repo: OrganizationRepository = Depends(get_organization_repository),
+    organization: Organization = Depends(get_current_organization),
+) -> DeliveryService:
+    <span class="cmt">"""Provide a request-scoped DeliveryService, quota-guarded per organization."""</span>
+    return DeliveryService(repo, GoogleGeocodingClient(), org_repo, organization)</code></pre>
+      </div>
+
+      <p><b>Factory</b> — інкапсулює логіку створення об'єкта, приховуючи деталі того, з яких
+      саме компонентів він збирається. <code>get_delivery_service</code> — буквально це: викликач
+      (роутер) отримує готовий, повністю зібраний <code>DeliveryService</code>, не знаючи (і не
+      маючи знати), скільки саме залежностей знадобилось зібрати чи в якому порядку. Це та сама
+      ідея, що описана в туторіалі 1 як "DI-ланцюжок" — просто розглянута тепер як конкретний,
+      іменований патерн.</p>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">4</span> Strategy <span class="badge-pattern">поведінковий</span></h2>
+      <p class="section-desc">Найяскравіший приклад того, як Python "спрощує" класичний патерн до функції.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python — гіпотетичний приклад: підмінна логіка ціноутворення маршруту</span></div>
+        <pre><code><span class="cmt"># Класичний Java-стиль: інтерфейс + кілька класів</span>
+class PricingStrategy(Protocol):
+    def calculate(self, distance_km: float) -> float: ...
+
+class FlatRatePricing:
+    def calculate(self, distance_km: float) -> float:
+        return 50.0
+
+class PerKmPricing:
+    def calculate(self, distance_km: float) -> float:
+        return distance_km * 2.5
+
+<span class="cmt"># Pythonic-скорочення: просто функція</span>
+def flat_rate_pricing(distance_km: float) -> float:
+    return 50.0
+
+def per_km_pricing(distance_km: float) -> float:
+    return distance_km * 2.5
+
+def price_route(distance_km: float, strategy) -> float:
+    return strategy(distance_km)     <span class="cmt"># strategy -- звичайна функція, не об'єкт-стратегія</span></code></pre>
+      </div>
+
+      <p><b>Strategy</b> — дозволяє підмінити <i>алгоритм</i> без зміни коду, що його викликає.
+      У Python, де функції — значення першого класу (туторіал 7), найпростіша реалізація —
+      передати іншу функцію, а не інший об'єкт класу-стратегії. Клас-обгортка (як
+      <code>PricingStrategy</code>) стає потрібним лише тоді, коли "стратегії" повинні тримати
+      власний внутрішній стан між викликами — а не просто перетворювати вхід на вихід.</p>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">5</span> Observer <span class="badge-pattern">поведінковий</span></h2>
+      <p class="section-desc">Найслабше представлений у цьому проєкті — тому корисно розглянути і класичну форму, і найближчий реальний аналог.</p>
+
+      <p><b>Observer</b> — об'єкт ("суб'єкт") сповіщає список підписників про зміну стану, не
+      знаючи заздалегідь, хто саме підписаний і що вони з цим сповіщенням зроблять. Класична
+      форма — список callback-функцій, викликаних по черзі при події.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python — мінімальний Observer вручну</span></div>
+        <pre><code>class DeliveryStatusSubject:
+    def __init__(self):
+        self._observers = []
+
+    def subscribe(self, callback):
+        self._observers.append(callback)
+
+    def notify(self, delivery_id, new_status):
+        for callback in self._observers:
+            callback(delivery_id, new_status)   <span class="cmt"># кожен підписник реагує незалежно</span></code></pre>
+      </div>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body"><b>Найближчий реальний аналог у цьому проєкті:</b> черга задач Celery
+        (<code>app/workers/</code>, туторіал 3) — слабка форма pub/sub: застосунок "публікує"
+        задачу в чергу (Redis), не знаючи заздалегідь, який саме воркер-процес її забере й
+        виконає. Не класичний Observer (немає списку callback-ів в одному процесі), але та сама
+        фундаментальна ідея — відправник і отримувач розв'язані (decoupled), спілкуються через
+        проміжний канал, а не напряму.</div>
+      </div>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        <code>element.addEventListener("click", callback)</code> — Observer у чистому вигляді,
+        який ви вже щодня використовуєте в JS: DOM-елемент (суб'єкт) сповіщає список
+        зареєстрованих callback-ів (спостерігачів) про подію, не знаючи наперед, скільки їх і
+        що вони роблять.
+      </div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">6</span> Коли патерн — рішення, а коли — зайва складність</h2>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Найчастіша помилка middle-розробника на співбесіді й у коді:</b>
+        застосовувати патерн заради того, щоб "показати, що знаєш патерни". Жоден із патернів
+        вище не варто вводити <i>наперед</i>, "про запас" — усі приклади в цьому туторіалі вже
+        існували в проєкті як природне рішення конкретної задачі (замінний геосервіс, збірка
+        залежностей), а не як навмисно застосований "патерн з підручника".</div>
+      </div>
+      <p class="muted">Правило: якщо патерн вирішує задачу, яка вже реально стоїть перед вами
+      (а не гіпотетичну майбутню) — використовуйте. Якщо ні — звичайна функція чи клас без
+      формальної назви часто читається простіше.</p>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">7</span> Каверзні питання співбесіди</h2>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим Adapter відрізняється від звичайної обгортки (wrapper)?</summary>
+        <div class="a">Формально — Adapter це і є цілеспрямована обгортка: перетворює
+        інтерфейс одного компонента на інтерфейс, очікуваний іншим кодом, не змінюючи жодного з
+        них. "Просто wrapper" — ширший, менш формальний термін; Adapter — конкретний випадок,
+        коли мета саме в сумісності інтерфейсів.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому в Python Strategy часто не потребує жодного класу?</summary>
+        <div class="a">Функції в Python — значення першого класу (туторіал 7): їх можна
+        передати аргументом напряму, без обгортання в об'єкт із єдиним методом. Клас-стратегія
+        стає потрібним, лише коли "стратегія" повинна тримати власний стан між викликами, а не
+        просто перетворювати вхід на вихід.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>У чому вигода Factory-функції над прямим викликом конструктора класу?</summary>
+        <div class="a">Викликач не повинен знати, скільки саме залежностей потрібно зібрати чи
+        в якому порядку — вся ця логіка інкапсульована в одному місці (фабричній функції), яку
+        легко змінити, не чіпаючи жодного місця виклику.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Наведіть приклад Observer, з яким ви точно вже працювали, не називаючи його "патерном".</summary>
+        <div class="a"><code>addEventListener</code> у браузерному JS, чи будь-яка
+        pub/sub-система (черга повідомлень, сигнали Django, event emitter) — суб'єкт сповіщає
+        підписників про подію, не знаючи наперед, хто саме підписаний.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Коли варто НЕ застосовувати формальний патерн проєктування?</summary>
+        <div class="a">Коли задача, яку він вирішує, ще не виникла реально — "про запас"
+        застосований патерн зазвичай додає непотрібну непрямість і ускладнює код без жодної
+        поточної вигоди. Патерн має вирішувати конкретну наявну проблему, а не демонструвати
+        знання підручника.</div>
+      </details>
+
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">8</span> Шпаргалка</h2>
+      <div class="cheat">
+        <table>
+          <tr><th>Патерн</th><th>Задача, яку вирішує</th><th>Приклад із проєкту</th></tr>
+          <tr><td>Adapter</td><td>Сумісність інтерфейсів без зміни жодного з них</td><td><code>GoogleGeocodingClient</code></td></tr>
+          <tr><td>Factory</td><td>Інкапсулює складання об'єкта з кількох залежностей</td><td><code>get_delivery_service(...)</code></td></tr>
+          <tr><td>Strategy</td><td>Підмінний алгоритм без зміни коду, що його викликає</td><td>Найчастіше — просто функція-аргумент</td></tr>
+          <tr><td>Observer</td><td>Розв'язує відправника й отримувачів події</td><td>Celery-черга (слабка форма)</td></tr>
+          <tr><td>Singleton (туторіал 6)</td><td>Один спільний екземпляр на процес</td><td><code>@lru_cache def get_settings()</code></td></tr>
+        </table>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал побудований на класичних патернах GoF (Gang of Four, 1994) та реальному коді
+  репозиторію <code>ai-delivery-planner-backend</code>.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

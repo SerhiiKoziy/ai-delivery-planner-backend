@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>6. 30 питань Senior Python — AI Delivery Planner</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:12px 0 4px;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.9px; display:flex; align-items:baseline; gap:10px;
+  }
+  .qa summary .qnum{
+    color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700;
+    flex-shrink:0;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 18px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .a p{margin:8px 0; color:var(--fg-muted);}
+  .qa .a p:first-child{margin-top:0;}
+  .qa .checks{
+    margin-top:10px; padding:10px 12px; border-radius:9px; background:var(--interview-bg);
+    border:1px solid var(--interview-border); font-size:13.2px; color:var(--interview);
+  }
+  .qa .checks b{color:var(--interview);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:2px; vertical-align:middle; flex-shrink:0;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .qa .difficulty.sys{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+
+  .cat-head{
+    display:flex; align-items:center; gap:12px; margin-bottom:4px;
+  }
+  .cat-letter{
+    width:34px; height:34px; border-radius:10px; background:var(--accent-soft); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;
+  }
+
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · Підготовка до співбесіди</div>
+  <h1>30 складних питань — Senior Python Developer</h1>
+  <p class="lead">
+    Не базовий скринінг, а рівень, на якому senior-кандидатів реально ламають: внутрішня кухня
+    інтерпретатора, пам'ять і продуктивність, ООП-патерни по-пайтонівськи, просунута
+    асинхронність, БД/ORM-нюанси, тестування і трохи системного дизайну. Питання про GIL,
+    конкурентність і базові типи вже розібрані в <a href="04-gil-and-concurrency.html">туторіалі 4</a>
+    та <a href="05-python-types.html">туторіалі 5</a> — тут беремо за основу, що ви це знаєте,
+    і йдемо глибше.
+  </p>
+  <div class="pills">
+    <span class="pill">🧩 7 категорій · 30 питань</span>
+    <span class="pill">💻 Код для складних відповідей</span>
+    <span class="pill">🎯 "Що насправді перевіряють"</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🎯 До співбесіди</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html" class="active">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">Категорії</div>
+    <ol>
+      <li><a href="#catA">A. Мова та внутрішня кухня <span class="toc-count">6</span></a></li>
+      <li><a href="#catB">B. Пам'ять і продуктивність <span class="toc-count">5</span></a></li>
+      <li><a href="#catC">C. ООП і патерни по-пайтонівськи <span class="toc-count">5</span></a></li>
+      <li><a href="#catD">D. Просунута асинхронність <span class="toc-count">4</span></a></li>
+      <li><a href="#catE">E. Бази даних та ORM <span class="toc-count">4</span></a></li>
+      <li><a href="#catF">F. Тестування <span class="toc-count">3</span></a></li>
+      <li><a href="#catG">G. Системний дизайн (лайт) <span class="toc-count">3</span></a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="legend">
+      <span><span class="dot" style="background:var(--info)"></span>База — має знати кожен middle+</span>
+      <span><span class="dot" style="background:var(--interview)"></span>Пастка — типове "trick question"</span>
+      <span><span class="dot" style="background:var(--fun)"></span>Просунуте — справжній senior-рівень</span>
+      <span><span class="dot" style="background:var(--good)"></span>Системний дизайн</span>
+    </div>
+
+    <section id="catA">
+      <div class="cat-head"><div class="cat-letter">A</div><h2 style="margin:0;">Мова та внутрішня кухня</h2></div>
+      <p class="section-desc">Як насправді влаштований пошук атрибутів, множинне успадкування і декоратори — те, що відрізняє "вміє писати Python" від "розуміє Python".</p>
+
+      <details class="qa">
+        <summary><span class="qnum">01</span><span class="difficulty adv">Просунуте</span>У якому порядку Python шукає <code>obj.attr</code>?</summary>
+        <div class="a">
+          <p>Спочатку перевіряються <b>дата-дескриптори</b> (мають і <code>__get__</code>, і
+          <code>__set__</code>), знайдені в MRO класу — вони мають пріоритет навіть над
+          <code>instance.__dict__</code>. Потім — <code>instance.__dict__</code>. Потім —
+          звичайні атрибути класу та <b>нон-дата дескриптори</b> (мають лише <code>__get__</code>
+          — наприклад, звичайні методи). Якщо нічого не знайдено — викликається
+          <code>__getattr__</code>, якщо він визначений.</p>
+          <div class="checks"><b>🎯 Що перевіряють:</b> чи розумієте ви, чому <code>property</code>
+          (дата-дескриптор) не можна "перебити" простим присвоєнням в
+          <code>self.__dict__</code>, а звичайний метод (нон-дата дескриптор) — можна.</div>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">02</span><span class="difficulty adv">Просунуте</span>Що таке дескриптори і як на них побудований <code>property</code>?</summary>
+        <div class="a">
+          <p>Дескриптор — об'єкт-клас, що реалізує <code>__get__</code>/<code>__set__</code>/<code>__delete__</code>
+          і "перехоплює" доступ до атрибута іншого класу. <code>property</code> — це готовий
+          дата-дескриптор, що під капотом зберігає ваші <code>getter</code>/<code>setter</code>-функції
+          і викликає їх у <code>__get__</code>/<code>__set__</code>.</p>
+          <div class="codecard"><div class="bar"><span class="path">мінімальний дескриптор вручну</span></div>
+<pre><code>class Positive:
+    def __set_name__(self, owner, name):
+        self.name = "_" + name
+    def __get__(self, obj, owner):
+        return getattr(obj, self.name)
+    def __set__(self, obj, value):
+        if value < 0: raise ValueError("must be positive")
+        setattr(obj, self.name, value)
+
+class Product:
+    price = Positive()   <span class="cmt"># те саме, що @property, але перевикористовується між класами</span></code></pre></div>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">03</span><span class="difficulty adv">Просунуте</span>Що таке MRO і C3-лінеаризація? Чому <code>super()</code> — не завжди "батьківський клас"?</summary>
+        <div class="a">
+          <p>MRO (Method Resolution Order) — послідовність, у якій Python шукає метод при
+          множинному успадкуванні; обчислюється алгоритмом <b>C3-лінеаризації</b>, який гарантує
+          консистентний порядок навіть у "діамантовому" успадкуванні (<code>D(B, C)</code>, де
+          <code>B</code> і <code>C</code> обидва наслідують <code>A</code>). <code>super()</code>
+          повертає наступний клас саме за <b>MRO</b>, а не обов'язково "прямого батька" — у
+          кооперативному множинному успадкуванні <code>super().__init__()</code> може викликати
+          метод класу-"сусіда" по дереву, а не предка.</p>
+          <p><code>ClassName.__mro__</code> — подивитись реальний порядок.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">04</span><span class="difficulty core">База</span>Різниця <code>@staticmethod</code>, <code>@classmethod</code> і звичайного методу?</summary>
+        <div class="a">
+          <p>Звичайний метод отримує <code>self</code> (конкретний екземпляр). <code>@classmethod</code>
+          отримує <code>cls</code> (сам клас) — типово для альтернативних конструкторів
+          (<code>Settings.from_env()</code>). <code>@staticmethod</code> не отримує нічого
+          автоматично — це звичайна функція, просто логічно "прописана" в класі як неймспейс.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">05</span><span class="difficulty core">База</span>Як написати декоратор, що приймає власні аргументи?</summary>
+        <div class="a">
+          <p>Потрібен третій рівень вкладеності функцій: зовнішня функція приймає аргументи
+          декоратора, повертає сам декоратор, який приймає функцію й повертає обгортку.</p>
+          <div class="codecard"><div class="bar"><span class="path">decorator factory</span></div>
+<pre><code>import functools
+
+def retry(times: int):
+    def decorator(func):
+        @functools.wraps(func)          <span class="cmt"># зберігає __name__/__doc__ оригіналу</span>
+        def wrapper(*args, **kwargs):
+            for attempt in range(times):
+                try:
+                    return func(*args, **kwargs)
+                except Exception:
+                    if attempt == times - 1: raise
+        return wrapper
+    return decorator
+
+@retry(times=3)
+def flaky_call(): ...</code></pre></div>
+          <p class="muted"><code>functools.wraps</code> тут критично важливий — без нього
+          <code>flaky_call.__name__</code> став би <code>"wrapper"</code>, ламаючи інтроспекцію
+          й дебаг.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">06</span><span class="difficulty adv">Просунуте</span>Що таке metaclass і де ви вже ним користуєтесь, навіть не помічаючи?</summary>
+        <div class="a">
+          <p>Metaclass — клас, екземплярами якого є <b>самі класи</b> (за замовчуванням —
+          <code>type</code>). Кастомний metaclass дозволяє втручатись у створення класу:
+          валідувати атрибути, авто-реєструвати підкласи, збирати оголошені поля в схему.</p>
+          <div class="checks"><b>🎯 Пов'язано з проєктом:</b> і SQLAlchemy (<code>DeclarativeBase</code>),
+          і Pydantic (<code>BaseModel</code>) — обидва вже використовуються в цьому бекенді —
+          покладаються саме на metaclass-механізм, щоб на етапі <i>визначення</i> вашого класу
+          (<code>class User(Base): ...</code>) зібрати оголошені <code>Mapped[...]</code>-поля
+          в реальну схему таблиці/валідації. Ви пишете звичайний клас — вся магія відбувається
+          в metaclass, непомітно.</div>
+        </div>
+      </details>
+    </section>
+
+    <section id="catB">
+      <div class="cat-head"><div class="cat-letter">B</div><h2 style="margin:0;">Пам'ять і продуктивність</h2></div>
+      <p class="section-desc">Як CPython реально керує пам'яттю, коли reference counting не рятує, і чим профілювати прод.</p>
+
+      <details class="qa">
+        <summary><span class="qnum">07</span><span class="difficulty adv">Просунуте</span>Як влаштоване керування пам'яттю в CPython: чому мало самого reference counting?</summary>
+        <div class="a">
+          <p>Базовий механізм — підрахунок посилань (кожен об'єкт видаляється миттєво, щойно
+          лічильник падає до нуля). Проблема: <b>циклічні посилання</b> (об'єкт А посилається на
+          Б, Б — на А) ніколи не досягнуть нуля самі по собі, навіть якщо ззовні на них ніхто не
+          посилається — витік пам'яті. Тому CPython додатково має <b>поколінний (generational)
+          garbage collector</b> (<code>gc</code>-модуль), який періодично шукає й прибирає саме
+          такі цикли, окремо від reference counting.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">08</span><span class="difficulty adv">Просунуте</span>Що таке <code>__slots__</code> і коли він реально вартий того?</summary>
+        <div class="a">
+          <p>Обмежує набір атрибутів екземпляра фіксованим списком і прибирає per-instance
+          <code>__dict__</code> — суттєва економія пам'яті (і трохи швидший доступ до атрибутів),
+          помітна, коли створюються <b>мільйони</b> дрібних об'єктів (наприклад, вузли графа,
+          рядки датасету). Компроміс: не можна динамічно додавати нові атрибути, ускладнюється
+          множинне успадкування з різними <code>__slots__</code>, і потрібно окремо додати
+          <code>"__weakref__"</code> у слоти, якщо об'єкт має підтримувати weak references.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">09</span><span class="difficulty adv">Просунуте</span>Навіщо потрібен <code>weakref</code>?</summary>
+        <div class="a">
+          <p>Дозволяє посилатись на об'єкт, <b>не збільшуючи</b> його лічильник посилань — сам
+          об'єкт може бути видалений збирачем сміття, навіть якщо weak-посилання на нього досі
+          існує (тоді воно просто поверне <code>None</code>). Класичні застосування: кеші, що не
+          повинні самі утримувати об'єкт живим (<code>WeakValueDictionary</code>), і розрив
+          природних циклів на кшталт "батько ↔ дитина" (дитина тримає <code>weakref</code> назад
+          на батька замість звичайного посилання).</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">10</span><span class="difficulty core">База</span>Якими інструментами профілюють Python у продакшені?</summary>
+        <div class="a">
+          <p><code>cProfile</code> — детермінований CPU-профайлер (скільки разів і скільки часу
+          виконувалась кожна функція); <code>line_profiler</code> — профіль по конкретних рядках;
+          <code>tracemalloc</code>/<code>memory_profiler</code> — де саме росте споживання
+          пам'яті; <b><code>py-spy</code></b> — семплюючий профайлер, що вміє підключитись до
+          вже запущеного прод-процесу <i>без</i> зміни коду й без значного оверхеду — саме тому
+          його часто називають першим правильним інструментом, коли "щось повільне на проді, а
+          передеплоїти з профайлером не можна".</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">11</span><span class="difficulty core">База</span>Яка складність основних операцій <code>list</code> і <code>dict</code>?</summary>
+        <div class="a">
+          <p><code>list.append()</code> — O(1) амортизовано; <code>list.insert(0, x)</code> і
+          <code>list.pop(0)</code> — O(n) (зсув усіх елементів) — для черги FIFO варто
+          <code>collections.deque</code> (O(1) з обох кінців). <code>x in list</code> — O(n).
+          <code>dict</code>/<code>set</code> — <code>get</code>/<code>set</code>/<code>in</code>
+          в середньому O(1) завдяки хеш-таблиці (звідси й вимога хешовності ключів — див.
+          <a href="05-python-types.html#s12">туторіал 5</a>), у гіршому разі (масові
+          хеш-колізії) — O(n), на практиці майже ніколи не трапляється.</p>
+        </div>
+      </details>
+    </section>
+
+    <section id="catC">
+      <div class="cat-head"><div class="cat-letter">C</div><h2 style="margin:0;">ООП і патерни по-пайтонівськи</h2></div>
+      <p class="section-desc">Класичні GoF-патерни в Python часто виглядають інакше, ніж у Java/C# — сеньйор повинен знати, коли "підручниковий" патерн тут зайвий.</p>
+
+      <details class="qa">
+        <summary><span class="qnum">12</span><span class="difficulty core">База</span>Чому Python-спільнота проповідує композицію над успадкуванням?</summary>
+        <div class="a">
+          <p>Глибокі ієрархії успадкування + множинне успадкування + MRO швидко стають важкими
+          для розуміння (crypto "чий саме метод виконався" — питання 03 вище). Композиція
+          (об'єкт отримує залежності через конструктор, а не успадковує їхню поведінку) простіша
+          для тестування (легко підмінити залежність-мок) і гнучкіша.</p>
+          <div class="checks"><b>🎯 Пов'язано з проєктом:</b> кожен сервіс у цьому бекенді
+          (<code>DeliveryService</code>, <code>RouteOptimizerService</code>) отримує репозиторії
+          й клієнтів через конструктор (композиція + DI), а не успадковує їх — саме тому кожен
+          шматок легко підмінити в тестах окремо.</div>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">13</span><span class="difficulty core">База</span>Як влаштований протокол контекстного менеджера (<code>with</code>)?</summary>
+        <div class="a">
+          <p><code>__enter__</code> викликається на вході в блок <code>with</code> (результат —
+          те, що потрапляє в <code>as x</code>); <code>__exit__(exc_type, exc_val, exc_tb)</code>
+          викликається завжди на виході, навіть при винятку всередині блоку — і якщо поверне
+          <code>True</code>, виняток вважається "погашеним" і далі не поширюється.
+          <code>contextlib.contextmanager</code> дозволяє написати те саме генератором з одним
+          <code>yield</code>: код до <code>yield</code> = <code>__enter__</code>, код після
+          (в <code>finally</code>) = <code>__exit__</code>.</p>
+          <div class="checks"><b>🎯 Пов'язано з проєктом:</b> <code>async with AsyncSessionLocal() as session</code>
+          в <code>app/db/session.py</code> — саме цей протокол гарантує, що сесія БД
+          закриється, навіть якщо запит впаде з винятком посередині.</div>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">14</span><span class="difficulty trick">Пастка</span>EAFP vs LBYL — і чому EAFP не рятує від race condition</summary>
+        <div class="a">
+          <p>EAFP ("легше просити пробачення, ніж дозволу") — Pythonic-стиль: спробувати дію в
+          <code>try</code>, зловити виняток, якщо не вдалось (<code>try: return d[k] except
+          KeyError: ...</code>). LBYL ("подивись, перш ніж стрибнути") — явна перевірка перед
+          дією (<code>if k in d: ...</code>), звичніша для C-подібних/JS-мов.</p>
+          <p><b>Пастка:</b> EAFP в одному потоці Python-коду вирішує проблему "красивого коду",
+          але <i>не</i> вирішує race condition між кількома процесами/запитами до спільного
+          ресурсу — між "спробою" і фактичною дією все одно є вікно, якщо ресурс зовнішній
+          (файл, рядок у БД). Реальний захист там — атомарна операція на рівні самого ресурсу.</p>
+          <div class="checks"><b>🎯 Пов'язано з проєктом:</b> саме тому <code>try_consume_quota</code>
+          в <code>organization_repository.py</code> — не EAFP-код ("спробуй інкремент, зловй
+          помилку перевищення"), а один атомарний SQL <code>UPDATE ... WHERE</code> — єдиний
+          спосіб дійсно унеможливити перегін двох паралельних запитів (детальніше —
+          <a href="02-async-and-security.html#b6">туторіал 2</a>).</div>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">15</span><span class="difficulty adv">Просунуте</span>Навіщо потрібна варіантність (variance) у <code>TypeVar</code>?</summary>
+        <div class="a">
+          <p><code>TypeVar("T", covariant=True)</code> дозволяє статичному чекеру вважати
+          <code>Container[Cat]</code> сумісним із <code>Container[Animal]</code>, якщо
+          <code>Container</code> лише <i>повертає</i> <code>T</code> (read-only). Контраваріантність
+          — навпаки, для типів, які лише <i>приймають</i> <code>T</code> як аргумент. Без
+          правильної варіантності статичний чекер або занадто суворий (відкидає безпечний код),
+          або пропускає реальні помилки типів у generic-класах.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">16</span><span class="difficulty trick">Пастка</span>Як правильно зробити Singleton у Python?</summary>
+        <div class="a">
+          <p>Найчастіше — <b>ніяк спеціально не треба</b>: модуль сам по собі вже сінглтон
+          (Python імпортує й виконує його рівно один раз, кешуючи в <code>sys.modules</code>),
+          тому просто оголосити об'єкт на рівні модуля вже дає той самий ефект, що
+          "класичний" Singleton-патерн у Java. Другий ідіоматичний спосіб — <code>@lru_cache</code>
+          на функції без аргументів: перший виклик створює об'єкт, усі наступні повертають той
+          самий закешований екземпляр.</p>
+          <div class="checks"><b>🎯 Пов'язано з проєктом:</b> буквально так побудований
+          <code>get_settings()</code> в <code>app/core/config.py</code> —
+          <code>@lru_cache def get_settings() -> Settings: return Settings()</code> — це і є
+          Singleton, без жодного <code>__new__</code>-оверрайду чи класичного патерну з підручника.</div>
+        </div>
+      </details>
+    </section>
+
+    <section id="catD">
+      <div class="cat-head"><div class="cat-letter">D</div><h2 style="margin:0;">Просунута асинхронність</h2></div>
+      <p class="section-desc">За межами "що таке event loop" (це вже в <a href="04-gil-and-concurrency.html">туторіалі 4</a>) — структуроване скасування, обмеження конкурентності, паттерни.</p>
+
+      <details class="qa">
+        <summary><span class="qnum">17</span><span class="difficulty trick">Пастка</span><code>asyncio.gather</code> vs <code>asyncio.TaskGroup</code> — у чому небезпека <code>gather</code>?</summary>
+        <div class="a">
+          <p><code>asyncio.gather(*tasks)</code> без <code>return_exceptions=True</code>: щойно
+          <b>перша</b> задача кидає виняток, він одразу летить назовні — але задачі, що вже
+          запущені й ще не завершились, <b>продовжують виконуватись у фоні</b>, ніхто їх не
+          скасовує автоматично. Це реальна пастка (можливий витік ресурсів/незавершені запити).
+          <code>asyncio.TaskGroup</code> (з 3.11) вирішує це структурно: якщо одна задача в
+          групі падає, всі інші задачі групи автоматично скасовуються, а винятки збираються
+          в <code>ExceptionGroup</code>.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">18</span><span class="difficulty trick">Пастка</span>Чому не можна просто "проковтнути" <code>asyncio.CancelledError</code>?</summary>
+        <div class="a">
+          <p>Скасування задачі (<code>task.cancel()</code>) кидає <code>CancelledError</code> у
+          найближчій точці <code>await</code> всередині неї. З Python 3.8 цей виняток успадковує
+          <code>BaseException</code>, а не <code>Exception</code> — саме тому <code>except
+          Exception:</code> його не зловить випадково. Але голий <code>except:</code> зловить —
+          і якщо після цього не зробити <code>raise</code> повторно, скасування "тихо
+          зникає": задача, яку хтось явно попросив зупинитись, продовжує жити. Правило: ловити
+          <code>CancelledError</code> можна лише для очищення ресурсів, і завжди
+          re-raise-ити його після.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">19</span><span class="difficulty core">База</span>Навіщо <code>asyncio.Semaphore</code>, якщо asyncio і так конкурентний?</summary>
+        <div class="a">
+          <p><code>asyncio</code> сам по собі не обмежує, скільки задач можуть одночасно чекати
+          на I/O — технічно можна запустити тисячу одночасних HTTP-запитів. Але зовнішній сервіс
+          (платний API) має власні ліміти й може почати відповідати 429/повільно, якщо
+          "заллити" його запитами одночасно. <code>asyncio.Semaphore(n)</code> обмежує, скільки
+          <code>await</code>-операцій усередині нього виконуються одночасно — природний throttle
+          для конкурентних викликів до зовнішнього API.</p>
+          <div class="checks"><b>🎯 Пов'язано з проєктом:</b> клієнти до OpenAI й Google Geocoding
+          в цьому бекенді викликаються по одному на HTTP-запит, тож семафор поки не потрібен —
+          але якби (як обговорено в <a href="02-async-and-security.html#a7">туторіалі 2, п. 7</a>)
+          геокодування рядків імпорту запустили паралельно через <code>gather</code>, саме
+          <code>Semaphore</code> став би правильним інструментом не перевищити ліміти Google Maps API.</div>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">20</span><span class="difficulty adv">Просунуте</span>Коли обрати <code>asyncio.Queue</code>, а не <code>gather</code>?</summary>
+        <div class="a">
+          <p><code>gather</code> вимагає знати весь список задач <b>заздалегідь</b> — підходить
+          для "виконати N відомих операцій паралельно і дочекатись усіх". <code>asyncio.Queue</code>
+          — паттерн виробник/споживач: підходить, коли робота з'являється <b>потоково</b>
+          (наприклад, довга черга завдань, вебсокет-повідомлення) і потрібен фіксований пул
+          "воркерів", що розбирають чергу, плюс backpressure "з коробки" (обмежений
+          <code>maxsize</code> черги блокує виробника, якщо споживачі не встигають).</p>
+        </div>
+      </details>
+    </section>
+
+    <section id="catE">
+      <div class="cat-head"><div class="cat-letter">E</div><h2 style="margin:0;">Бази даних та ORM</h2></div>
+      <p class="section-desc">Питання, де "теоретично знаю SQL" і "реально розумію, що робить ORM під капотом" — це дві різні співбесіди.</p>
+
+      <details class="qa">
+        <summary><span class="qnum">21</span><span class="difficulty core">База</span>Що таке N+1 query problem і як SQLAlchemy її вирішує?</summary>
+        <div class="a">
+          <p>Отримали список із N батьківських рядків одним запитом, а потім у циклі окремо
+          запитали пов'язані дані для кожного — разом N+1 запитів замість 1-2. Фікс у
+          SQLAlchemy — <b>eager loading</b>: <code>selectinload(Model.relationship)</code>
+          робить один додатковий пакетний запит <code>WHERE id IN (...)</code> для всіх
+          пов'язаних рядків одразу; <code>joinedload(...)</code> замість цього робить один
+          <code>JOIN</code> одразу.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">22</span><span class="difficulty sys">Системний дизайн</span>Як пул з'єднань до БД обмежує горизонтальне масштабування?</summary>
+        <div class="a">
+          <p>Кожен інстанс застосунку тримає власний пул з'єднань до Postgres. При N інстансах
+          сумарна кількість відкритих з'єднань ≈ N × (розмір пулу на інстанс), і це не повинно
+          перевищувати <code>max_connections</code> бази — інакше нові з'єднання почнуть
+          відхилятись. Рішення — pgbouncer/вбудований пулер хмарного Postgres у
+          transaction-режимі, куди всі інстанси підключаються через набагато менший спільний
+          пул реальних з'єднань.</p>
+          <div class="checks"><b>🎯 Пов'язано з проєктом:</b> саме тому <code>db/session.py</code>
+          має <code>connect_args={"statement_cache_size": 0}</code> — код уже готовий коректно
+          працювати за таким пулером (детальніше — <a href="03-scaling.html#s4">туторіал 3, крок E</a>).</div>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">23</span><span class="difficulty adv">Просунуте</span>Що таке рівні ізоляції транзакцій — і чи завжди вони потрібні для захисту від race condition?</summary>
+        <div class="a">
+          <p><code>READ COMMITTED</code> (типовий дефолт Postgres) не бачить незакомічені зміни
+          інших транзакцій, але дозволяє non-repeatable read (той самий рядок може віддати інше
+          значення при повторному читанні в межах однієї транзакції). <code>SERIALIZABLE</code> —
+          найсуворіший рівень, поводиться так, ніби транзакції виконались послідовно, ціною
+          можливих retry при конфліктах.</p>
+          <p><b>Нюанс:</b> не завжди потрібно підвищувати ізоляцію, щоб убезпечитись від
+          race condition — часто достатньо зробити перевірку-і-запис <b>однією атомарною
+          командою</b> (<code>UPDATE ... WHERE умова</code>) навіть на звичайному
+          <code>READ COMMITTED</code>, бо атомарність тут гарантує сама СУБД на рівні одного
+          рядка, а не рівень ізоляції транзакції.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">24</span><span class="difficulty core">База</span>Коли індекс шкодить, а не допомагає?</summary>
+        <div class="a">
+          <p>Індекс пришвидшує читання (<code>WHERE</code>/<code>JOIN</code>/<code>ORDER BY</code>
+          по індексованій колонці), але кожен <code>INSERT</code>/<code>UPDATE</code> мусить
+          додатково оновити й сам індекс — на write-важких таблицях забагато індексів помітно
+          сповільнює запис. Порядок колонок у складеному (композитному) індексі теж критичний:
+          індекс <code>(organization_id, created_at)</code> ефективно обслуговує фільтр лише по
+          <code>organization_id</code> або по обох полях разом, але не фільтр <b>лише</b> по
+          <code>created_at</code> окремо.</p>
+        </div>
+      </details>
+    </section>
+
+    <section id="catF">
+      <div class="cat-head"><div class="cat-letter">F</div><h2 style="margin:0;">Тестування</h2></div>
+      <p class="section-desc">Senior-рівень тут — не "знаю pytest", а розуміння, де мокати правильно, а де тест перестає щось перевіряти.</p>
+
+      <details class="qa">
+        <summary><span class="qnum">25</span><span class="difficulty trick">Пастка</span>Чим небезпечний надмірний мокінг (over-mocking)?</summary>
+        <div class="a">
+          <p>Якщо замокати занадто глибоко (наприклад, саму ORM-сесію чи внутрішній метод
+          сервісу, який тестується), тест перестає перевіряти <i>реальну</i> поведінку системи й
+          починає перевіряти лише те, що ваш мок повертає те, що ви самі йому сказали повернути —
+          хибне відчуття покриття. Правило: мокайте на <b>межі системи</b> (зовнішній HTTP-виклик,
+          сторонній SDK), а не внутрішню логіку, яку якраз і тестуєте.</p>
+          <div class="checks"><b>🎯 Пов'язано з проєктом:</b> DI через <code>Depends</code>
+          (туторіал 1) робить правильний мокінг тривіальним —
+          <code>app.dependency_overrides[get_openai_client] = lambda: fake_client</code>
+          підміняє рівно межу системи (зовнішній SDK), лишаючи всю внутрішню логіку сервісу
+          реальною й перевіреною.</div>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">26</span><span class="difficulty core">База</span>Де межа між unit, integration і e2e тестами на практиці?</summary>
+        <div class="a">
+          <p>Unit — одна функція/клас в ізоляції, усі залежності замоковані. Integration —
+          кілька реальних компонентів разом (наприклад, реальна тестова БД замість моку сесії).
+          E2E — весь стек разом, включно з HTTP-шаром, найближче до реального користувацького
+          сценарію. У типовому FastAPI-проєкті "API-тести" (запит через тестовий HTTP-клієнт до
+          реальної тестової БД) фактично лежать посередині — це integration, а не чистий unit.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">27</span><span class="difficulty adv">Просунуте</span>Що таке property-based testing (Hypothesis) і коли він доречніший за приклади?</summary>
+        <div class="a">
+          <p>Замість заздалегідь підібраних прикладів вхід/вихід, ви описуєте <b>інваріант</b>
+          ("для будь-якого валідного входу X — властивість Y завжди тримається"), а бібліотека
+          (наприклад, <code>Hypothesis</code>) сама генерує сотні рандомізованих, включно з
+          крайніми, вхідних значень і шукає контрприклад. Доречно для чистих функцій із чіткими
+          математичними властивостями (парсери, серіалізація/десеріалізація, нормалізація даних)
+          — саме там, де приклад-орієнтовані тести найлегше пропускають крайній випадок, про
+          який автор просто не подумав.</p>
+        </div>
+      </details>
+    </section>
+
+    <section id="catG">
+      <div class="cat-head"><div class="cat-letter">G</div><h2 style="margin:0;">Системний дизайн (лайт)</h2></div>
+      <p class="section-desc">Не повноцінний system design interview, а невеликі, дуже практичні питання, які часто вплітають у "звичайну" Python-співбесіду.</p>
+
+      <details class="qa">
+        <summary><span class="qnum">28</span><span class="difficulty sys">Системний дизайн</span>Що таке ідемпотентність API і навіщо вона потрібна для платних операцій?</summary>
+        <div class="a">
+          <p>Ідемпотентний запит можна безпечно повторити (наприклад, після мережевого таймауту,
+          коли клієнт не знає, чи дійшла перша спроба) — результат буде той самий, без побічних
+          подвійних ефектів. Типова реалізація: клієнт передає унікальний
+          <code>Idempotency-Key</code>, сервер зберігає його разом із результатом першого
+          виконання й на повторний запит з тим самим ключем повертає закешовану відповідь,
+          <i>не</i> виконуючи операцію вдруге.</p>
+          <div class="checks"><b>🎯 Пов'язано з проєктом:</b> <code>POST /routes/optimize</code>
+          у цьому бекенді споживає платну, лічену квоту (маршрути/геокодування/AI-виклики) —
+          без ідемпотентного ключа механічний retry на флакі-мережі з боку фронтенду міг би
+          двічі списати квоту за одну й ту саму дію користувача.</div>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">29</span><span class="difficulty sys">Системний дизайн</span>Fixed window vs sliding window vs token bucket для rate limiting — коли який?</summary>
+        <div class="a">
+          <p><b>Fixed window</b> (лічильник, що скидається кожні N секунд) — найпростіший, але
+          має "проблему межі вікна": до 2× дозволеного ліміту можна пропустити впритул до й
+          одразу після межі вікна. <b>Sliding window</b> (лог таймстемпів чи зважений
+          підрахунок) згладжує цю проблему ціною більшої пам'яті/обчислень. <b>Token bucket</b>
+          — дозволяє короткі "сплески" до розміру відра, підтримуючи стабільний середній темп —
+          найгнучкіший, типовий вибір для production API gateway.</p>
+
+          <figure class="diagram">
+            <svg viewBox="0 0 760 260" role="img" aria-label="У fixed window до 10 запитів можуть пройти за кілька секунд навколо межі вікна, хоча кожне вікно окремо дотримало ліміту 5; token bucket розподіляє запити рівномірно без такого сплеску">
+              <text x="380" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--bad)">Fixed window — сплеск на межі вікна</text>
+              <line x1="20" y1="70" x2="740" y2="70" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+              <line x1="380" y1="50" x2="380" y2="92" stroke="currentColor" stroke-width="1.1" stroke-dasharray="3,3"/>
+              <text x="380" y="44" text-anchor="middle" font-size="10.5" opacity="0.7">межа вікна</text>
+
+              <g fill="var(--bad)">
+                <circle cx="333" cy="70" r="4"/><circle cx="344" cy="70" r="4"/><circle cx="355" cy="70" r="4"/>
+                <circle cx="366" cy="70" r="4"/><circle cx="377" cy="70" r="4"/>
+                <circle cx="383" cy="70" r="4"/><circle cx="394" cy="70" r="4"/><circle cx="405" cy="70" r="4"/>
+                <circle cx="416" cy="70" r="4"/><circle cx="427" cy="70" r="4"/>
+              </g>
+              <path d="M333,80 L333,86 L427,86 L427,80" fill="none" stroke="var(--bad)" stroke-width="1.2"/>
+              <text x="380" y="104" text-anchor="middle" font-size="11" fill="var(--bad)">10 запитів за кілька секунд — по 5 з кожного "чесного" вікна</text>
+
+              <text x="150" y="128" text-anchor="middle" font-size="10.5" opacity="0.6">вікно 1 (ліміт 5)</text>
+              <text x="610" y="128" text-anchor="middle" font-size="10.5" opacity="0.6">вікно 2 (ліміт 5)</text>
+
+              <line x1="20" y1="142" x2="740" y2="142" stroke="var(--border)" stroke-width="1"/>
+
+              <text x="380" y="168" text-anchor="middle" font-size="13" font-weight="700" fill="var(--good)">Token bucket — рівномірний темп</text>
+              <line x1="20" y1="215" x2="740" y2="215" stroke="currentColor" stroke-width="1.2" opacity="0.6"/>
+              <g fill="var(--good)">
+                <circle cx="45" cy="215" r="4"/><circle cx="115" cy="215" r="4"/><circle cx="185" cy="215" r="4"/>
+                <circle cx="255" cy="215" r="4"/><circle cx="325" cy="215" r="4"/><circle cx="395" cy="215" r="4"/>
+                <circle cx="465" cy="215" r="4"/><circle cx="535" cy="215" r="4"/><circle cx="605" cy="215" r="4"/>
+                <circle cx="675" cy="215" r="4"/>
+              </g>
+              <text x="380" y="245" text-anchor="middle" font-size="11" fill="var(--good)">стабільний темп — без різкого сплеску на жодній межі</text>
+            </svg>
+            <figcaption>Fixed window вважає кожне вікно окремо "чесним", але не бачить сплеск, що утворюється на межі двох вікон. Token bucket розподіляє дозволені запити рівномірно в часі.</figcaption>
+          </figure>
+
+          <div class="checks"><b>🎯 Пов'язано з проєктом:</b> <code>app/core/rate_limiting.py</code>
+          у цьому бекенді — саме fixed window (детальніше — <a href="02-async-and-security.html#b4">туторіал 2</a>).
+          Свідомий, простий вибір для поточного масштабу; token bucket був би природним
+          апгрейдом, якби вимоги до точності ліміту зросли.</div>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">30</span><span class="difficulty sys">Системний дизайн</span>Graceful degradation — що робити, коли платний зовнішній сервіс падає?</summary>
+        <div class="a">
+          <p>Загальний принцип: віддати перевагу <b>частково корисному</b> результату над жорсткою
+          відмовою всього запиту, якщо це можливо без шкоди коректності. Але це рішення
+          приймається окремо для кожної фічі — деякі відмови справді мають "гучно" провалити весь
+          запит, а не тихо деградувати.</p>
+          <div class="checks"><b>🎯 Пов'язано з проєктом:</b> два різні свідомі рішення в одному
+          бекенді. <code>GoogleGeocodingClient.geocode()</code> повертає <code>None</code> при
+          будь-якій помилці — доставка все одно створюється, просто зі статусом
+          <code>"geocode_failed"</code>, замість падіння всього запиту. А ось збій OpenAI
+          (<code>OpenAIError</code>) навпаки — гучно повертає чіткий <code>503</code> клієнту
+          (<a href="02-async-and-security.html#b7">туторіал 2</a>), бо для AI-фічі "мовчки
+          повернути порожній результат" ввело б користувача в оману.</div>
+        </div>
+      </details>
+    </section>
+
+    <div class="card">
+      Це — надбудова над попередніми туторіалами, не заміна: якщо якесь питання виявилось
+      незрозумілим, найкоротший шлях — повернутись до
+      <a href="01-architecture.html">туторіалу 1</a> (архітектура/DI),
+      <a href="02-async-and-security.html">2</a> (async/безпека),
+      <a href="03-scaling.html">3</a> (масштабування),
+      <a href="04-gil-and-concurrency.html">4</a> (GIL/конкурентність) чи
+      <a href="05-python-types.html">5</a> (типи) — усі приклади там побудовані на тому самому коді.
+    </div>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Питання відібрані як типові для технічних інтерв'ю рівня Senior Python Developer; де можливо,
+  прив'язані до реального коду репозиторію <code>ai-delivery-planner-backend</code>.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

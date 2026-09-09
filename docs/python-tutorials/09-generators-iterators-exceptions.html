@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>9. Генератори, ітератори, винятки — AI Delivery Planner</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+  .part-divider{
+    display:flex; align-items:center; gap:14px; margin:64px 0 40px;
+  }
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  .vs{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:16px 0;}
+  @media (max-width:700px){.vs{grid-template-columns:1fr;}}
+  .vs .side{border-radius:var(--radius); padding:16px 18px; border:1px solid;}
+  .vs .side.py{background:var(--good-bg); border-color:var(--good-border);}
+  .vs .side.js{background:var(--warn-bg); border-color:var(--warn-border);}
+  .vs .side.bad{background:var(--bad-bg); border-color:var(--bad-border);}
+  .vs .side .lbl{font-weight:700; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px;}
+  .vs .side.py .lbl{color:var(--good);}
+  .vs .side.js .lbl{color:var(--warn);}
+  .vs .side.bad .lbl{color:var(--bad);}
+  .vs .side code{display:block; margin:4px 0; font-size:13px;}
+
+  /* exception hierarchy tree */
+  .exctree{font-size:13.5px; margin:16px 0;}
+  .exctree ul{list-style:none; margin:0; padding-left:22px; border-left:1px dashed var(--border);}
+  .exctree > ul{padding-left:0; border-left:none;}
+  .exctree li{margin:5px 0; padding-left:14px; position:relative;}
+  .exctree li::before{content:"└─"; position:absolute; left:-4px; color:var(--fg-muted); font-size:12px;}
+  .exctree code{font-weight:600;}
+  .exctree .base{color:var(--bad);}
+  .exctree .core{color:var(--accent);}
+  .exctree .note{color:var(--fg-muted); font-weight:400; font-size:12.5px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · Генератори, ітератори, винятки</div>
+  <h1>Повний протокол генераторів/ітераторів і виключення глибше</h1>
+  <p class="lead">
+    <code>yield</code> — не просто "цукор для циклів" (туторіал 7 показав лише верхівку). Це
+    реалізація повноцінного протоколу ітератора, і той самий механізм, з якого історично
+    виросли <code>async</code>/<code>await</code>. А обробка винятків має набагато більше
+    структури, ніж просто <code>try/except</code> — і саме в цій структурі ховаються найчастіші
+    каверзні питання.
+  </p>
+  <div class="pills">
+    <span class="pill">🔄 Iterator protocol з нуля</span>
+    <span class="pill">🧵 Звідки виріс async/await</span>
+    <span class="pill">💥 Винятки на рівень глибше</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🎯 До співбесіди</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html" class="active">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — Ітератори й генератори</div>
+    <ol>
+      <li><a href="#s1">1. Iterable vs Iterator — два протоколи</a></li>
+      <li><a href="#s2">2. Генератор — цукор над своїм ітератором</a></li>
+      <li><a href="#s3">3. Стан генератора і лінивість</a></li>
+      <li><a href="#s4">4. send/throw/close — генератор як корутина</a></li>
+      <li><a href="#s5">5. yield from — делегування</a></li>
+      <li><a href="#s6">6. itertools — лінькі інструменти</a></li>
+      <li><a href="#s7">7. Звідки виріс async/await</a></li>
+      <li><a href="#s8">8. Генератори у вашому проєкті</a></li>
+    </ol>
+    <div class="toc-group">Частина II — Винятки глибше</div>
+    <ol>
+      <li><a href="#s9">9. Ієрархія вбудованих винятків</a></li>
+      <li><a href="#s10">10. Власні ієрархії винятків</a></li>
+      <li><a href="#s11">11. raise ... from ... — ланцюжки винятків</a></li>
+      <li><a href="#s12">12. try/except/else/finally повністю</a></li>
+      <li><a href="#s13">13. Exception Groups та except*</a></li>
+      <li><a href="#s14">14. Правильне логування винятків</a></li>
+    </ol>
+    <div class="toc-group">Підсумок</div>
+    <ol>
+      <li><a href="#s15">15. Каверзні питання співбесіди</a></li>
+      <li><a href="#s16">16. Шпаргалка</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Ітератори й генератори</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">1</span> Iterable vs Iterator — два різні протоколи</h2>
+      <p class="section-desc">Найчастіша плутанина термінів у цій темі: "ітерований об'єкт" і "ітератор" — не синоніми.</p>
+
+      <ul>
+        <li><b>Iterable</b> ("можна перебрати") — будь-який об'єкт із методом
+        <code>__iter__</code>, що повертає <b>ітератор</b>. Список, рядок, словник, множина —
+        усі iterable, але жоден із них сам по собі не є ітератором.</li>
+        <li><b>Iterator</b> ("сам процес перебору") — об'єкт із <code>__iter__</code> (що
+        повертає <code>self</code>) <b>і</b> <code>__next__</code> (повертає наступне значення
+        або кидає <code>StopIteration</code>, коли значень більше немає).</li>
+      </ul>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python — власний ітератор вручну, без yield</span></div>
+        <pre><code>class CountUpTo:
+    <span class="cmt">"""Iterable І Iterator одночасно — не найкраща практика, але показує механізм."""</span>
+    def __init__(self, limit):
+        self.limit = limit
+        self.current = 0
+
+    def __iter__(self):
+        return self          <span class="cmt"># ітератор повертає сам себе</span>
+
+    def __next__(self):
+        if self.current >= self.limit:
+            raise StopIteration       <span class="cmt"># сигнал "перебір завершено" для for-циклу</span>
+        self.current += 1
+        return self.current
+
+for n in CountUpTo(3):
+    print(n)   <span class="out"># 1, 2, 3</span></code></pre>
+      </div>
+
+      <p><code>for x in obj:</code> насправді розгортається так: Python викликає
+      <code>iter(obj)</code> (тобто <code>obj.__iter__()</code>) один раз, а потім у циклі
+      викликає <code>next(...)</code> на результаті, доки не зловить <code>StopIteration</code>
+      — саме тоді цикл завершується, без жодного видимого <code>try/except</code> у вашому коді.</p>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Часте питання на співбесіді</span>
+        "Чим iterable відрізняється від iterator?" — правильна відповідь: iterable вміє
+        <i>породжувати</i> ітератор (<code>__iter__</code>), ітератор вміє <i>видавати
+        значення по одному</i> (<code>__next__</code>). Список — iterable, але не ітератор
+        (<code>iter([1,2,3])</code> ≠ сам список — це новий об'єкт-ітератор; саме тому два
+        окремі <code>for</code>-цикли по одному списку не "заважають" одне одному).</div>
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">2</span> Генератор — цукор над написанням власного ітератора</h2>
+      <p class="section-desc">Той самий клас <code>CountUpTo</code> з розділу 1 — типова причина, чому в мову додали <code>yield</code>.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">той самий CountUpTo, але генератором — на 5 рядків коротше</span></div>
+        <pre><code>def count_up_to(limit):
+    current = 0
+    while current < limit:
+        current += 1
+        yield current       <span class="cmt"># "видай значення, запам'ятай, де зупинився"</span>
+
+for n in count_up_to(3):
+    print(n)   <span class="out"># 1, 2, 3 -- та сама поведінка, без жодного класу</span></code></pre>
+      </div>
+
+      <p>Функція з <code>yield</code> усередині — не звичайна функція: виклик
+      <code>count_up_to(3)</code> <b>не виконує</b> тіло функції одразу, а повертає
+      <b>об'єкт-генератор</b>, який сам автоматично реалізує <code>__iter__</code>/<code>__next__</code>.
+      Кожен <code>next(gen)</code> виконує код <i>до наступного <code>yield</code></i>,
+      "заморожує" весь локальний стан функції (значення змінних, позицію виконання) і повертає
+      кероване значення — а на наступному виклику продовжує рівно з того самого місця.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        JS має буквально той самий механізм із тим самим ключовим словом:
+        <code>function* countUpTo(limit) { let i = 0; while (i &lt; limit) yield ++i; }</code> —
+        ідентична ідея, ідентичний синтаксис (з <code>*</code> замість неявного визначення через
+        наявність <code>yield</code>), і те саме "заморожування" стану функції між викликами
+        <code>.next()</code>.
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">3</span> Стан генератора і чому лінивість економить пам'ять</h2>
+      <p class="section-desc">Генератор проходить чіткі стани — і саме "заморозка" між ними дає головну перевагу над списком.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>import inspect
+
+gen = count_up_to(3)
+inspect.getgeneratorstate(gen)   <span class="out"># 'GEN_CREATED'   -- ще жодного разу не запускався</span>
+next(gen)
+inspect.getgeneratorstate(gen)   <span class="out"># 'GEN_SUSPENDED' -- призупинений рівно на yield</span>
+list(gen)                        <span class="cmt"># дороблює решту</span>
+inspect.getgeneratorstate(gen)   <span class="out"># 'GEN_CLOSED'    -- вичерпаний, більше next() дасть StopIteration</span></code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 760 240" role="img" aria-label="Генератор переходить CREATED → RUNNING на перший next(), потім чергується RUNNING ↔ SUSPENDED на кожному yield/next(), і завершується в CLOSED через return, StopIteration або close()">
+          <defs>
+            <marker id="a9-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <g font-size="12.5">
+            <rect x="20" y="30" width="140" height="54" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="90" y="62" text-anchor="middle">GEN_CREATED</text>
+
+            <rect x="300" y="30" width="140" height="54" rx="8" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="370" y="62" text-anchor="middle" fill="var(--accent)">GEN_RUNNING</text>
+
+            <rect x="580" y="30" width="140" height="54" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="650" y="62" text-anchor="middle">GEN_SUSPENDED</text>
+
+            <rect x="300" y="172" width="140" height="54" rx="8" fill="var(--fg)" fill-opacity="0.06" stroke="currentColor" stroke-width="1.3"/>
+            <text x="370" y="204" text-anchor="middle">GEN_CLOSED</text>
+          </g>
+
+          <line x1="160" y1="57" x2="298" y2="57" stroke="currentColor" stroke-width="1.2" marker-end="url(#a9-arr)"/>
+          <text x="229" y="49" text-anchor="middle" font-size="11">перший next()</text>
+
+          <line x1="440" y1="57" x2="578" y2="57" stroke="currentColor" stroke-width="1.2" marker-end="url(#a9-arr)"/>
+          <text x="509" y="49" text-anchor="middle" font-size="11">yield</text>
+
+          <polyline points="650,84 650,112 340,112 340,84" fill="none" stroke="currentColor" stroke-width="1.2" marker-end="url(#a9-arr)"/>
+          <text x="495" y="126" text-anchor="middle" font-size="11">next() / send()</text>
+
+          <line x1="400" y1="84" x2="400" y2="170" stroke="currentColor" stroke-width="1.2" marker-end="url(#a9-arr)"/>
+          <text x="410" y="130" text-anchor="start" font-size="11">return /</text>
+          <text x="410" y="144" text-anchor="start" font-size="11">StopIteration</text>
+
+          <line x1="610" y1="84" x2="428" y2="170" stroke="currentColor" stroke-width="1.1" stroke-dasharray="3,3" marker-end="url(#a9-arr)"/>
+          <text x="560" y="128" text-anchor="middle" font-size="11">close() /</text>
+          <text x="560" y="142" text-anchor="middle" font-size="11">throw() без обробки</text>
+        </svg>
+        <figcaption>Стани генератора: старт лише на перший <code>next()</code>, далі чергування RUNNING↔SUSPENDED на кожному <code>yield</code>, і завершення в CLOSED — природне (return/StopIteration) чи форсоване (close()).</figcaption>
+      </figure>
+
+      <p>Головна практична перевага: генератор тримає в пам'яті лише <b>поточний</b> стан, а не
+      всі значення одразу. <code>(x*x for x in range(10_000_000))</code> — миттєвий, майже
+      безкоштовний по пам'яті вираз; <code>[x*x for x in range(10_000_000)]</code> — одразу
+      виділяє пам'ять під 10 мільйонів чисел.</p>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Коли лінивість критична:</b> обробка файлів, більших за оперативну
+        пам'ять (читання рядок за рядком); нескінченні послідовності (потік подій, сенсорні
+        дані); пайплайни трансформацій, де важливий лише кінцевий результат, а не проміжні
+        повні списки (<code>sum(x*x for x in huge_iterable if x % 2 == 0)</code> ніколи не
+        будує проміжний список).</div>
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">4</span> <code>.send()</code>, <code>.throw()</code>, <code>.close()</code> — генератор як двостороння корутина</h2>
+      <p class="section-desc">Найменш відома частина протоколу — генератор уміє не лише <i>віддавати</i> значення, а й <i>приймати</i> їх ззовні.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python — двосторонній генератор</span></div>
+        <pre><code>def echo_upper():
+    while True:
+        received = yield          <span class="cmt"># yield як ВИРАЗ -- очікує значення ззовні</span>
+        print(f"got: {received.upper()}")
+
+gen = echo_upper()
+next(gen)                 <span class="cmt"># обов'язковий "прайминг" -- довести генератор до першого yield</span>
+gen.send("hello")         <span class="out"># друкує "got: HELLO"</span>
+gen.throw(ValueError("boom"))  <span class="cmt"># кидає ValueError ВСЕРЕДИНІ генератора, у точці yield</span>
+gen.close()                <span class="cmt"># кидає GeneratorExit всередину -- акуратне завершення</span></code></pre>
+      </div>
+
+      <p><code>.send(value)</code> продовжує генератор і "підставляє" <code>value</code> як
+      результат виразу <code>yield</code> усередині нього. <code>.throw(exc)</code> кидає
+      виняток рівно в точці, де генератор призупинений — можна зловити його там
+      <code>try/except</code> усередині генератора. <code>.close()</code> кидає спеціальний
+      <code>GeneratorExit</code>, після якого генератор повинен завершитись (ще один
+      <code>yield</code> після цього — <code>RuntimeError</code>).</p>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">5</span> <code>yield from</code> — делегування вкладеним генераторам</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>def inner():
+    yield 1
+    yield 2
+    return "inner is done"      <span class="cmt"># значення return потрапляє в StopIteration.value</span>
+
+def outer():
+    result = yield from inner()  <span class="cmt"># прозоро передає ВСІ yield з inner() назовні</span>
+    print(result)                 <span class="cmt"># "inner is done" -- дістає значення return з inner()</span>
+    yield 3
+
+list(outer())   <span class="out"># [1, 2, 3], і між рядків надрукується "inner is done"</span></code></pre>
+      </div>
+
+      <p><code>yield from</code> — не просто скорочення для <code>for x in inner(): yield x</code>
+      (хоч і виглядає схоже для найпростішого випадку). Різниця: <code>yield from</code> також
+      прозоро прокидає <code>.send()</code>/<code>.throw()</code> у вкладений генератор і
+      дістає значення його <code>return</code> — цикл <code>for</code> цього не вміє. Саме ця
+      "прозорість" зробила <code>yield from</code> ключовим будівельним блоком для
+      генератор-based корутин (розділ 7).</p>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">6</span> <code>itertools</code> — лінькі інструменти "з коробки"</h2>
+      <table>
+        <tr><th>Функція</th><th>Робить</th></tr>
+        <tr><td><code>itertools.chain(a, b)</code></td><td>Послідовно перебирає кілька ітерованих об'єктів як один, без склеювання в новий список</td></tr>
+        <tr><td><code>itertools.islice(it, 5)</code></td><td>"Зріз" ітератора — перші 5 елементів, навіть якщо <code>it</code> нескінченний</td></tr>
+        <tr><td><code>itertools.groupby(it, key)</code></td><td>Групує сусідні елементи за ключем (вимагає попередньо відсортований вхід)</td></tr>
+        <tr><td><code>itertools.count(10)</code></td><td>Нескінченний лічильник 10, 11, 12, ... (типово для <code>zip</code> з обмеженням)</td></tr>
+        <tr><td><code>itertools.tee(it, 2)</code></td><td>Розділяє один ітератор на кілька незалежних, без повного матеріалізування в пам'яті</td></tr>
+      </table>
+      <p class="muted">Усі функції <code>itertools</code> ліниві — жодна з них не будує
+      проміжний список, доки ви самі не викличете <code>list(...)</code> на результаті.</p>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">7</span> Звідки насправді виріс <code>async</code>/<code>await</code></h2>
+      <p class="section-desc">Найкраща "cool fact"-відповідь на співбесіді про історію Python — і пряме продовження туторіалу 4.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">до PEP 492 (Python &lt; 3.5) — асинхронний код писали ГЕНЕРАТОРАМИ</span></div>
+        <pre><code>import asyncio
+
+@asyncio.coroutine
+def old_style_coroutine():
+    result = yield from some_async_operation()   <span class="cmt"># yield from замість await</span>
+    return result
+
+<span class="cmt"># сучасний еквівалент, з 3.5+:</span>
+async def modern_coroutine():
+    result = await some_async_operation()
+    return result</code></pre>
+      </div>
+
+      <p><b>PEP 342</b> (Python 2.5, 2006) додав генераторам <code>.send()</code>/<code>.throw()</code>
+      — саме ці можливості з розділу 4 дозволили писати "генератор-корутини": функцію, що
+      призупиняється на <code>yield</code>, чекає на подію ззовні (наприклад, завершення
+      мережевого запиту), і продовжується, коли подія настала. Рання версія <code>asyncio</code>
+      (Python 3.4) була побудована <b>саме на цьому</b> — на генераторах із декоратором
+      <code>@asyncio.coroutine</code> і <code>yield from</code>. <b>PEP 492</b> (Python 3.5,
+      2015) увів <code>async</code>/<code>await</code> як окремий, явний синтаксис поверх тієї
+      самої базової машинерії — по суті, ще один шар синтаксичного цукру (туторіал 7!), який
+      робить корутини окремим типом об'єктів, а не "генераторами, які прикидаються корутинами".</p>
+
+      <div class="callout fun">
+        <div class="ic">🎉</div>
+        <div class="body"><span class="tag">Чому це чудова відповідь на співбесіді</span>
+        Це показує розуміння того, що <code>async</code>/<code>await</code> — не окрема
+        магічна фіча, а еволюція вже наявного механізму генераторів. Той самий "event
+        loop" з туторіалу 4 у ранньому <code>asyncio</code> буквально ганяв генератори через
+        <code>.send(None)</code> у циклі, ловлячи моменти, де вони "чекають" на I/O.</div>
+      </div>
+
+      <h3>Асинхронні генератори (Python 3.6+, PEP 525)</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/db/session.py — реальний код з проєкту</span></div>
+        <pre><code>async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    <span class="cmt">"""Yield an AsyncSession, closing it when the request completes."""</span>
+    async with AsyncSessionLocal() as session:
+        yield session</code></pre>
+      </div>
+      <p><code>async def</code> + <code>yield</code> усередині = <b>асинхронний генератор</b> —
+      споживається через <code>async for</code>. FastAPI використовує саме цей патерн для
+      DI-залежностей із "код до yield = setup, код після = teardown" (той самий принцип, що й
+      у звичайному контекст-менеджері з туторіалу 7, тільки в async-формі).</p>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">8</span> Генератори у вашому проєкті</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/dependencies.py — делегування через async for</span></div>
+        <pre><code>async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    <span class="cmt">"""Yield a request-scoped async SQLAlchemy session."""</span>
+    async for session in get_session():    <span class="cmt"># прозоро прокидає yield із get_session() назовні</span>
+        yield session</code></pre>
+      </div>
+      <p>Це — та сама ідея делегування з розділу 5 (<code>yield from</code>), тільки в
+      асинхронній формі (<code>async for ... yield</code>, бо <code>yield from</code> не працює
+      з асинхронними генераторами напряму). <code>get_db</code> обгортає <code>get_session</code>
+      без дублювання логіки відкриття/закриття сесії — просто прокидає значення далі по
+      ланцюжку DI.</p>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · Винятки глибше</div><div class="line"></div></div>
+
+    <section id="s9">
+      <h2><span class="num">9</span> Ієрархія вбудованих винятків</h2>
+      <p class="section-desc">Голий <code>except:</code> і <code>except Exception:</code> — це не одне й те саме, і різниця часто ламає кандидатів на співбесіді.</p>
+
+      <div class="exctree">
+        <ul>
+          <li><code class="base">BaseException</code>
+            <ul>
+              <li><code>SystemExit</code> <span class="note">— викликається sys.exit()</span></li>
+              <li><code>KeyboardInterrupt</code> <span class="note">— Ctrl+C</span></li>
+              <li><code>GeneratorExit</code> <span class="note">— .close() генератора, розділ 4</span></li>
+              <li><code>asyncio.CancelledError</code> <span class="note">— з Python 3.8 (туторіал 4!)</span></li>
+              <li><code class="core">Exception</code> <span class="note">— база для "звичайних" помилок</span>
+                <ul>
+                  <li><code>ValueError</code>, <code>TypeError</code>, <code>KeyError</code>, <code>IndexError</code>...</li>
+                  <li><code>OSError</code> <span class="note">(і мережеві/файлові підкласи)</span></li>
+                  <li><code>QuotaExceededError</code> <span class="note">— власний, з app/core/plans.py</span></li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+
+      <p>Голий <code>except:</code> ловить <b>усе</b>, включно з <code>SystemExit</code> і
+      <code>KeyboardInterrupt</code> — тому може "проковтнути" навіть спробу зупинити програму
+      комбінацією Ctrl+C. <code>except Exception:</code> — набагато безпечніший дефолт: не
+      чіпає ці "керуючі" сигнали, бо вони навмисно винесені прямо під
+      <code>BaseException</code>, а не під <code>Exception</code>.</p>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Пряме продовження туторіалу 4</span>
+        Саме тому <code>asyncio.CancelledError</code> з Python 3.8 навмисно перенесли з
+        <code>Exception</code> під <code>BaseException</code> — щоб типовий
+        <code>except Exception:</code> у чужому коді не міг випадково "проковтнути" скасування
+        задачі, як обговорювалось у <a href="04-gil-and-concurrency.html#s10">туторіалі 4</a>.</div>
+      </div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Власні ієрархії винятків</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/security.py та app/core/plans.py — реальний код з проєкту</span></div>
+        <pre><code>class InvalidTokenError(Exception):
+    <span class="cmt">"""Raised when a JWT is missing, malformed, expired, or has a bad signature."""</span>
+
+class QuotaExceededError(Exception):
+    <span class="cmt">"""Raised when an organization has exhausted a plan-based usage quota."""</span></code></pre>
+      </div>
+      <p>Власний клас винятку — це просто <code>class MyError(Exception): pass</code> (часто
+      навіть без тіла, як тут — сама назва класу і є "повідомленням" для коду, що його ловить).
+      Перевага над "просто підняти <code>ValueError</code> з текстом" — виклик коду може
+      відрізнити <i>цей конкретний</i> тип проблеми через <code>except QuotaExceededError:</code>,
+      не парсячи рядок повідомлення.</p>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body">У цьому проєкті <code>QuotaExceededError</code> навіть має
+        централізований обробник (<code>app/core/error_handlers.py</code>,
+        <code>@app.exception_handler(QuotaExceededError)</code>) — один тип винятку,
+        підняний глибоко всередині сервісного шару, автоматично перетворюється на коректний
+        HTTP 403 для будь-якого місця коду, яке забуло зловити його вручну.</div>
+      </div>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> <code>raise ... from ...</code> — ланцюжки винятків</h2>
+      <p class="section-desc">Рядок, що зустрічається в коді цього проєкту буквально десятки разів — а на співбесіді про нього рідко питають правильно.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/dependencies.py — реальний код з проєкту</span></div>
+        <pre><code>try:
+    claims = decode_token(token)
+except InvalidTokenError as exc:
+    raise credentials_error from exc   <span class="cmt"># явний ланцюжок: НОВИЙ виняток, стара причина збережена</span></code></pre>
+      </div>
+
+      <div class="vs">
+        <div class="side py">
+          <div class="lbl">raise X from Y (явний ланцюжок)</div>
+          <code>X.__cause__ = Y</code>
+          <code># traceback: "The above exception was the</code>
+          <code># direct cause of the following exception"</code>
+        </div>
+        <div class="side bad">
+          <div class="lbl">raise X (без from, усередині except)</div>
+          <code>X.__context__ = поточний виняток (автоматично)</code>
+          <code># traceback: "During handling of the above</code>
+          <code># exception, another exception occurred"</code>
+        </div>
+      </div>
+
+      <p>Без жодного <code>from</code>, якщо ви піднімаєте новий виняток <b>усередині</b>
+      блоку <code>except</code>, Python <i>сам</i> прикріпить оригінальний виняток як
+      <code>__context__</code> — неявний ланцюжок, який теж показується в traceback, просто
+      з іншим формулюванням. <code>raise NewError(...) from None</code> — спеціальний випадок:
+      повністю приховує ланцюжок, корисно, коли внутрішня причина не повинна "просочуватись"
+      назовні (наприклад, у публічну відповідь API).</p>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">На співбесіді запитають так</span>
+        "Яка різниця між <code>raise X from Y</code> і просто <code>raise X</code> усередині
+        <code>except</code>?" — правильна відповідь: перше — явний, навмисний ланцюжок
+        (<code>__cause__</code>), друге — неявний, автоматичний (<code>__context__</code>).
+        Обидва зберігають повний traceback оригінальної помилки для дебагу — різниця лише
+        в тому, наскільки "навмисно" ця причина позначена.</div>
+      </div>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> <code>try</code>/<code>except</code>/<code>else</code>/<code>finally</code> повністю</h2>
+      <p class="section-desc"><code>else</code> у винятках — найменш використовуваний, і саме тому найчастіше плутають на співбесіді.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python — усі чотири блоки разом</span></div>
+        <pre><code>try:
+    value = risky_call()
+except ValueError:
+    print("сталась ValueError")
+else:
+    print("risky_call() НЕ впала -- value доступний тут")   <span class="cmt"># лише якщо try пройшов БЕЗ винятку</span>
+finally:
+    print("виконується ЗАВЖДИ -- впала функція чи ні")</code></pre>
+      </div>
+
+      <p><code>else</code> виконується, лише якщо <code>try</code> завершився <b>без</b>
+      винятку — логічно еквівалентно перенесенню коду в кінець блоку <code>try</code>, але явно
+      відділяє "код, що може впасти" від "код, що виконується тільки після успіху", не
+      ризикуючи випадково зловити виняток із <i>цього</i> коду тим самим <code>except</code>.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python — класична пастка з return у finally</span></div>
+        <pre><code>def f():
+    try:
+        return "from try"
+        raise ValueError("never reached")
+    finally:
+        return "from finally"    <span class="cmt"># !! ПЕРЕКРИВАЄ і return, і виняток із try</span>
+
+f()   <span class="out"># "from finally" -- return із try НІКОЛИ не повернувся</span></code></pre>
+      </div>
+
+      <div class="callout bad">
+        <div class="ic">❌</div>
+        <div class="body"><b>Пастка:</b> <code>return</code> (або <code>raise</code>, або
+        <code>break</code>/<code>continue</code>) усередині <code>finally</code> <b>завжди</b>
+        "перемагає" — тихо відкидає будь-яке значення <code>return</code> чи будь-який виняток
+        із блоків <code>try</code>/<code>except</code> вище. Ruff і більшість лінтерів
+        спеціально попереджають про це (<code>return</code> у <code>finally</code>) — уникайте
+        навмисно.</div>
+      </div>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Exception Groups та <code>except*</code> (Python 3.11+)</h2>
+      <p class="section-desc">Пряме продовження питання про <code>asyncio.TaskGroup</code> з туторіалу 6.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python 3.11+</span></div>
+        <pre><code>try:
+    raise ExceptionGroup("multiple failures", [
+        ValueError("bad value"),
+        TypeError("bad type"),
+    ])
+except* ValueError as eg:
+    print(f"зловив ValueError-и: {eg.exceptions}")
+except* TypeError as eg:
+    print(f"зловив TypeError-и: {eg.exceptions}")</code></pre>
+      </div>
+
+      <p>До Python 3.11 виняток завжди був <b>один</b>. Але <code>asyncio.TaskGroup</code>
+      (туторіал 6, п. 17) може мати кілька задач, що впали <b>одночасно</b> — потрібен спосіб
+      піднести кілька винятків <i>разом</i>, не втрачаючи жодного. <code>ExceptionGroup</code> —
+      контейнер для кількох винятків; <code>except*</code> (з зірочкою!) — новий синтаксис, що
+      "фільтрує" групу за типом, може спрацювати кілька разів для різних типів у тій самій
+      групі, і навіть залишає нерозібрані винятки для повторного підняття, якщо жоден
+      <code>except*</code> їх не покрив.</p>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Правильне логування винятків</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/error_handlers.py — два різні підходи, обидва навмисні</span></div>
+        <pre><code>logger.error("OpenAI API error on %s %s: %s", request.method, request.url.path, exc)
+<span class="cmt"># -- без повного traceback: причина ВІДОМА (зовнішній сервіс), деталі не потрібні</span>
+
+logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+<span class="cmt"># -- З ПОВНИМ traceback: причина НЕВІДОМА, це і є розслідування бага</span></code></pre>
+      </div>
+
+      <p><code>logger.exception(msg)</code> можна викликати <b>лише</b> всередині
+      <code>except</code>-блоку — він автоматично додає повний traceback поточного винятку
+      (еквівалент <code>logger.error(msg, exc_info=True)</code>). <code>logger.error(msg)</code>
+      без <code>exc_info</code> — звичайний рядок логу, без стектрейсу.</p>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body">Проєкт свідомо використовує обидва по-різному: помилка OpenAI —
+        <i>очікуваний</i> зовнішній збій (rate limit, аутсейдж), повний traceback тут не
+        додає інформації понад сам факт "OpenAI недоступний". Непередбачений виняток у
+        catch-all-обробнику — це якраз розслідування невідомого бага, де кожен рядок
+        traceback важливий.</div>
+      </div>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Каверзні питання співбесіди</h2>
+      <p class="section-desc">Натисніть на питання, щоб побачити відповідь.</p>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим iterable відрізняється від iterator?</summary>
+        <div class="a">Iterable має <code>__iter__</code>, що <i>породжує</i> ітератор.
+        Iterator має і <code>__iter__</code> (повертає себе), і <code>__next__</code> (видає
+        наступне значення або кидає <code>StopIteration</code>). Список — iterable, але не
+        iterator.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим генератор кращий за список для великих послідовностей?</summary>
+        <div class="a">Лінивість: генератор тримає в пам'яті лише поточний стан, а не всі
+        значення одразу. Список матеріалізує все одразу в пам'яті; генератор видає значення
+        по одному, на вимогу.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Що поверне повторний виклик <code>next()</code> на вичерпаному генераторі?</summary>
+        <div class="a"><code>StopIteration</code> — і не одноразово: генератор, що дійшов
+        кінця, лишається "вичерпаним" назавжди (стан <code>GEN_CLOSED</code>), повторний
+        виклик <code>next()</code> завжди кидатиме <code>StopIteration</code> знову, а не
+        перезапускає перебір з початку.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty adv">Просунуте</span>Звідки історично виріс синтаксис <code>async</code>/<code>await</code>?</summary>
+        <div class="a">З генераторів: PEP 342 (2006) додав <code>.send()</code>/<code>.throw()</code>,
+        що дозволило писати "генератор-корутини" (<code>@asyncio.coroutine</code> +
+        <code>yield from</code>) у ранньому asyncio. PEP 492 (2015, Python 3.5) додав
+        <code>async</code>/<code>await</code> як окремий, явний синтаксис поверх тієї самої
+        базової машинерії.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чи ловить <code>except Exception:</code> <code>KeyboardInterrupt</code> або <code>asyncio.CancelledError</code>?</summary>
+        <div class="a">Ні. Обидва — прямі підкласи <code>BaseException</code>, не
+        <code>Exception</code>, саме щоб типовий "зловити все" код їх не проковтнув випадково.
+        Лише голий <code>except:</code> (без типу) зловить їх теж.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Коли виконується блок <code>else</code> у <code>try/except/else</code>?</summary>
+        <div class="a">Лише якщо блок <code>try</code> завершився БЕЗ винятку. Логічно схоже
+        на перенесення коду в кінець <code>try</code>, але явно відокремлює "код, що може
+        впасти" від "код, що виконується тільки після успіху".</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Що станеться з винятком/return з <code>try</code>, якщо в <code>finally</code> теж є <code>return</code>?</summary>
+        <div class="a"><code>return</code> у <code>finally</code> завжди "перемагає" — тихо
+        відкидає і значення <code>return</code>, і будь-який непіднятий виняток із блоків вище.
+        Класична причина важких для дебагу багів; більшість лінтерів (включно з ruff) на це
+        попереджають.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Різниця <code>raise X from Y</code> і просто <code>raise X</code> усередині <code>except</code>?</summary>
+        <div class="a"><code>from Y</code> — явний ланцюжок (<code>__cause__</code>), просто
+        <code>raise X</code> усередині <code>except</code> — неявний, автоматичний
+        (<code>__context__</code>). Обидва зберігають повний traceback причини для дебагу;
+        <code>raise X from None</code> повністю приховує ланцюжок.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty adv">Просунуте</span>Навіщо потрібні <code>ExceptionGroup</code> і <code>except*</code>?</summary>
+        <div class="a">До Python 3.11 виняток завжди був один. <code>asyncio.TaskGroup</code>
+        може мати кілька задач, що впали одночасно — <code>ExceptionGroup</code> дозволяє
+        піднести їх усі разом, не втрачаючи жодної; <code>except*</code> фільтрує групу за
+        типом і може спрацювати кілька разів для різних типів у тій самій групі.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Коли можна викликати <code>logger.exception(...)</code>?</summary>
+        <div class="a">Лише всередині блоку <code>except</code> — інакше немає "поточного"
+        винятку, traceback якого можна прикріпити. Виклик поза <code>except</code> запишеться
+        без корисного стектрейсу.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Живе кодування</span>Напишіть генератор, що видає нескінченну послідовність Фібоначчі.</summary>
+        <div class="a"><code>def fib():<br>&nbsp;&nbsp;&nbsp;&nbsp;a, b = 0, 1<br>&nbsp;&nbsp;&nbsp;&nbsp;while True:<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;yield a<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a, b = b, a + b</code> —
+        показує розуміння, що <code>while True</code> усередині генератора цілком безпечний,
+        бо код виконується лише "по вимозі" на кожен <code>next()</code>, а не одразу весь
+        нескінченний цикл.</div>
+      </details>
+
+    </section>
+
+    <section id="s16">
+      <h2><span class="num">16</span> Шпаргалка</h2>
+      <div class="cheat">
+        <table>
+          <tr><th>Питання</th><th>Відповідь</th></tr>
+          <tr><td>Список чи генератор для великих даних?</td><td>Генератор — не тримає всі значення в пам'яті одразу</td></tr>
+          <tr><td>Прозоро прокинути yield/return вкладеного генератора?</td><td><code>yield from</code> (sync) / <code>async for ... yield</code> (async)</td></tr>
+          <tr><td>Зловити все, окрім Ctrl+C/sys.exit()?</td><td><code>except Exception:</code>, ніколи голий <code>except:</code></td></tr>
+          <tr><td>Явно позначити причину нового винятку?</td><td><code>raise NewError(...) from original_exc</code></td></tr>
+          <tr><td>Приховати внутрішню причину від зовнішнього коду?</td><td><code>raise NewError(...) from None</code></td></tr>
+          <tr><td><code>return</code> у <code>finally</code>?</td><td>Ніколи — тихо ковтає return/виняток із try</td></tr>
+          <tr><td>Логувати виняток із повним traceback?</td><td><code>logger.exception(...)</code>, лише всередині <code>except</code></td></tr>
+          <tr><td>Кілька винятків з паралельних задач одночасно?</td><td><code>ExceptionGroup</code> + <code>except*</code> (3.11+)</td></tr>
+        </table>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал побудований на офіційній документації Python (PEP 234, 342, 380, 492, 525, 654)
+  та реальному коді репозиторію <code>ai-delivery-planner-backend</code>.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

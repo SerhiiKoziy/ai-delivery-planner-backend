@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>11. Серіалізація та числа — AI Delivery Planner</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+  .part-divider{
+    display:flex; align-items:center; gap:14px; margin:64px 0 40px;
+  }
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+  .badge-level{
+    display:inline-block; font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px;
+    background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);
+    text-transform:uppercase; letter-spacing:.04em; margin-left:10px; vertical-align:middle;
+  }
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  .vs{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:16px 0;}
+  @media (max-width:700px){.vs{grid-template-columns:1fr;}}
+  .vs .side{border-radius:var(--radius); padding:16px 18px; border:1px solid;}
+  .vs .side.py{background:var(--good-bg); border-color:var(--good-border);}
+  .vs .side.js{background:var(--warn-bg); border-color:var(--warn-border);}
+  .vs .side.bad{background:var(--bad-bg); border-color:var(--bad-border);}
+  .vs .side .lbl{font-weight:700; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px;}
+  .vs .side.py .lbl{color:var(--good);}
+  .vs .side.js .lbl{color:var(--warn);}
+  .vs .side.bad .lbl{color:var(--bad);}
+  .vs .side code{display:block; margin:4px 0; font-size:13px;}
+
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · Серіалізація та числа</div>
+  <h1>Серіалізація, pickle та точність чисел <span class="badge-level">Середня складність</span></h1>
+  <p class="lead">
+    Дві, на перший погляд не пов'язані теми — як дані перетворюються на байти, і як Python
+    рахує з дробовими числами — насправді про одне й те саме: <b>що насправді відбувається
+    "під капотом"</b>, коли зручний інструмент (JSON, pickle, <code>float</code>) виглядає так,
+    ніби просто працює.
+  </p>
+  <div class="pills">
+    <span class="pill">📦 JSON пастки</span>
+    <span class="pill">🔓 Чому pickle небезпечний</span>
+    <span class="pill">🔢 0.1 + 0.2 ≠ 0.3</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🎯 До співбесіди</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="11-serialization-and-numbers.html" class="active">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — Серіалізація</div>
+    <ol>
+      <li><a href="#s1">1. Що JSON НЕ вміє серіалізувати</a></li>
+      <li><a href="#s2">2. Як цю проблему вирішує Pydantic</a></li>
+      <li><a href="#s3">3. pickle — інший підхід</a></li>
+      <li><a href="#s4">4. Чому pickle небезпечний</a></li>
+      <li><a href="#s5">5. Коли pickle все ж доречний</a></li>
+      <li><a href="#s6">6. Celery і серіалізація задач</a></li>
+    </ol>
+    <div class="toc-group">Частина II — Точність чисел</div>
+    <ol>
+      <li><a href="#s7">7. Чому 0.1 + 0.2 != 0.3</a></li>
+      <li><a href="#s8">8. Decimal — точна десяткова арифметика</a></li>
+      <li><a href="#s9">9. float vs Decimal vs цілі копійки</a></li>
+    </ol>
+    <div class="toc-group">Підсумок</div>
+    <ol>
+      <li><a href="#s10">10. Каверзні питання співбесіди</a></li>
+      <li><a href="#s11">11. Шпаргалка</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Серіалізація</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">1</span> Що JSON НЕ вміє серіалізувати "з коробки"</h2>
+      <p class="section-desc">JSON — формат з дуже обмеженим набором типів: рядок, число, булеве значення, <code>null</code>, масив, об'єкт. Python-типів у ньому набагато більше.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>import json
+from datetime import datetime
+from uuid import uuid4
+
+json.dumps({"created_at": datetime.now()})
+<span class="out"># TypeError: Object of type datetime is not JSON serializable</span>
+
+json.dumps({"id": uuid4()})
+<span class="out"># TypeError: Object of type UUID is not JSON serializable</span></code></pre>
+      </div>
+
+      <table>
+        <tr><th>Python-тип</th><th>Проблема з JSON</th></tr>
+        <tr><td><code>datetime</code> / <code>date</code></td><td>Немає стандартного типу дати — потрібно самому вирішити формат (зазвичай ISO 8601 рядком)</td></tr>
+        <tr><td><code>UUID</code></td><td>Немає типу — серіалізується як рядок</td></tr>
+        <tr><td><code>Decimal</code></td><td>Немає точного десяткового типу — типово серіалізується як рядок, щоб не втратити точність</td></tr>
+        <tr><td><code>set</code></td><td>Немає типу множини — потрібно перетворити на <code>list</code> (і втратити гарантію унікальності при десеріалізації)</td></tr>
+        <tr><td><code>bytes</code></td><td>Немає бінарного типу — потрібне кодування (наприклад, base64)</td></tr>
+      </table>
+
+      <p>Найпростіший (хоч і не завжди найзручніший) спосіб — власна функція
+      <code>default=</code> для <code>json.dumps</code>, яка каже, як перетворити "невідомий"
+      тип на щось, що JSON уже розуміє:</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>def default(obj):
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    if isinstance(obj, UUID):
+        return str(obj)
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+json.dumps({"created_at": datetime.now()}, default=default)  <span class="cmt"># тепер працює</span></code></pre>
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">2</span> Як цю проблему вирішує Pydantic (і чому ви цього майже не помічаєте)</h2>
+      <p class="section-desc">У цьому проєкті, як і в будь-якому FastAPI-застосунку, ви навряд чи колись писали власний <code>default=</code> — і ось чому.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/schemas/route.py (концептуально) — Pydantic-схема</span></div>
+        <pre><code>class RouteRead(BaseModel):
+    id: uuid.UUID
+    created_at: datetime
+    total_distance_km: float
+    <span class="cmt"># ...</span>
+
+<span class="cmt"># FastAPI автоматично серіалізує RouteRead у JSON-відповідь —
+# UUID стає рядком, datetime -- ISO 8601 рядком, без жодного ручного коду</span></code></pre>
+      </div>
+
+      <p>Pydantic уже знає, як серіалізувати всі поширені "не-JSON" Python-типи
+      (<code>datetime</code>, <code>UUID</code>, <code>Decimal</code>, <code>Enum</code> тощо)
+      — саме тому шар <code>schemas/</code> у цьому проєкті (туторіал 1) не просто валідує
+      вхідні дані, а й "безкоштовно" вирішує проблему серіалізації на виході, яку інакше
+      довелось би вирішувати вручну для кожного ендпоінта.</p>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">3</span> <code>pickle</code> — зовсім інший підхід до серіалізації</h2>
+      <p class="section-desc">JSON описує лише <i>дані</i>. <code>pickle</code> — стандартний модуль Python для серіалізації — описує майже <i>будь-який</i> Python-об'єкт, включно з його класом.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>import pickle
+
+data = {"routes": [1, 2, 3], "created": datetime.now(), "id": uuid4()}
+blob = pickle.dumps(data)      <span class="cmt"># -> bytes, зрозумілі лише Python</span>
+restored = pickle.loads(blob)  <span class="cmt"># -> точна копія, без ручного default=</span></code></pre>
+      </div>
+
+      <p><code>pickle</code> "з коробки" серіалізує практично будь-що (включно з
+      <code>datetime</code>, довільними класами, навіть функціями) — ціною того, що результат
+      уже не текст, а специфічний для Python бінарний формат, нечитабельний і несумісний з
+      іншими мовами.</p>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">4</span> Чому <code>pickle</code> небезпечний</h2>
+      <p class="section-desc">Найважливіший факт цього туторіалу з погляду безпеки — і одне з улюблених "trick questions" на співбесідах.</p>
+
+      <p>Десеріалізація (<code>pickle.loads</code>) — це не просто "прочитати дані". Формат
+      pickle — це фактично <b>послідовність інструкцій</b> для маленької віртуальної машини:
+      "створи об'єкт такого класу", "виклич цей метод", "встанови цей атрибут". Якщо клас має
+      метод <code>__reduce__</code>, pickle використовує його, щоб дізнатись, <i>як саме</i>
+      відтворити об'єкт — а <code>__reduce__</code> може повернути виклик <b>будь-якої</b>
+      функції.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python — навіщо офіційна документація попереджає "не unpickle-іть недовірені дані"</span></div>
+        <pre><code>import pickle, os
+
+class Demo:
+    def __reduce__(self):
+        <span class="cmt"># pickle.loads() виконає os.system("echo pwned") САМ, без жодного</span>
+        <span class="cmt"># виклику якоїсь "небезпечної" функції з вашого боку -- просто через</span>
+        <span class="cmt"># сам факт десеріалізації цього байт-рядка</span>
+        return (os.system, ("echo pwned",))
+
+blob = pickle.dumps(Demo())
+pickle.loads(blob)   <span class="out"># виконує echo pwned -- ДОВІЛЬНИЙ КОД під час "просто читання даних"</span></code></pre>
+      </div>
+
+      <div class="callout bad">
+        <div class="ic">❌</div>
+        <div class="body"><b>Ключовий висновок:</b> <code>pickle.loads(bytes_from_untrusted_source)</code>
+        еквівалентно виконанню довільного коду з тим самим рівнем прав, що й ваш процес. Це не
+        теоретичний ризик — офіційна документація Python прямо каже: <i>"Ніколи не
+        unpickle-іть дані з ненадійного чи неавтентифікованого джерела"</i>.</div>
+      </div>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Той самий клас проблеми, що й <code>eval()</code> довільного JS-рядка від користувача,
+        або небезпечне (не-"safe") десеріалізування YAML — "формат серіалізації", що вміє
+        відтворювати не лише дані, а й <i>поведінку</i>, завжди потенційно небезпечний на
+        недовіреному вході.
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">5</span> Коли <code>pickle</code> все ж доречний</h2>
+      <div class="vs">
+        <div class="side py">
+          <div class="lbl">✅ Прийнятно</div>
+          <code>Кеш у Redis/на диску, який пише і читає ЛИШЕ ваш власний процес</code>
+          <code>Обмін даними між довіреними внутрішніми сервісами по приватній мережі</code>
+          <code>multiprocessing.Queue — передача даних між ВЛАСНИМИ процесами</code>
+        </div>
+        <div class="side bad">
+          <div class="lbl">❌ Ніколи</div>
+          <code>Дані, отримані через публічний HTTP API</code>
+          <code>Payload з черги повідомлень, куди можуть писати треті сторони</code>
+          <code>Що завгодно, збережене чи передане поза межами вашого довіреного периметра</code>
+        </div>
+      </div>
+      <p class="muted">Практичне правило: якщо дані коли-небудь перетинають межу довіри
+      (мережа, зовнішній клієнт, файл, до якого має доступ хтось інший) — <code>pickle</code>
+      не годиться; JSON (чи інший формат "лише даних") — так.</p>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">6</span> Celery і серіалізація задач</h2>
+      <p class="section-desc">Пряме продовження туторіалу 3 — Celery вже підключений у проєкті (<code>app/workers/celery_app.py</code>) для майбутніх фонових задач.</p>
+
+      <p>Аргументи Celery-задачі (<code>optimize_routes_task(route_request_id: str)</code>)
+      теж треба серіалізувати — вони йдуть через Redis (брокер) від процесу, що ставить задачу
+      в чергу, до окремого процесу-воркера, що її виконує. Історично Celery за замовчуванням
+      використовував <code>pickle</code> — але через ризики з розділу 4, з Celery 4+ дефолтний
+      серіалізатор — <b>JSON</b>. Це означає: аргументи задач мають бути простими,
+      JSON-сумісними типами (рядки, числа, списки, словники) — саме тому сигнатура
+      <code>optimize_routes_task(route_request_id: str)</code> у проєкті приймає простий
+      рядок-ідентифікатор, а не складний об'єкт.</p>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body">Якби воркер і застосунок, що ставить задачу в чергу, не довіряли
+        одне одному повністю (наприклад, черга спільна з іншими командами/сервісами), явний
+        вибір JSON замість pickle для Celery — не просто дефолт, а свідоме рішення про
+        безпеку периметра.</div>
+      </div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · Точність чисел</div><div class="line"></div></div>
+
+    <section id="s7">
+      <h2><span class="num">7</span> Чому <code>0.1 + 0.2 != 0.3</code></h2>
+      <p class="section-desc">Не баг Python — фундаментальна властивість того, як comp'ютери представляють дробові числа.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>0.1 + 0.2
+<span class="out"># 0.30000000000000004</span>
+
+0.1 + 0.2 == 0.3
+<span class="out"># False</span></code></pre>
+      </div>
+
+      <p><code>float</code> у Python (як і в JS, Java, C — практично скрізь) — це
+      <b>двійкове число з плаваючою комою подвійної точності (IEEE 754)</b>. Комп'ютер зберігає
+      дробові числа у двійковій системі числення, а не десятковій — і так само, як
+      <code>1/3</code> не можна точно записати скінченним десятковим дробом (0.333...), число
+      <code>0.1</code> не можна точно записати скінченним <i>двійковим</i> дробом. Воно
+      округлюється до найближчого представного значення — і сума двох таких округлень дає
+      крихітну похибку.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        <code>0.1 + 0.2 === 0.30000000000000004</code> — та сама поведінка в JavaScript,
+        слово в слово. Це не особливість Python — це властивість формату IEEE 754, який
+        використовує майже кожна мова програмування для чисел з плаваючою комою.
+      </div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">8</span> <code>Decimal</code> — точна десяткова арифметика</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">python</span></div>
+        <pre><code>from decimal import Decimal
+
+Decimal("0.1") + Decimal("0.2")
+<span class="out"># Decimal('0.3')  -- точно, без похибки</span>
+
+Decimal("0.1") + Decimal("0.2") == Decimal("0.3")
+<span class="out"># True</span></code></pre>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Класична пастка:</b> <code>Decimal(0.1)</code> (з float, без
+        лапок) все одно успадковує похибку — бо саме число <code>0.1</code> уже неточне ще до
+        того, як потрапило в <code>Decimal</code>. Завжди створюйте <code>Decimal</code> з
+        <b>рядка</b>: <code>Decimal("0.1")</code>, а не з float-літерала.</div>
+      </div>
+
+      <p><code>Decimal</code> зберігає число як точну послідовність десяткових цифр (не
+      двійкових) — саме тому десяткові дроби на кшталт <code>0.1</code> представляються без
+      жодної похибки. Ціна — суттєво повільніша арифметика за <code>float</code>, тому
+      <code>Decimal</code> використовують <i>вибірково</i>, там, де точність критична, а не
+      всюди.</p>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">9</span> <code>float</code> vs <code>Decimal</code> vs цілі копійки</h2>
+      <table>
+        <tr><th>Підхід</th><th>Коли доречний</th><th>Ризик</th></tr>
+        <tr><td><code>float</code></td><td>Наукові розрахунки, координати, відстані (як <code>total_distance_km</code> у цьому проєкті) — де крихітна похибка не змінює бізнес-результат</td><td>Ніколи не порівнювати на точну рівність (<code>==</code>) — лише з допуском</td></tr>
+        <tr><td><code>Decimal</code></td><td>Гроші, тарифи, бухгалтерія — де кожна копійка має значення юридично</td><td>Повільніший; легко забути створювати з рядка, а не float</td></tr>
+        <tr><td>Цілі копійки (<code>int</code>)</td><td>Дуже поширений патерн у платіжних системах: зберігати суму в найменшій одиниці (центи/копійки) як звичайне ціле число</td><td>Треба пам'ятати домовленість "це число — у копійках" на кожному кроці коду</td></tr>
+      </table>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">На співбесіді запитають так</span>
+        "Як би ви зберігали суму грошей у базі даних?" — хороша відповідь: <code>Decimal</code>
+        (чи еквівалентний точний тип у БД, наприклад Postgres <code>NUMERIC</code>) або цілі
+        копійки — і <b>ніколи</b> <code>float</code>/<code>FLOAT</code>, саме через
+        накопичувальну похибку округлення з розділу 7, яка на великих обсягах транзакцій може
+        призвести до реальних розбіжностей у балансі.</div>
+      </div>
+
+      <p class="muted">У цьому проєкті <code>total_distance_km</code> і
+      <code>total_duration_minutes</code> — навмисно <code>float</code>, не <code>Decimal</code>:
+      це виміряні/розраховані величини (результат OR-Tools-солвера), де похибка в шостому знаку
+      після коми не має жодного практичного значення — на відміну від грошей.</p>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Каверзні питання співбесіди</h2>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Які Python-типи не серіалізуються в JSON "з коробки"?</summary>
+        <div class="a"><code>datetime</code>/<code>date</code>, <code>UUID</code>,
+        <code>Decimal</code>, <code>set</code>, <code>bytes</code> — усі вимагають або власної
+        функції <code>default=</code> для <code>json.dumps</code>, або бібліотеки/фреймворка
+        (як Pydantic), що вже знає, як їх перетворити.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому <code>pickle.loads()</code> вважається небезпечним, а <code>json.loads()</code> — ні?</summary>
+        <div class="a">Формат pickle може містити інструкції на виклик довільних функцій
+        (через <code>__reduce__</code>) — десеріалізація фактично виконує код. JSON описує
+        лише прості структури даних (рядки, числа, списки, об'єкти) — розбір JSON ніколи не
+        призводить до виконання довільного коду.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чому <code>0.1 + 0.2 != 0.3</code> в Python?</summary>
+        <div class="a"><code>float</code> — двійкове число з плаваючою комою (IEEE 754);
+        <code>0.1</code> не має точного скінченного представлення у двійковій системі, тому
+        округлюється, і сума двох округлень дає крихітну похибку. Це властивість формату, не
+        баг конкретно Python.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>У чому пастка з <code>Decimal(0.1)</code> замість <code>Decimal("0.1")</code>?</summary>
+        <div class="a"><code>Decimal(0.1)</code> (без лапок) створює <code>Decimal</code> із
+        <i>уже неточного</i> float-значення — похибка успадковується. <code>Decimal("0.1")</code>
+        (з рядка) створює точне десяткове представлення з нуля.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чому Celery за замовчуванням серіалізує задачі в JSON, а не pickle?</summary>
+        <div class="a">Історично Celery використовував pickle, але через ризик виконання
+        довільного коду при десеріалізації задачі з черги (розділ 4) сучасний дефолт — JSON,
+        безпечніший для черги, де могли б з'явитись дані з менш довірених джерел.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Як правильно зберігати грошові суми в базі даних?</summary>
+        <div class="a"><code>Decimal</code>/<code>NUMERIC</code> для точної десяткової
+        арифметики, або цілі копійки (<code>int</code>) — ніколи <code>float</code>, через
+        накопичувальну похибку округлення.</div>
+      </details>
+
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Шпаргалка</h2>
+      <div class="cheat">
+        <table>
+          <tr><th>Питання</th><th>Відповідь</th></tr>
+          <tr><td>Серіалізувати datetime/UUID у JSON вручну</td><td><code>json.dumps(data, default=your_converter)</code></td></tr>
+          <tr><td>Серіалізація в Pydantic-схемах</td><td>Уже вирішено — datetime/UUID/Decimal серіалізуються автоматично</td></tr>
+          <tr><td>unpickle дані від користувача/з мережі</td><td>Ніколи — можливе виконання довільного коду</td></tr>
+          <tr><td>pickle прийнятний</td><td>Лише для даних, які пише й читає виключно ваш власний, довірений процес</td></tr>
+          <tr><td>Порівнювати float на точну рівність</td><td>Ніколи <code>==</code> — використовуйте допуск (<code>math.isclose</code>) чи Decimal</td></tr>
+          <tr><td>Гроші/точні розрахунки</td><td><code>Decimal</code> (з рядка!) або цілі копійки, ніколи <code>float</code></td></tr>
+        </table>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал побудований на документації stdlib-модулів <code>json</code>, <code>pickle</code>,
+  <code>decimal</code> та реальному коді репозиторію <code>ai-delivery-planner-backend</code>.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

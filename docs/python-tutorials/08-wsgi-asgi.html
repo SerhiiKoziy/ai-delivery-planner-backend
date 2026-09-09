@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8. WSGI vs ASGI — AI Delivery Planner</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  .vs{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:16px 0;}
+  @media (max-width:700px){.vs{grid-template-columns:1fr;}}
+  .vs .side{border-radius:var(--radius); padding:16px 18px; border:1px solid;}
+  .vs .side.py{background:var(--good-bg); border-color:var(--good-border);}
+  .vs .side.js{background:var(--warn-bg); border-color:var(--warn-border);}
+  .vs .side .lbl{font-weight:700; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px;}
+  .vs .side.py .lbl{color:var(--good);}
+  .vs .side.js .lbl{color:var(--warn);}
+  .vs .side code{display:block; margin:4px 0; font-size:13px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .qa .difficulty.sys{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  .timeline{border-left:2px solid var(--border); margin:18px 0 18px 8px; padding-left:20px;}
+  .timeline .step{position:relative; padding-bottom:18px;}
+  .timeline .step::before{
+    content:""; position:absolute; left:-25px; top:4px; width:10px; height:10px; border-radius:50%;
+    background:var(--accent); border:2px solid var(--bg);
+  }
+  .timeline .step b{display:block; font-size:14px; margin-bottom:2px;}
+  .timeline .step span{color:var(--fg-muted); font-size:13.5px;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · Веб-сервери зсередини</div>
+  <h1>WSGI vs ASGI — на чому насправді стоїть ваш бекенд</h1>
+  <p class="lead">
+    <code>uvicorn app.main:app</code> у Dockerfile цього проєкту — не випадковий вибір команди.
+    Це прямий наслідок того, що FastAPI — ASGI-фреймворк, а ASGI вирішує конкретну проблему,
+    якої WSGI (на якому роками стояли Django й Flask) вирішити не міг. Розберемо, що це за
+    протоколи, чому їх два, і які запитання про них ставлять на співбесідах.
+  </p>
+  <div class="pills">
+    <span class="pill">🔌 Що це за протоколи насправді</span>
+    <span class="pill">🖥️ Сервери та воркери</span>
+    <span class="pill">💼 Питання співбесіди</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🎯 До співбесіди</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html" class="active">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Що таке WSGI</a></li>
+      <li><a href="#s2">2. Обмеження WSGI — синхронний за дизайном</a></li>
+      <li><a href="#s3">3. Що таке ASGI</a></li>
+      <li><a href="#s4">4. WSGI vs ASGI: таблиця</a></li>
+      <li><a href="#s5">5. "Сирий" ASGI-застосунок без фреймворку</a></li>
+      <li><a href="#s6">6. Де в нашому проєкті ASGI</a></li>
+      <li><a href="#s7">7. Middleware: WSGI vs ASGI ланцюжок</a></li>
+      <li><a href="#s8">8. Сервери та модель воркерів</a></li>
+      <li><a href="#s9">9. Django/Flask: історія WSGI → ASGI</a></li>
+      <li><a href="#s10">10. Каверзні питання співбесіди</a></li>
+      <li><a href="#s11">11. Шпаргалка</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s1">
+      <h2><span class="num">1</span> Що таке WSGI</h2>
+      <p class="section-desc">Спершу — навіщо взагалі потрібен окремий "протокол" між вашим Python-кодом і інтернетом.</p>
+
+      <p><b>WSGI (Web Server Gateway Interface, PEP 3333)</b> — це не бібліотека і не сервер, а
+      <b>контракт</b>: як веб-сервер (Gunicorn, uWSGI, Apache+mod_wsgi) повинен викликати ваш
+      Python-застосунок, і що застосунок повинен повернути. До WSGI (2003 рік, PEP 333) кожен
+      фреймворк мав свій спосіб інтеграції з кожним сервером — WSGI дав один спільний стандарт,
+      після якого будь-який WSGI-сервер міг хостити будь-який WSGI-застосунок.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">найпростіший можливий WSGI-застосунок — без жодного фреймворку</span></div>
+        <pre><code>def app(environ, start_response):
+    status = "200 OK"
+    headers = [("Content-Type", "text/plain")]
+    start_response(status, headers)
+    return [b"Hello, world!"]</code></pre>
+      </div>
+
+      <p>Сам контракт — гранично простий: сервер викликає <code>app(environ, start_response)</code>
+      один раз на запит. <code>environ</code> — звичайний dict із даними запиту (метод, шлях,
+      заголовки, тіло); <code>start_response</code> — функція, яку застосунок викликає, щоб
+      віддати статус і заголовки, перед тим як повернути тіло відповіді списком байтів.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        WSGI ≈ те, чим для Node.js є сигнатура <code>(req, res) =&gt; {...}</code> у чистому
+        <code>http.createServer</code> — низькорівневий контракт "як обробник дізнається про
+        запит і як віддає відповідь", над яким уже будуються фреймворки (Express для Node,
+        Flask/Django для WSGI).
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">2</span> Обмеження WSGI — синхронний за дизайном</h2>
+      <p class="section-desc">Контракт WSGI написаний під модель "один виклик — одна відповідь", і саме тут ховається проблема.</p>
+
+      <p>WSGI-виклик <b>синхронний і одноразовий</b>: сервер викликає <code>app(...)</code>,
+      чекає повний список байтів у відповідь, і на цьому взаємодія із застосунком по цьому
+      запиту закінчена. У специфікації просто немає місця для "довгоживучого" з'єднання, де
+      сервер і застосунок обмінюються повідомленнями туди-сюди протягом хвилин:</p>
+
+      <ul>
+        <li><b>WebSockets</b> — потребують постійного двостороннього каналу, а не "запит → одна відповідь".</li>
+        <li><b>Server-Sent Events / стрімінг</b> — потребують надсилати шматки відповіді по мірі готовності, а не все одним списком байтів наприкінці.</li>
+        <li><b>Висока I/O-конкурентність без async</b> — WSGI-сервер досягає паралельності лише
+        запуском багатьох ОС-потоків/процесів (по одному на запит, що виконується), а не
+        кооперативним перемиканням в одному потоці (туторіал 4).</li>
+      </ul>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body">Це не "баг" WSGI — специфікація 2003 року й не мала на меті
+        вирішувати задачі, яких тоді практично не існувало (масові WebSocket-з'єднання,
+        стрімінг LLM-відповідей токен за токеном). Проблема з'явилась пізніше, разом із цими
+        новими патернами використання вебу.</div>
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">3</span> Що таке ASGI</h2>
+      <p class="section-desc">ASGI — не заміна WSGI, а розширення того самого принципу під нову реальність: async та довгоживучі з'єднання.</p>
+
+      <p><b>ASGI (Asynchronous Server Gateway Interface)</b> з'явився в 2016 році — спершу для
+      проєкту Django Channels (додати WebSocket-підтримку в Django), потім оформився в окрему
+      специфікацію. Головна ідея та сама, що й у WSGI — стандартний контракт сервер↔застосунок —
+      але контракт тепер <b>асинхронний</b> і <b>здатний обмінюватись кількома повідомленнями</b>
+      за час життя одного з'єднання, а не лише "запит → відповідь".</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">найпростіший можливий ASGI-застосунок — без жодного фреймворку</span></div>
+        <pre><code>async def app(scope, receive, send):
+    assert scope["type"] == "http"
+
+    await send({
+        "type": "http.response.start",
+        "status": 200,
+        "headers": [(b"content-type", b"text/plain")],
+    })
+    await send({
+        "type": "http.response.body",
+        "body": b"Hello, world!",
+    })</code></pre>
+      </div>
+
+      <ul>
+        <li><b><code>scope</code></b> — dict із метаданими одного з'єднання (тип: <code>"http"</code>,
+        <code>"websocket"</code> чи <code>"lifespan"</code>; шлях, заголовки, метод тощо) —
+        передається один раз на початку з'єднання.</li>
+        <li><b><code>receive</code></b> — <code>async</code>-функція: <code>await receive()</code>
+        повертає наступну "подію" від клієнта (шматок тіла запиту, повідомлення в WebSocket,
+        сигнал розриву з'єднання).</li>
+        <li><b><code>send</code></b> — <code>async</code>-функція: <code>await send({...})</code>
+        відправляє клієнту наступну подію (початок відповіді, шматок тіла, повідомлення в
+        WebSocket).</li>
+      </ul>
+
+      <p>Саме через те, що <code>receive</code>/<code>send</code> можна викликати
+      <b>багато разів</b> протягом життя одного з'єднання (а не один раз, як у WSGI), ASGI
+      природно підтримує WebSockets, стрімінг і будь-яку кількість повідомлень в обидва боки.</p>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">4</span> WSGI vs ASGI: таблиця</h2>
+      <div class="cheat">
+        <table>
+          <tr><th></th><th>WSGI</th><th>ASGI</th></tr>
+          <tr><td><b>Модель</b></td><td>Синхронна: один виклик, одна відповідь</td><td>Асинхронна: обмін повідомленнями протягом усього з'єднання</td></tr>
+          <tr><td><b>WebSockets</b></td><td>Не підтримує нативно</td><td>Підтримує як окремий тип <code>scope</code></td></tr>
+          <tr><td><b>Стрімінг відповіді</b></td><td>Обмежено (chunked-хаки поза спеком)</td><td>Природно — кілька <code>send({"type": "http.response.body", ...})</code></td></tr>
+          <tr><td><b>Конкурентність</b></td><td>Багато ОС-потоків/процесів</td><td>Кооперативна (event loop) + процеси/потоки за потреби</td></tr>
+          <tr><td><b>Типові фреймворки</b></td><td>Django (класично), Flask</td><td>FastAPI, Starlette, Django (з 3.0+), Quart</td></tr>
+          <tr><td><b>Типові сервери</b></td><td>Gunicorn, uWSGI, mod_wsgi</td><td>Uvicorn, Hypercorn, Daphne, Granian</td></tr>
+        </table>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 760 260" role="img" aria-label="WSGI обмінюється рівно одним запитом і однією відповіддю за раз; ASGI обмінюється багатьма повідомленнями протягом усього життя одного з'єднання">
+          <defs>
+            <marker id="a4-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <text x="185" y="18" text-anchor="middle" font-size="13" font-weight="700">WSGI — один виклик</text>
+          <line x1="70" y1="38" x2="70" y2="240" stroke="currentColor" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>
+          <line x1="300" y1="38" x2="300" y2="240" stroke="currentColor" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>
+          <text x="70" y="32" text-anchor="middle" font-size="11">Клієнт</text>
+          <text x="300" y="32" text-anchor="middle" font-size="11">app(environ,...)</text>
+
+          <line x1="70" y1="95" x2="300" y2="95" stroke="currentColor" stroke-width="1.2" marker-end="url(#a4-arr)"/>
+          <text x="185" y="87" text-anchor="middle" font-size="11">запит</text>
+
+          <text x="185" y="150" text-anchor="middle" font-size="11" opacity="0.55">обробка...</text>
+
+          <line x1="300" y1="200" x2="70" y2="200" stroke="currentColor" stroke-width="1.2" marker-end="url(#a4-arr)"/>
+          <text x="185" y="192" text-anchor="middle" font-size="11">відповідь (одноразово)</text>
+
+          <text x="185" y="228" text-anchor="middle" font-size="10.5" opacity="0.6">з'єднання завершено — інакше ніяк</text>
+
+          <line x1="380" y1="10" x2="380" y2="250" stroke="var(--border)" stroke-width="1"/>
+
+          <text x="580" y="18" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent)">ASGI — потік повідомлень</text>
+          <line x1="460" y1="38" x2="460" y2="240" stroke="currentColor" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>
+          <line x1="700" y1="38" x2="700" y2="240" stroke="currentColor" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>
+          <text x="460" y="32" text-anchor="middle" font-size="11">Клієнт</text>
+          <text x="700" y="32" text-anchor="middle" font-size="11">ASGI-застосунок</text>
+
+          <g fill="var(--accent)" stroke="var(--accent)">
+            <line x1="460" y1="65" x2="700" y2="65" stroke-width="1.2" marker-end="url(#a4-arr)"/>
+            <line x1="700" y1="95" x2="460" y2="95" stroke-width="1.2" marker-end="url(#a4-arr)"/>
+            <line x1="700" y1="125" x2="460" y2="125" stroke-width="1.2" marker-end="url(#a4-arr)"/>
+            <line x1="460" y1="155" x2="700" y2="155" stroke-width="1.2" marker-end="url(#a4-arr)"/>
+            <line x1="700" y1="185" x2="460" y2="185" stroke-width="1.2" marker-end="url(#a4-arr)"/>
+            <line x1="460" y1="215" x2="700" y2="215" stroke-width="1.2" marker-end="url(#a4-arr)"/>
+          </g>
+          <g font-size="10.5" fill="var(--accent)">
+            <text x="580" y="59" text-anchor="middle">scope</text>
+            <text x="580" y="89" text-anchor="middle">send: response.start</text>
+            <text x="580" y="119" text-anchor="middle">send: body / message</text>
+            <text x="580" y="149" text-anchor="middle">receive: message</text>
+            <text x="580" y="179" text-anchor="middle">send: message</text>
+            <text x="580" y="209" text-anchor="middle">receive: message</text>
+          </g>
+          <text x="580" y="232" text-anchor="middle" font-size="10.5" fill="var(--accent)">з'єднання лишається відкритим ↕</text>
+        </svg>
+        <figcaption>WSGI — рівно один обмін "запит → відповідь", після чого з'єднання завершене. ASGI дозволяє скільки завгодно повідомлень в обидва боки протягом життя одного з'єднання — саме це відкриває шлях до WebSockets і стрімінгу.</figcaption>
+      </figure>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">5</span> Насправді FastAPI — це ASGI + тонкий шар зручностей</h2>
+      <p class="section-desc">У дусі туторіалу 7 ("що ховається за синтаксичним цукром") — FastAPI не винаходить власний протокол з'єднання, а будується прямо поверх ASGI.</p>
+
+      <p>FastAPI побудований на <b>Starlette</b> — легкому ASGI-тулкіті, що вже реалізує роутинг,
+      middleware, WebSocket-підтримку прямо на рівні <code>scope</code>/<code>receive</code>/<code>send</code>.
+      Кожен <code>@router.get(...)</code>-обробник, який ви пишете, зрештою викликається зсередини
+      ASGI-застосунку, що виглядає майже так само, як приклад у розділі 3 — просто з набагато
+      більшою кількістю зручностей навколо (валідація, DI, автогенерація OpenAPI-схеми).</p>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body">Той самий принцип, що й у туторіалі 7 з класами й декораторами:
+        високорівнева зручність (<code>@router.get("/health")</code>) — це не магія, а шар
+        абстракції над низькорівневим, повністю відкритим протоколом (<code>scope</code>/<code>receive</code>/<code>send</code>),
+        який ви завжди можете прочитати й зрозуміти буквально рядок за рядком.</div>
+      </div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">6</span> Де в нашому проєкті ASGI</h2>
+      <p class="section-desc">Не абстрактна теорія — ось точні місця в цьому репозиторії, де рішення "ASGI, а не WSGI" вже прийняте за вас.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">Dockerfile</span></div>
+        <pre><code>CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", \
+     "--proxy-headers", "--forwarded-allow-ips=*"]</code></pre>
+      </div>
+
+      <p><b>Uvicorn</b> — ASGI-сервер (не WSGI!). Саме тому <code>app.main:app</code> — це
+      об'єкт <code>FastAPI()</code> (ASGI-застосунок), а не якась WSGI-сумісна обгортка. Якби цей
+      проєкт використовував Flask замість FastAPI, довелось би запускати його інакше —
+      наприклад, через Gunicorn напряму (WSGI-сервер), без Uvicorn узагалі.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Зверніть увагу, чого тут НЕМАЄ:</b> прапорця <code>--workers N</code>.
+        Це означає рівно один Uvicorn-процес, один event loop — той самий факт, що вже
+        обговорювався в <a href="03-scaling.html#s2">туторіалі 3</a> (чому зараз
+        <code>min_machines_running = 1</code>) і <a href="02-async-and-security.html#a6">туторіалі 2</a>
+        (чому блокуючий виклик OR-Tools у <code>solver.solve()</code> реально "заморожує" весь
+        процес) — тепер ви бачите це підтвердженим прямо в команді запуску контейнера.</div>
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">7</span> Middleware: WSGI vs ASGI ланцюжок</h2>
+      <p class="section-desc">Middleware в обох світах — та сама ідея: функція, що огортає застосунок і додає обробку до/після.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/main.py — реальний ASGI middleware з проєкту</span></div>
+        <pre><code>app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)</code></pre>
+      </div>
+
+      <p><code>CORSMiddleware</code> — звичайний ASGI-застосунок, що огортає ваш
+      <code>app</code>: отримує <code>scope</code>/<code>receive</code>/<code>send</code>,
+      перевіряє/додає CORS-заголовки, і викликає внутрішній застосунок далі. Концептуально це
+      той самий патерн decorator/wrapper з туторіалу 7 (розділ "у що розгортається
+      <code>@decorator</code>") — тільки застосований до цілого застосунку, а не до однієї
+      функції.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Middleware-ланцюжок в ASGI/WSGI ≈ <code>app.use(middleware)</code> в Express.js —
+        та сама ідея послідовного огортання обробника функціями, що можуть щось зробити до й
+        після виклику наступної ланки ланцюжка.
+      </div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">8</span> Сервери та модель воркерів</h2>
+      <p class="section-desc">Сервер ≠ фреймворк. WSGI/ASGI — контракт; конкретні сервери — це те, що цей контракт реально виконує.</p>
+
+      <table>
+        <tr><th>Сервер</th><th>Протокол</th><th>Особливість</th></tr>
+        <tr><td><b>Gunicorn</b></td><td>WSGI (нативно)</td><td>Зрілий менеджер процесів: pre-fork воркери, авто-рестарт впалих, graceful reload</td></tr>
+        <tr><td><b>uWSGI</b></td><td>WSGI + власний протокол</td><td>Дуже багато можливостей конфігурації, історично популярний в проді</td></tr>
+        <tr><td><b>Uvicorn</b></td><td>ASGI</td><td>Швидкий (на <code>uvloop</code>+<code>httptools</code>), стандартний вибір для FastAPI</td></tr>
+        <tr><td><b>Hypercorn</b></td><td>ASGI</td><td>Підтримує HTTP/2 і HTTP/3 повністю, більш "по специфікації"</td></tr>
+        <tr><td><b>Daphne</b></td><td>ASGI</td><td>Оригінальний сервер, створений для Django Channels</td></tr>
+        <tr><td><b>Granian</b></td><td>WSGI + ASGI</td><td>Новіший, написаний на Rust, орієнтований на продуктивність</td></tr>
+      </table>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">типовий production-запуск: Gunicorn керує процесами, Uvicorn виконує ASGI</span></div>
+        <pre><code>gunicorn app.main:app -k uvicorn.workers.UvicornWorker --workers 4
+
+<span class="cmt"># Gunicorn: process manager (форкає 4 воркери, рестартує впалі, graceful reload)</span>
+<span class="cmt"># UvicornWorker: кожен з 4 воркерів РЕАЛЬНО обробляє запити як ASGI-сервер</span>
+<span class="cmt"># -- краще з обох світів, коли потрібна і зрілість Gunicorn, і швидкість Uvicorn</span></code></pre>
+      </div>
+
+      <p>Новіші версії самого Uvicorn уже вміють <code>--workers N</code> без Gunicorn узагалі —
+      різниця звужується, але комбінація "Gunicorn для менеджменту процесів + Uvicorn для
+      протоколу" й досі лишається поширеним production-патерном, особливо там, де вже є досвід
+      експлуатації Gunicorn.</p>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">9</span> Django/Flask: коротка історія WSGI → ASGI</h2>
+      <div class="timeline">
+        <div class="step"><b>2003 — WSGI (PEP 333)</b><span>Стандартизує інтерфейс сервер↔застосунок для синхронного Python-вебу.</span></div>
+        <div class="step"><b>Flask (з 2010)</b><span>Залишається WSGI-фреймворком і сьогодні; для async-стилю в тому ж дусі існує окремий проєкт <b>Quart</b> ("Flask для asyncio", ASGI-сумісний).</span></div>
+        <div class="step"><b>2016 — Django Channels</b><span>Додає WebSocket/async-підтримку в Django як окрему надбудову — саме звідси виріс сам стандарт ASGI.</span></div>
+        <div class="step"><b>2019 — Django 3.0</b><span>Django отримує нативну підтримку ASGI в ядрі (поряд із <code>wsgi.py</code> проєкт тепер має й <code>asgi.py</code>), а з 3.1+ — <code>async def</code> view-функції.</span></div>
+        <div class="step"><b>FastAPI (з 2018)</b><span>Одразу проєктувався ASGI-first, на базі Starlette — без "спадщини" синхронної моделі, яку треба було б поступово мігрувати.</span></div>
+      </div>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Питання-пастка</span>
+        "Django — це WSGI-фреймворк, правда?" — неповна відповідь. Правильно: історично так,
+        і досі WSGI лишається основним шляхом для звичайних HTTP-запитів, але з Django 3.0+
+        (2019) Django офіційно підтримує й ASGI в ядрі — правильна відповідь показує, що ви
+        знаєте про цю еволюцію, а не застряглу в 2015 роцi картину світу.</div>
+      </div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Каверзні питання співбесіди</h2>
+      <p class="section-desc">Натисніть на питання, щоб побачити відповідь.</p>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що таке WSGI одним реченням?</summary>
+        <div class="a">Стандартизований синхронний контракт <code>app(environ, start_response)</code>
+        між веб-сервером і Python-застосунком (PEP 3333) — сервер викликає застосунок один раз
+        на запит і чекає повну відповідь.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим ASGI відрізняється від WSGI по суті, а не лише "додає async"?</summary>
+        <div class="a">Ключова різниця — WSGI дає рівно один виклик на весь час життя запиту
+        (запит → відповідь), тоді як ASGI дозволяє обмінюватись <b>багатьма</b> повідомленнями
+        через <code>receive</code>/<code>send</code> протягом усього з'єднання — саме це
+        відкриває шлях до WebSockets і стрімінгу, а не сам факт "async" як такий.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чи можна задеплоїти FastAPI-застосунок на звичайному Gunicorn без жодних додаткових налаштувань?</summary>
+        <div class="a">Ні, напряму не можна — Gunicorn нативно розуміє лише WSGI, а FastAPI —
+        ASGI-застосунок. Потрібен ASGI-сумісний воркер для Gunicorn (<code>uvicorn.workers.UvicornWorker</code>)
+        або окремий ASGI-сервер (Uvicorn/Hypercorn) замість Gunicorn узагалі.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>"Мій застосунок тепер на ASGI, отже він автоматично швидший і паралельний" — де тут помилка?</summary>
+        <div class="a">ASGI лише <i>відкриває можливість</i> для async I/O-конкурентності — сам
+        протокол нічого не прискорює автоматично. Код усередині все одно треба писати як
+        <code>async def</code> і уникати блокуючих викликів (той самий висновок, що й у
+        <a href="02-async-and-security.html#a6">туторіалі 2</a> про OR-Tools) — інакше ASGI-сервер
+        буде так само "заблокований" одним важким синхронним викликом, як і WSGI.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що таке <code>scope</code> в ASGI?</summary>
+        <div class="a">Dict з метаданими одного з'єднання, переданий один раз на початку:
+        тип з'єднання (<code>"http"</code>/<code>"websocket"</code>/<code>"lifespan"</code>),
+        шлях, метод, заголовки тощо — аналог <code>environ</code> у WSGI, тільки розширений під
+        типи з'єднань, яких WSGI не знав.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty adv">Просунуте</span>Що таке <code>"lifespan"</code>-тип <code>scope</code> і навіщо він потрібен?</summary>
+        <div class="a">Окремий тип події ASGI для коду, що має виконатись рівно один раз при
+        старті процесу й один раз при його зупинці (а не на кожен запит) — наприклад,
+        відкрити/закрити пул з'єднань до зовнішнього сервісу. Саме на ньому побудовані
+        startup/shutdown-хуки FastAPI (<code>@app.on_event("startup")</code> чи сучасніший
+        <code>lifespan</code>-контекст-менеджер). Цей конкретний проєкт наразі такі хуки не
+        використовує, але механізм у Starlette вже готовий, якщо знадобиться.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чи можна запустити старий синхронний Flask-застосунок під ASGI-сервером?</summary>
+        <div class="a">Так, через адаптер (наприклад, <code>asgiref.wsgi.WsgiToAsgi</code>) —
+        він огортає синхронний WSGI-виклик і виконує його в пулі потоків під капотом, роблячи
+        застосунок ASGI-сумісним <i>протокольно</i>. Але сам застосунок від цього не стає
+        асинхронним усередині — він просто хоститься на ASGI-сервері без переписування коду.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Навіщо комбінувати Gunicorn і Uvicorn (<code>-k uvicorn.workers.UvicornWorker</code>) замість того, щоб просто запустити Uvicorn?</summary>
+        <div class="a">Gunicorn дає зрілу оркестрацію процесів (авто-рестарт впалих воркерів,
+        graceful reload, поведінка при таймаутах), тоді як Uvicorn відповідає за сам ASGI-протокол
+        і продуктивність обробки запитів. Комбінація історично давала "краще з обох світів" —
+        хоча різниця звужується, бо новіші версії Uvicorn уже мають власне багатопроцесне
+        керування через <code>--workers</code>.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty adv">Просунуте</span>Чому в Dockerfile цього проєкту саме <code>uvicorn app.main:app</code> без Gunicorn і без <code>--workers</code>?</summary>
+        <div class="a">Свідома (чи принаймні поки не переглянута) конфігурація для
+        single-instance деплою: один процес, один event loop. Це напряму узгоджується з тим,
+        що <code>fly.toml</code> тримає <code>min_machines_running = 1</code> і що rate limiter
+        (туторіал 2) — стан у пам'яті одного процесу. Додавання <code>--workers N</code> без
+        інших змін (Redis-based rate limiter, винесення блокуючого солвера — туторіал 3) знову
+        ж таки зламало б ці два припущення.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чи є WSGI застарілим, і чи варто його зовсім не вчити?</summary>
+        <div class="a">Ні — величезна кількість production-систем (класичний Django, Flask,
+        старі внутрішні сервіси) досі працюють на WSGI, і він нікуди не зникає для
+        суто HTTP request/response навантажень без потреби в WebSockets/стрімінгу. ASGI —
+        доповнення для нових вимог, а не заміна WSGI в усіх випадках.</div>
+      </details>
+
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Шпаргалка</h2>
+      <div class="cheat">
+        <table>
+          <tr><th>Питання</th><th>Відповідь</th></tr>
+          <tr><td>Потрібні WebSockets/стрімінг?</td><td>ASGI (Uvicorn/Hypercorn/Daphne) — WSGI цього не вміє</td></tr>
+          <tr><td>Простий синхронний CRUD без довгих з'єднань?</td><td>WSGI і сьогодні цілком доречний вибір (Gunicorn+Flask/Django)</td></tr>
+          <tr><td>FastAPI/Starlette</td><td>Завжди ASGI — WSGI-сервер (голий Gunicorn) їх напряму не хостить</td></tr>
+          <tr><td>Потрібна зріла оркестрація процесів + ASGI-швидкість</td><td>Gunicorn + <code>UvicornWorker</code></td></tr>
+          <tr><td>Код, що має виконатись раз при старті процесу</td><td>ASGI <code>"lifespan"</code>-scope (startup/shutdown хуки)</td></tr>
+          <tr><td>ASGI сам по собі прискорює код?</td><td>Ні — потрібен реально <code>async def</code> код без блокуючих викликів усередині</td></tr>
+        </table>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал побудований на специфікаціях PEP 3333 (WSGI) та ASGI (asgi.readthedocs.io),
+  та реальному коді й конфігурації репозиторію <code>ai-delivery-planner-backend</code>.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

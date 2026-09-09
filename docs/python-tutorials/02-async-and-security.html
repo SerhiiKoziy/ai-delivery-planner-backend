@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2. Асинхронність та безпека — AI Delivery Planner</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--accent); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:760px; margin:0;}
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+  .part-divider{
+    display:flex; align-items:center; gap:14px; margin:64px 0 40px;
+  }
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Туторіал 2 з 3</div>
+  <h1>Асинхронність та захист від атак</h1>
+  <p class="lead">
+    Дві теми в одному файлі, бо в цьому проєкті вони переплетені: слабкий async-код і слабка
+    безпека часто мають одну спільну причину — стан, розділений між запитами. Розберемо обидві
+    на реальних прикладах, включно з місцем, де асинхронність у проєкті реалізована не ідеально.
+  </p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🎯 До співбесіди</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html" class="active">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — Async</div>
+    <ol>
+      <li><a href="#a1">1. Event loop: аналогія з JS</a></li>
+      <li><a href="#a2">2. Async у FastAPI-запиті</a></li>
+      <li><a href="#a3">3. Async база даних</a></li>
+      <li><a href="#a4">4. Async HTTP-клієнти</a></li>
+      <li><a href="#a5">5. Добре: блокуючий код через to_thread</a></li>
+      <li><a href="#a6">6. Погано: OR-Tools блокує event loop</a></li>
+      <li><a href="#a7">7. Послідовні await у циклі — не завжди баг</a></li>
+    </ol>
+    <div class="toc-group">Частина II — Безпека</div>
+    <ol>
+      <li><a href="#b1">1. Аутентифікація: паролі й JWT</a></li>
+      <li><a href="#b2">2. access vs refresh — навіщо тип токена</a></li>
+      <li><a href="#b3">3. Email-верифікація</a></li>
+      <li><a href="#b4">4. Rate limiting по IP</a></li>
+      <li><a href="#b5">5. Ізоляція тенантів (IDOR)</a></li>
+      <li><a href="#b6">6. Захист від зловживання платними API</a></li>
+      <li><a href="#b7">7. Приховування внутрішніх помилок</a></li>
+      <li><a href="#b8">8. CORS</a></li>
+      <li><a href="#b9">9. Чесно: чого ще немає</a></li>
+      <li><a href="#b10">10. Зведена таблиця загроз</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Асинхронність</div><div class="line"></div></div>
+
+    <section id="a1">
+      <h2><span class="num">1</span> Event loop: та сама модель, що й у браузері</h2>
+      <p class="section-desc">Найкраща новина для фронтендера: Python-async тут концептуально ідентичний JS.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        <code>async def</code> / <code>await</code> у Python — це <b>той самий</b> event loop, до якого
+        ви звикли в JS: один потік, кооперативна багатозадачність, <code>await</code> "віддає" керування
+        цикл-у, поки чекає на I/O (мережа, диск, БД), і продовжує виконання, коли результат готовий.
+        Різниця лише в тому, що в Node event loop один на весь процес "з коробки", а в Python
+        його треба явно запустити (uvicorn робить це за вас).
+      </div>
+
+      <p><b>Ключове правило</b>, однакове для обох мов: async сам по собі <i>не</i> дає паралелізм
+      для CPU-важкої роботи. Він дає паралелізм лише для I/O-очікування (мережа, БД, диск).
+      Якщо всередині <code>async def</code> виконати важкі обчислення <i>синхронно</i> — вони
+      заблокують той самий єдиний потік, і всі інші запити, що чекають на event loop, зависнуть.
+      Це не теорія — нижче показано реальне місце в цьому проєкті, де саме так і сталося
+      (розділ 6).</p>
+    </section>
+
+    <section id="a2">
+      <h2><span class="num">2</span> Async у FastAPI-запиті</h2>
+      <p class="section-desc">Кожен ендпоінт у проєкті оголошений як <code>async def</code> — і це не просто стиль.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/main.py</span></div>
+        <pre><code>@app.get("/health")
+async def health() -> dict:
+    return {"status": "ok"}</code></pre>
+      </div>
+
+      <p>FastAPI (через Starlette) виконує <code>async def</code>-ендпоінти прямо в event loop,
+      без переключення потоків. Це дешево і швидко для I/O-навантажених операцій — а весь цей
+      бекенд саме такий: майже кожен запит зрештою чекає на щось зовнішнє (Postgres, OpenAI,
+      Google Maps).</p>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body">Якби ендпоінт був оголошений як звичайний <code>def</code> (не async),
+        FastAPI сам запустив би його в окремому потоці з пулу — це теж працює, але для суто
+        I/O-навантаженого коду <code>async def</code> ефективніший: не треба створювати потік
+        на кожен запит.</div>
+      </div>
+    </section>
+
+    <section id="a3">
+      <h2><span class="num">3</span> Async база даних</h2>
+      <p class="section-desc">SQLAlchemy 2.0 в async-режимі поверх <code>asyncpg</code> — жоден запит до БД не блокує event loop.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/db/session.py</span></div>
+        <pre><code>engine = create_async_engine(
+    settings.DATABASE_URL,   <span class="cmt"># postgresql+asyncpg://...</span>
+    echo=settings.DEBUG,
+    future=True,
+    connect_args={"statement_cache_size": 0},
+)
+
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine, class_=AsyncSession, expire_on_commit=False,
+)
+
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    async with AsyncSessionLocal() as session:
+        yield session</code></pre>
+      </div>
+
+      <ul>
+        <li><b><code>expire_on_commit=False</code></b> — після <code>commit()</code> об'єкти
+        (наприклад, щойно створена <code>Delivery</code>) лишаються "живими" й читабельними без
+        додаткового SQL-запиту. Без цього прочитати <code>delivery.address</code> після коміту
+        викликало б новий implicit SELECT.</li>
+        <li><b><code>statement_cache_size=0</code></b> — вимикає підготовлені стейтменти на
+        стороні <code>asyncpg</code>. Потрібно, коли БД стоїть за pgbouncer/пулером з'єднань у
+        transaction-pooling режимі (типово для хмарного Postgres) — інакше кеш стейтментів
+        плутається між різними фізичними з'єднаннями.</li>
+        <li><b><code>get_session()</code> — async generator</b>, який FastAPI використовує як
+        DI-залежність (<code>get_db</code> у <code>dependencies.py</code>): сесія відкривається
+        на початку запиту й гарантовано закривається наприкінці, навіть якщо всередині виникла
+        помилка — завдяки <code>async with</code>.</li>
+      </ul>
+    </section>
+
+    <section id="a4">
+      <h2><span class="num">4</span> Async HTTP-клієнти для зовнішніх API</h2>
+      <p class="section-desc">Google Geocoding і OpenAI викликаються через асинхронні клієнти — інакше запит до зовнішнього сервісу (сотні мілісекунд) заморозив би весь процес.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/services/geocoding/client.py</span></div>
+        <pre><code>async def geocode_full(self, address: str) -> GeocodeResult | None:
+    if not self.api_key:
+        return None
+    params = {"address": address, "key": self.api_key}
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(GEOCODE_URL, params=params)
+    except httpx.HTTPError:
+        return None
+    <span class="cmt"># ... парсинг відповіді, з поверненням None на будь-яку "очікувану" невдачу</span></code></pre>
+      </div>
+
+      <p>Той самий підхід для OpenAI — клієнт <code>AsyncOpenAI</code> (SDK-обгортка на
+      <code>httpx</code>) у <code>services/ai/client.py</code>. Обидва мають <code>timeout</code> —
+      важливо: без таймауту "завислий" зовнішній сервіс міг би тримати запит (і, непрямо, ресурси
+      процесу) необмежено довго.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        <code>httpx.AsyncClient</code> ≈ <code>fetch</code> у браузері з <code>AbortController</code>-таймаутом.
+        <code>AsyncOpenAI</code> ≈ офіційний JS SDK OpenAI, який теж повертає Promise. Різниця лише
+        синтаксична (<code>await</code> замість <code>.then()</code>), поведінка — та сама.
+      </div>
+    </section>
+
+    <section id="a5">
+      <h2><span class="num">5</span> <span class="badge good">Добре</span> Блокуючий код винесено в окремий потік</h2>
+      <p class="section-desc">Відправка email через <code>smtplib</code> — синхронна бібліотека (немає async-версії). Ось як з нею правильно працювати всередині async-застосунку.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/services/notifications/email.py</span></div>
+        <pre><code>def _send_via_gmail(*, to, subject, html, sender, app_password) -> None:
+    <span class="cmt">"""Blocking SMTP send — always called via `asyncio.to_thread`."""</span>
+    message = MIMEMultipart("alternative")
+    <span class="cmt">... </span>
+    with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10) as smtp:
+        smtp.login(sender, app_password)
+        smtp.sendmail(sender, [to], message.as_string())
+
+
+async def send_verification_email(email: str, token: str) -> None:
+    <span class="cmt">...</span>
+    try:
+        await asyncio.to_thread(
+            _send_via_gmail,
+            to=email, subject="Verify your email address",
+            html=_verification_email_html(verification_url),
+            sender=settings.GMAIL_ADDRESS, app_password=settings.GMAIL_APP_PASSWORD,
+        )
+    except smtplib.SMTPException:
+        logger.exception("Failed to send verification email to %s", email)</code></pre>
+      </div>
+
+      <p><code>asyncio.to_thread(...)</code> запускає синхронну функцію в окремому потоці з
+      пулу й <i>асинхронно</i> чекає на результат — event loop лишається вільним обробляти інші
+      запити, поки лист відправляється в фоновому потоці. Це правильний патерн для "старих",
+      блокуючих бібліотек, яким немає async-заміни.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Схоже на <code>Web Worker</code> для важкої синхронної роботи — не блокує головний потік
+        (UI), виконуючи роботу окремо і повертаючи результат через "проміс".
+      </div>
+    </section>
+
+    <section id="a6">
+      <h2><span class="num">6</span> <span class="badge bad">Погано</span> Реальне вузьке місце: OR-Tools блокує event loop</h2>
+      <p class="section-desc">А ось приклад, де той самий принцип із розділу 5 <i>не</i> застосований — і це справжня, наявна в коді проблема, а не вигаданий приклад.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/services/route_optimizer/service.py</span></div>
+        <pre><code>async def optimize(self, payload: OptimizeRequest) -> OptimizeResult:
+    <span class="cmt"># ... await-виклики до репозиторіїв (це ОК, вони I/O) ...</span>
+
+    solver = RouteSolver(problem)
+    solver.build_model()
+    result = solver.solve()      <span class="cmt">&lt;-- СИНХРОННИЙ виклик, без await і без to_thread!</span></code></pre>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/services/route_optimizer/solver.py</span></div>
+        <pre><code>def solve(self) -> SolveResult:
+    search_parameters = pywrapcp.DefaultRoutingSearchParameters()
+    <span class="cmt">...</span>
+    search_parameters.time_limit.FromSeconds(5)   <span class="cmt"># OR-Tools може рахувати до 5 секунд</span>
+    assignment = self.routing.SolveWithParameters(search_parameters)
+    <span class="cmt">...</span></code></pre>
+      </div>
+
+      <p><code>solver.solve()</code> — це чиста CPU-робота (комбінаторна оптимізація маршрутів
+      через Google OR-Tools), яка може тривати <b>до 5 секунд</b> за налаштованим лімітом. Метод
+      <code>optimize()</code> оголошений як <code>async def</code>, і всередині є коректні
+      <code>await</code> до бази даних — але сам виклик солвера звичайний, синхронний. Python не
+      "переключить" виконання на інший запит усередині синхронного виклику: увесь event loop
+      процесу стоїть, поки триває пошук рішення.</p>
+
+      <div class="callout bad">
+        <div class="ic">❌</div>
+        <div class="body"><b>Наслідок:</b> поки один користувач чекає на
+        <code>POST /routes/optimize</code>, жоден інший запит на цьому ж процесі — навіть простий
+        <code>GET /health</code> — не обробляється, бо єдиний потік event loop зайнятий
+        обчисленнями OR-Tools. При одному uvicorn-воркері (а саме так задеплоєно зараз — див.
+        туторіал 3) це означає: важкий запит оптимізації тимчасово "заморожує" весь сервіс
+        для всіх користувачів.</div>
+      </div>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Як це можна виправити</b> (той самий патерн, що вже застосований у
+        розділі 5): <code>result = await asyncio.to_thread(solver.solve)</code> — переносить
+        CPU-роботу в окремий потік, event loop лишається вільним для решти запитів. Ще надійніший
+        варіант для CPU-bound роботи — <code>ProcessPoolExecutor</code> (окремий процес, а не
+        потік — обходить Python GIL повністю) або офлоад у Celery-воркер (черга Redis уже
+        підключена в проєкті, див. розділ 3 туторіалу про масштабування — задачі там поки
+        заготовки з <code>NotImplementedError</code>).</div>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 760 320" role="img" aria-label="Без to_thread запит GET /health чекає весь час роботи солвера (5 секунд); з to_thread солвер рахує в окремому потоці, а /health обробляється майже одразу">
+          <defs>
+            <marker id="a2-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <text x="15" y="18" font-size="13" font-weight="700" fill="var(--bad)">❌ Без asyncio.to_thread</text>
+          <text x="15" y="34" font-size="11.5" fill="currentColor" opacity="0.7">Event loop (один потік)</text>
+          <g font-size="11.5">
+            <rect x="15" y="42" width="55" height="36" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="42.5" y="64" text-anchor="middle">B: старт</text>
+
+            <rect x="70" y="42" width="230" height="36" fill="var(--bad)" fill-opacity="0.15" stroke="var(--bad)" stroke-width="1.2"/>
+            <text x="185" y="58" text-anchor="middle" fill="var(--bad)">solver.solve()</text>
+            <text x="185" y="72" text-anchor="middle" fill="var(--bad)">блокує event loop, 5с</text>
+
+            <rect x="300" y="42" width="70" height="36" rx="6" fill="var(--good)" fill-opacity="0.18" stroke="var(--good)" stroke-width="1.2"/>
+            <text x="335" y="64" text-anchor="middle" fill="var(--good)">A: /health</text>
+          </g>
+          <line x1="150" y1="95" x2="150" y2="80" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3,3" marker-end="url(#a2-arr)"/>
+          <text x="150" y="110" text-anchor="middle" font-size="11.5">A: GET /health прибуває,</text>
+          <text x="150" y="124" text-anchor="middle" font-size="11.5">але мусить чекати</text>
+          <text x="335" y="110" text-anchor="middle" font-size="11.5" fill="var(--bad)" font-weight="600">чекав ~5с</text>
+
+          <line x1="15" y1="150" x2="745" y2="150" stroke="var(--border)" stroke-width="1"/>
+
+          <text x="15" y="178" font-size="13" font-weight="700" fill="var(--good)">✅ З asyncio.to_thread</text>
+          <text x="15" y="194" font-size="11.5" fill="currentColor" opacity="0.7">Event loop (один потік)</text>
+          <g font-size="11.5">
+            <rect x="15" y="202" width="55" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="42.5" y="223" text-anchor="middle">B: старт</text>
+
+            <rect x="70" y="202" width="55" height="34" rx="6" fill="var(--accent)" fill-opacity="0.15" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="97.5" y="219" text-anchor="middle" fill="var(--accent)">await</text>
+            <text x="97.5" y="231" text-anchor="middle" fill="var(--accent)">to_thread</text>
+
+            <rect x="125" y="202" width="70" height="34" rx="6" fill="var(--good)" fill-opacity="0.18" stroke="var(--good)" stroke-width="1.2"/>
+            <text x="160" y="223" text-anchor="middle" fill="var(--good)">A: /health</text>
+
+            <rect x="300" y="202" width="70" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="335" y="223" text-anchor="middle">B: результат</text>
+          </g>
+
+          <text x="15" y="270" font-size="11.5" fill="currentColor" opacity="0.7">Робочий потік (executor)</text>
+          <rect x="125" y="278" width="245" height="34" fill="var(--warn)" fill-opacity="0.15" stroke="var(--warn)" stroke-width="1.2"/>
+          <text x="247.5" y="299" text-anchor="middle" font-size="11.5" fill="var(--warn)">solver.solve() — окремо, 5с</text>
+
+          <line x1="97" y1="236" x2="140" y2="278" stroke="currentColor" stroke-width="1.1" stroke-dasharray="3,3" marker-end="url(#a2-arr)"/>
+          <line x1="355" y1="278" x2="330" y2="236" stroke="currentColor" stroke-width="1.1" stroke-dasharray="3,3" marker-end="url(#a2-arr)"/>
+          <text x="405" y="223" text-anchor="start" font-size="11.5" fill="var(--good)" font-weight="600">A виконується відразу</text>
+        </svg>
+        <figcaption>Без <code>to_thread</code> "легкий" <code>GET /health</code> чекає весь час роботи солвера. З <code>to_thread</code> важка робота йде в окремому потоці, а <code>/health</code> обробляється майже миттєво.</figcaption>
+      </figure>
+    </section>
+
+    <section id="a7">
+      <h2><span class="num">7</span> Послідовні <code>await</code> у циклі — не завжди помилка</h2>
+      <p class="section-desc">Ще одне місце, де на перший погляд "варто було б" використати <code>asyncio.gather</code> — але тут це свідомий вибір, а не недогляд.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/services/deliveries/service.py</span></div>
+        <pre><code>for row_number, raw_row in enumerate(raw_rows, start=1):
+    if quota_exhausted:
+        <span class="cmt"># ... позначити рядок як пропущений, next</span>
+        continue
+    try:
+        normalized = normalize_row(raw_row)
+        created = await self._create_from_fields(normalized.model_dump())  <span class="cmt"># геокодує ОДИН рядок за раз</span>
+    except QuotaExceededError as exc:
+        quota_exhausted = True
+        <span class="cmt"># ...</span></code></pre>
+      </div>
+
+      <p>При імпорті CSV/Excel кожен рядок геокодується <b>послідовно</b>, один
+      <code>await</code> за раз — не паралельно через <code>asyncio.gather</code>. Це виглядає
+      як "повільно", але є причина:</p>
+      <ul>
+        <li><b>Квота перевіряється атомарно перед кожним рядком.</b> Якщо запустити 100 геокод-запитів
+        паралельно, неможливо коректно зупинитись рівно на межі ліміту "за замовленням" — частина
+        запитів уже піде до платного Google API до того, як стане відомо, що ліміт вичерпано.</li>
+        <li><b>Порядок помилок має значення для UX.</b> Результат імпорту повертає статус по
+        кожному рядку окремо (<code>DeliveryImportRowResult</code>) — послідовна обробка гарантує,
+        що рядки з 1 по N оброблені саме в тому порядку, в якому вони прийшли у файлі.</li>
+      </ul>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Trade-off:</b> для файлу з 500 рядків це може означати 500
+        послідовних мережевих round-trip-ів до Google Maps API — повільніше, ніж могло б бути.
+        Якби квота не була prepaid-обмеженням, а лише "м'яким" лічильником, паралелізація через
+        <code>asyncio.gather</code> була б доречною. Тут — це усвідомлена ціна за коректність
+        квоти, а не забутий "gather".</div>
+      </div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · Безпека</div><div class="line"></div></div>
+
+    <section id="b1">
+      <h2><span class="num">1</span> Аутентифікація: паролі й JWT</h2>
+      <p class="section-desc">Паролі ніколи не зберігаються у відкритому вигляді; сесія тримається на JWT, а не на server-side session/cookie.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/security.py</span></div>
+        <pre><code>pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(plain_password: str) -> str:
+    return pwd_context.hash(plain_password)
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+def _create_token(subject: str, token_type: str, expires_delta: timedelta) -> str:
+    now = datetime.now(UTC)
+    claims = {"sub": subject, "type": token_type, "iat": now, "exp": now + expires_delta}
+    return jwt.encode(claims, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)</code></pre>
+      </div>
+
+      <ul>
+        <li><b>bcrypt</b> — повільний навмисно (адаптивна вартість), щоб brute-force підбір хешу
+        був економічно недоцільним навіть при витоку бази.</li>
+        <li><b><code>exp</code> (expiry)</b> — кожен токен має час життя; протухлий токен
+        <code>jwt.decode(...)</code> відхилить сам, без додаткової логіки.</li>
+        <li>Підпис (<code>JWT_SECRET</code>) гарантує, що клієнт не може сам собі згенерувати
+        валідний токен чи змінити <code>sub</code> (id користувача) в існуючому.</li>
+      </ul>
+    </section>
+
+    <section id="b2">
+      <h2><span class="num">2</span> access vs refresh — навіщо поле <code>type</code></h2>
+      <p class="section-desc">Маленька деталь із великим значенням для безпеки.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/dependencies.py</span></div>
+        <pre><code>async def get_current_user(token: str = Depends(oauth2_scheme), ...) -> User:
+    claims = decode_token(token)
+    <span class="cmt">...</span>
+    if claims.get("type") != "access":     <span class="cmt">&lt;-- refresh-токен тут відхиляється</span>
+        raise credentials_error</code></pre>
+      </div>
+
+      <p>Access і refresh токени підписані <b>тим самим</b> секретом і мають однакову структуру —
+      без поля <code>type</code> сервер не зміг би відрізнити один від іншого. Refresh-токен
+      живе довше (7 днів проти 30 хвилин) і призначений лише для обміну на нову пару токенів
+      через <code>/auth/refresh</code>. Без цієї перевірки клієнт міг би підсунути
+      довгоживучий refresh-токен як access — і отримати доступ до захищених ендпоінтів на
+      набагато довший термін, ніж задумано.</p>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body">Той самий трюк повторюється для токена підтвердження email
+        (<code>"type": "email_verification"</code>, живе 24 години) — його теж неможливо
+        використати як access-токен, навіть якщо він десь "просочиться" (наприклад, у логах
+        листування).</div>
+      </div>
+    </section>
+
+    <section id="b3">
+      <h2><span class="num">3</span> Email-верифікація закриває дірку, яку rate limiting не закриває</h2>
+      <p class="section-desc">Ліміт на реєстрацію по IP (розділ 4) обмежує <i>швидкість</i> створення акаунтів, але не заважає створити акаунт із чужою чи фейковою поштою.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/api/auth/router.py</span></div>
+        <pre><code>if not user.is_verified:
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Please verify your email before logging in",
+    )</code></pre>
+      </div>
+
+      <p>Акаунт створюється одразу (<code>is_verified=False</code>), але <b>увійти</b> в нього
+      не можна, поки власник не перейде за посиланням із листа. Це означає: масове створення
+      акаунтів через ботів все ще можливе (обмежено rate limit-ом), але ці акаунти —
+      непридатні, доки хтось реально не відкриє поштову скриньку. Разом ці два механізми
+      закривають і швидкість, і "реальність" реєстрацій.</p>
+    </section>
+
+    <section id="b4">
+      <h2><span class="num">4</span> Rate limiting по IP</h2>
+      <p class="section-desc">Простий, свідомо не Redis-based лічильник — з чіткою межею того, для чого він придатний.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/rate_limiting.py</span></div>
+        <pre><code><span class="cmt">"""Simple per-IP fixed-window rate limiting for unauthenticated endpoints
+(registration, login) where the caller has no organization yet...
+
+In-memory, not Redis-backed: nothing in this deployment assumes more than a
+single API process ... If this ever runs as multiple worker processes or
+instances, swap the in-memory `_WINDOWS` dict for a Redis-backed counter"""</span>
+
+register_rate_limiter = rate_limit_by_ip("register", max_requests=5, window_seconds=3600)
+login_rate_limiter = rate_limit_by_ip("login", max_requests=20, window_seconds=60)</code></pre>
+      </div>
+
+      <p>5 реєстрацій/годину з однієї IP — головний важіль проти масового скриптового
+      сайн-апу. 20 логінів/хвилину — достатньо вільно для реальних спроб/помилок людини, але
+      сповільнює credential-stuffing/brute-force атаки на один акаунт з однієї IP.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body">Лічильник живе <b>в пам'яті процесу</b> (Python <code>dict</code> +
+        <code>Lock</code>). Це працює бездоганно, поки застосунок — один процес. Розгорніть
+        два інстанси за балансувальником — і кожен вестиме свій окремий рахунок, а реальний
+        ліміт на одного атакуючого фактично подвоїться. Це прямий наслідок для масштабування —
+        детальніше в туторіалі 3.</div>
+      </div>
+    </section>
+
+    <section id="b5">
+      <h2><span class="num">5</span> Ізоляція тенантів — головний захист від IDOR</h2>
+      <p class="section-desc">Найважливіший, хоч і не завжди "видимий" механізм безпеки в проєкті — вже показаний у туторіалі 1, тут — чому це саме security-механізм.</p>
+
+      <p><b>IDOR (Insecure Direct Object Reference)</b> — коли користувач А, підставивши в
+      URL id чужого ресурсу (<code>GET /deliveries/{id}</code>), отримує дані користувача Б.
+      Це один із найпоширеніших класів вразливостей у multi-tenant SaaS. У цьому проєкті його
+      структурно неможливо допустити випадково — тому що <code>TenantScopedRepository.get()</code>
+      завжди фільтрує по <code>organization_id</code>, взятому з JWT поточного користувача, а не
+      з тіла запиту чи параметра URL.</p>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body">Спроба звернутись до чужого <code>route_id</code> поверне звичайний
+        404 "не знайдено" — не 403 "заборонено". Це теж навмисно: 403 підтвердив би зловмиснику,
+        що ресурс <i>існує</i>, просто недоступний; 404 не дає такої інформації взагалі.</div>
+      </div>
+    </section>
+
+    <section id="b6">
+      <h2><span class="num">6</span> Захист від зловживання платними зовнішніми API</h2>
+      <p class="section-desc">OpenAI та Google Geocoding коштують грошей за кожен виклик — квоти захищають гаманець, а не лише "чесність" використання.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/repositories/organization_repository.py</span></div>
+        <pre><code>async def try_consume_quota(self, organization_id, *, counter_column, limit, amount=1, combined_limit=None) -> bool:
+    <span class="cmt">"""... A single conditional `UPDATE ... WHERE ...`, not a separate
+    check-then-write, so concurrent requests against the same
+    organization can't race past either cap."""</span>
+    column = getattr(Organization, counter_column)
+    stmt = update(Organization).where(Organization.id == organization_id)
+    if limit is not None:
+        stmt = stmt.where(column + amount <= limit)     <span class="cmt"># перевірка й запис — ОДНА SQL-команда</span>
+    stmt = stmt.values(**{counter_column: column + amount})
+    result = await self.session.execute(stmt)
+    await self.session.commit()
+    return result.rowcount > 0</code></pre>
+      </div>
+
+      <p>Це класичний приклад захисту від <b>race condition</b> типу TOCTOU
+      (time-of-check-to-time-of-use). Наївна реалізація виглядала б так:</p>
+
+      <div class="callout bad">
+        <div class="ic">❌</div>
+        <div class="body"><b>Погано (гіпотетичний код, не з проєкту):</b>
+        <code>if org.ai_calls_count &lt; limit: org.ai_calls_count += 1; await session.commit()</code> —
+        два одночасні запити можуть обидва прочитати "ще є ліміт" ще <i>до</i> того, як хтось
+        встигне записати інкремент, і обидва пройдуть — org перевищить ліміт. При платних AI-викликах
+        це пряма фінансова діра.</div>
+      </div>
+
+      <p>У реальному коді перевірка й запис — <b>один</b> SQL-запит (<code>UPDATE ... WHERE
+      column + 1 &lt;= limit</code>). База даних гарантує атомарність: або рядок оновиться (і
+      квота витрачена), або <code>WHERE</code> не спрацює й <code>rowcount</code> буде 0 — без
+      вікна, в якому дві паралельні транзакції можуть "проскочити" одночасно.</p>
+    </section>
+
+    <section id="b7">
+      <h2><span class="num">7</span> Приховування внутрішніх деталей помилок</h2>
+      <p class="section-desc">Жодна відповідь API не повинна "проговоритись" про внутрішній устрій системи.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/error_handlers.py</span></div>
+        <pre><code>@app.exception_handler(OpenAIError)
+async def handle_openai_error(request: Request, exc: OpenAIError) -> JSONResponse:
+    <span class="cmt"># Outages/rate limits/auth issues from the OpenAI SDK must never
+    # leak its own error text (which can include request ids and other
+    # internal details) straight to the client.</span>
+    logger.error("OpenAI API error on %s %s: %s", request.method, request.url.path, exc)
+    return JSONResponse(status_code=503, content={"detail": "The AI service is temporarily unavailable..."})
+
+@app.exception_handler(Exception)
+async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+    return JSONResponse(status_code=500, content={"detail": "Something went wrong on our end..."})</code></pre>
+      </div>
+
+      <p>Без цих обробників необроблений виняток повернув би клієнту сирий traceback
+      (потенційно — назви внутрішніх функцій, шляхи файлів, фрагменти SQL, ключі API у тексті
+      помилки SDK). Тут повне повідомлення завжди йде тільки в <b>лог сервера</b>
+      (<code>logger.exception(...)</code>), а клієнту — уніфіковане, безпечне повідомлення.</p>
+    </section>
+
+    <section id="b8">
+      <h2><span class="num">8</span> CORS — явний список джерел</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">fly.toml (production env)</span></div>
+        <pre><code>CORS_ORIGINS = '["https://ai-planning-assistant.vercel.app"]'</code></pre>
+      </div>
+      <p>У продакшені дозволений лише конкретний домен фронтенду — не <code>["*"]</code>.
+      У парі з <code>allow_credentials=True</code> (в <code>main.py</code>) це особливо
+      важливо: браузери й так забороняють комбінацію "credentials + wildcard origin", але явний
+      список — правильна практика незалежно від цього.</p>
+    </section>
+
+    <section id="b9">
+      <h2><span class="num">9</span> Чесно: чого в проєкті ще немає</h2>
+      <p class="section-desc">Частина "hardening"-роботи вже зроблена (rate limiting, email-верифікація, квоти — додані одним заходом після аудиту), але варто знати межі поточного захисту.</p>
+      <ul>
+        <li><b>Немає revoke/rotation refresh-токенів.</b> Якщо refresh-токен вкрадено, він лишається дійсним аж до природного закінчення терміну (7 днів) — немає server-side "чорного списку" відкликаних токенів.</li>
+        <li><b>Rate limiter не переживе горизонтальне масштабування</b> без переходу на Redis (розділ 4 вище і туторіал 3).</li>
+        <li><b>Немає WAF/DDoS-захисту на рівні застосунку</b> — покладається на периметр Fly.io/proxy.</li>
+        <li><b>CSRF свідомо не актуальний</b> — API використовує bearer-токен у заголовку
+        <code>Authorization</code>, а не cookie-based сесію, тому класична CSRF-атака (яка
+        експлуатує автоматичну відправку cookie браузером) сюди не застосовується.</li>
+      </ul>
+      <p class="muted">Це нормально для проєкту такого етапу — головне, що межі захисту явні й задокументовані, а не приховані.</p>
+    </section>
+
+    <section id="b10">
+      <h2><span class="num">10</span> Зведена таблиця: загроза → захист</h2>
+      <table>
+        <tr><th>Загроза</th><th>Механізм у проєкті</th></tr>
+        <tr><td>Витік/чужий доступ до даних іншого клієнта (IDOR)</td><td><code>TenantScopedRepository</code> — org-scoping на рівні репозиторію</td></tr>
+        <tr><td>Brute-force / credential stuffing на логін</td><td><code>login_rate_limiter</code> — 20 спроб/хв на IP</td></tr>
+        <tr><td>Масова автоматична реєстрація ботами</td><td><code>register_rate_limiter</code> (5/год на IP) + обов'язкова email-верифікація</td></tr>
+        <tr><td>Витік пароля з БД</td><td>bcrypt-хешування, ніколи не зберігається plaintext</td></tr>
+        <tr><td>Підміна refresh-токена як access</td><td>явне поле <code>type</code> в JWT-клеймах</td></tr>
+        <tr><td>Race condition при перевищенні платної квоти</td><td>атомарний SQL <code>UPDATE ... WHERE</code> замість check-then-write</td></tr>
+        <tr><td>Витік внутрішніх деталей помилки клієнту</td><td>централізовані exception handlers, уніфікований JSON</td></tr>
+        <tr><td>Крос-доменні запити з довільних сайтів</td><td>явний CORS allow-list замість <code>*</code></td></tr>
+      </table>
+    </section>
+
+    <div class="card">
+      Далі: <b><a href="03-scaling.html">Туторіал 3 — як масштабувати цей проєкт</a></b> — де саме
+      сьогоднішні обмеження (in-memory rate limiter, блокуючий солвер) стають реальною стелею,
+      і як її піднімати крок за кроком.
+    </div>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал згенеровано на основі реального коду репозиторію <code>ai-delivery-planner-backend</code> —
+  усі приклади відповідають фактичному стану проєкту на момент генерації.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>
