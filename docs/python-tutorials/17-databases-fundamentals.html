@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>17. Бази даних: основи та вибір — AI Delivery Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono, .tree{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--accent); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout b, .callout strong{color:inherit;}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .step .yr{display:block; font-size:11px; color:var(--accent); font-weight:700; margin-bottom:2px;}
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:520px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · Бази даних: основи</div>
+  <h1>Бази даних: історія, типи та як обирати правильну</h1>
+  <p class="lead">
+    Перед тим як зазубрювати конкретні СУБД (наступний туторіал), варто розуміти карту місцевості:
+    звідки взялися реляційні бази, чому виник рух NoSQL, які взагалі бувають сімейства баз даних
+    і — найважливіше на співбесіді та в реальній роботі — <b>як обирати</b> між ними для конкретної
+    задачі, а не "тому що модно".
+  </p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🎯 До співбесіди</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+        <a href="17-databases-fundamentals.html" class="active">17. Бази даних: основи</a>
+        <a href="18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s0">0. Навіщо взагалі різні бази даних</a></li>
+      <li><a href="#s1">1. Коротка історія</a></li>
+      <li><a href="#s2">2. Реляційні (SQL) бази</a></li>
+      <li><a href="#s3">3. Звідки виник рух NoSQL</a></li>
+      <li><a href="#s4">4. Сімейства NoSQL</a></li>
+      <li><a href="#s5">5. CAP-теорема</a></li>
+      <li><a href="#s6">6. ACID vs BASE</a></li>
+      <li><a href="#s7">7. Що для чого — таблиця вибору</a></li>
+      <li><a href="#s8">8. Що обрав цей проєкт і чому</a></li>
+      <li><a href="#s9">9. Типові помилки вибору бази</a></li>
+      <li><a href="#s10">10. Підсумок і що далі</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s0">
+      <h2><span class="num">00</span> Навіщо взагалі різні бази даних</h2>
+      <p class="section-desc">Якби одна база даних добре робила все — інших би не існувало. Але кожна модель даних — це компроміс.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Ви вже інтуїтивно робите такий вибір у браузері: маленькі прості пари ключ-значення —
+        <code>localStorage</code>; структуровані об'єкти з індексами і транзакціями —
+        <code>IndexedDB</code>; тимчасовий кеш відповідей API — <code>Cache Storage</code> /
+        пам'ять React Query. Ви ж не тримаєте все в одному сховищі — обираєте під форму даних
+        і патерн доступу. З базами даних на бекенді — той самий принцип, тільки ставки вищі.
+      </div>
+
+      <p>
+        Немає "найкращої бази даних" у вакуумі — є база даних, яка добре пасує до
+        <b>форми ваших даних</b> (плоскі таблиці? вкладені документи? граф зв'язків? часові ряди?),
+        <b>патерну доступу</b> (багато читань чи багато записів? складні JOIN-и чи прості
+        пошуки по ключу?) і <b>вимог до консистентності та масштабу</b>. Решта туторіалу — про те,
+        як ставити ці питання правильно, до того як обирати технологію.
+      </p>
+    </section>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Коротка історія</h2>
+      <p class="section-desc">П'ятдесят років еволюції за одну хвилину — щоб NoSQL не здавався "новим винаходом", а SQL — "застарілим".</p>
+
+      <div class="flow">
+        <div class="step"><span class="yr">1966-69</span>Ієрархічні / мережеві БД (IBM IMS, CODASYL)</div>
+        <div class="arrow">→</div>
+        <div class="step"><span class="yr">1970</span>Реляційна модель (E.F. Codd)</div>
+        <div class="arrow">→</div>
+        <div class="step"><span class="yr">1979</span>Oracle — перша комерційна RDBMS</div>
+        <div class="arrow">→</div>
+        <div class="step"><span class="yr">1995-96</span>MySQL, PostgreSQL 1.0</div>
+        <div class="arrow">→</div>
+        <div class="step"><span class="yr">2006-09</span>BigTable, Dynamo, MongoDB, Redis, Cassandra</div>
+        <div class="arrow">→</div>
+        <div class="step"><span class="yr">2012+</span>NewSQL (Spanner, CockroachDB)</div>
+        <div class="arrow">→</div>
+        <div class="step"><span class="yr">Зараз</span>Мультимодельна конвергенція</div>
+      </div>
+
+      <p><b>1960-ті:</b> перші СУБД (IBM IMS, 1966) були <i>ієрархічними</i> або <i>мережевими</i> —
+      дані читались за жорстко закодованими вказівниками "від батька до дитини", як прохід по
+      файловій системі. Змінити структуру — переписати весь код доступу.</p>
+
+      <p><b>1970 рік:</b> дослідник IBM Едгар Кодд публікує статтю <i>"A Relational Model of Data
+      for Large Shared Data Banks"</i> — ідея, що дані можна представити просто як таблиці
+      (відношення), а запити писати декларативно ("що" потрібно, а не "як" туди дістатись),
+      незалежно від фізичного способу зберігання. З цього виросла мова SQL (IBM System R,
+      1974) і перша комерційна RDBMS — Oracle (1979).</p>
+
+      <p><b>1990-ті — початок 2000-х:</b> RDBMS домінують беззаперечно: Oracle, DB2, Sybase,
+      відкритий PostgreSQL (проєкт Berkeley з 1986-го) і MySQL (1995). Майже всі вебзастосунки
+      того часу — це один сервер, одна реляційна база.</p>
+
+      <p><b>2006-2009:</b> вебкомпанії з мільярдами користувачів (Google, Amazon, Facebook)
+      впираються в стелю масштабування однієї реляційної бази. Google публікує статтю про
+      <b>BigTable</b> (2006), Amazon — про <b>Dynamo</b> (2007): обидві жертвують частиною
+      реляційних гарантій заради горизонтального масштабування на тисячі серверів. Термін
+      <b>"NoSQL"</b> (спершу вжитий ще 1998-го для нішевого проєкту, але популяризований саме
+      тепер) підхоплює ціла хвиля нових баз: <b>MongoDB</b> і <b>Cassandra</b> (2009 / Facebook
+      2008), <b>Redis</b> (2009).</p>
+
+      <p><b>2012 і далі:</b> Google публікує <b>Spanner</b> — розподілену базу, що поєднує
+      горизонтальне масштабування NoSQL-баз з ACID-транзакціями і навіть SQL, започаткувавши
+      категорію <b>NewSQL</b> (CockroachDB, YugabyteDB — відкриті ідейні наступники).</p>
+
+      <p class="muted"><b>Сьогодні межа стирається:</b> PostgreSQL має вбудований тип
+      <code>JSONB</code> для документів (з 2012-го) і горизонтальні розширення; MongoDB з версії
+      4.0 (2018) підтримує мультидокументні ACID-транзакції. "SQL проти NoSQL" — усе менше
+      про вибір технології, усе більше — питання, яку модель даних і компроміс обирає конкретний
+      застосунок.</p>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Реляційні (SQL) бази</h2>
+      <p class="section-desc">Дані — у таблицях з жорсткою схемою; зв'язки між таблицями явні, через зовнішні ключі; мова запитів — декларативний SQL.</p>
+
+      <ul>
+        <li><b>Схема наперед (schema-on-write):</b> кожен рядок таблиці повинен відповідати
+        оголошеним колонкам і типам ще <i>до</i> запису. Помилка типу — відмова запису, а не
+        сюрприз під час читання.</li>
+        <li><b>Нормалізація:</b> дані розкладаються по таблицях так, щоб кожен факт зберігався
+        рівно один раз (уникнення дублювання й аномалій оновлення); зв'язки відновлюються через
+        <code>JOIN</code>.</li>
+        <li><b>Транзакції з ACID-гарантіями</b> (детальніше в розділі 6) — кілька змін
+        застосовуються атомарно, "усе або нічого".</li>
+        <li><b>Індекси</b> (найчастіше B-tree) — прискорюють пошук і сортування ціною трохи
+        повільнішого запису й додаткового місця на диску.</li>
+      </ul>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Сильна сторона:</b> складні запити з багатьма зв'язками
+        ("усі доставки цієї організації за останній тиждень, разом з водієм і машиною") —
+        природна territoriя SQL. База сама оптимізує план виконання <code>JOIN</code>-ів.</div>
+      </div>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Компроміс:</b> горизонтальне масштабування (розподіл однієї
+        логічної бази на багато фізичних серверів) — історично складніше, ніж у баз, спроєктованих
+        під це з нуля (детальніше — розділ 5, CAP-теорема, і практика — <a href="18-databases-interview-qa.html">туторіал 18</a>).</div>
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Звідки виник рух NoSQL — і що це насправді</h2>
+      <p class="section-desc">Поширена помилка — думати, що "NoSQL" означає одну технологію чи один компроміс. Насправді це парасолька для дуже різних моделей даних, об'єднаних лише тим, що вони <i>не</i> реляційні.</p>
+
+      <p>NoSQL з'явився не тому, що SQL "поганий", а тому, що конкретні задачі вебмасштабу
+      (мільярди користувачів, географічно розподілені дата-центри) вимагали інших компромісів:
+      простіша модель даних без складних JOIN-ів дозволяє легше розподілити дані по багатьох
+      серверах (шардинг) без дорогих розподілених транзакцій.</p>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body"><b>Правильніше читати "NoSQL" як "not only SQL"</b>, а не "SQL більше
+        не потрібен" — переважна більшість реальних систем сьогодні використовують і реляційну
+        базу для основних даних, і одну-дві NoSQL бази для спеціалізованих задач (кеш, пошук,
+        черга) одночасно.</div>
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Сімейства NoSQL</h2>
+      <p class="section-desc">"NoSQL" — не одна модель даних, а щонайменше п'ять різних, кожна зі своїми флагманськими продуктами.</p>
+
+      <table>
+        <tr><th>Сімейство</th><th>Модель даних</th><th>Приклади</th><th>Типовий кейс</th></tr>
+        <tr>
+          <td><b>Key-Value</b></td>
+          <td>Значення за ключем, O(1) доступ, без структури всередині значення</td>
+          <td>Redis, DynamoDB, Riak</td>
+          <td>Кеш, сесії, лічильники, rate limiting, черги</td>
+        </tr>
+        <tr>
+          <td><b>Документна</b></td>
+          <td>Самодостатні JSON/BSON-документи; гнучка (schema-on-read) структура</td>
+          <td>MongoDB, CouchDB</td>
+          <td>Каталоги товарів, контент з різною формою полів, швидке прототипування</td>
+        </tr>
+        <tr>
+          <td><b>Широко-колонкова</b></td>
+          <td>Розрідженні таблиці з мільйонами колонок, оптимізовані під запис</td>
+          <td>Cassandra, HBase, Bigtable</td>
+          <td>Величезний потік записів: логи, IoT-метрики, багато дата-центрів</td>
+        </tr>
+        <tr>
+          <td><b>Графова</b></td>
+          <td>Вузли + ребра як дані першого класу; обхід зв'язків — нативна операція</td>
+          <td>Neo4j, Amazon Neptune</td>
+          <td>Соцмережі, рекомендації, виявлення шахрайства (граф транзакцій)</td>
+        </tr>
+        <tr>
+          <td><b>Часові ряди</b></td>
+          <td>Точки (час, значення), оптимізовано під append і запити по діапазону часу</td>
+          <td>InfluxDB, TimescaleDB (розширення Postgres)</td>
+          <td>Метрики моніторингу, показники сенсорів, фінансові тіки</td>
+        </tr>
+        <tr>
+          <td><b>Пошукові рушії</b></td>
+          <td>Інвертований індекс над текстом, а не таблиці</td>
+          <td>Elasticsearch, OpenSearch</td>
+          <td>Повнотекстовий пошук, агрегація логів (стек ELK)</td>
+        </tr>
+      </table>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> CAP-теорема — чому не можна мати все</h2>
+      <p class="section-desc">Сформульована Еріком Брюером 2000-го, доведена формально Гілбертом і Лінчем 2002-го — фундаментальне обмеження будь-якої розподіленої бази даних.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 260 220" role="img" aria-label="Трикутник CAP: Consistency, Availability, Partition tolerance — можна обрати лише дві з трьох одночасно під час розриву мережі">
+          <polygon points="130,20 240,190 20,190" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+          <text x="130" y="14" text-anchor="middle" font-size="13" font-weight="700">C</text>
+          <text x="130" y="34" text-anchor="middle" font-size="10.5" fill="var(--fg-muted)">Consistency</text>
+          <text x="248" y="196" text-anchor="start" font-size="13" font-weight="700">A</text>
+          <text x="248" y="211" text-anchor="start" font-size="10.5" fill="var(--fg-muted)">Availability</text>
+          <text x="12" y="196" text-anchor="end" font-size="13" font-weight="700">P</text>
+          <text x="12" y="211" text-anchor="end" font-size="10.5" fill="var(--fg-muted)">Partition tolerance</text>
+        </svg>
+        <figcaption>Розрив мережі (P) між вузлами трапляється завжди рано чи пізно — тому реальний вибір лише один: під час розриву віддати перевагу консистентності (CP) чи доступності (AP).</figcaption>
+      </figure>
+
+      <p>Теорема каже: розподілена система не може одночасно гарантувати всі три властивості —
+      <b>Consistency</b> (усі вузли бачать одні й ті самі дані одночасно), <b>Availability</b>
+      (кожен запит отримує відповідь, навіть якщо не найсвіжішу) і <b>Partition tolerance</b>
+      (система продовжує працювати попри розрив мережі між вузлами). Оскільки розриви мережі
+      трапляються неминуче (кабель, свіч, дата-центр), <i>P доводиться обирати завжди</i> — а
+      отже реальний вибір архітектора звужується до <b>CP проти AP</b> на момент саме розриву.</p>
+
+      <table>
+        <tr><th>Вибір</th><th>Що означає на практиці</th><th>Приклади</th></tr>
+        <tr>
+          <td><b>CP</b> (консистентність)</td>
+          <td>Під час розриву частина вузлів відмовляється відповідати, щоб не віддати застарілі дані</td>
+          <td>PostgreSQL (single-primary), MongoDB (за замовчуванням), HBase</td>
+        </tr>
+        <tr>
+          <td><b>AP</b> (доступність)</td>
+          <td>Кожен вузол завжди відповідає, навіть якщо дані можуть тимчасово розходитись між вузлами</td>
+          <td>Cassandra, DynamoDB, Riak (у типовій конфігурації)</td>
+        </tr>
+      </table>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body">CAP описує поведінку <i>лише в момент розриву мережі</i> — у звичайний
+        робочий час майже всі сучасні бази намагаються дати і консистентність, і доступність
+        одночасно. Не варто застосовувати CAP як універсальний аргумент "ця база гірша" поза
+        контекстом мережевого розриву.</div>
+      </div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> ACID vs BASE</h2>
+      <p class="section-desc">Дві протилежні філософії гарантій — реляційна класика проти типової NoSQL-моделі.</p>
+
+      <div class="grid2">
+        <div class="card">
+          <b>ACID</b> (типово RDBMS)
+          <ul>
+            <li><b>A</b>tomicity — транзакція виконується повністю або зовсім ні</li>
+            <li><b>C</b>onsistency — база завжди переходить з одного валідного стану в інший</li>
+            <li><b>I</b>solation — паралельні транзакції не бачать проміжний стан одна одної</li>
+            <li><b>D</b>urability — підтверджений запис переживе збій живлення/процесу</li>
+          </ul>
+        </div>
+        <div class="card">
+          <b>BASE</b> (типово розподілені NoSQL)
+          <ul>
+            <li><b>B</b>asically <b>A</b>vailable — система відповідає майже завжди</li>
+            <li><b>S</b>oft state — стан може змінюватись навіть без нового запису (реплікація доганяє)</li>
+            <li><b>E</b>ventually consistent — усі вузли <i>врешті</i> зійдуться до однакових даних, не миттєво</li>
+          </ul>
+        </div>
+      </div>
+
+      <p class="muted">Це не "правильний і неправильний" підхід — це різні відповіді на те саме
+      питання CAP-теореми: RDBMS зазвичай обирають бік консистентності (жертвуючи доступністю
+      під час збою), а AP-орієнтовані NoSQL — бік доступності (жертвуючи миттєвою консистентністю).</p>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Що для чого — таблиця вибору</h2>
+      <p class="section-desc">Найпрактичніший розділ туторіалу: з яким запитом який тип бази обирати.</p>
+
+      <table>
+        <tr><th>Якщо потрібно...</th><th>Обирайте</th></tr>
+        <tr><td>Транзакційні дані зі складними зв'язками, потрібні строгі гарантії й JOIN-и</td><td>Реляційна (PostgreSQL, MySQL)</td></tr>
+        <tr><td>Кеш, сесії, лічильники, rate limiting, черги задач</td><td>Key-Value (Redis)</td></tr>
+        <tr><td>Гнучка/еволюційна схема, вкладені документи, швидкий прототип</td><td>Документна (MongoDB)</td></tr>
+        <tr><td>Величезний потік записів, багато дата-центрів, лінійне масштабування</td><td>Широко-колонкова (Cassandra, DynamoDB)</td></tr>
+        <tr><td>Сильно зв'язані дані: соцграф, рекомендації, шахрайство</td><td>Графова (Neo4j)</td></tr>
+        <tr><td>Метрики, показники сенсорів, моніторинг у часі</td><td>Часові ряди (TimescaleDB, InfluxDB)</td></tr>
+        <tr><td>Повнотекстовий пошук, аналітика логів</td><td>Пошуковий рушій (Elasticsearch)</td></tr>
+      </table>
+
+      <div class="callout info">
+        <div class="ic">🎯</div>
+        <div class="body">На практиці більшість продуктів — <b>полі-глотні</b>: одна основна
+        реляційна база для даних застосунку + Redis для кешу/черг +, можливо, Elasticsearch для
+        пошуку. Питання рідко звучить "яку одну базу обрати" — частіше "яку базу додати для якої
+        конкретної задачі поверх основної".</div>
+      </div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Що обрав цей проєкт — і чому</h2>
+      <p class="section-desc">Конкретне рішення з <code>ai-delivery-planner-backend</code>, а не абстрактна теорія.</p>
+
+      <p>Цей бекенд використовує <b>PostgreSQL</b> (через асинхронний драйвер <code>asyncpg</code>
+      і SQLAlchemy 2.0) як єдину основну базу даних. Причина — форма даних тут дійсно реляційна:
+      організація має користувачів, депо, водіїв, машини й доставки; маршрут складається зі
+      зупинок, кожна прив'язана до конкретної доставки й водія. Це природний граф зовнішніх ключів
+      з реальними бізнес-обмеженнями цілісності (не можна видалити водія, поки на нього призначені
+      активні маршрути) — саме те, під що RDBMS проєктована з 1970-х.</p>
+
+      <p>Другий фактор — <b>ізоляція орендарів (multi-tenancy)</b>: кожен запит фільтрується по
+      <code>organization_id</code> (<code>TenantScopedRepository</code>, туторіал 1). Реляційна
+      модель з явними <code>WHERE organization_id = ...</code> робить цю гарантію структурною й
+      легко перевірюваною — на відміну від, скажімо, документної бази, де довелось би довіряти
+      застосунку не забути фільтр у кожному документі окремо.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Redis у проєкті поки не активний.</b> Конфігурація для Celery
+        (<code>app/workers/celery_app.py</code>, <code>REDIS_URL</code> в <code>config.py</code>)
+        вже присутня для майбутніх фонових задач (наприклад, довгий OR-Tools solve — див.
+        обговорення офлоаду в туторіалі 3), але сам Redis ще не задіяний у продовому трафіку:
+        rate limiting зараз — in-memory лічильник (<code>app/core/rate_limiting.py</code>), що і
+        є причиною, чому Fly.io-деплой обмежений одним інстансом.</div>
+      </div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Типові помилки вибору бази даних</h2>
+      <p class="section-desc">Найчастіші сценарії, коли вибір бази стає технічним боргом.</p>
+
+      <div class="callout bad">
+        <div class="ic">❌</div>
+        <div class="body"><b>"Візьмемо MongoDB, бо це web scale"</b> — без реального навантаження,
+        що вимагає горизонтального масштабування. Результат — втрачені JOIN-и й транзакції, які
+        доводиться емулювати в коді застосунку, заради масштабу, який ніколи не знадобиться.</div>
+      </div>
+      <div class="callout bad">
+        <div class="ic">❌</div>
+        <div class="body"><b>Реляційні дані в документній базі "плоско"</b> — дублювання одних і
+        тих самих вкладених об'єктів у сотнях документів замість нормалізації, тому що "так простіше
+        зараз". Оновлення одного факту перетворюється на масову міграцію документів.</div>
+      </div>
+      <div class="callout bad">
+        <div class="ic">❌</div>
+        <div class="body"><b>Фінансові/платіжні дані в AP-базі з eventual consistency</b> без
+        усвідомлення компромісу — тимчасово розбіжний баланс може здатись прийнятним "в
+        середньому", але для грошей неприйнятний навіть на секунди.</div>
+      </div>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Передчасна поліглотність</b> — додавання Redis/Elasticsearch/окремої
+        graph-бази ще до того, як основна реляційна база реально впирається в межу, лише множить
+        операційну складність (ще один сервіс для деплою, моніторингу, бекапів) без користі.</div>
+      </div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Підсумок і що далі</h2>
+      <p class="section-desc">Головне з цього туторіалу:</p>
+      <ul>
+        <li>SQL і NoSQL — не "нове проти старого", а різні компроміси, вироблені для різних задач масштабу й форми даних.</li>
+        <li>"NoSQL" — парасолька щонайменше для п'яти різних моделей даних (key-value, документна, широко-колонкова, графова, часові ряди) плюс пошукові рушії.</li>
+        <li>CAP-теорема реально проявляється лише в момент розриву мережі — і там доводиться обирати між консистентністю (CP) і доступністю (AP).</li>
+        <li>Вибір бази даних веде форма даних і патерн доступу конкретної задачі, а не хайп.</li>
+      </ul>
+      <div class="card">
+        Далі: <b><a href="18-databases-interview-qa.html">Туторіал 18 — конкретні СУБД і питання для співбесіди</a></b> —
+        PostgreSQL, MongoDB, Redis, реплікація/шардинг і ORM-пастки на реальних прикладах.
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал згенеровано як огляд теорії баз даних для підготовки до співбесід і для того, щоб
+  свідомо обґрунтувати вибір PostgreSQL у репозиторії <code>ai-delivery-planner-backend</code>.
+</footer>
+
+</body>
+</html>
