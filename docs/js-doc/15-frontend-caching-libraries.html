@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>15. Frontend Caching: бібліотеки — JS Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{max-width:1180px; margin:0 auto; padding:14px 24px;}
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--fun); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:780px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+
+  article section{margin-bottom:44px; scroll-margin-top:80px;}
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  article h2{font-size:22px; margin:0; letter-spacing:-.01em;}
+  article h3{font-size:16px; margin:22px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:16px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .codecard{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:14px 0; background:var(--code-bg);}
+  .codecard .bar{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%); border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);}
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre; font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-def{color:#ffc66d;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">📚 JS Interview Prep <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">JS Doc · Категорія 15</div>
+  <h1>Frontend Caching: React, Next.js та бібліотеки даних</h1>
+  <p class="lead">
+    Друга частина серії про кешування на фронтенді — тепер конкретно про те, де реально
+    відбувається кешування у щоденній React/Next.js роботі: сам React, чотиришарова модель
+    кешу Next.js, TanStack Query, SWR, Apollo/Relay/GraphQL-клієнти, RTK Query, Zustand і
+    нормалізація даних. <code>staleTime</code> vs <code>gcTime</code> та
+    <code>cache-first</code> vs <code>cache-and-network</code> — саме ті пари понять, які
+    найчастіше плутають на співбесіді.
+  </p>
+  <div class="pills">
+    <span class="pill">🔴 React Query — 🔥🔥 найважливіша тема</span>
+    <span class="pill">🔴 Apollo Client — 🔥🔥🔥 найважливіша GraphQL-тема</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/05-python-types.html">5. Типи</a>
+        <a href="../python-tutorials/06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="../python-tutorials/07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="../python-tutorials/08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="../python-tutorials/09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/10-logging.html">10. Логування</a>
+        <a href="../python-tutorials/11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="../python-tutorials/13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="../python-tutorials/14-design-patterns.html">14. Патерни</a>
+        <a href="../python-tutorials/15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="00-methodology.html">0. Методологія</a>
+        <a href="01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="02-browser-internals.html">2. Браузер зсередини</a>
+        <a href="03-frontend-security.html">3. Безпека фронтенду</a>
+        <a href="04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="05-react-deep-dive.html">5. React углиб</a>
+        <a href="06-nextjs-architecture.html">6. Next.js та архітектура</a>
+        <a href="07-nextjs-interview-qa.html">7. Next.js: Q&amp;A</a>
+        <a href="08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="09-testing-cicd-cloud.html">9. Тести, CI/CD, хмара</a>
+        <a href="10-ai-tools.html">10. AI-інструменти</a>
+        <a href="11-http-anatomy.html">11. HTTP: анатомія запитів</a>
+        <a href="12-this.html">12. this</a>
+        <a href="13-typescript-essentials.html">13. TypeScript essentials</a>
+        <a href="14-frontend-caching-fundamentals.html">14. Caching: основи</a>
+        <a href="15-frontend-caching-libraries.html" class="active">15. Caching: бібліотеки</a>
+        <a href="16-frontend-caching-advanced.html">16. Caching: просунуті теми</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#t1">1. React caching</a></li>
+      <li><a href="#t2">2. Next.js caching: 4 шари</a></li>
+      <li><a href="#t3">3. TanStack Query</a></li>
+      <li><a href="#t4">4. SWR</a></li>
+      <li><a href="#t5">5. Apollo Client</a></li>
+      <li><a href="#t6">6. Relay</a></li>
+      <li><a href="#t7">7. Інші GraphQL-клієнти</a></li>
+      <li><a href="#t8">8. Redux / RTK Query</a></li>
+      <li><a href="#t9">9. Zustand</a></li>
+      <li><a href="#t10">10. Нормалізація даних</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="t1">
+      <div class="topic-head"><span class="tag notes">🟣</span><h2>React caching</h2></div>
+      <p class="section-desc">Перше, з чого варто почати: React сам по собі має лише один
+      справжній механізм кешування — і це не <code>useMemo</code>.</p>
+
+      <p><code>React.memo</code>, <code>useMemo</code> та <code>useCallback</code> уже детально
+      розібрані в <a href="05-react-deep-dive.html#t2">туторіалі 5</a> — тут лише ключовий
+      висновок, який варто вміти сформулювати одним реченням на співбесіді:</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b><code>useMemo</code> — це не кеш даних, а мемоізація результату
+        обчислення.</b> Значення живе рівно стільки, скільки живе конкретний екземпляр
+        компонента — розмонтували компонент, значення зникло без сліду. Жодного поняття
+        "застарілості", жодного request-дедуплікування, жодного спільного доступу з іншого
+        компонента. Це принципово інша річ, ніж бібліотеки кешування даних (TanStack Query,
+        SWR, Apollo) нижче на цій сторінці — ті кешують дані ЗА МЕЖАМИ життєвого циклу одного
+        компонента, іноді роками (доки явно не інвалідовані), і діляться цим кешем між будь-якою
+        кількістю компонентів, які попросять ті самі дані.</div>
+      </div>
+
+      <p><b><code>React.cache()</code></b> (з пакета <code>react</code>, не плутати з
+      <code>useMemo</code>) — механізм для дедуплікації/мемоізації викликів функцій (найчастіше
+      функцій завантаження даних) у межах <i>одного</i> серверного рендер-проходу. Активно
+      використовується React Server Components: якщо кілька різних компонентів у дереві
+      незалежно один від одного викликають ту саму обгорнуту в <code>cache()</code> функцію з тими
+      самими аргументами під час рендеру одного запиту — реально виконається лише один виклик,
+      решта отримають те саме мемоізоване значення. Життєвий цикл — рівно один рендер-прохід
+      сервера, не довше (це і є "Request Memoization", перший із чотирьох шарів кешу Next.js —
+      розділ 2 нижче).</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">React.cache() — дедуплікація в межах одного рендеру</span></div>
+        <pre><code>import { cache } from 'react';
+
+const getUser = cache(async (id) => {
+  console.log('реальний запит до БД для', id); // виконається лише один раз на id
+  return db.user.findUnique({ where: { id } });
+});
+
+// Компонент A і компонент B обидва викликають getUser(42)
+// під час рендеру ОДНІЄЇ сторінки — реальний запит піде лише один раз.</code></pre>
+      </div>
+
+      <p><b><code>use()</code></b> — хук, що вміє читати проміс або контекст прямо під час
+      рендеру. Стосовно кешування це працює так: якщо кілька компонентів отримують ПОСИЛАННЯ на той самий
+      проміс (наприклад, створений одним <code>fetch</code> вище по дереву й переданий як пропс),
+      <code>use()</code> дозволяє кожному з них "дочекатись" саме цього спільного проміса
+      (інтегруючись із Suspense для показу лоадера, поки він не резолвиться) — замість того, щоб
+      кожен компонент незалежно запускав свій власний запит. Це не сам механізм кешу, а спосіб
+      кількох компонентам <i>безпечно поділити один уже наявний результат</i>, включно з тим, що
+      прийшов із кешованого джерела.</p>
+
+      <div class="callout info">
+        <div class="ic">🎯</div>
+        <div class="body"><b>Коли мемоізація допомагає, а коли шкодить:</b> допомагає, коли
+        обчислення справді дороге (сортування/фільтрація великого масиву, важка похідна
+        структура) або коли потрібна стабільність посилання, щоб не зламати
+        <code>React.memo</code> дочірнього компонента (детальніше — туторіал 5). Шкодить, коли
+        обчислення дешеве: сама мемоізація (порівняння залежностей, зберігання кешованого
+        значення в пам'яті) коштує реальних CPU-циклів і пам'яті — для тривіального обчислення
+        (наприклад, <code>a + b</code>) накладні витрати на сам <code>useMemo</code> можуть
+        перевищити вартість просто порахувати це заново на кожен рендер.</div>
+      </div>
+    </section>
+
+    <section id="t2">
+      <div class="topic-head"><span class="tag notes">🟣</span><h2>Next.js caching: чотири шари</h2></div>
+      <p class="section-desc">Стратегії рендерингу (SSR/SSG/ISR) і зміна поведінки
+      <code>fetch</code>-кешування в Next.js 15 уже розібрані в
+      <a href="06-nextjs-architecture.html">туторіалі 6</a> та
+      <a href="07-nextjs-interview-qa.html">туторіалі 7</a>. Тут — те, чого там ще немає: як
+      саме кеш Next.js влаштований зсередини, чотирма окремими шарами, кожен зі своїм місцем
+      життя й способом інвалідації.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 620 340" role="img" aria-label="Чотири шари кешу Next.js: Request Memoization, Data Cache, Full Route Cache, Router Cache — від найкоротшого життя до найдовшого">
+          <defs>
+            <marker id="nc-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <g font-size="13">
+            <rect x="60" y="15" width="500" height="58" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="310" y="38" text-anchor="middle" font-weight="700">1. Request Memoization</text>
+            <text x="310" y="58" text-anchor="middle" font-size="11.5" fill="var(--fg-muted)">сервер, у межах ОДНОГО рендер-проходу · дедуплікує однакові fetch у цьому запиті</text>
+          </g>
+          <line x1="310" y1="73" x2="310" y2="93" stroke="currentColor" stroke-width="1.3" marker-end="url(#nc-arrow)"/>
+          <g font-size="13">
+            <rect x="60" y="93" width="500" height="58" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="310" y="116" text-anchor="middle" font-weight="700">2. Data Cache</text>
+            <text x="310" y="136" text-anchor="middle" font-size="11.5" fill="var(--fg-muted)">сервер, переживає запити й деплої · керується force-cache / revalidate / no-store</text>
+          </g>
+          <line x1="310" y1="151" x2="310" y2="171" stroke="currentColor" stroke-width="1.3" marker-end="url(#nc-arrow)"/>
+          <g font-size="13">
+            <rect x="60" y="171" width="500" height="58" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="310" y="194" text-anchor="middle" font-weight="700">3. Full Route Cache</text>
+            <text x="310" y="214" text-anchor="middle" font-size="11.5" fill="var(--fg-muted)">сервер, готовий HTML+RSC · будується при білді або on-demand (ISR)</text>
+          </g>
+          <line x1="310" y1="229" x2="310" y2="249" stroke="currentColor" stroke-width="1.3" marker-end="url(#nc-arrow)"/>
+          <g font-size="13">
+            <rect x="60" y="249" width="500" height="58" rx="8" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+            <text x="310" y="272" text-anchor="middle" font-weight="700" fill="var(--accent)">4. Router Cache</text>
+            <text x="310" y="292" text-anchor="middle" font-size="11.5" fill="var(--fg-muted)">клієнт, у межах сесії · миттєва навігація вперед/назад без запиту на сервер</text>
+          </g>
+          <text x="310" y="325" text-anchor="middle" font-size="11.5" fill="var(--fg-muted)">↓ від найкоротшого життя (один рендер) до найдовшого (уся клієнтська сесія)</text>
+        </svg>
+        <figcaption>Кожен шар вирішує свою задачу: 1 і 2 — на сервері, борються з дублюванням роботи; 3 — готовий результат цілого маршруту; 4 — клієнтський кеш для миттєвої навігації.</figcaption>
+      </figure>
+
+      <table>
+        <tr><th>Шар</th><th>Де живе</th><th>Що інвалідує</th></tr>
+        <tr><td><b>Request Memoization</b></td><td>Пам'ять сервера, один рендер-прохід</td><td>Автоматично — закінчується разом із запитом</td></tr>
+        <tr><td><b>Data Cache</b></td><td>Сервер, персистентно (між запитами й деплоями)</td><td><code>revalidatePath</code>, <code>revalidateTag</code>, час (<code>revalidate: N</code>)</td></tr>
+        <tr><td><b>Full Route Cache</b></td><td>Сервер, персистентно (з білду або ISR)</td><td>Новий білд, on-demand ISR-регенерація, ті самі <code>revalidate*</code></td></tr>
+        <tr><td><b>Router Cache</b></td><td>Клієнт, пам'ять браузера, одна сесія</td><td>Хардовий рефреш, явний <code>router.refresh()</code>, спливання таймера</td></tr>
+      </table>
+
+      <p><code>fetch</code> у Server Component напряму керує шаром 2 (Data Cache) через свої
+      опції: <code>{ cache: 'force-cache' }</code> — кешувати безстроково, поки не інвалідовано
+      вручну; <code>{ cache: 'no-store' }</code> — ніколи не кешувати, завжди свіжий запит;
+      <code>{ next: { revalidate: 60 } }</code> — ISR-подібна поведінка за часом, ідентична за
+      духом до вже розібраного в тексті "протухання" в туторіалі 7.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">теґований fetch + точкова інвалідація</span></div>
+        <pre><code>// у Server Component
+const res = await fetch('https://api.example.com/products', {
+  next: { tags: ['products'] },
+});
+
+// пізніше — у Server Action чи Route Handler, після зміни товару
+import { revalidateTag } from 'next/cache';
+
+export async function updateProduct(data) {
+  await db.product.update(data);
+  revalidateTag('products'); // бʼє саме Data Cache + Full Route Cache для цього тега
+}</code></pre>
+      </div>
+
+      <p><code>revalidatePath('/products')</code> робить те саме, але за URL-шляхом, а не за
+      довільним тегом — зручно, коли простіше сказати "оновити ось цю сторінку", ніж заздалегідь
+      продумувати систему тегів. Статичний рендеринг маршруту залучає всі чотири шари; повністю
+      динамічний маршрут (наприклад, той, що читає <code>cookies()</code> чи інші per-request
+      джерела) пропускає шар 3 (Full Route Cache) — його HTML у принципі не можна закешувати
+      наперед, бо він унікальний для кожного запиту. Найновіша модель кешування поверх цього ж
+      фундаменту (<code>"use cache"</code>, Cache Components) розібрана в
+      <a href="07-nextjs-interview-qa.html#catF">туторіалі 7, категорія F</a>.</p>
+    </section>
+
+    <section id="t3">
+      <div class="topic-head"><span class="tag notes">🟣</span><h2>TanStack Query (React Query)</h2></div>
+      <p class="section-desc">Одна з найважливіших тем цього списку. Ментальна модель:
+      TanStack Query — не заміна Redux/Zustand, а спеціалізований кеш саме для
+      <b>server state</b> (даних, якими володіє сервер і які можуть застаріти) — на відміну від
+      client state (даних, якими повністю володієте ви самі), для якого потрібен зовсім інший
+      інструментарій.</p>
+
+      <p><b><code>queryKey</code></b> — масив, що унікально ідентифікує запит у кеші, наприклад
+      <code>['todo', todoId]</code>. Включення змінної в ключ — це і є механізм "залежних"
+      записів кешу на параметр: різні <code>todoId</code> означають різні, незалежні одна від
+      одної записи кешу.</p>
+
+      <div class="callout warn">
+        <div class="ic">🎯</div>
+        <div class="body"><b><code>staleTime</code> vs <code>gcTime</code> — ключове питання
+        цієї теми.</b> <code>staleTime</code> — як довго дані вважаються <i>свіжими</i> після
+        отримання: поки цей час не сплив, повторний рендер/монтування компонента отримує дані
+        з кешу МИТТЄВО, без жодного фонового рефетчу. <code>gcTime</code> (раніше
+        <code>cacheTime</code>) — як довго <i>невикористаний</i> запис кешу (жоден активний
+        компонент його не запитує) лишається в пам'яті, перш ніж його остаточно приберуть.
+        Приклад: <code>staleTime: 0, gcTime: 5 * 60_000</code> означає — дані рефетчаться при
+        кожному новому монтуванні (бо вважаються застарілими одразу), але сам об'єкт даних
+        переживе 5 хвилин без жодного активного спостерігача, перш ніж його видалять з пам'яті
+        повністю.</div>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">базовий useQuery з обома опціями</span></div>
+        <pre><code>const { data } = useQuery({
+  queryKey: ['todo', todoId],
+  queryFn: () => fetchTodo(todoId),
+  staleTime: 60_000,      // свіже 1 хвилину — без фонового рефетчу
+  gcTime: 5 * 60_000,     // а якщо ніхто не питає — видалити з пам'яті через 5 хв
+});</code></pre>
+      </div>
+
+      <p><code>invalidateQueries(['todos'])</code> — позначає збіжні за ключем запити застарілими
+      й одразу тригерить рефетч, якщо на них зараз хтось активно підписаний. <code>refetch()</code>
+      — імперативний ручний рефетч без очікування на природне протухання.
+      <code>refetchOnWindowFocus</code> (рефетч, коли користувач повертається на вкладку —
+      типово для даних, що часто змінюються ззовні), <code>refetchOnMount</code> (чи рефетчити
+      при новому монтуванні компонента, навіть якщо дані технічно ще "свіжі"),
+      <code>refetchInterval</code> (поллінг за таймером — для живих дашбордів без WebSocket).</p>
+
+      <p><b><code>initialData</code> vs <code>placeholderData</code></b> — часто плутана пара.
+      <code>initialData</code> трактується як РЕАЛЬНІ отримані дані: одразу потрапляє в кеш і
+      підпорядковується звичайному <code>staleTime</code>. <code>placeholderData</code> —
+      явно тимчасові дані лише для UI, поки триває справжній запит: НІКОЛИ не записуються в
+      кеш і зникають, щойно приходить справжня відповідь.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">оптимістичне оновлення з відкатом</span></div>
+        <pre><code>const mutation = useMutation({
+  mutationFn: updateTodo,
+  onMutate: async (newTodo) => {
+    await queryClient.cancelQueries({ queryKey: ['todo', newTodo.id] });
+    const previous = queryClient.getQueryData(['todo', newTodo.id]);
+    queryClient.setQueryData(['todo', newTodo.id], newTodo); // оновили одразу
+    return { previous }; // контекст для відкату
+  },
+  onError: (err, newTodo, context) => {
+    queryClient.setQueryData(['todo', newTodo.id], context.previous); // відкат
+  },
+  onSettled: (newTodo) => {
+    queryClient.invalidateQueries({ queryKey: ['todo', newTodo.id] }); // звірка з сервером
+  },
+});</code></pre>
+      </div>
+
+      <p>Інші важливі можливості: <b>prefetching</b>
+      (<code>queryClient.prefetchQuery(...)</code> — наповнити кеш ще ДО монтування компонента,
+      наприклад по ховеру над посиланням); <b>dependent queries</b>
+      (<code>enabled: !!userId</code> — запит запускається лише коли попередня умова виконана);
+      <b>infinite queries</b> (<code>useInfiniteQuery</code> із <code>getNextPageParam</code> —
+      курсорна пагінація/безкінечний скрол); <b>SSR/гідратація</b> (<code>dehydrate</code>
+      серіалізує наповнений на сервері кеш у початковий HTML-payload, клієнтський
+      <code>QueryClient</code> потім <code>hydrate</code>-иться цими даними й НЕ робить зайвий
+      рефетч того, що вже отримав); <b>persisted query cache</b> — збереження кешу в
+      <code>localStorage</code>/<code>IndexedDB</code> через persister-плагін, щоб кеш пережив
+      повне перезавантаження сторінки.</p>
+    </section>
+
+    <section id="t4">
+      <div class="topic-head"><span class="tag notes">🟣</span><h2>SWR</h2></div>
+      <p class="section-desc">Назва — це і є концепція: <b>stale-while-revalidate</b> —
+      віддати закешовані дані миттєво, паралельно перевалідувати їх у фоні, оновити UI, коли
+      прийде свіжа відповідь.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">useSWR базовий приклад</span></div>
+        <pre><code>const { data, error, isLoading, mutate } = useSWR('/api/user', fetcher);</code></pre>
+      </div>
+
+      <p>SWR тримає один <b>глобальний кеш</b> (по суті — спільна мапа, ключована першим
+      аргументом <code>useSWR</code>): кілька компонентів, що викликають <code>useSWR</code> з
+      ОДНАКОВИМ ключем, автоматично діляться й дедуплікують запит, без жодного зусилля з вашого
+      боку — приємний контраст до ручного підняття fetch-стану нагору по дереву.</p>
+
+      <p><code>mutate</code> — один універсальний інструмент SWR одразу для ручного оновлення
+      кешу, перевалідації й оптимістичних апдейтів (де в TanStack Query за це відповідають три
+      різні речі — <code>setQueryData</code>/<code>invalidateQueries</code>/callbacks мутації,
+      тут — одна функція з різними аргументами). <code>dedupingInterval</code> — запити з тим
+      самим ключем у межах цього вікна злипаються в один. <code>refreshInterval</code> —
+      поллінг. <code>revalidateOnFocus</code>/<code>revalidateOnReconnect</code> — той самий
+      принцип, що й <code>refetchOnWindowFocus</code> у TanStack Query, лише інша назва.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">оптимістичне оновлення через mutate</span></div>
+        <pre><code>mutate('/api/user', { ...user, name: newName }, {
+  optimisticData: { ...user, name: newName },
+  rollbackOnError: true,
+});</code></pre>
+      </div>
+
+      <p>SSR-підтримка — концептуально просто: сервер передає <code>fallbackData</code>, яке
+      <code>useSWR</code> показує одразу, поки (за потреби) не довалідує дані на клієнті.</p>
+    </section>
+
+    <section id="t5">
+      <div class="topic-head"><span class="tag notes">🟣</span><h2>GraphQL caching: Apollo Client</h2></div>
+      <p class="section-desc">Найчастіше питане GraphQL-питання взагалі. <code>InMemoryCache</code>
+      — не просто "кеш відповідей", а <b>нормалізований</b> кеш (повний розбір нормалізації —
+      розділ 10 нижче): замість зберігати цілі відповіді запитів як непрозорі блоби, Apollo
+      розкладає кожен об'єкт із ID в один плаский довідник, ключований <b>Cache ID</b> —
+      зазвичай <code>__typename</code> + <code>id</code> (наприклад, <code>User:1</code>). Тому
+      той самий об'єкт, отриманий двома зовсім різними запитами, оновлюється в ОДНОМУ місці — і
+      обидва запити одразу бачать зміну.</p>
+
+      <p><code>__typename</code> — Apollo додає це поле в кожен запит автоматично, щоб мати з
+      чого рахувати Cache ID. <code>keyFields</code> (в <code>typePolicies</code>) — перевизначає,
+      які поля формують ID сутності, для типів без звичайного <code>id</code>.
+      <code>typePolicies</code> — загальна конфігурація кешу per-тип, включно з кастомними
+      <code>read</code>/<code>merge</code> для окремого поля (наприклад, власна логіка
+      об'єднання сторінок пагінації замість дефолтної заміни).</p>
+
+      <p>Ручне керування кешем: <code>writeQuery</code>/<code>readQuery</code> й
+      <code>writeFragment</code>/<code>readFragment</code> — записати/прочитати дані за формою
+      GraphQL-документа, коли Apollo сам не може вивести оновлення після мутації;
+      <code>cache.modify</code> — точково змінити конкретні поля вже закешованої сутності без
+      повного документа; <code>cache.evict</code> + <code>cache.gc()</code> — видалити сутність,
+      потім прибрати сміттям усе, що було досяжне лише через неї; <code>refetchQueries</code> —
+      "груба сила, зате надійно": попросити мутацію перезапитати конкретні запити після себе;
+      <code>update</code> — callback у мутації з повним контролем над записом у кеш одразу після
+      відповіді сервера; <code>optimisticResponse</code> — той самий принцип оптимістичного
+      оновлення, що й у TanStack Query/SWR, у форматі Apollo.</p>
+
+      <div class="callout warn">
+        <div class="ic">🎯</div>
+        <div class="body"><b><code>cache-first</code> vs <code>cache-and-network</code> —
+        друга ключова пара цієї теми.</b> <code>cache-first</code> (дефолт): якщо в кеші взагалі
+        є дані — використати їх, мережевий запит лише при справжньому промаху ("миттєво, але
+        потенційно застаріло"). <code>cache-and-network</code>: показати кешовані дані одразу
+        І одночасно завжди відправити мережевий запит, щоб оновити їх ("миттєво І врешті
+        свіжо").</div>
+      </div>
+
+      <table>
+        <tr><th>Fetch Policy</th><th>Поведінка</th></tr>
+        <tr><td><code>cache-first</code></td><td>Кеш, якщо є хоч щось; мережа лише при промаху</td></tr>
+        <tr><td><code>cache-and-network</code></td><td>Кеш одразу + завжди мережевий запит паралельно</td></tr>
+        <tr><td><code>network-only</code></td><td>Завжди мережа, але результат все одно пишеться в кеш</td></tr>
+        <tr><td><code>no-cache</code></td><td>Завжди мережа, і НЕ пишеться в кеш узагалі</td></tr>
+        <tr><td><code>cache-only</code></td><td>Ніколи мережа — помилка, якщо ще не закешовано</td></tr>
+        <tr><td><code>standby</code></td><td>Як <code>cache-first</code>, але не тригерить мережевий запит при монтуванні</td></tr>
+      </table>
+    </section>
+
+    <section id="t6">
+      <div class="topic-head"><span class="tag notes">🟣</span><h2>Relay</h2></div>
+      <p class="section-desc">Концептуальний рівень: теж нормалізований GraphQL-кеш (Relay
+      Store), але побудований довкола двох ідей, яких немає в Apollo в такому вигляді.</p>
+
+      <p><b>Fragments</b> — кожен компонент декларує рівно ті поля, які йому потрібні, через
+      власний GraphQL-фрагмент; Relay-компілятор статично об'єднує всі фрагменти дерева в один
+      запит на етапі білду. <b>Data masking</b> — компонент фізично не має доступу до жодних
+      полів, окрім задекларованих у ЙОГО ВЛАСНОМУ фрагменті, навіть якщо батьківський запит
+      отримав більше — це унеможливлює випадкову залежність від даних, які "просто випадково"
+      завантажив хтось інший.</p>
+
+      <p><b>Connections</b> — стандартизована Relay-специфікація курсорної пагінації
+      (<code>edges</code>/<code>node</code>/<code>pageInfo</code>). Garbage collection
+      непотрібних записів стору й оптимістичні оновлення — концептуально ті самі ідеї, що й в
+      Apollo.</p>
+
+      <table>
+        <tr><th></th><th>Apollo</th><th>Relay</th><th>TanStack Query</th></tr>
+        <tr><td>Нормалізований кеш</td><td>Так</td><td>Так</td><td>Ні (кеш per query-key)</td></tr>
+        <tr><td>Лише для GraphQL</td><td>Так</td><td>Так</td><td>Ні (будь-який fetcher)</td></tr>
+        <tr><td>Крива навчання</td><td>Середня</td><td>Висока (обов'язковий компілятор)</td><td>Низька</td></tr>
+        <tr><td>Найкраще для</td><td>Більшість GraphQL-проєктів</td><td>Дуже великі команди/кодові бази (Meta-масштаб)</td><td>REST або мішаний fetching</td></tr>
+      </table>
+      <p class="muted">Головний компроміс саме тут: нормалізація дає безкоштовну узгодженість
+      між запитами ціною складнішої ментальної моделі; простіший per-key кеш TanStack Query
+      легший для розуміння, але не оновлює одну сутність автоматично всюди, де вона згадується
+      в різних запитах.</p>
+    </section>
+
+    <section id="t7">
+      <div class="topic-head"><span class="tag notes">🟣</span><h2>Інші GraphQL-клієнти</h2></div>
+      <p class="section-desc">Достатньо на рівні концепцій: <code>urql</code> і
+      <code>graphql-request</code> — легші альтернативи Apollo/Relay.</p>
+      <p>Ключова вісь розуміння: <b>нормалізований кеш</b> (Apollo/Relay — узгодженість на
+      рівні сутності між усіма запитами) проти <b>document cache</b> (дефолтний режим
+      <code>urql</code> — кешує цілі результати запиту, ключовані запитом+змінними; простіше й
+      дешевше, але оновлення однієї сутності НЕ поширюється автоматично на всі запити, що
+      випадково теж її містять).</p>
+    </section>
+
+    <section id="t8">
+      <div class="topic-head"><span class="tag notes">🟣</span><h2>Redux caching / RTK Query</h2></div>
+      <p class="section-desc">Сам стор Redux — уже форма клієнтського кешу для будь-яких даних,
+      які ви вирішили в ньому тримати. RTK Query — це вже спеціалізоване рішення Redux Toolkit
+      саме для server-state кешування, пряма паралель до TanStack Query, але інтегроване в
+      Redux store/DevTools.</p>
+
+      <div class="flow">
+        <div class="step">Query</div>
+        <div class="arrow">→</div>
+        <div class="step">Cache</div>
+        <div class="arrow">→</div>
+        <div class="step">Subscription</div>
+        <div class="arrow">→</div>
+        <div class="step">Invalidation</div>
+        <div class="arrow">→</div>
+        <div class="step">Refetch</div>
+      </div>
+
+      <p><code>providesTags</code>/<code>invalidatesTags</code> — тег-орієнтована система
+      інвалідації RTK Query: запит декларує, які теги "надає" його результат, мутація декларує,
+      які теги вона "інвалідує" — RTK Query автоматично рефетчить будь-який активний запит, чиї
+      теги збіглися.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">providesTags / invalidatesTags</span></div>
+        <pre><code>const api = createApi({
+  endpoints: (builder) => ({
+    getTodos: builder.query({
+      query: () => '/todos',
+      providesTags: ['Todo'],
+    }),
+    addTodo: builder.mutation({
+      query: (body) => ({ url: '/todos', method: 'POST', body }),
+      invalidatesTags: ['Todo'], // автоматично рефетчить getTodos
+    }),
+  }),
+});</code></pre>
+      </div>
+
+      <p>Кеш ділиться автоматично між усіма компонентами, що використовують той самий query-хук
+      (той самий принцип, що й у TanStack Query/SWR). Далі — поллінг, prefetching, оптимістичні
+      оновлення (той самий підхід, що й вище) та персистентність кешу через
+      <code>redux-persist</code>, концептуально ідентична persisted query cache TanStack Query.</p>
+    </section>
+
+    <section id="t9">
+      <div class="topic-head"><span class="tag notes">🟣</span><h2>Zustand caching</h2></div>
+      <p class="section-desc">Middleware <code>persist</code> автоматично серіалізує стор у
+      <code>localStorage</code>/<code>sessionStorage</code> і регідратує його при завантаженні.
+      У SSR-контекстах є реальна пастка з таймінгом: персистований клієнтський стан фізично
+      недоступний під час серверного рендеру (сервер не бачить <code>localStorage</code>
+      користувача), тому перший клієнтський рендер до завершення регідратації може на мить
+      відрізнятись від серверного HTML.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Ключове розмежування:</b> Zustand — це загальний state management,
+        а НЕ спеціалізований server-state кеш на кшталт TanStack Query/SWR/Apollo. У нього немає
+        вбудованого поняття "ці дані можуть застаріти", немає дедуплікування запитів, немає
+        автоматичної фонової перевалідації. Якщо тримати серверні дані в Zustand — усе це
+        доведеться будувати вручну самому, що й пояснює, чому спеціалізовані бібліотеки
+        кешування даних узагалі існують як окрема категорія.</div>
+      </div>
+    </section>
+
+    <section id="t10">
+      <div class="topic-head"><span class="tag notes">🟣</span><h2>Нормалізація даних</h2></div>
+      <p class="section-desc">Особливо релевантно для GraphQL — це те, на чому побудований
+      <code>InMemoryCache</code> Apollo (розділ 5) і Relay Store (розділ 6).</p>
+
+      <p>Замість того, щоб дублювати дані автора всередині кожного поста, що на нього
+      посилається, нормалізований кеш зберігає кожну сутність один раз у плаский довідник, а
+      пости тримають лише ПОСИЛАННЯ на автора:</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">денормалізовано (наївно) → нормалізовано (кеш)</span></div>
+        <pre><code>// Денормалізовано — автор продубльований у кожному пості
+{
+  posts: [
+    { id: 10, title: 'A', author: { id: 1, name: 'Ольга' } },
+    { id: 11, title: 'B', author: { id: 1, name: 'Ольга' } }, // той самий автор, копія
+  ],
+}
+
+// Нормалізовано — так це реально лежить у InMemoryCache
+{
+  'User:1':  { id: 1, name: 'Ольга' },
+  'Post:10': { id: 10, title: 'A', author: { __ref: 'User:1' } },
+  'Post:11': { id: 11, title: 'B', author: { __ref: 'User:1' } },
+}</code></pre>
+      </div>
+
+      <p><b>Ідентичність сутності</b> — те, що робить два об'єкти "тим самим" записом у кеші
+      (найчастіше <code>__typename + id</code>). Головний виграш: онови <code>User:1</code> один
+      раз — і обидва пости (<code>Post:10</code>, <code>Post:11</code>), що на нього
+      посилаються, автоматично побачать зміну, без жодного явного рефетчу кожного з них.
+      <b>Денормалізація</b> — зворотна операція, яку кеш робить прозоро для вас при читанні:
+      відновлює вкладену форму, яку насправді запитав компонент, збираючи її на льоту з плаского
+      сховища за посиланнями.</p>
+    </section>
+
+    <div class="card">
+      ← <a href="14-frontend-caching-fundamentals.html">14. Frontend Caching: основи</a>
+      &nbsp;·&nbsp;
+      Далі: <b><a href="16-frontend-caching-advanced.html">16. Frontend Caching: просунуті теми →</a></b>
+    </div>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Теми узагальнені з реального переліку тем для підготовки до співбесід по кешуванню на
+  фронтенді — з фокусом на React/Next.js та бібліотеки кешування даних.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

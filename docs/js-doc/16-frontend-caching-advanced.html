@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>16. Frontend Caching: просунуті теми — JS Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{max-width:1180px; margin:0 auto; padding:14px 24px;}
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--fun); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:780px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+
+  article section{margin-bottom:44px; scroll-margin-top:80px;}
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  article h2{font-size:22px; margin:0; letter-spacing:-.01em;}
+  article h3{font-size:16px; margin:22px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:16px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .codecard{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:14px 0; background:var(--code-bg);}
+  .codecard .bar{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%); border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);}
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre; font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-def{color:#ffc66d;}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.9px; display:flex; align-items:baseline; gap:10px;
+  }
+  .qa summary .qnum{
+    color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700;
+    flex-shrink:0;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 18px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .a p{margin:8px 0; color:var(--fg-muted);}
+  .qa .a p:first-child{margin-top:0;}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:2px; vertical-align:middle; flex-shrink:0;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .qa .difficulty.sys{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+
+  .legend{display:flex; gap:14px; flex-wrap:wrap; margin:16px 0 22px; font-size:12.8px; color:var(--fg-muted);}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">📚 JS Interview Prep <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">JS Doc · Категорія 16</div>
+  <h1>Frontend Caching: просунуті теми</h1>
+  <p class="lead">
+    Третя й остання частина серії про кешування на фронтенді — після
+    <a href="14-frontend-caching-fundamentals.html">основ</a> і
+    <a href="15-frontend-caching-libraries.html">бібліотек</a> лишається найважче: коли й чому
+    кеш перестає бути правильним, як не показати користувачу застарілі дані, і як не влаштувати
+    витік чужих даних через спільний кеш. Це той рівень, де "просто додай кеш" перестає бути
+    відповіддю.
+  </p>
+  <div class="pills">
+    <span class="pill">🔥 Інвалідація, race conditions, безпека</span>
+    <span class="pill">🎯 Q&amp;A саме для React-розробників</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/05-python-types.html">5. Типи</a>
+        <a href="../python-tutorials/06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="../python-tutorials/07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="../python-tutorials/08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="../python-tutorials/09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/10-logging.html">10. Логування</a>
+        <a href="../python-tutorials/11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="../python-tutorials/13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="../python-tutorials/14-design-patterns.html">14. Патерни</a>
+        <a href="../python-tutorials/15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="00-methodology.html">0. Методологія</a>
+        <a href="01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="02-browser-internals.html">2. Браузер зсередини</a>
+        <a href="03-frontend-security.html">3. Безпека фронтенду</a>
+        <a href="04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="05-react-deep-dive.html">5. React углиб</a>
+        <a href="06-nextjs-architecture.html">6. Next.js та архітектура</a>
+        <a href="07-nextjs-interview-qa.html">7. Next.js: Q&amp;A</a>
+        <a href="08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="09-testing-cicd-cloud.html">9. Тести, CI/CD, хмара</a>
+        <a href="10-ai-tools.html">10. AI-інструменти</a>
+        <a href="11-http-anatomy.html">11. HTTP: анатомія запитів</a>
+        <a href="12-this.html">12. this</a>
+        <a href="13-typescript-essentials.html">13. TypeScript essentials</a>
+        <a href="14-frontend-caching-fundamentals.html">14. Caching: основи</a>
+        <a href="15-frontend-caching-libraries.html">15. Caching: бібліотеки</a>
+        <a href="16-frontend-caching-advanced.html" class="active">16. Caching: просунуті теми</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#t1">1. Cache invalidation</a></li>
+      <li><a href="#t2">2. Optimistic Updates</a></li>
+      <li><a href="#t3">3. Prefetching</a></li>
+      <li><a href="#t4">4. Cache consistency</a></li>
+      <li><a href="#t5">5. Race conditions у кешуванні</a></li>
+      <li><a href="#t6">6. Безпека й кешування</a></li>
+      <li><a href="#qa">Q&amp;A для React-розробників</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="t1">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>Cache invalidation</h2></div>
+      <p>
+        Є стара програмістська приказка: у computer science є лише дві по-справжньому важкі
+        речі — <i>інвалідація кешу</i> та <i>називання змінних</i> (ну і помилки на одиницю).
+        Це не жарт заради жарту: кеш і джерело правди (сервер, база даних) можуть змінюватись
+        <b>незалежно одне від одного</b>, і не існує єдиного універсально правильного способу
+        дізнатись, що саме зараз кеш уже бреше. Кожна стратегія нижче — це різний компроміс між
+        простотою, точністю й вартістю зайвих запитів.
+      </p>
+
+      <table>
+        <tr><th>Стратегія</th><th>Механізм</th><th>Компроміс</th></tr>
+        <tr>
+          <td><b>TTL (time-to-live)</b></td>
+          <td>Запис у кеші автоматично "протухає" через N секунд/хвилин, незалежно від того, чи дані реально змінились</td>
+          <td>Найпростіше в реалізації; або віддаєте застарілі дані впродовж вікна TTL, або перезапитуєте частіше, ніж треба, якщо TTL занизити "про всяк випадок"</td>
+        </tr>
+        <tr>
+          <td><b>Ручна (явна) інвалідація</b></td>
+          <td>Код явно каже "цей запис більше не валідний" одразу після дії, що могла його змінити — напр. <code>invalidateQueries(...)</code> одразу після успішної мутації</td>
+          <td>Точна й миттєва, але вимагає, щоб розробник згадав <i>кожне</i> місце, де ці дані могли застаріти — легко забути одне</td>
+        </tr>
+        <tr>
+          <td><b>Тег-базована інвалідація</b></td>
+          <td>Кожен запис при записі позначається семантичним тегом (напр. <code>Product:123</code>), а інвалідація йде по тегу, а не по точному ключу — один запис може одразу зробити невалідними багато пов'язаних читань</td>
+          <td>Не потребує хардкодити кожен query key вручну; ціна — ще одна абстракція (теги), яку треба консистентно розставляти</td>
+        </tr>
+        <tr>
+          <td><b>Версіонування</b></td>
+          <td>Замість "протухання" старого запису — нова адреса/ідентичність для нових даних (напр. <code>app.js?v=123</code> чи хеш вмісту у назві файлу)</td>
+          <td>Ідеально для незмінних (immutable) статичних ресурсів — старий кеш просто ніколи не запитується повторно, бо URL уже інший; не підходить для даних, що змінюються "на місці"</td>
+        </tr>
+        <tr>
+          <td><b>Подієва інвалідація</b></td>
+          <td>Сервер сам активно повідомляє клієнта, що дані змінились (WebSocket, push), замість того щоб клієнт чекав TTL чи опитував (polling)</td>
+          <td>Найсвіжіші дані з мінімальною затримкою, але вимагає постійного з'єднання й інфраструктури для доставки подій</td>
+        </tr>
+      </table>
+
+      <div class="flow">
+        <div class="step">WebSocket</div>
+        <div class="arrow">→</div>
+        <div class="step">"дані змінились"</div>
+        <div class="arrow">→</div>
+        <div class="step">інвалідація кешу</div>
+        <div class="arrow">→</div>
+        <div class="step">рефетч</div>
+      </div>
+
+      <p class="muted">
+        Тег-базована інвалідація — не абстрактна теорія: це буквально те, як працюють
+        <code>providesTags</code>/<code>invalidatesTags</code> у RTK Query та
+        <code>revalidateTag</code> у Next.js (детальніше — <a href="15-frontend-caching-libraries.html">туторіал 15</a>)
+        — обидва реалізують саме цей патерн, лише під різними назвами.
+      </p>
+    </section>
+
+    <section id="t2">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>Optimistic Updates</h2></div>
+      <p>
+        Ідея проста: не чекати підтвердження сервера, щоб оновити UI. Замість "запит → чекаємо →
+        оновлюємо екран" — "оновлюємо екран одразу → надсилаємо запит у фоні → якщо щось пішло не
+        так, відкочуємо назад". Користувачу це відчувається як миттєва реакція інтерфейсу, а не
+        затримка мережевого round-trip.
+      </p>
+
+      <div class="flow">
+        <div class="step">Дія користувача</div>
+        <div class="arrow">→</div>
+        <div class="step">Оновити UI одразу</div>
+        <div class="arrow">→</div>
+        <div class="step">Запит до сервера</div>
+        <div class="arrow">→</div>
+        <div class="step">✅ Успіх → лишити</div>
+      </div>
+      <div class="flow">
+        <div class="step" style="visibility:hidden;">Дія користувача</div>
+        <div class="arrow" style="visibility:hidden;">→</div>
+        <div class="step" style="visibility:hidden;">Оновити UI одразу</div>
+        <div class="arrow" style="visibility:hidden;">→</div>
+        <div class="step" style="visibility:hidden;">Запит до сервера</div>
+        <div class="arrow">→</div>
+        <div class="step">❌ Провал → rollback</div>
+      </div>
+
+      <p>
+        Механізм відкату (<b>rollback</b>) на практиці завжди зводиться до одного й того самого:
+        <b>зробити знімок (snapshot)</b> попереднього значення ще ДО того, як застосувати
+        оптимістичну зміну — і якщо мутація провалилась, просто повернути кеш до цього знімка.
+        Це працює однаково, чи ви вручну керуєте станом, чи використовуєте хуки на кшталт
+        React Query <code>onMutate</code>/<code>onError</code> (детальніше в
+        <a href="15-frontend-caching-libraries.html">туторіалі 15</a>).
+      </p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">snapshot → optimistic apply → rollback</span></div>
+        <pre><code>async function toggleTodoOptimistic(cache, id) {
+  const key = 'todo:' + id;
+  const previous = cache.get(key);              // 1. знімок ДО зміни
+  cache.set(key, { ...previous, done: !previous.done }); // 2. миттєва зміна UI
+
+  try {
+    await api.updateTodo(id, { done: !previous.done }); // 3. запит у фоні
+    // сервер підтвердив — залишаємо оптимістичний стан як є
+  } catch (err) {
+    cache.set(key, previous);                    // 4. rollback до знімка
+    throw err;
+  }
+}</code></pre>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Дві реальні пастки:</b> по-перше, race condition — що, якщо
+        користувач встигає натиснути дію вдруге ще до того, як прийшла відповідь на першу
+        (детально — розділ 5 нижче). По-друге, <b>синхронізація</b> — відповідь сервера не
+        завжди точно збігається з тим, що ви оптимістично вгадали (напр. сервер міг застосувати
+        додаткову бізнес-логіку) — тоді потрібно звірити й, за потреби, тихо скоригувати UI під
+        реальну відповідь, а не сліпо довіряти вже застосованому здогаду.</div>
+      </div>
+    </section>
+
+    <section id="t3">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>Prefetching</h2></div>
+      <p>
+        Ідея: почати завантажувати дані чи код <i>до</i> того, як вони реально знадобляться —
+        щоб у момент, коли користувач їх таки запросить, відповідь уже лежала готова в кеші, а
+        не йшла в мережу з нуля.
+      </p>
+      <table>
+        <tr><th>Форма</th><th>Як працює</th></tr>
+        <tr><td>Route prefetching</td><td>Next.js <code>&lt;Link&gt;</code> автоматично підвантажує код і дані сторінки, щойно посилання потрапляє у viewport (або на hover, залежно від версії/налаштувань)</td></tr>
+        <tr><td>Data prefetching</td><td>Явний виклик на кшталт <code>queryClient.prefetchQuery(...)</code> — прогріти кеш бібліотеки даними, які ви впевнені знадобляться найближчим часом</td></tr>
+        <tr><td>Hover prefetch</td><td>Запустити запит саме в момент, коли курсор заходить на посилання/кнопку — між "навів" і "клікнув" природно є ~100-300 мс, яких часто достатньо, щоб випередити мережу</td></tr>
+        <tr><td>GraphQL prefetch</td><td>Та сама ідея для GraphQL-клієнта — напр. <code>client.query(...)</code> в Apollo заздалегідь, щоб прогріти <code>InMemoryCache</code> ще до навігації</td></tr>
+      </table>
+      <div class="flow">
+        <div class="step">Hover на продукт</div>
+        <div class="arrow">→</div>
+        <div class="step">prefetch даних продукту</div>
+        <div class="arrow">→</div>
+        <div class="step">Клік</div>
+        <div class="arrow">→</div>
+        <div class="step">Миттєвий UI</div>
+      </div>
+    </section>
+
+    <section id="t4">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>Cache consistency</h2></div>
+      <p>
+        Центральне запитання цього розділу: <b>що станеться, якщо кеш містить застарілі дані?</b>
+        Відповідь залежить від того, яку модель узгодженості ви (свідомо чи ні) обрали.
+      </p>
+      <table>
+        <tr><th>Модель</th><th>Гарантія</th></tr>
+        <tr><td><b>Сильна узгодженість (strong consistency)</b></td><td>Кожне читання одразу відображає найсвіжіший запис, всюди й миттєво — дорого й складно забезпечити в розподіленій системі клієнт+сервер+CDN</td></tr>
+        <tr><td><b>Кінцева узгодженість (eventual consistency)</b></td><td>Читання МОЖУТЬ якийсь час повертати застарілі дані після запису, але система гарантує, що вони врешті-решт зійдуться до правильного значення, якщо нових записів більше не буде</td></tr>
+      </table>
+      <p>
+        Практично весь фронтенд-кешинг — це кінцева узгодженість за визначенням: будь-який кеш
+        на основі TTL чи stale-while-revalidate <i>не гарантує</i> миттєвої свіжості, лише
+        конвергенцію з часом. Реальне мистецтво — усвідомлено обирати, <b>де</b> сильна
+        узгодженість дійсно критична (баланс банківського рахунку одразу після переказу), а де
+        кінцева цілком прийнятна (лічильник лайків, що оновиться за секунду).
+      </p>
+      <p class="muted">
+        Той самий компроміс — центральна тема CAP-теореми в контексті розподілених баз даних
+        (<a href="../python-tutorials/17-databases-fundamentals.html">Python Doc, туторіал 17</a>) —
+        тут та сама логіка застосована до фронтенд-кешу, а не до бази даних.
+      </p>
+      <p>
+        Прийнявши кінцеву узгодженість як реальність, постає наступне питання: конкурентні
+        запити й синхронізація сервер→клієнт стають чимось, що треба явно продумувати — саме
+        це й розбирає наступний розділ.
+      </p>
+    </section>
+
+    <section id="t5">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>Race conditions у кешуванні</h2></div>
+      <p>Класичний сценарій, який ламає наївний кеш:</p>
+      <ol>
+        <li>Користувач вводить "cat" → летить <b>Запит A</b> (пошук за "cat").</li>
+        <li>Користувач одразу змінює запит на "dog" → летить <b>Запит B</b>.</li>
+        <li><b>Відповідь B</b> (свіжа, "dog") повертається <i>раніше</i>, ніж <b>відповідь A</b> — наприклад, серверний запит для A виявився повільнішим.</li>
+        <li>Якщо наївно застосовувати "хто відповів останнім — той і правий": застаріла відповідь A перезаписує свіжу відповідь B, і користувач бачить результати пошуку "cat" замість щойно введеного "dog".</li>
+      </ol>
+      <div class="callout bad">
+        <div class="ic">❌</div>
+        <div class="body">Проблема не в тому, який запит <i>стартував</i> раніше — а в тому, який
+        <i>відповів</i> раніше. Порядок відповідей мережі не гарантує порядок запитів.</div>
+      </div>
+      <p>Реальні рішення, кожне зі своїм механізмом:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">AbortController — скасування попереднього запиту</span></div>
+        <pre><code>let currentController = null;
+
+async function search(query) {
+  if (currentController) currentController.abort(); // скасувати попередній
+  currentController = new AbortController();
+
+  const response = await fetch(`/api/search?q=${query}`, {
+    signal: currentController.signal,
+  });
+  return response.json();
+}</code></pre>
+      </div>
+      <table>
+        <tr><th>Підхід</th><th>Механізм</th></tr>
+        <tr><td><code>AbortController</code></td><td>Явно скасовує попередній запит у момент старту нового — навіть якщо стара відповідь усе ж прийде, вона вже позначена як aborted і ігнорується</td></tr>
+        <tr><td>ID запитів</td><td>Кожному запиту присвоюється зростаючий ідентифікатор; застосовується лише відповідь, чий ID досі збігається з <i>останнім</i> запущеним запитом — інші тихо ігноруються, навіть без явного скасування</td></tr>
+        <tr><td>Часові мітки</td><td>Та сама ідея: порівнюється момент <i>старту запиту</i>, а не момент <i>приходу відповіді</i> — застосовується відповідь найновішого запиту, а не та, що прийшла останньою</td></tr>
+        <tr><td>Query-бібліотеки роблять це самі</td><td>React Query, SWR та Apollo внутрішньо відстежують, чи відповідь досі належить активному query key/змінним, і мовчки відкидають "застарілі" відповіді (детальніше — <a href="15-frontend-caching-libraries.html">туторіал 15</a>) — одна з непомітних, але реальних причин обирати зрілу бібліотеку замість <code>fetch</code> + <code>useState</code> вручну</td></tr>
+        <tr><td>Версіонування кешу</td><td>Кожному запису присвоюється покоління (generation), що зростає з кожним новим запитом; запис зі старішим поколінням, ніж уже в кеші, просто відкидається при спробі запису</td></tr>
+      </table>
+    </section>
+
+    <section id="t6">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>Безпека й кешування</h2></div>
+      <p>
+        Кеш за визначенням віддає <b>ту саму</b> відповідь кільком запитувачам — і саме тому
+        приватні/персоналізовані дані в <b>спільному</b> кеші (CDN, спільний проксі) без
+        додаткової обережності — це майже завжди помилка: наступний користувач цілком реально
+        може отримати дані попереднього.
+      </p>
+      <div class="callout bad">
+        <div class="ic">🎯</div>
+        <div class="body"><b>Cache poisoning:</b> атакуючий маніпулює запитом так, що шкідлива
+        або неправильна відповідь потрапляє в кеш і віддається <i>іншим</i>, легітимним
+        користувачам — класичний вектор: сервер варіює відповідь за заголовком, якого CDN не
+        враховує в ключі кешування, тож підроблене значення цього заголовка від атакуючого
+        закешовується й повторюється всім наступним відвідувачам.</div>
+      </div>
+      <p>
+        Навіть без спільного кешу лишається ризик <b>чутливих даних у кеші самого браузера</b> —
+        на спільному/публічному комп'ютері, через розширення браузера чи інший скрипт на сторінці,
+        що потенційно може прочитати закешовані відповіді чи сховище.
+      </p>
+      <table>
+        <tr><th>Директива</th><th>Що означає</th></tr>
+        <tr><td><code>private</code></td><td>Спільні кеші (CDN тощо) <b>не мають права</b> зберігати цю відповідь — лише браузер самого користувача</td></tr>
+        <tr><td><code>no-store</code></td><td>Не кешувати <b>ніде взагалі</b> — навіть у браузері; найсуворіша директива, доречна для дійсно чутливих відповідей (дані рахунку, платіжна інформація)</td></tr>
+      </table>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>JWT + кешування:</b> відповідь, що залежить від заголовка
+        <code>Authorization</code>, за визначенням персоналізована під конкретного користувача —
+        ніколи не дозволяйте CDN кешувати таку відповідь, якщо тільки цей заголовок явно не
+        включений у ключ кешування (типова конфігурація CDN за замовчуванням цього не робить) —
+        класична й небезпечна помилка конфігурації.</div>
+      </div>
+      <p>
+        <b>CDN + персоналізований контент</b> — не суперечність, якщо розділити відповідальність:
+        кешувати на edge лише ту частину сторінки, що однакова для всіх (базовий HTML, статичний
+        контент) з довгим TTL, а персоналізовані фрагменти — або довантажувати окремим
+        клієнтським запитом, позначеним <code>private</code>/<code>no-store</code>, або взагалі
+        не кешувати на CDN, довіряючи це виключно браузеру користувача.
+      </p>
+    </section>
+
+    <section id="qa">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>Q&amp;A: найпопулярніші питання про кешування для React-розробників</h2></div>
+      <p class="section-desc">Ці 22 питання зібрані з тем, позначених 🔥 у всіх трьох частинах серії — саме ті, що найчастіше звучать на реальних співбесідах React/Next.js-розробників.</p>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--info)"></span>База</span>
+        <span><span class="dot" style="background:var(--interview)"></span>Пастка</span>
+        <span><span class="dot" style="background:var(--fun)"></span>Просунуте</span>
+        <span><span class="dot" style="background:var(--good)"></span>Системний дизайн</span>
+      </div>
+
+      <details class="qa">
+        <summary><span class="qnum">01</span><span class="difficulty trick">Пастка</span><code>staleTime</code> vs <code>gcTime</code> у React Query — у чому різниця?</summary>
+        <div class="a">
+          <p><code>staleTime</code> — як довго дані вважаються "свіжими" й НЕ тригерять
+          автоматичний рефетч (напр. при новому монтуванні компонента чи фокусі вікна).
+          <code>gcTime</code> (раніше <code>cacheTime</code>) — як довго дані взагалі
+          залишаються в пам'яті кешу <i>після того</i>, як жоден компонент на них більше не
+          підписаний, перш ніж їх остаточно приберуть. Дані можуть бути одночасно "несвіжими"
+          (по <code>staleTime</code>) але все ще присутніми в кеші (по <code>gcTime</code>) —
+          саме тому старий екран часто миттєво показує попередні дані, а тоді тихо оновлюється
+          у фоні.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">02</span><span class="difficulty core">База</span>Чому <code>useMemo</code> — це не кеш даних?</summary>
+        <div class="a">
+          <p><code>useMemo</code> — це мемоізація <i>результату обчислення всередині одного
+          компонента</i>, прив'язана до масиву залежностей і до життєвого циклу цього
+          конкретного компонента: розмонтували компонент — значення зникло, і воно ніколи не
+          ходить у мережу. Кеш даних (React Query, SWR, Apollo) — це сховище, незалежне від
+          конкретного компонента, з власним TTL/інвалідацією, здатне ділитись однією й тією
+          самою відповіддю сервера між багатьма непов'язаними компонентами й пережити
+          розмонтування будь-якого з них.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">03</span><span class="difficulty adv">Просунуте</span>Назвіть чотири рівні кешу Next.js по порядку — що інвалідує кожен?</summary>
+        <div class="a">
+          <p><b>Request Memoization</b> (живе рівно один рендер сервера, дедуплікує однакові
+          <code>fetch</code>-виклики в межах одного запиту — інвалідується завершенням запиту)
+          → <b>Data Cache</b> (переживає окремі запити й навіть деплої, керується опціями
+          <code>fetch</code> — <code>revalidate</code>/<code>revalidateTag</code>/<code>revalidatePath</code>)
+          → <b>Full Route Cache</b> (кешує згенерований HTML+RSC payload статичних маршрутів на
+          білді — інвалідується новим білдом або ревалідацією Data Cache, від якої він залежить)
+          → <b>Router Cache</b> (клієнтський, у пам'яті браузера, кешує вже відвіданий RSC
+          payload для миттєвої навігації назад — інвалідується оновленням сторінки чи
+          закінченням TTL сесії). Детальний розбір усіх чотирьох — <a href="15-frontend-caching-libraries.html">туторіал 15</a>.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">04</span><span class="difficulty trick">Пастка</span>Apollo: <code>cache-first</code> vs <code>cache-and-network</code> — коли який?</summary>
+        <div class="a">
+          <p><code>cache-first</code> — якщо в кеші вже є відповідь на цей запит, віддати її й
+          <b>не</b> ходити в мережу взагалі (навіть у фоні). <code>cache-and-network</code> —
+          одразу віддати те, що є в кеші (для миттєвого UI), АЛЕ паралельно все одно піти в
+          мережу за свіжими даними й оновити UI, коли вони прийдуть. Перше економить мережу
+          ціною можливої застарілості; друге завжди свіже, ціною зайвого мережевого запиту
+          навіть коли кеш і так був актуальний.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">05</span><span class="difficulty adv">Просунуте</span>Що реально дає нормалізований кеш порівняно з наївним кешем відповідей?</summary>
+        <div class="a">
+          <p>Наївний кеш зберігає ЦІЛУ відповідь запиту як один непрозорий блоб під ключем цього
+          запиту — та сама сутність (напр. користувач <code>User:1</code>), що прийшла в
+          складі двох різних запитів, зберігається в кеші <i>двічі</i>, незалежно одна від
+          одної. Оновіть її в одному місці — друга копія лишається застарілою. Нормалізований
+          кеш зберігає кожну сутність <b>рівно один раз</b> за її ідентичністю (<code>__typename</code> +
+          <code>id</code> в Apollo), а запити просто тримають посилання на ці сутності — оновлення
+          однієї сутності одразу відображається <i>скрізь</i>, де на неї є посилання, без
+          ручної синхронізації копій.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">06</span><span class="difficulty core">База</span>Коли ставити <code>Cache-Control: private, no-store</code>?</summary>
+        <div class="a">
+          <p>Для будь-якої відповіді, що містить персоналізовані або чутливі дані конкретного
+          автентифікованого користувача (баланс рахунку, платіжні дані, приватний профіль).
+          <code>private</code> забороняє спільним кешам (CDN, проксі) зберігати відповідь —
+          лише браузер користувача може; <code>no-store</code> йде ще суворіше й забороняє
+          зберігання взагалі <i>будь-де</i>, навіть у браузері. Разом вони — правильний дефолт
+          для всього, що не повинно пережити закриття вкладки чи потрапити до іншого
+          користувача через спільний кеш.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">07</span><span class="difficulty sys">Системний дизайн</span>Опишіть повний flow optimistic update із відкатом.</summary>
+        <div class="a">
+          <p>1) Користувач ініціює дію. 2) Перед відправкою запиту — зробити знімок поточного
+          стану кешу. 3) Одразу застосувати очікувану зміну до UI/кешу, не чекаючи сервера.
+          4) Надіслати реальний запит у фоні. 5а) Якщо сервер підтвердив успіх — лишити
+          оптимістичний стан (за потреби звірити з реальною відповіддю сервера й скоригувати
+          розбіжності). 5б) Якщо запит провалився — відновити кеш точно до знімка з кроку 2,
+          показавши користувачу, що дія не вдалась.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">08</span><span class="difficulty adv">Просунуте</span>Класичний сценарій "стара відповідь перезаписує нову" — як його уникнути?</summary>
+        <div class="a">
+          <p>Запит A (повільний) стартує першим, запит B (швидкий, з новішими параметрами)
+          стартує другим — але відповідь B приходить <i>раніше</i> відповіді A. Наївне
+          застосування "останньої отриманої відповіді" дає застарілий результат A поверх
+          свіжого B. Рішення: скасовувати попередній запит через <code>AbortController</code>
+          при старті нового, або перевіряти, що відповідь відповідає саме останньому
+          запущеному запиту (за ID чи часовою міткою старту, не приходу) перед тим, як її
+          застосувати. React Query/SWR/Apollo роблять це автоматично внутрішньо.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">09</span><span class="difficulty core">База</span><code>providesTags</code> vs <code>invalidatesTags</code> у RTK Query?</summary>
+        <div class="a">
+          <p><code>providesTags</code> оголошується на <i>запиті</i> (query) — які теги описують
+          дані, які він повернув (напр. <code>{ type: 'Product', id: 123 }</code>).
+          <code>invalidatesTags</code> оголошується на <i>мутації</i> — які теги вона робить
+          невалідними після успіху. RTK Query автоматично рефетчить будь-який активний запит,
+          чиї теги збіглись із тегами, які щойно інвалідувала мутація — типова реалізація
+          тег-базованої інвалідації з розділу 1.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">10</span><span class="difficulty trick">Пастка</span>SWR <code>mutate</code> vs React Query <code>invalidateQueries</code> + <code>setQueryData</code>?</summary>
+        <div class="a">
+          <p>SWR об'єднує обидва сценарії в одну функцію <code>mutate</code>: викликана без
+          аргументів — просто тригерить ревалідацію (аналог <code>invalidateQueries</code>);
+          викликана зі значенням — одразу підміняє кеш цим значенням, опційно без ревалідації
+          (аналог <code>setQueryData</code>). React Query розділяє це на дві явно різні функції:
+          <code>invalidateQueries</code> (позначити застарілим і рефетчити) та
+          <code>setQueryData</code> (напряму записати значення в кеш, часто саме для
+          optimistic-апдейтів, без походу в мережу).</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">11</span><span class="difficulty sys">Системний дизайн</span>Коли cache-first стратегія Service Worker — неправильний вибір?</summary>
+        <div class="a">
+          <p>Для даних, що змінюються часто (напр. відповіді API з живими цінами чи статусами) —
+          cache-first означає, що користувач може довго бачити застарілі дані, доки кеш
+          нарешті не оновиться. Для такого API доречніший network-first (спробувати мережу,
+          відкотитись на кеш лише при відмові мережі) або stale-while-revalidate (віддати кеш
+          миттєво, але одразу оновити його у фоні для наступного разу). Cache-first залишається
+          правильним вибором саме для статичних, рідко змінюваних ресурсів (іконки, шрифти,
+          версійовані бандли).</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">12</span><span class="difficulty core">База</span><code>max-age</code> vs <code>s-maxage</code>?</summary>
+        <div class="a">
+          <p><code>max-age</code> застосовується до <i>будь-якого</i> кешу — і браузера, і
+          спільних (CDN, проксі). <code>s-maxage</code> ("shared max-age") застосовується
+          <i>лише</i> до спільних кешів і, коли присутній, перевизначає для них
+          <code>max-age</code> — дозволяючи, наприклад, тримати відповідь довше на CDN, ніж у
+          браузері конкретного користувача (чи навпаки).</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">13</span><span class="difficulty adv">Просунуте</span>Чому <code>WeakMap</code> іноді правильніша структура для кешу, ніж <code>Map</code>?</summary>
+        <div class="a">
+          <p>Якщо ключами кешу є самі об'єкти (напр. кешування результату обчислення "для цього
+          конкретного DOM-вузла" чи "для цього конкретного React-компонента"), <code>Map</code>
+          тримає <b>сильне</b> посилання на ключ — об'єкт-ключ ніколи не збереться сміттязбирачем,
+          доки живий сам <code>Map</code>, навіть якщо ніде в застосунку більше немає інших
+          посилань на цей об'єкт — витік пам'яті. <code>WeakMap</code> тримає ключ <b>слабко</b>:
+          щойно зникає остання "звичайна" посилання на об'єкт-ключ, запис автоматично прибирається
+          збирачем сміття разом з ним — ідеально для кешу метаданих "прив'язаних" до об'єкта, що
+          не повинен продовжувати жити лише через те, що є в кеші.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">14</span><span class="difficulty trick">Пастка</span>Stale-while-revalidate — це один патерн чи три різні речі?</summary>
+        <div class="a">
+          <p>Насправді <b>той самий концепт</b> на трьох різних рівнях, і плутанина виникає
+          саме тому, що назва однакова: (1) як <b>загальна ідея кешування</b> — віддати
+          застарілу копію миттєво, оновити у фоні для наступного разу; (2) як <b>конкретна
+          HTTP-директива</b> <code>Cache-Control: stale-while-revalidate=N</code> — браузер сам
+          реалізує саме цю поведінку на рівні мережевого кешу протягом N секунд після
+          закінчення <code>max-age</code>; (3) як <b>дефолтна поведінка бібліотек</b> React
+          Query/SWR — вони роблять концептуально те саме на рівні кешу даних застосунку,
+          незалежно від того, чи сервер взагалі надсилає HTTP-директиву SWR. Це одна ідея,
+          реалізована на трьох різних шарах стека одночасно.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">15</span><span class="difficulty core">База</span>Чим browser cache відрізняється від CDN cache?</summary>
+        <div class="a">
+          <p>Browser cache — приватний кеш <i>одного</i> користувача, живе локально в його
+          браузері. CDN cache — спільний кеш на серверах, географічно розподілених ближче до
+          користувачів, що обслуговує <i>багатьох</i> різних користувачів однією закешованою
+          копією. Саме тому персоналізовані дані безпечно кешувати в browser cache (
+          <code>private</code>), але небезпечно — на CDN без явного розмежування, хто саме
+          отримає закешовану відповідь.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">16</span><span class="difficulty adv">Просунуте</span>Що таке cache busting і навіщо версіонувати статичні файли?</summary>
+        <div class="a">
+          <p>Статичним бандлам зазвичай ставлять дуже довгий <code>max-age</code> (роки) для
+          максимальної швидкості повторних візитів — але тоді оновлення коду ніколи не дійде до
+          користувача, поки старий файл не "протухне" сам. Cache busting вирішує це не
+          протуханням, а <b>зміною ідентичності</b>: ім'я файлу включає хеш вмісту чи номер
+          версії (<code>app.a3f9c1.js</code>) — новий білд отримує нову назву файлу, тож старий
+          закешований файл просто ніколи більше не запитується, а новий запитується як цілком
+          новий ресурс, якого ще немає в кеші.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">17</span><span class="difficulty sys">Системний дизайн</span>Спроєктуйте кешування сторінки товару: частина контенту спільна, частина — персоналізована.</summary>
+        <div class="a">
+          <p>Розділити відповідальність за шарами: базовий HTML (назва, опис, ціна, фото) —
+          однаковий для всіх, кешується на CDN з довгим <code>s-maxage</code> і тег-базованою
+          інвалідацією при зміні товару. Персоналізовані фрагменти (рекомендації "для вас",
+          статус у кошику, персональна знижка) — або взагалі виключені із закешованого HTML і
+          довантажені окремим клієнтським запитом, позначеним <code>Cache-Control: private,
+          no-store</code>, або вся сторінка позначена <code>private</code> й кешується лише в
+          браузері конкретного користувача, жертвуючи швидкістю CDN заради простоти. Вибір між
+          цими двома підходами — компроміс складності реалізації проти швидкості першого
+          відображення.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">18</span><span class="difficulty core">База</span>Що таке cache hit і cache miss?</summary>
+        <div class="a">
+          <p><b>Cache hit</b> — запитані дані знайдено в кеші, мережевий похід не потрібен.
+          <b>Cache miss</b> — даних у кеші немає (або вони інвалідовані), доводиться йти в
+          мережу/до джерела правди й, зазвичай, покласти результат у кеш для наступного разу.
+          Відсоток hit vs miss (hit rate) — основна метрика, якою оцінюють, наскільки взагалі
+          ефективний конкретний шар кешування.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">19</span><span class="difficulty adv">Просунуте</span>Чому Zustand — не заміна React Query/SWR, навіть якщо технічно можна зберігати серверні дані в ньому?</summary>
+        <div class="a">
+          <p>Zustand — інструмент керування <i>клієнтським</i> станом: він не знає нічого про
+          мережу, не має вбудованого поняття "застарілості" даних, не дедуплікує паралельні
+          запити за тим самим ключем, не інвалідує сам себе за тегами чи TTL. Усе це довелось
+          би реалізовувати вручну поверх нього. React Query/SWR спроєктовані спеціально під
+          "server state" — дані, власником яких є сервер, а клієнт лише тримає тимчасову,
+          потенційно застарілу копію — з усією потрібною для цього інфраструктурою з коробки.
+          Технічно можливо — не означає доречно.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">20</span><span class="difficulty trick">Пастка</span>Що станеться з незавершеним запитом при синхронному тяжкому обчисленні в Service Worker?</summary>
+        <div class="a">
+          <p>Service Worker виконується в окремому потоці від основного UI-потоку сторінки —
+          важке синхронне обчислення всередині нього <i>не</i> заморожує сам інтерфейс
+          сторінки напряму. Але воно все одно затримує обробку самого <code>fetch</code>-івенту
+          в Service Worker, а отже й відповідь на перехоплений запит — з погляду сторінки це
+          виглядає як довга мережева затримка, а не як "зависання UI". Це важлива відмінність
+          від тяжкого обчислення прямо в головному потоці, яке дійсно заморожує рендер.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">21</span><span class="difficulty core">База</span>Чим IndexedDB відрізняється від localStorage для кешування?</summary>
+        <div class="a">
+          <p><code>localStorage</code> — синхронне (блокує головний потік при читанні/записі),
+          зберігає лише рядки, дуже обмежений об'єм (~5-10 МБ), простий ключ-значення API.
+          <code>IndexedDB</code> — асинхронне, зберігає структуровані об'єкти (не лише рядки),
+          набагато більший ліміт об'єму, підтримує індекси й транзакційні запити. Для
+          серйозного офлайн-кешу структурованих даних (список товарів, повідомлення) —
+          <code>IndexedDB</code>; для дрібних прапорців/налаштувань — <code>localStorage</code>
+          цілком достатньо.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">22</span><span class="difficulty sys">Системний дизайн</span>Як забезpечити, щоб dependent (залежні) запити не показали проміжний неконсистентний стан?</summary>
+        <div class="a">
+          <p>Якщо запит B залежить від результату запиту A (напр. спершу отримати
+          <code>userId</code>, потім за ним — профіль користувача), і B тимчасово рендериться
+          зі старим/порожнім значенням, поки A ще не завершився — типове рішення: явно тримати
+          B у стані <code>enabled: false</code> (React Query) чи еквіваленті, доки A не має
+          валідного результату, замість того щоб дозволяти B стартувати з завідомо неповними
+          даними й потім "мерехтіти" при отриманні реального значення від A.</p>
+        </div>
+      </details>
+    </section>
+
+    <div class="card">
+      ← <a href="15-frontend-caching-libraries.html">15. Frontend Caching: бібліотеки</a>
+      &nbsp;·&nbsp;
+      ↑ <a href="00-methodology.html">Карта всіх тем</a>
+    </div>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Тема побудована на реальному переліку питань про кешування, зібраному для підготовки до
+  співбесід React/Next.js-розробників — з наголосом саме на теми, які насправді питають.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>
