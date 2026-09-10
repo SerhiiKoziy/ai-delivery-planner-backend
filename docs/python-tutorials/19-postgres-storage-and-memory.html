@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>19. Postgres storage та пам'ять — AI Delivery Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout b, .callout strong{color:inherit;}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:640px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · PostgreSQL storage &amp; пам'ять</div>
+  <h1>PostgreSQL: як зберігаються дані — і як не втратити пам'ять на Python-стороні</h1>
+  <p class="lead">
+    Два зв'язані питання в одному туторіалі: як Postgres фізично зберігає й читає/пише рядки під
+    конкурентним навантаженням (MVCC, знімки, VACUUM), і як Python-процес поводиться з пам'яттю в
+    продакшені — включно з практичним прийомом "перезапускати воркер після N запитів". Це
+    продовження, а не повторення <a href="15-memory-management.html">туторіалу 15</a> (Пам'ять &amp; GC) —
+    там уже розібрано reference counting, цикли й generational GC; тут — усе, чого там немає.
+  </p>
+  <div class="pills">
+    <span class="pill">🐘 MVCC і VACUUM</span>
+    <span class="pill">🧠 Пам'ять на проді</span>
+    <span class="pill">🔁 Перезапуск воркера</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+        <a href="17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="19-postgres-storage-and-memory.html" class="active">19. Postgres storage &amp; пам'ять</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-browser-internals.html">2. Браузер зсередини</a>
+        <a href="../js-doc/03-frontend-security.html">3. Безпека фронтенду</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-react-deep-dive.html">5. React углиб</a>
+        <a href="../js-doc/06-nextjs-architecture.html">6. Next.js та архітектура</a>
+        <a href="../js-doc/07-nextjs-interview-qa.html">7. Next.js: Q&amp;A</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-testing-cicd-cloud.html">9. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/10-ai-tools.html">10. AI-інструменти</a>
+        <a href="../js-doc/11-http-anatomy.html">11. HTTP: анатомія запитів</a>
+        <a href="../js-doc/12-this.html">12. this</a>
+        <a href="../js-doc/13-typescript-essentials.html">13. TypeScript essentials</a>
+        <a href="../js-doc/14-frontend-caching-fundamentals.html">14. Caching: основи</a>
+        <a href="../js-doc/15-frontend-caching-libraries.html">15. Caching: бібліотеки</a>
+        <a href="../js-doc/16-frontend-caching-advanced.html">16. Caching: просунуті теми</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s0">0. Postgres у цьому проєкті</a></li>
+      <li><a href="#s1">1. MVCC і "знімки"</a></li>
+      <li><a href="#s2">2. UPDATE і приховані колонки</a></li>
+      <li><a href="#s3">3. Читання під час запису</a></li>
+      <li><a href="#s4">4. VACUUM і autovacuum</a></li>
+      <li><a href="#s5">5. Пікові навантаження на Python-стороні</a></li>
+      <li><a href="#s6">6. Ручний gc.collect()</a></li>
+      <li><a href="#s7">7. Перезапуск воркера після N запитів</a></li>
+      <li><a href="#s8">8. Інші способи проти витоків</a></li>
+      <li><a href="#s9">9. Підсумок</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s0">
+      <h2><span class="num">00</span> Що таке PostgreSQL, і як цей проєкт з ним працює</h2>
+      <p class="section-desc">PostgreSQL — відкрита, ACID-сумісна реляційна СУБД (чому саме реляційна модель обрана для цього проєкту — розібрано в <a href="17-databases-fundamentals.html">туторіалі 17</a>, тут це не повторюємо). Цей розділ — про те, як конкретно цей бекенд до неї підключається.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/db/session.py</span></div>
+        <pre><code>engine = create_async_engine(
+    settings.DATABASE_URL,
+    echo=settings.DEBUG,
+    future=True,
+    connect_args={"statement_cache_size": 0},
+)
+
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+)</code></pre>
+      </div>
+
+      <p>Драйвер — <code>asyncpg</code> (видно з префіксу <code>postgresql+asyncpg://</code> у
+      <code>DATABASE_URL</code>): нативна реалізація протоколу Postgres на чистому Python +
+      Cython, помітно швидша за <code>psycopg2</code> у типових бенчмарках, і що важливіше для
+      цього проєкту — асинхронна за дизайном, тобто природно поєднується з
+      <code>async</code>/<code>await</code> замість того, щоб виконувати блокуючий I/O в
+      окремому потоці.</p>
+
+      <p><code>connect_args={"statement_cache_size": 0}</code> — це не дрібниця "про всяк
+      випадок", а конкретний фікс під конкретну проблему: <code>asyncpg</code> за замовчуванням
+      кешує підготовлені запити (prepared statements) на рівні одного фізичного з'єднання. Якщо
+      між застосунком і Postgres стоїть пулер з'єднань у transaction-режимі (наприклад,
+      PgBouncer — типова конфігурація керованого Postgres, зокрема на хмарних платформах), одне й
+      те саме логічне "з'єднання" застосунку може між транзакціями фізично потрапляти на різні
+      серверні з'єднання пулера — а підготовлений запит, закешований для одного фізичного
+      з'єднання, на іншому просто не існує. Вимкнення кешу підготовлених запитів — стандартний,
+      задокументований спосіб зробити <code>asyncpg</code> сумісним із таким пулером ціною
+      невеликого падіння продуктивності на повторюваних запитах.</p>
+
+      <p class="muted">Розмір пулу з'єднань SQLAlchemy тут явно не налаштований — рушій працює на
+      дефолтах (<code>pool_size=5</code>, <code>max_overflow=10</code>). Тримайте цю цифру в
+      голові — вона повернеться в розділі 8, коли йтиметься про пам'ять під навантаженням.</p>
+    </section>
+
+    <section id="s1">
+      <h2><span class="num">01</span> MVCC і "знімки" (snapshots)</h2>
+      <p class="section-desc">Фундамент усього, що далі: як Postgres дозволяє читачам і писачам працювати з тими самими рядками одночасно, не блокуючи одне одного.</p>
+
+      <p><b>MVCC (Multi-Version Concurrency Control)</b> — підхід, за якого база не тримає для
+      кожного рядка рівно одну версію, яку треба блокувати на час читання чи запису, а дозволяє
+      співіснувати кільком версіям одного логічного рядка одночасно. Кожна транзакція працює зі
+      своїм узгодженим "знімком" даних, а не з "живою", постійно змінюваною таблицею.</p>
+
+      <p><b>Знімок (snapshot)</b> — це, по суті, список: які версії рядків вважалися
+      <i>закомміченими</i> станом на певний момент. Усі читання в межах транзакції звіряються
+      саме з цим списком, а не з тим, що відбувається в базі "прямо зараз".</p>
+
+      <p>Наскільки довго живе один знімок, залежить від <b>рівня ізоляції</b> транзакції:</p>
+      <table>
+        <tr><th>Рівень ізоляції</th><th>Коли береться знімок</th><th>Наслідок</th></tr>
+        <tr>
+          <td><b>Read Committed</b> (дефолт Postgres)</td>
+          <td>Новий знімок на <i>кожен окремий запит</i> у транзакції</td>
+          <td>Два послідовні <code>SELECT</code> в одній транзакції можуть побачити різні дані, якщо між ними щось закомітилось</td>
+        </tr>
+        <tr>
+          <td><b>Repeatable Read</b> / <b>Serializable</b></td>
+          <td>Один знімок на <i>всю транзакцію</i></td>
+          <td>Кожне читання в межах транзакції бачить один і той самий, "заморожений" стан бази</td>
+        </tr>
+      </table>
+
+      <div class="callout info">
+        <div class="ic">🎯</div>
+        <div class="body"><b>Цей проєкт:</b> рівень ізоляції ніде явно не задається, тож діє
+        дефолт Postgres — <b>Read Committed</b>. Практично це означає: якщо один HTTP-запит
+        робить кілька <code>SELECT</code>-ів поспіль через один <code>AsyncSession</code>, і між
+        ними хтось інший встиг закомітити зміну — другий <code>SELECT</code> це вже побачить.
+        Для більшості CRUD-ендпоінтів це прийнятно й навіть очікувано; для логіки, якій критично
+        бачити один узгоджений стан протягом усієї транзакції, довелося б свідомо підвищувати
+        рівень ізоляції.</div>
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Що насправді відбувається при <code>UPDATE</code>: приховані системні колонки</h2>
+      <p class="section-desc">Ключовий факт, з якого випливає все інше в цьому туторіалі: Postgres ніколи не змінює рядок "на місці".</p>
+
+      <p>Коли ви робите <code>UPDATE</code>, Postgres не перезаписує існуючі байти рядка — він
+      створює <b>цілком нову фізичну версію</b> рядка (новий heap tuple) і позначає стару версію
+      як застарілу. Обидві версії фізично існують у файлі таблиці, доки щось (розділ 4) не
+      прибере стару.</p>
+
+      <p>Кожен рядок у Postgres має декілька <b>прихованих системних колонок</b>, які ви ніколи
+      не побачите в <code>SELECT *</code>, але можете запитати явно:</p>
+      <table>
+        <tr><th>Колонка</th><th>Що зберігає</th></tr>
+        <tr><td><code>xmin</code></td><td>ID транзакції, яка <b>створила</b> цю версію рядка</td></tr>
+        <tr><td><code>xmax</code></td><td>ID транзакції, яка <b>витіснила/видалила</b> цю версію — <code>0</code>, якщо версія й досі актуальна</td></tr>
+        <tr><td><code>ctid</code></td><td>Фізичне розташування версії (сторінка + зміщення) — <b>змінюється при кожному <code>UPDATE</code></b>, бо нова версія — це фізично інший тапл</td></tr>
+        <tr><td><code>cmin</code> / <code>cmax</code></td><td>Номер команди <i>всередині</i> поточної транзакції, яка створила/видалила версію — актуально, коли одна транзакція виконує кілька операторів</td></tr>
+      </table>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Пастка з <code>ctid</code>:</b> оскільки <code>ctid</code> змінюється
+        на кожен <code>UPDATE</code>, тримати його як "стабільний ідентифікатор рядка" між
+        запитами (наприклад, закешувати й повторно використати пізніше) — помилка: рядок могли
+        оновити, і той самий <code>ctid</code> уже вказує або на іншу версію, або взагалі в
+        порожнечу.</div>
+      </div>
+
+      <p>Продемонструємо на реальній таблиці цього проєкту — <code>route_stops</code>, чий
+      <code>status</code> (<code>pending</code> → <code>en_route</code> → <code>completed</code>)
+      оновлюється через <code>route_stop_repository.update(stop_id, status=...)</code>
+      (<code>app/api/routes/router.py</code>):</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">до UPDATE</span></div>
+        <pre><code>SELECT xmin, xmax, ctid, status
+FROM route_stops
+WHERE id = '3f2e...';
+<span class="cmt">--  xmin | xmax | ctid   | status
+--  100  | 0    | (0,7)  | pending</span></code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">UPDATE, потім знову той самий SELECT</span></div>
+        <pre><code>UPDATE route_stops SET status = 'en_route' WHERE id = '3f2e...';
+
+<span class="cmt">--  xmin | xmax | ctid   | status
+--  105  | 0    | (0,19) | en_route
+-- ctid змінився — це фізично НОВИЙ тапл, а не той самий рядок "на місці"</span></code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 640 220" role="img" aria-label="Дві фізичні версії одного логічного рядка: версія 1 з xmin=100 xmax=105, версія 2 з xmin=105 xmax=0, з'єднані стрілкою UPDATE у транзакції 105">
+          <defs>
+            <marker id="pg-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+            </marker>
+          </defs>
+          <rect x="30" y="55" width="230" height="100" rx="10" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="145" y="80" text-anchor="middle" font-size="13" font-weight="700">Версія 1 (стара)</text>
+          <text x="145" y="105" text-anchor="middle" font-size="12.5">xmin = 100</text>
+          <text x="145" y="125" text-anchor="middle" font-size="12.5" fill="var(--bad)">xmax = 105 (щойно закрита)</text>
+          <text x="145" y="145" text-anchor="middle" font-size="11.5" fill="var(--fg-muted)">status = pending</text>
+
+          <rect x="380" y="55" width="230" height="100" rx="10" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+          <text x="495" y="80" text-anchor="middle" font-size="13" font-weight="700">Версія 2 (нова)</text>
+          <text x="495" y="105" text-anchor="middle" font-size="12.5">xmin = 105</text>
+          <text x="495" y="125" text-anchor="middle" font-size="12.5" fill="var(--good)">xmax = 0 (жива)</text>
+          <text x="495" y="145" text-anchor="middle" font-size="11.5" fill="var(--fg-muted)">status = en_route</text>
+
+          <line x1="262" y1="105" x2="376" y2="105" stroke="var(--accent)" stroke-width="1.5" marker-end="url(#pg-arrow)"/>
+          <text x="320" y="95" text-anchor="middle" font-size="11.5" fill="var(--accent)">UPDATE (tx 105)</text>
+        </svg>
+        <figcaption>Логічно це "той самий рядок route_stops". Фізично — дві окремі версії, що
+        певний час співіснують у файлі таблиці. Версія 1 не зникає в момент UPDATE — вона стає
+        "мертвим" таплом, який прибере VACUUM (розділ 4).</figcaption>
+      </figure>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Читання під час запису: MVCC у дії</h2>
+      <p class="section-desc">Пряма відповідь на питання "що відбувається, коли хтось читає рядок, поки інший його пише".</p>
+
+      <p>Завдяки механізму знімків із розділу 1, читач, чий знімок було взято <i>до</i> моменту
+      комміту паралельного писача, просто продовжує бачити <b>стару версію</b> рядка — ту, чий
+      <code>xmax</code> (транзакція писача) із точки зору знімка читача ще не вважається
+      закомміченою. Читач ніколи не чекає писача. Писач ніколи не чекає читача.</p>
+
+      <p>Єдиний випадок, коли справді виникає блокування, — коли <b>дві транзакції одночасно
+      намагаються <code>UPDATE</code>/<code>DELETE</code> той самий рядок</b>: тоді рядковий лок
+      змушує другого писача чекати, поки перший закомітить або відкотиться.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Це трохи схоже на те, як компонент, що вже отримав дані через <code>props</code> на
+        момент рендеру, продовжує показувати їх, поки батьківський стан десь вище оновлюється —
+        він не "блокується", чекаючи оновлення, а просто отримає нову версію даних наступним
+        рендером. MVCC робить те саме на рівні бази: читач працює зі своїм "знімком пропсів",
+        а не з живим станом, що змінюється просто зараз.
+      </div>
+
+      <p>Конкретно для цього проєкту: дашборд-запит, що рахує зупинки з
+      <code>RouteStop.status != "completed"</code> (<code>app/services/dashboard/service.py</code>),
+      який виконується <i>рівно в той момент</i>, коли водій через API оновлює статус зовсім
+      іншої зупинки, ніяк не блокується цим паралельним записом. MVCC робить конкурентні читання
+      й записи на активній таблиці дешевими за замовчуванням, без додаткових зусиль з боку коду
+      застосунку.</p>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> VACUUM і autovacuum: прибирання мертвих версій</h2>
+      <p class="section-desc">Розділ 2 показав: UPDATE/DELETE лишають старі версії рядків фізично на місці. Хтось має їх прибирати.</p>
+
+      <p>Старі версії, яких уже не бачить <i>жоден</i> активний знімок, називають <b>мертвими
+      таплами (dead tuples)</b>. Вони займають місце на диску й можуть уповільнювати
+      послідовні скани та роботу індексів, доки лишаються не прибраними.</p>
+
+      <p><b><code>VACUUM</code></b> сканує таблицю, знаходить мертві таплі, недоступні жодному
+      активному знімку, і позначає це місце як придатне для повторного використання під майбутні
+      <code>INSERT</code>/<code>UPDATE</code>. Важливий нюанс: звичайний <code>VACUUM</code>
+      <b>не зменшує розмір файлу на диску</b> — він лише робить простір усередині файлу
+      перевикористовуваним. Окрема, значно дорожча команда — <code>VACUUM FULL</code> — справді
+      стискає файл, але вимагає ексклюзивного блокування таблиці на весь час роботи.</p>
+
+      <p><b><code>autovacuum</code></b> — фоновий демон, що запускає <code>VACUUM</code>
+      автоматично, щойно оцінена частка мертвих таплів у таблиці перевищує поріг (концептуально:
+      частка від розміру таблиці плюс невелика фіксована константа — конкретні дефолтні числа
+      запам'ятовувати не обов'язково, важливо розуміти сам принцип "поріг залежить від розміру
+      таблиці, і все відбувається само"). На справному Postgres-інстансі ручний
+      <code>VACUUM</code> зазвичай узагалі не потрібен.</p>
+
+      <div class="callout warn">
+        <div class="ic">🎯</div>
+        <div class="body"><b>Пов'язано з проєктом:</b> <code>route_stops.status</code>, що
+        перемикається <code>pending → en_route → completed</code> потенційно багато разів на
+        кожен маршрут, помножене на багато маршрутів щодня, — саме той тип часто оновлюваної
+        колонки, що стабільно генерує мертві таплі. А дашбордовий фільтр
+        <code>status != 'completed'</code> — саме той тип запиту, продуктивність якого першим
+        постраждає, якщо autovacuum колись почне відставати (роздування таблиці й будь-якого
+        індексу, що покриває <code>status</code>). На малих/керованих інстансах Postgres під
+        стійким write-навантаженням відставання autovacuum — реальна, доволі поширена production
+        проблема (відстежується через <code>pg_stat_user_tables.n_dead_tup</code>), хоча на
+        поточному масштабі цього проєкту про це ще не доводилось думати.</div>
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Пікові навантаження на Python-стороні: де росте пам'ять і чому вона не одразу падає</h2>
+      <p class="section-desc">Механізм алокатора вже розібраний у <a href="15-memory-management.html#s7">туторіалі 15, розділ 7</a> — тут лише DB-специфічний шар поверх нього.</p>
+
+      <p>Коротко нагадаємо факт із туторіалу 15 (не переказуючи механізм заново): RSS процесу
+      типово <i>не</i> падає одразу після піку — арени <code>pymalloc</code> повертаються ОС лише
+      повністю порожніми, і той розділ уже прив'язує це саме до 512 МБ Fly.io-машини цього
+      проєкту та ендпоінта <code>POST /routes/optimize</code>.</p>
+
+      <p>Новий, специфічний для роботи з БД шар — <b>identity map сесії SQLAlchemy</b>. Кожен
+      ORM-об'єкт, завантажений у межах одного <code>AsyncSession</code>, лишається живим і
+      відстежуваним <i>на весь час життя цієї сесії</i> — саме так SQLAlchemy гарантує, що
+      повторний запит того самого рядка в тій самій сесії поверне <b>той самий Python-об'єкт</b>,
+      і знає, що саме треба флашити при коміті. Наслідок: один запит, що завантажує багато рядків
+      (наприклад, дашбордовий запит, який тягне всі маршрути й зупинки організації), тримає їх усі
+      в пам'яті аж до закриття сесії наприкінці запиту — роблячи свій внесок у той самий
+      патерн "пік, потім плато", чий механізм на рівні алокатора вже описаний у туторіалі 15.</p>
+
+      <p class="muted">Окрема дрібна, але реальна деталь цього проєкту:
+      <code>expire_on_commit=False</code> у <code>session.py</code>. Зазвичай після коміту
+      SQLAlchemy "просрочує" всі завантажені об'єкти, щоб їхні атрибути перечитувались із бази
+      при наступному зверненні. З вимкненою опцією об'єкти після коміту зберігають уже завантажені
+      значення атрибутів у пам'яті без автоматичного перезапиту — виграш у кількості запитів
+      ціною невеликого ризику застарілих значень і трохи довшого утримання даних у пам'яті.</p>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Ручний виклик <code>gc.collect()</code>: коли це має сенс</h2>
+      <p class="section-desc">Механіка трьох поколінь GC вже описана в <a href="15-memory-management.html#s3">туторіалі 15, розділ 3</a> — тут лише практичне питання "коли викликати самому".</p>
+
+      <p>Ручний виклик <code>gc.collect()</code> має сенс одразу <b>після відомого сплеску</b>
+      роботи, що щедро породжує циклічні посилання — для цього проєкту це сам OR-Tools solve
+      (<code>services/route_optimizer/</code>) або імпорт великого CSV/Excel через pandas
+      (<code>services/importers/</code>). Проактивний виклик прибирає циклічне сміття <i>раніше</i>,
+      ніж до нього дійшов би черговий, менш частий прохід покоління 2 сам по собі — це важливо,
+      якщо ви хочете зняти тиск на пам'ять <i>до</i> наступного запиту, а не колись пізніше.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Важливе застереження</b>, що прямо стосується розділу 5 й туторіалу
+        15, розділ 7: <code>gc.collect()</code> прибирає лише Python-об'єкти (циклічне сміття) —
+        він <b>не</b> зменшує RSS процесу назад, бо арени <code>pymalloc</code> все одно
+        повертаються ОС лише порожніми повністю. Це інструмент "прибрати циклічне сміття
+        раніше", а не "зменшити видиме споживання пам'яті процесом" — плутати ці дві речі —
+        поширена помилка.</div>
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Перезапуск воркера після N запитів: боротьба з витоком пам'яті</h2>
+      <p class="section-desc">Найпрактичніший розділ туторіалу — і конкретний розрив між "як це зазвичай роблять" і "як це влаштовано в цьому проєкті просто зараз".</p>
+
+      <p>Стандартний прийом у продакшн Python-сервісах — <code>gunicorn --max-requests N
+      --max-requests-jitter J</code>. Кожен воркер-процес gunicorn добровільно й грайсфул
+      завершується, обробивши приблизно <code>N</code> запитів; jitter (<code>±J</code>)
+      рандомізує це число, щоб при кількох воркерах вони не перезапускались усі одночасно,
+      уникаючи короткочасного провалу пропускної здатності. Майстер-процес gunicorn одразу
+      піднімає свіжий воркер натомість.</p>
+
+      <p>Чому це працює як засіб проти витоку пам'яті, навіть якщо реальну причину витоку так і
+      не знайшли: цей прийом обходить усю проблему фрагментації арен <code>pymalloc</code> із
+      розділу 5 не намагаючись звільнити пам'ять <i>усередині</i> довгоживучого процесу, а просто
+      періодично викидаючи <b>весь процес цілком</b> і починаючи з чистого аркуша. Грубий
+      інструмент — але справді стандартний і надійний у продакшені.</p>
+
+      <div class="callout bad">
+        <div class="ic">🎯</div>
+        <div class="body"><b>Чесно про цей проєкт:</b> зараз він запускається через <b>голий
+        uvicorn</b>, без будь-якого gunicorn у залежностях:
+        <code>CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", ...]</code>
+        (<code>Dockerfile</code>) — без прапорця <code>--workers</code>, тобто один процес на одну
+        Fly-машину. <code>max-requests</code>/<code>max-requests-jitter</code> тут просто немає,
+        бо немає й самого багатоворкерного менеджера процесів, який би цю опцію надавав.</div>
+      </div>
+
+      <p>Реалістично є два шляхи, кожен зі своїм компромісом — без однозначної "правильної"
+      відповіді:</p>
+      <ul>
+        <li><b>(a) Перейти на gunicorn:</b>
+        <code>gunicorn -k uvicorn.workers.UvicornWorker --max-requests 1000
+        --max-requests-jitter 100 app.main:app</code> — дає стандартний механізм напряму,
+        працює навіть з одним налаштованим воркером (перезапуск одного воркера індивідуально
+        все одно має сенс). Це вводить pre-fork модель воркерів, уже розібрану в
+        <a href="08-wsgi-asgi.html#s8">туторіалі 8, розділ 8</a>.</li>
+        <li><b>(b) Легша DIY-альтернатива:</b> оскільки проєкт і так — один голий uvicorn-процес
+        без pre-fork моделі, у яку вбудовуватись, можна написати ASGI-мідлвар, що рахує запити й,
+        досягнувши порогу, дораховує запити, що вже в польоті, а тоді ініціює грайсфул-завершення
+        (<code>sys.exit(0)</code> чи штатний shutdown uvicorn), покладаючись на
+        <code>restart_policy</code>/нагляд процесів Fly.io, щоб одразу підняти свіжий контейнер.
+        Без нової залежності — але це переізобретення (меншого шматка) того, що gunicorn уже
+        робить із коробки.</li>
+      </ul>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 600 300" role="img" aria-label="Флоучарт: запит надходить, лічильник збільшується, якщо лічильник менший за N — обробити нормально і чекати наступний запит; якщо лічильник досяг N — обробити цей запит і потім грайсфул-перезапустити процес">
+          <defs>
+            <marker id="w-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <rect x="200" y="15" width="200" height="46" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="300" y="43" text-anchor="middle" font-size="13">Запит надходить</text>
+          <line x1="300" y1="61" x2="300" y2="86" stroke="currentColor" stroke-width="1.3" marker-end="url(#w-arrow)"/>
+
+          <rect x="180" y="88" width="240" height="46" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="300" y="116" text-anchor="middle" font-size="13">Лічильник запитів += 1</text>
+          <line x1="300" y1="134" x2="300" y2="159" stroke="currentColor" stroke-width="1.3" marker-end="url(#w-arrow)"/>
+
+          <polygon points="300,160 400,200 300,240 200,200" fill="none" stroke="var(--accent)" stroke-width="1.4"/>
+          <text x="300" y="196" text-anchor="middle" font-size="12">Лічильник</text>
+          <text x="300" y="212" text-anchor="middle" font-size="12">≥ N ?</text>
+
+          <line x1="200" y1="200" x2="90" y2="200" stroke="currentColor" stroke-width="1.3" marker-end="url(#w-arrow)"/>
+          <text x="145" y="190" text-anchor="middle" font-size="11.5">ні</text>
+          <rect x="10" y="177" width="160" height="46" rx="8" fill="none" stroke="var(--good)" stroke-width="1.3"/>
+          <text x="90" y="205" text-anchor="middle" font-size="11.5">Обробити як звичайно</text>
+          <line x1="90" y1="177" x2="90" y2="38" stroke="var(--fg-muted)" stroke-width="1.1" stroke-dasharray="3,3"/>
+          <line x1="90" y1="38" x2="198" y2="38" stroke="var(--fg-muted)" stroke-width="1.1" stroke-dasharray="3,3" marker-end="url(#w-arrow)"/>
+
+          <line x1="300" y1="240" x2="300" y2="260" stroke="var(--bad)" stroke-width="1.4" marker-end="url(#w-arrow)"/>
+          <text x="330" y="252" text-anchor="middle" font-size="11.5" fill="var(--bad)">так</text>
+          <rect x="150" y="262" width="300" height="34" rx="8" fill="none" stroke="var(--bad)" stroke-width="1.4"/>
+          <text x="300" y="284" text-anchor="middle" font-size="12">Дообробити запит → грайсфул-рестарт</text>
+        </svg>
+        <figcaption>Незалежно від того, gunicorn це робить сам чи ASGI-мідлвар вручну — суть та
+        сама: процес свідомо "викидається" й замінюється свіжим, поки він ще живий і не зламаний,
+        а не в результаті OOM-краху.</figcaption>
+      </figure>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Інші способи боротьби з витоком пам'яті</h2>
+      <p class="section-desc">Короткий, не дублюючий вже сказане огляд — з посиланнями туди, де кожен механізм уже розібраний.</p>
+
+      <p><b>Тюнінг пулу з'єднань.</b> Явний <code>pool_recycle</code> — періодичне закриття й
+      переоткриття з'єднань пулу, що прожили задовго, захищає від накопичення серверного чи
+      драйверного стану на одному довгоживучому з'єднанні. Явне налаштування
+      <code>pool_size</code>/<code>max_overflow</code> замість дефолтів SQLAlchemy (розділ 0) теж
+      варте уваги на такій тісній 512 МБ межі, як у цього проєкту — сплеск одночасних запитів,
+      кожен з яких відкриває нове з'єднання пулу, має реальну ціну в пам'яті на з'єднання.</p>
+
+      <p><b>Слабкі кеші.</b> Коли потрібен кеш, що сам не тримає записи живими вічно — дивіться
+      <a href="15-memory-management.html#s5"><code>weakref</code>, туторіал 15, розділ 5</a>.</p>
+
+      <p><b>Незчищені кеші й підписки на рівні модуля.</b> Це вже розібрано як реальне джерело
+      "витоків" у Python у <a href="15-memory-management.html#s10">туторіалі 15, розділ 10</a>.</p>
+
+      <p><b>Профайлінг пам'яті в продакшені.</b> Перш ніж вирішувати, чи перезапуск воркера —
+      справжній фікс, чи лише пластир, варто спершу реально знайти джерело витоку —
+      <code>tracemalloc</code>/<code>objgraph</code> уже розібрані в
+      <a href="15-memory-management.html#s14">туторіалі 15, розділ 14</a>.</p>
+
+      <p><b>Рестарт на рівні контейнера.</b> Чесний останній рубіж: жорсткий ліміт пам'яті, що
+      призводить до OOM-кілу й автоматичного перезапуску контейнера — реальна, хай і груба,
+      страховка, на яку покладаються багато продакшн-систем. Це та "підлога", на яку варто
+      падати, якщо нічого вище не спрацювало — а не перша лінія оборони.</p>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Підсумок</h2>
+      <p class="section-desc">Дві половини цього туторіалу — і що з ними робити в цьому проєкті вже сьогодні.</p>
+      <ul>
+        <li><b>Postgres-половина:</b> MVCC дає конкурентні читання/записи "безкоштовно" через
+        знімки й приховані колонки (<code>xmin</code>/<code>xmax</code>/<code>ctid</code>), але
+        плата за це — мертві таплі, які прибирає (авто)VACUUM. <code>route_stops.status</code> —
+        реальний кандидат стежити за часткою мертвих таплів зі зростанням навантаження.</li>
+        <li><b>Python-половина:</b> пік пам'яті на 512 МБ Fly.io-машині — очікувана поведінка
+        алокатора (туторіал 15), не обов'язково "витік". Explicit <code>pool_recycle</code> — річ,
+        яку варто розглянути на цій тісній межі пам'яті вже зараз.</li>
+        <li><b>Перезапуск воркера</b> як прийом проти витоків у цьому проєкті поки не налаштований
+        зовсім — з голим uvicorn без gunicorn це варто додати <i>до</i> того, як це стане реальним
+        інцидентом, а не після.</li>
+      </ul>
+      <div class="card">
+        ← <a href="18-databases-interview-qa.html">Туторіал 18 — Бази даних: Q&amp;A</a>
+        &nbsp;·&nbsp;
+        ↔ <a href="15-memory-management.html">Туторіал 15 — Пам'ять &amp; GC</a> (суміжна тема)
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал прив'язаний до реального коду репозиторію <code>ai-delivery-planner-backend</code>
+  (<code>app/db/session.py</code>, <code>app/repositories/base.py</code>, <code>Dockerfile</code>,
+  <code>fly.toml</code>) станом на момент генерації.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>
