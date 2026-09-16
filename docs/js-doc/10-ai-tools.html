@@ -233,6 +233,8 @@
         <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
         <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
         <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-testing-cicd-monitoring-cloud.html">20. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/21-pydantic.html">21. Pydantic</a>
       </nav>
       <nav class="nav-links jsdoc">
         <a href="00-methodology.html">0. Методологія</a>
@@ -263,6 +265,7 @@
       <li><a href="#t3">3. AI-інфраструктура: MCP і tools/skills</a></li>
       <li><a href="#t4">4. Налаштування MCP-сервера на практиці</a></li>
       <li><a href="#t5">5. Кейс: дизайн через MCP (Figma)</a></li>
+      <li><a href="#t6">6. Покрокове налаштування MCP для Git</a></li>
     </ol>
   </aside>
 
@@ -445,6 +448,94 @@ while (true) {
         auto-layout), а не зі скріншота — це прибирає клас pixel-perfect помилок ще на етапі
         генерації, а рев'ю зосереджується на поведінці й доступності, а не на вимірюванні
         відступів лінійкою".</div>
+      </div>
+    </section>
+
+    <section id="t6">
+      <div class="topic-head"><span class="tag rising">🟢</span><h2>Покрокове налаштування MCP для Git</h2></div>
+      <p>Другий конкретний приклад, який варто мати "в руках", а не лише в теорії (тема 4) —
+      офіційний <b>Git MCP-сервер</b>. На відміну від Figma-сервера (робота з дизайном), він дає
+      AI-асистенту прямий, структурований доступ до історії й стану git-репозиторію: замість того
+      щоб просити асистента вгадувати команди чи вставляти вивід <code>git log</code> вручну в
+      чат, асистент сам викликає інструменти сервера й отримує точні, машинночитані дані.</p>
+
+      <h3 style="font-size:16px; margin:22px 0 6px;">Крок 1 — переконатись, що є <code>uv</code></h3>
+      <p>Офіційний Git MCP-сервер розповсюджується як Python-пакет
+      (<code>mcp-server-git</code>). Найпростіший спосіб його запускати — через <code>uvx</code>
+      (частина інструменту <code>uv</code>): він сам завантажує пакет в ізольоване середовище й
+      запускає, без ручного <code>pip install</code> і без ризику зіштовхнути версії залежностей
+      з іншими Python-проєктами на машині.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">термінал — перевірити/встановити uv (один раз)</span></div>
+        <pre><code>uv --version
+<span class="cmt"># якщо команди немає — офіційний спосіб встановлення (macOS/Linux):</span>
+curl -LsSf https://astral.sh/uv/install.sh | sh</code></pre>
+      </div>
+
+      <h3 style="font-size:16px; margin:22px 0 6px;">Крок 2 — додати сервер у конфіг клієнта</h3>
+      <p>Файл конфігурації залежить від інструменту: у Claude Desktop це
+      <code>claude_desktop_config.json</code> (у стандартній для ОС теці конфігів застосунку), у
+      Claude Code — файл <code>.mcp.json</code> у корені проєкту (для налаштування саме під цей
+      репозиторій) або <code>~/.claude.json</code> (глобально для всіх проєктів). Форма запису та
+      сама, що й для Figma-сервера з теми 4 — просто інший запис у тому самому об'єкті
+      <code>mcpServers</code>.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">.mcp.json — Git MCP-сервер, прив'язаний до конкретного репозиторію</span></div>
+        <pre><code>{
+  "mcpServers": {
+    "git": {
+      "command": "uvx",
+      "args": ["mcp-server-git", "--repository", "/шлях/до/ai-delivery-planner-backend"]
+    }
+  }
+}</code></pre>
+      </div>
+      <p class="muted">Без <code>uv</code> той самий сервер можна запустити й через
+      <code>pip install mcp-server-git</code> та <code>"command": "python", "args": ["-m", "mcp_server_git", "--repository", "..."]</code>
+      — функціонально однаково, різниця лише в тому, хто керує встановленням пакета.</p>
+
+      <h3 style="font-size:16px; margin:22px 0 6px;">Крок 3 — перезапустити клієнт і перевірити підключення</h3>
+      <p>Після збереження конфігу застосунок (Claude Desktop, Claude Code тощо) потрібно
+      повністю перезапустити — MCP-сервери піднімаються один раз при старті клієнта, а не
+      підхоплюються "на льоту". Після перезапуску асистент отримує набір нових інструментів:
+      <code>git_status</code>, <code>git_log</code>, <code>git_diff</code>,
+      <code>git_diff_staged</code>, <code>git_show</code>, <code>git_add</code>,
+      <code>git_commit</code>, <code>git_reset</code>, <code>git_create_branch</code>,
+      <code>git_checkout</code>.</p>
+
+      <h3 style="font-size:16px; margin:22px 0 6px;">Крок 4 — перший виклик і permission prompt</h3>
+      <p>Найпростіший спосіб перевірити, що все підключилось — попросити щось суто читальне:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">приклад запиту в чаті</span></div>
+        <pre><code>Покажи git status і останні 5 комітів у цьому репозиторії</code></pre>
+      </div>
+      <p>Асистент викличе <code>git_status</code> і <code>git_log</code> — і, як і для будь-якого
+      MCP-інструменту, клієнт спершу покаже <b>permission prompt</b> із запитом дозволу на
+      конкретний виклик. Це момент, де варто звернути увагу на різницю між інструментами:
+      <code>git_status</code>/<code>git_log</code>/<code>git_diff</code> — лише читають стан
+      репозиторію, тоді як <code>git_add</code>/<code>git_commit</code>/<code>git_reset</code>/<code>git_checkout</code>
+      реально <i>змінюють</i> git-стан (індекс, коміти, гілки). Клієнт про це не "знає" сам —
+      permission prompt однаково спрацьовує на кожен виклик, тож саме людина вирішує, наскільки
+      уважно перевіряти запит перед підтвердженням залежно від того, читальний він чи мутуючий.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>На що звернути увагу:</b> <code>--repository</code> прив'язує сервер
+        до <i>одного конкретного</i> шляху на диску — якщо асистент працює одразу з кількома
+        репозиторіями, для кожного потрібен свій запис у <code>mcpServers</code> (наприклад,
+        <code>"git-backend"</code> і <code>"git-frontend"</code> з різними шляхами й різними
+        назвами інструментів), а не один сервер "на всі проєкти одразу".</div>
+      </div>
+
+      <div class="callout info">
+        <div class="ic">🎯</div>
+        <div class="body"><b>Готова відповідь на співбесіді:</b> "я підключав Git MCP-сервер
+        (<code>mcp-server-git</code> через <code>uvx</code>) у конфіг клієнта з
+        <code>--repository</code>, що вказує на потрібний репозиторій — після цього асистент сам
+        викликає <code>git_log</code>/<code>git_diff</code>/<code>git_status</code> замість того,
+        щоб я вручну копіював вивід команд у чат, а мутуючі інструменти на кшталт
+        <code>git_commit</code> завжди йдуть через окреме підтвердження, тому це не 'сліпа'
+        автоматизація".</div>
       </div>
     </section>
 

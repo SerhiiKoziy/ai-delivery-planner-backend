@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>17. Тестування, CI/CD, моніторинг, хмара — AI Delivery Planner</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+  .part-divider{
+    display:flex; align-items:center; gap:14px; margin:64px 0 40px;
+  }
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  .vs{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:16px 0;}
+  @media (max-width:700px){.vs{grid-template-columns:1fr;}}
+  .vs .side{border-radius:var(--radius); padding:16px 18px; border:1px solid;}
+  .vs .side.good{background:var(--good-bg); border-color:var(--good-border);}
+  .vs .side.bad{background:var(--bad-bg); border-color:var(--bad-border);}
+  .vs .side .lbl{font-weight:700; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:8px;}
+  .vs .side.good .lbl{color:var(--good);}
+  .vs .side.bad .lbl{color:var(--bad);}
+  .vs .side code{display:block; margin:4px 0; font-size:13px;}
+
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  .repo-badge{
+    display:inline-block; font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px;
+    background:var(--accent-soft); color:var(--accent); margin-left:8px; vertical-align:middle;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · Від коду до продакшну</div>
+  <h1>Тестування, CI/CD, моніторинг, хмара</h1>
+  <p class="lead">
+    Код без тестів і пайплайна — це код, який просто "здається робочим". Тут — повна картина:
+    як тестується бекенд (pytest), як тестується весь застосунок з боку користувача (окремий
+    репозиторій <code>ai-delivery-planner-e2e-tests</code> на Playwright), як обидва CI
+    автоматично перевіряють кожен пуш, і чесно — що вже моніториться на проді, а чого поки немає.
+  </p>
+  <div class="pills">
+    <span class="pill">🧪 pytest + Playwright</span>
+    <span class="pill">⚙️ Два CI-пайплайни</span>
+    <span class="pill">🔭 Моніторинг чесно</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+        <a href="17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="20-testing-cicd-monitoring-cloud.html" class="active">20. Тести, CI/CD, моніторинг</a>
+        <a href="21-pydantic.html">21. Pydantic</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-browser-internals.html">2. Браузер зсередини</a>
+        <a href="../js-doc/03-frontend-security.html">3. Безпека фронтенду</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-react-deep-dive.html">5. React углиб</a>
+        <a href="../js-doc/06-nextjs-architecture.html">6. Next.js та архітектура</a>
+        <a href="../js-doc/07-nextjs-interview-qa.html">7. Next.js: Q&amp;A</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-testing-cicd-cloud.html">9. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/10-ai-tools.html">10. AI-інструменти</a>
+        <a href="../js-doc/11-http-anatomy.html">11. HTTP: анатомія запитів</a>
+        <a href="../js-doc/12-this.html">12. this</a>
+        <a href="../js-doc/13-typescript-essentials.html">13. TypeScript essentials</a>
+        <a href="../js-doc/14-frontend-caching-fundamentals.html">14. Caching: основи</a>
+        <a href="../js-doc/15-frontend-caching-libraries.html">15. Caching: бібліотеки</a>
+        <a href="../js-doc/16-frontend-caching-advanced.html">16. Caching: просунуті теми</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — Тести бекенду</div>
+    <ol>
+      <li><a href="#s1">1. Піраміда тестів і де ми на ній</a></li>
+      <li><a href="#s2">2. conftest.py — реальні фікстури</a></li>
+      <li><a href="#s3">3. Приклад реального тесту</a></li>
+      <li><a href="#s4">4. Ручний regression-плейбук</a></li>
+    </ol>
+    <div class="toc-group">Частина II — E2E репозиторій</div>
+    <ol>
+      <li><a href="#s5">5. Навіщо окремий репозиторій</a></li>
+      <li><a href="#s6">6. Технології: Playwright + TS</a></li>
+      <li><a href="#s7">7. Структура репозиторію</a></li>
+      <li><a href="#s8">8. Flow (Page Object) патерн</a></li>
+      <li><a href="#s9">9. Fixtures ≈ Depends</a></li>
+      <li><a href="#s10">10. storageState — логін один раз</a></li>
+      <li><a href="#s11">11. Що покрито, що ні</a></li>
+    </ol>
+    <div class="toc-group">Частина III — CI/CD</div>
+    <ol>
+      <li><a href="#s12">12. CI бекенду</a></li>
+      <li><a href="#s13">13. CI e2e-репозиторію</a></li>
+      <li><a href="#s14">14. Чому два окремі пайплайни</a></li>
+    </ol>
+    <div class="toc-group">Частина IV — Моніторинг і хмара</div>
+    <ol>
+      <li><a href="#s15">15. Що вже є</a></li>
+      <li><a href="#s16">16. Чого чесно немає</a></li>
+    </ol>
+    <div class="toc-group">Підсумок</div>
+    <ol>
+      <li><a href="#s17">17. Каверзні питання співбесіди</a></li>
+      <li><a href="#s18">18. Шпаргалка</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Тести бекенду</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">1</span> Піраміда тестів і де ми на ній</h2>
+      <p class="section-desc">Класична "піраміда тестування" — багато дешевих і швидких тестів унизу, мало дорогих і повільних нагорі.</p>
+
+      <table>
+        <tr><th>Рівень</th><th>У цьому проєкті</th><th>Швидкість</th></tr>
+        <tr><td><b>Unit</b></td><td><code>test_route_optimizer_unit.py</code> — чиста логіка солвера, без HTTP/БД</td><td>Мілісекунди</td></tr>
+        <tr><td><b>Integration</b></td><td>Більшість <code>app/tests/*.py</code> — через <code>TestClient</code> + in-memory SQLite (розділ 2)</td><td>Секунди на весь набір</td></tr>
+        <tr><td><b>E2E</b></td><td><code>ai-delivery-planner-e2e-tests</code> — реальний браузер проти задеплоєного фронтенду+бекенду</td><td>Хвилини</td></tr>
+        <tr><td><b>Manual</b></td><td><code>MANUAL_TEST_PLAYBOOK.md</code> — покроковий чекліст для людини</td><td>Найповільніше, але й найгнучкіше</td></tr>
+      </table>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Та сама піраміда, що й у типовому JS/TS-стеку: unit/integration — Jest/Vitest
+        (тут — pytest), e2e — Playwright/Cypress (тут — буквально теж Playwright, лише проти
+        цього конкретного застосунку, а не бекенд-коду напряму).
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">2</span> <code>conftest.py</code> — реальні фікстури проєкту</h2>
+      <p class="section-desc">Найцікавіша частина тестової інфраструктури бекенду — як тести отримують "чисту" базу даних і підмінені зовнішні залежності.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/tests/conftest.py — реальний код з проєкту</span></div>
+        <pre><code>engine = create_async_engine(
+    "sqlite+aiosqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+
+@pytest.fixture(autouse=True, scope="session")
+def _disable_real_email_sending():
+    <span class="cmt">"""Tests must never hit real Gmail SMTP, regardless of what's in the
+    local .env — force the no-provider (log-only) path for the whole run."""</span>
+    get_settings().GMAIL_ADDRESS = ""
+    get_settings().GMAIL_APP_PASSWORD = ""
+
+@pytest_asyncio.fixture
+async def db_session():
+    <span class="cmt">"""Create all tables, yield a session, then drop all tables."""</span>
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    <span class="cmt"># ...</span></code></pre>
+      </div>
+
+      <ul>
+        <li><b>In-memory SQLite</b> (<code>sqlite+aiosqlite:///:memory:</code>) замість реального
+        Postgres — кожен тестовий прогін отримує повністю чисту, ізольовану базу, що живе лише
+        в пам'яті процесу тестів; жодних побічних ефектів між тестами, жодної потреби піднімати
+        реальний Postgres локально чи в CI.</li>
+        <li><b><code>StaticPool</code></b> — гарантує, що всі підключення в межах одного тесту
+        йдуть через те саме єдине з'єднання (звичайний пул для SQLite in-memory інакше міг би
+        відкрити "порожню" нову базу на кожне підключення).</li>
+        <li><b><code>autouse=True, scope="session"</code></b> фікстура — вимикає реальну
+        відправку email на весь тестовий прогін одразу, незалежно від того, що лежить у
+        локальному <code>.env</code> розробника. Захист від "тест випадково надіслав реальний
+        лист".</li>
+      </ul>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>DI платить за себе тут напряму:</b> та сама архітектура
+        <code>Depends(...)</code> з туторіалу 1 дозволяє <code>conftest.py</code> підмінити
+        <code>get_db</code>, <code>get_current_user</code>, <code>get_openai_client</code> через
+        <code>app.dependency_overrides[...]</code> — тести жодного разу не торкаються реального
+        Postgres чи реального OpenAI API, попри те, що продакшн-код написаний так, ніби вони
+        завжди справжні.</div>
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">3</span> Приклад реального тесту</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/tests/test_drivers_api.py — реальний код з проєкту</span></div>
+        <pre><code>def test_create_driver_returns_expected_fields_and_defaults(client: TestClient) -> None:
+    response = client.post("/api/v1/drivers/", json=_make_payload())
+    assert response.status_code == 200
+
+    body = response.json()
+    assert body["name"] == "Alice Driver"
+    assert body["status"] == "active"
+    assert body["working_hours_start"] == "08:00:00"
+    assert body["max_working_minutes"] == 600
+    assert "id" in body</code></pre>
+      </div>
+      <p><code>client</code> — фікстура з <code>conftest.py</code>, що дає
+      <code>TestClient</code>, підключений до in-memory БД і з обійденою автентифікацією.
+      Тест перевіряє не лише "запит пройшов", а й конкретні значення за замовчуванням
+      (робочі години, максимальна тривалість зміни) — саме такі "значення за замовчуванням"
+      найлегше випадково зламати рефакторингом, і найкорисніше мати тест, що це вловить.</p>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">4</span> Ручний regression-плейбук — доповнення до автотестів</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">MANUAL_TEST_PLAYBOOK.md — реальний файл з проєкту</span></div>
+        <pre><code># Ручний тест: головний флоу
+
+Покроковий гід для мануального тестування з мок-даними для копіювання.
+
+**Ліміти trial-плану:** 50 маршрутів на весь час · 500 геокодувань адрес · 20 AI-викликів.
+
+## 01. Логін — *є в UI*
+## 02. Створити водіїв — *є в UI*
+<span class="cmt"># ... і так далі, повний сценарій від логіну до готового маршруту</span></code></pre>
+      </div>
+      <p>Автотести (pytest, Playwright) не покривають абсолютно все — особливо новий функціонал,
+      ще не обгорнутий у тести, чи речі, які суб'єктивно "виглядають правильно" лише оку людини.
+      Цей файл — не заміна автоматизації, а компаньйон: покроковий чекліст із готовими
+      копі-пейст даними для людини, яка руками проходить весь флоу перед релізом.</p>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · E2E-репозиторій</div><div class="line"></div></div>
+
+    <section id="s5">
+      <h2><span class="num">5</span> Навіщо окремий репозиторій для e2e</h2>
+      <p class="section-desc"><code>ai-delivery-planner-e2e-tests</code> <span class="repo-badge">окремий репозиторій</span> — не частина бекенду, а самостійний проєкт.</p>
+      <ul>
+        <li>E2E-тести перевіряють <b>весь стек разом</b> — фронтенд (Vercel) + бекенд (Fly.io) —
+        тому логічно не належать конкретно жодному з двох репозиторіїв.</li>
+        <li>Окремий життєвий цикл: e2e-набір можна ганяти проти будь-якого середовища
+        (прод, staging), незалежно від того, який саме коміт зараз у бекенді чи фронтенді.</li>
+        <li>Інший технологічний стек (TypeScript+Playwright, не Python) — окремий
+        <code>package.json</code>, окремий CI, без змішування залежностей із бекендом.</li>
+      </ul>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">6</span> Технології: Playwright + TypeScript</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">package.json — реальний код з e2e-репозиторію</span></div>
+        <pre><code>{
+  "name": "ai-delivery-planner-e2e-tests",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0",
+    "dotenv": "^16.4.5",
+    "typescript": "^5.5.0"
+  }
+}</code></pre>
+      </div>
+      <p><b>Playwright</b> — фреймворк для браузерної автоматизації від Microsoft: керує
+      справжнім Chromium/Firefox/WebKit, клікає, заповнює форми, чекає на елементи так само, як
+      робив би реальний користувач. <b>TypeScript</b>, а не JS — типізовані Page/Flow-класи
+      (розділ 8) ловлять помилки в самих тестах ще до запуску, той самий принцип "статична
+      перевірка типів" з туторіалу 5, тепер із боку тестів, а не бекенду.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Playwright ≈ Cypress, тільки керує кількома реальними браузерними рушіями (не лише
+        Chromium-подібним), і за дизайном орієнтований на паралельний запуск і CI з коробки.
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">7</span> Структура репозиторію</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">реальна структура з e2e-репозиторію</span></div>
+        <pre><code>tests/
+  auth.setup.ts         <span class="cmt"># логін ОДИН раз, зберігає сесію (розділ 10)</span>
+  fixtures/
+    base.fixture.ts       <span class="cmt"># підключає Flow-класи до test (розділ 9)</span>
+  flows/                  <span class="cmt"># Page Object -- по одному класу на розділ застосунку</span>
+    auth.flow.ts
+    drivers.flow.ts
+    depots.flow.ts
+    vehicles.flow.ts
+    deliveries.flow.ts
+  specs/                  <span class="cmt"># самі тести -- ЩО перевіряємо</span>
+    login.spec.ts
+    navigation.spec.ts
+    drivers.spec.ts
+    depots.spec.ts
+    vehicles.spec.ts
+    deliveries.spec.ts
+    logout.spec.ts</code></pre>
+      </div>
+      <p>Чіткий поділ "ЯК взаємодіяти зі сторінкою" (<code>flows/</code>) від "ЩО ми
+      перевіряємо" (<code>specs/</code>) — той самий принцип шаруватої архітектури з
+      туторіалу 1, тільки застосований до тестового коду: специфікація тесту читається як
+      список бізнес-кроків, а не як перелік CSS-селекторів.</p>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">8</span> Flow (Page Object) патерн</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">tests/flows/drivers.flow.ts — реальний код з e2e-репозиторію</span></div>
+        <pre><code>export interface DriverInput {
+  name: string;
+  phone: string;
+}
+
+export class DriversFlow {
+  constructor(private page: Page) {}
+
+  async goto() {
+    await this.page.goto('/drivers');
+  }
+
+  async create(driver: DriverInput) {
+    await this.page.getByRole('button', { name: '+ New Driver' }).click();
+    await this.page.locator('#drv-name').fill(driver.name);
+    await this.page.locator('#drv-phone').fill(driver.phone);
+    await this.page.getByRole('button', { name: 'Create' }).click();
+  }
+}</code></pre>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">tests/specs/drivers.spec.ts — реальний код з e2e-репозиторію</span></div>
+        <pre><code>test('creates a new driver', async ({ page, driversFlow }) => {
+  const name = `E2E Driver ${Date.now()}`;
+
+  await driversFlow.goto();
+  await driversFlow.create({ name, phone: '0501234567' });
+
+  await expect(page.getByText(name)).toBeVisible();
+});</code></pre>
+      </div>
+
+      <p><b>Flow</b> (він же Page Object в індустрії) — клас, що ховає деталі конкретної
+      сторінки (які саме селектори, які кроки) за читабельними методами
+      (<code>create(driver)</code>). Якщо фронтенд змінить розмітку форми водія — правиться
+      <b>один</b> файл (<code>drivers.flow.ts</code>), а не кожен тест, що коли-небудь створює
+      водія.</p>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">9</span> Fixtures у Playwright ≈ <code>Depends</code> у FastAPI</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">tests/fixtures/base.fixture.ts — реальний код з e2e-репозиторію</span></div>
+        <pre><code>export const test = base.extend<Flows>({
+  authFlow: async ({ page }, use) => use(new AuthFlow(page)),
+  driversFlow: async ({ page }, use) => use(new DriversFlow(page)),
+  depotsFlow: async ({ page }, use) => use(new DepotsFlow(page)),
+  vehiclesFlow: async ({ page }, use) => use(new VehiclesFlow(page)),
+  deliveriesFlow: async ({ page }, use) => use(new DeliveriesFlow(page)),
+});</code></pre>
+      </div>
+      <p><code>test.extend&lt;Flows&gt;({...})</code> — Playwright-версія Dependency Injection
+      (туторіал 1 і 16): кожен тест оголошує у своїх параметрах, які саме
+      <code>...Flow</code>-об'єкти йому потрібні (<code>async ({ page, driversFlow }) =&gt;</code>),
+      а фреймворк сам збирає й передає готові екземпляри — тест не створює
+      <code>new DriversFlow(page)</code> вручну щоразу, так само як FastAPI-ендпоінт не створює
+      <code>DeliveryRepository(...)</code> вручну.</p>
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Хороша відповідь на співбесіді</span>
+        "Чи стикались ви з DI поза бекендом?" — Playwright fixtures — прямий, конкретний
+        приклад того самого патерна (Dependency Injection) у тестовому фреймворку, а не у
+        веб-застосунку.</div>
+      </div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> <code>storageState</code> — логін один раз, а не в кожному тесті</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">tests/auth.setup.ts + playwright.config.ts — реальний код з e2e-репозиторію</span></div>
+        <pre><code>setup('authenticate', async ({ page }) => {
+  const auth = new AuthFlow(page);
+  await auth.login(process.env.TEST_EMAIL!, process.env.TEST_PASSWORD!);
+  await page.waitForURL('/');
+  await page.context().storageState({ path: STORAGE_STATE });   <span class="cmt">// зберігає cookies/сесію у файл</span>
+});
+
+<span class="cmt">// playwright.config.ts:</span>
+projects: [
+  { name: 'setup', testMatch: /auth\.setup\.ts/ },
+  { name: 'chromium', use: { storageState: STORAGE_STATE }, dependencies: ['setup'] },
+]</code></pre>
+      </div>
+      <p>Окремий "setup"-проєкт логіниться <b>один раз</b> через реальний UI і зберігає сесію
+      (cookies, localStorage) у файл; усі інші тести стартують уже залогіненими, підвантажуючи
+      цей файл — не витрачають 5-10 секунд на повторний логін у <i>кожному</i> тесті. Виняток —
+      <code>login.spec.ts</code>, який навмисно скидає стан
+      (<code>test.use({ storageState: { cookies: [], origins: [] } })</code>), бо сам логін і
+      є тим, що він перевіряє.</p>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Що покрито, що ні — і чому</h2>
+      <div class="vs">
+        <div class="side good">
+          <div class="lbl">✅ Покрито</div>
+          <code>Логін (вдалий і невдалий)</code>
+          <code>Навігація по всіх основних розділах</code>
+          <code>Створення водія/депо/машини/доставки</code>
+          <code>Логаут</code>
+        </div>
+        <div class="side bad">
+          <div class="lbl">⏳ Навмисно поки ні</div>
+          <code>Повна генерація оптимізованого маршруту</code>
+          <code>(ланцюжок: геокодування депо + доставок,</code>
+          <code>частина з яких асинхронна на бекенді —</code>
+          <code>чекає стабільного розуміння таймінгів)</code>
+        </div>
+      </div>
+      <p class="muted">Із README репозиторію: <i>"Scope is intentionally minimal: log in, walk
+      through the main functionality, verify it works"</i> — свідомо мінімальний "smoke"-набір,
+      а не намагання покрити кожен можливий сценарій. Швидкий, стабільний набір, який реально
+      запускають на кожен PR, цінніший за повільний і крихкий, який ніхто не хоче чекати.</p>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина III · CI/CD</div><div class="line"></div></div>
+
+    <section id="s12">
+      <h2><span class="num">12</span> CI бекенду</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">.github/workflows/ci.yml — реальний код з бекенд-репозиторію</span></div>
+        <pre><code>jobs:
+  test:
+    steps:
+      - run: pip install ".[dev]"
+      - name: Run ruff
+        run: ruff check .
+      - name: Run pytest
+        run: pytest
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}</code></pre>
+      </div>
+      <p>Лінійний, простий пайплайн: <b>лінт → тести → (лише на <code>main</code>) деплой</b>.
+      <code>deploy</code>-джоба має <code>needs: test</code> — деплой фізично не може
+      запуститись, якщо тести не пройшли. <code>if: github.ref == 'refs/heads/main'</code>
+      гарантує, що PR-и (гілки, що не є <code>main</code>) ніколи не деплояться, лише
+      перевіряються.</p>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> CI e2e-репозиторію</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">.github/workflows/playwright.yml — реальний код з e2e-репозиторію</span></div>
+        <pre><code>jobs:
+  e2e:
+    timeout-minutes: 30
+    steps:
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14</code></pre>
+      </div>
+      <ul>
+        <li><b><code>timeout-minutes: 30</code></b> — захист від "зависання" (браузерні тести
+        можуть застрягти, чекаючи елемент, що ніколи не з'явиться).</li>
+        <li><b>Secrets</b> (<code>BASE_URL</code>, тестовий акаунт) — тести йдуть проти
+        <i>реально задеплоєного</i> застосунку (прод чи staging URL), а не локального
+        інстансу — саме тому потрібні реальні облікові дані в GitHub Secrets, не в коді.</li>
+        <li><b><code>upload-artifact ... if: !cancelled()</code></b> — HTML-звіт Playwright
+        (зі скріншотами й відео провалених тестів, <code>screenshot: 'only-on-failure'</code>,
+        <code>video: 'retain-on-failure'</code> з конфігу) зберігається як артефакт навіть при
+        падінні — можна відкрити й побачити, <i>що саме</i> пішло не так, не перезапускаючи
+        локально наосліп.</li>
+      </ul>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Чому два окремі пайплайни, а не один</h2>
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body">Бекенд-CI відповідає за коректність <b>коду</b> бекенду (лінт, unit/
+        integration-тести) — швидко, і без залежності від того, чи задеплоєний зараз фронтенд.
+        E2E-CI відповідає за коректність <b>усього застосунку разом</b>, коли він уже живий у
+        проді — принципово інша перевірка, на інших часових рамках (e2e логічно доречно ганяти й
+        за розкладом, не лише на кожен пуш, щоб ловити регресії від змін у фронтенд-репозиторії,
+        які бекенд-CI фізично не бачить).</div>
+      </div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина IV · Моніторинг і хмара</div><div class="line"></div></div>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Що вже є</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">fly.toml — реальний код з проєкту</span></div>
+        <pre><code>[[http_service.checks]]
+  method = "GET"
+  path = "/health"
+  interval = "15s"
+  timeout = "5s"
+  grace_period = "10s"</code></pre>
+      </div>
+      <p>Fly.io сам опитує <code>GET /health</code> кожні 15 секунд; якщо машина перестає
+      відповідати — платформа перезапускає її автоматично. Це базовий рівень
+      "чи процес взагалі живий" — найпростіша, але реальна форма моніторингу, що вже працює
+      без жодного додаткового налаштування.</p>
+    </section>
+
+    <section id="s16">
+      <h2><span class="num">16</span> Чого чесно немає</h2>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body">Поза health-чеком Fly.io й логами в stdout (туторіал 10 — які,
+        нагадаємо, теж не повністю налаштовані сьогодні) проєкт наразі не має: APM
+        (application performance monitoring — Sentry/Datadog/New Relic для трасування
+        повільних запитів), централізованого збору помилок (Sentry-подібний сервіс, що ловить
+        і групує винятки автоматично), алертів (Slack/email при падінні health-чеку чи сплеску
+        5xx-відповідей), чи дашборда з реальними метриками (латентність, RPS, використання
+        БД-пулу).</div>
+      </div>
+      <p class="muted">Для поточного масштабу (один інстанс, невелике навантаження — туторіал 3)
+      це прийнятний, свідомий рівень інвестицій в observability. Природний наступний крок при
+      рості — Sentry для помилок (найдешевший, найшвидший до впровадження) ще до повноцінного
+      APM/дашбордів.</p>
+    </section>
+
+    <section id="s17">
+      <h2><span class="num">17</span> Хмара — коротко</h2>
+      <p>Повний розбір деплою (Fly.io, single-machine trade-offs, драбина масштабування) — уже
+      є в <a href="03-scaling.html">туторіалі 3</a>. Тут — лише нагадування, як тестування й CI
+      з цього туторіалу підключаються до тієї картини: <code>deploy</code>-джоба CI (розділ 12)
+      і є тим самим кроком, що застосовує зміни до Fly.io-машини, описаної в тому туторіалі —
+      тести й лінт як обов'язкові ворота <i>перед</i> кожним таким деплоєм.</p>
+    </section>
+
+    <section id="s18">
+      <h2><span class="num">18</span> Каверзні питання співбесіди</h2>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Навіщо in-memory SQLite для тестів, якщо прод використовує Postgres?</summary>
+        <div class="a">Швидкість (не треба піднімати реальну БД у CI) та ізоляція (кожен
+        тестовий прогін — чиста база). Компроміс: SQLite й Postgres мають дрібні відмінності
+        поведінки (типи даних, деякі SQL-функції) — для більшості CRUD-тестів це не критично,
+        але це не 100% гарантія поведінки на реальному Postgres.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим Page Object (Flow) кращий за виклик селекторів напряму в кожному тесті?</summary>
+        <div class="a">Ізолює деталі розмітки сторінки в одному місці — зміна форми на
+        фронтенді вимагає правки одного Flow-класу, а не кожного тесту, що з цією формою
+        взаємодіє.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому <code>login.spec.ts</code> окремо скидає <code>storageState</code>, а решта тестів — ні?</summary>
+        <div class="a">Решта тестів навмисно стартують уже залогіненими (через збережену
+        сесію з <code>auth.setup.ts</code>), щоб не витрачати час на повторний логін у кожному
+        тесті. Але сам логін — це те, що <code>login.spec.ts</code> перевіряє, тож він мусить
+        стартувати з порожнього, незалогіненого стану.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чому деплой-джоба в CI має <code>needs: test</code>?</summary>
+        <div class="a">Гарантує, що деплой фізично не може запуститись, якщо лінт чи тести
+        впали — структурний захист від випадкового розгортання зламаного коду, а не
+        домовленість "не мерджити, поки CI червоний".</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому e2e-тести живуть в окремому репозиторії, а не в бекенді чи фронтенді?</summary>
+        <div class="a">E2E перевіряє весь стек разом (фронтенд + бекенд), тому логічно не
+        належить жодному з них окремо; має власний технологічний стек (TS/Playwright, не
+        Python), власний життєвий цикл і CI, незалежний від того, який коміт зараз у кожному
+        з інших двох репозиторіїв.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чи вважається health-check на Fly.io повноцінним моніторингом?</summary>
+        <div class="a">Ні — це лише базова перевірка "процес живий/мертвий" з автоматичним
+        рестартом. Повноцінний моніторинг включає трасування продуктивності, збір і групування
+        помилок, алерти й метрики — усього цього в проєкті поки немає, свідомо, для поточного
+        масштабу.</div>
+      </details>
+
+    </section>
+
+    <section id="s19">
+      <h2><span class="num">19</span> Шпаргалка</h2>
+      <div class="cheat">
+        <table>
+          <tr><th>Питання</th><th>Відповідь</th></tr>
+          <tr><td>Швидка ізольована БД для тестів</td><td>SQLite in-memory + <code>StaticPool</code></td></tr>
+          <tr><td>Підмінити зовнішні залежності в тестах</td><td><code>app.dependency_overrides[...]</code></td></tr>
+          <tr><td>Не логінитись у кожному e2e-тесті</td><td><code>storageState</code> + окремий setup-проєкт</td></tr>
+          <tr><td>Ізолювати деталі розмітки сторінки</td><td>Flow / Page Object патерн</td></tr>
+          <tr><td>DI у тестовому фреймворку (не бекенді)</td><td>Playwright <code>test.extend({...})</code></td></tr>
+          <tr><td>Захистити прод від зламаного коду</td><td><code>deploy: needs: test</code> у CI</td></tr>
+          <tr><td>E2E-тести якого застосунку?</td><td>Окремий репозиторій — весь стек разом, не один з репо</td></tr>
+          <tr><td>"Процес живий" vs "повний моніторинг"</td><td>Health-check ≠ APM/error tracking/alerting</td></tr>
+        </table>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал побудований на реальному коді двох репозиторіїв:
+  <code>ai-delivery-planner-backend</code> (<code>app/tests/</code>, <code>.github/workflows/ci.yml</code>,
+  <code>MANUAL_TEST_PLAYBOOK.md</code>, <code>fly.toml</code>) та
+  <code>ai-delivery-planner-e2e-tests</code> (повністю).
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*|\/\/[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b|\bthis\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case|const|let|var|function|interface|type|export|extends|implements|new|void|enum|typeof|instanceof|static|public|private|readonly|null|undefined)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

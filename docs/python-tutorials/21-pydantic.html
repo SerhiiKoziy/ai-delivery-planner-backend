@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>21. Pydantic — AI Delivery Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout b, .callout strong{color:inherit;}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:640px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · Pydantic</div>
+  <h1>Pydantic: валідація та серіалізація даних</h1>
+  <p class="lead">
+    Досі Pydantic згадувався по шматочку в різних місцях цього сайту — раз у турі про типи, раз
+    у турі про серіалізацію, раз як побіжна деталь архітектури. Тут усе це зібрано в один
+    послідовний, глибший розбір: <code>BaseModel</code>, <code>Field</code>, вкладені моделі,
+    кастомні валідатори, серіалізація й типізована конфігурація застосунку. Бекенд цього проєкту
+    побудований на Pydantic майже суцільно (<code>app/schemas/</code>, <code>app/core/config.py</code>)
+    — тож розуміння цієї бібліотеки одразу окупається під час читання реального коду.
+  </p>
+  <div class="pills">
+    <span class="pill">🧾 BaseModel &amp; Field</span>
+    <span class="pill">⚙️ BaseSettings</span>
+    <span class="pill">🔀 dataclasses / attrs / Zod</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+        <a href="17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="20-testing-cicd-monitoring-cloud.html">20. Тести, CI/CD, моніторинг</a>
+        <a href="21-pydantic.html" class="active">21. Pydantic</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-browser-internals.html">2. Браузер зсередини</a>
+        <a href="../js-doc/03-frontend-security.html">3. Безпека фронтенду</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-react-deep-dive.html">5. React углиб</a>
+        <a href="../js-doc/06-nextjs-architecture.html">6. Next.js та архітектура</a>
+        <a href="../js-doc/07-nextjs-interview-qa.html">7. Next.js: Q&amp;A</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-testing-cicd-cloud.html">9. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/10-ai-tools.html">10. AI-інструменти</a>
+        <a href="../js-doc/11-http-anatomy.html">11. HTTP: анатомія запитів</a>
+        <a href="../js-doc/12-this.html">12. this</a>
+        <a href="../js-doc/13-typescript-essentials.html">13. TypeScript essentials</a>
+        <a href="../js-doc/14-frontend-caching-fundamentals.html">14. Caching: основи</a>
+        <a href="../js-doc/15-frontend-caching-libraries.html">15. Caching: бібліотеки</a>
+        <a href="../js-doc/16-frontend-caching-advanced.html">16. Caching: просунуті теми</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s0">0. Що таке Pydantic і навіщо він існує</a></li>
+      <li><a href="#s1">1. Базове визначення моделі</a></li>
+      <li><a href="#s2">2. Field(): обмеження та метадані</a></li>
+      <li><a href="#s3">3. Вкладені моделі</a></li>
+      <li><a href="#s4">4. Кастомні валідатори</a></li>
+      <li><a href="#s5">5. Серіалізація: model_dump &amp; model_validate</a></li>
+      <li><a href="#s6">6. model_config / ConfigDict</a></li>
+      <li><a href="#s7">7. BaseSettings</a></li>
+      <li><a href="#s8">8. Помилки валідації і 422</a></li>
+      <li><a href="#s9">9. Аналоги</a></li>
+      <li><a href="#s10">10. Підсумок</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s0">
+      <h2><span class="num">00</span> Що таке Pydantic і навіщо він існує</h2>
+      <p class="section-desc">Коротке визначення — і одразу зв'язок із тим, що вже сказано в іншому місці цього сайту.</p>
+
+      <p>Pydantic — бібліотека, яка дозволяє описувати форму даних звичайними Python-класами з
+      анотаціями типів, а тоді <b>реально перевіряє й приводить (coerce)</b> вхідні дані до цих
+      типів у рантаймі. <a href="05-python-types.html#s6">Туторіал 5, розділ 6</a> вже показав
+      головний факт, з якого все випливає: самі по собі type hints Python повністю ігнорує під
+      час виконання — Pydantic і є тим двигуном, що перетворює анотації на реально працюючий
+      контракт. Тут це порівняння не повторюємо, а йдемо далі — у сам API бібліотеки.</p>
+
+      <p>Чотири практичні задачі, під які Pydantic реально використовують:</p>
+      <ol>
+        <li><b>Валідація недовіреного зовнішнього вводу</b> — тіла HTTP-запитів. Саме тому
+        FastAPI побудований навколо Pydantic: кожна схема в <code>app/schemas/</code> цього
+        проєкту — це межа довіри між "що надіслав клієнт" і "що бачить код застосунку".</li>
+        <li><b>Типізована конфігурація застосунку</b> зі змінних середовища —
+        <code>BaseSettings</code> (розділ 7).</li>
+        <li><b>Серіалізація "не-JSON" Python-типів</b> (<code>UUID</code>, <code>datetime</code>,
+        <code>Decimal</code>) у JSON без жодного ручного коду.</li>
+        <li><b>Парсинг довільних зовнішніх даних</b> — відповіді стороннього API, конфіг-файл,
+        повідомлення з черги — у надійні типізовані об'єкти замість "сирих" словників.</li>
+      </ol>
+    </section>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Базове визначення моделі</h2>
+      <p class="section-desc">Модель — це клас, успадкований від <code>BaseModel</code>, де кожен атрибут з анотацією типу стає полем.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/schemas/route.py</span></div>
+        <pre><code>from pydantic import BaseModel
+
+class OptimizeRequest(BaseModel):
+    delivery_ids: list[uuid.UUID]
+    vehicle_ids: list[uuid.UUID]
+    depot_id: uuid.UUID
+    return_to_depot: bool = True</code></pre>
+      </div>
+
+      <p><code>delivery_ids</code>, <code>vehicle_ids</code> і <code>depot_id</code> мають
+      анотацію типу без значення за замовчуванням — тобто вони <b>обов'язкові</b>: якщо клієнт не
+      надішле поле, Pydantic одразу відхилить весь об'єкт. <code>return_to_depot</code> має
+      дефолт <code>True</code> — тобто необов'язкове, і якщо клієнт його не передасть, буде
+      використано дефолтне значення.</p>
+
+      <p>Pydantic не лише перевіряє тип — він ще й <b>приводить (coerce)</b> вхідні дані до
+      оголошеного типу там, де це має сенс. Рядок із самих цифр, переданий для поля типу
+      <code>int</code>, буде приведений до числа:</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">coercion — не лише перевірка, а й приведення типу</span></div>
+        <pre><code>class Foo(BaseModel):
+    count: int
+
+Foo(count="42").count
+<span class="cmt"># 42 (int) — рядок з цифр приведено до int, а не відхилено як "невірний тип"</span></code></pre>
+      </div>
+
+      <div class="callout info">
+        <div class="ic">🎯</div>
+        <div class="body"><b>Строгий режим:</b> якщо ця "магія" приведення типів небажана —
+        наприклад, коли рядок і число мають лишатись явно різними речами — Pydantic дозволяє
+        вимкнути її для окремого поля (<code>Field(strict=True)</code>) чи цілої моделі
+        (<code>model_config = ConfigDict(strict=True)</code>), вимагаючи точного збігу типу без
+        конвертації.</div>
+      </div>
+
+      <p>Якщо дані все ж не проходять валідацію (і ніяке приведення типу не рятує), Pydantic
+      кидає <code>ValidationError</code> — одразу, ще на етапі створення об'єкта:</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">невалідні дані → ValidationError</span></div>
+        <pre><code>from pydantic import ValidationError
+
+try:
+    OptimizeRequest(delivery_ids=["not-a-uuid"], vehicle_ids=[], depot_id="also-not-a-uuid")
+except ValidationError as e:
+    print(e.errors())</code></pre>
+      </div>
+
+      <p class="muted">Що саме повертає <code>e.errors()</code> і як це пов'язано з
+      422-відповіддю FastAPI цього проєкту — детально в розділі 8.</p>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> <code>Field()</code>: обмеження та метадані</h2>
+      <p class="section-desc">Коли самої анотації типу недостатньо — потрібні межі значень, дефолти складніші за літерал, чи документація для API.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">кілька обмежень на невеликій моделі</span></div>
+        <pre><code>from pydantic import BaseModel, Field
+
+class DeliveryNote(BaseModel):
+    text: str = Field(min_length=1, max_length=500, description="Нотатка водія до доставки")
+    priority: int = Field(default=0, ge=0, le=5)
+    tags: list[str] = Field(default_factory=list)
+    external_id: str | None = Field(default=None, alias="externalId")</code></pre>
+      </div>
+
+      <p><b>Обмеження довжини й меж:</b> <code>min_length</code>/<code>max_length</code> для
+      рядків і списків, <code>gt</code>/<code>ge</code>/<code>lt</code>/<code>le</code>
+      (більше / більше-або-дорівнює / менше / менше-або-дорівнює) для чисел — <code>priority</code>
+      вище обмежений діапазоном 0-5 саме через <code>ge=0, le=5</code>.</p>
+
+      <p><b><code>default</code> проти <code>default_factory</code>.</b> На відміну від
+      дефолтних аргументів звичайних функцій, де <code>def f(x=[])</code> — класична пастка
+      (той самий список ділиться між усіма викликами), Pydantic-поля з мутабельним літералом
+      на кшталт <code>= []</code> насправді безпечні: бібліотека сама глибоко копіює дефолтне
+      значення для кожного екземпляра моделі окремо. <code>default_factory</code> потрібен не
+      заради безпеки, а для дефолтів, які треба <i>обчислити</i> в момент створення екземпляра
+      (наприклад, <code>default_factory=list</code> для порожнього списку "з нуля" щоразу, чи
+      <code>default_factory=uuid.uuid4</code> для нового унікального ідентифікатора при кожному
+      створенні) — а не одного разу на етапі визначення класу.</p>
+
+      <p><b><code>description</code></b> — не просто коментар: FastAPI бере це значення й
+      автоматично показує його прямо в згенерованій Swagger/OpenAPI-документації ендпоінта, без
+      жодного додаткового коду з вашого боку.</p>
+
+      <p><b><code>alias</code></b> дозволяє полю з іменем <code>external_id</code> у Python
+      приймати (і, за потреби, віддавати) дані під іншим ключем JSON — тут <code>"externalId"</code>,
+      типовий випадок, коли клієнт (наприклад, фронтенд на camelCase) і бекенд (на
+      snake_case) називають те саме поле по-різному. Чи можна прийняти <i>обидва</i> варіанти
+      імені одночасно — залежить від опції <code>populate_by_name</code> в
+      <code>model_config</code> (розділ 6).</p>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Вкладені моделі</h2>
+      <p class="section-desc">Поле моделі може саме бути іншою моделлю — Pydantic валідує вкладену структуру рекурсивно, за один виклик.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/schemas/route.py — реальна вкладеність</span></div>
+        <pre><code>class RouteRead(BaseModel):
+    id: uuid.UUID
+    depot_id: uuid.UUID
+    status: str
+    stops: list[RouteStopRead] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class OptimizeResult(BaseModel):
+    routes: list[RouteRead]
+    unassigned_deliveries: list[DeliveryRef]
+    skipped_not_geocoded: list[DeliveryRef]
+    vehicles_without_driver: list[VehicleRef]</code></pre>
+      </div>
+
+      <p><code>OptimizeResult</code> містить список <code>RouteRead</code>, кожен з яких сам
+      містить список <code>RouteStopRead</code>. Один виклик
+      <code>OptimizeResult(**raw_dict)</code> обходить усе дерево цілком: кожен маршрут, кожну
+      зупинку кожного маршруту — все перевіряється й приводиться до типів за один прохід, без
+      жодного ручного циклу з вашого боку.</p>
+
+      <p>Найкорисніший наслідок вкладеності — <b>точна адреса помилки</b>. Якщо в п'ятій зупинці
+      третього маршруту зіпсоване поле <code>estimated_arrival</code>, помилка вкаже саме на
+      цей шлях у структурі (щось на кшталт <code>routes.2.stops.4.estimated_arrival</code>) —
+      а не просто "десь у даних щось не так".</p>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Кастомні валідатори: <code>@field_validator</code> і <code>@model_validator</code></h2>
+      <p class="section-desc">Коли обмежень з <code>Field()</code> недостатньо — потрібна довільна логіка перевірки чи трансформації.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body">Цей проєкт поки <b>не використовує</b> кастомні валідатори — жоден
+        реальний файл у <code>app/schemas/</code> не містить <code>field_validator</code> чи
+        <code>model_validator</code>. Приклади нижче — гіпотетичні, побудовані як природне
+        розширення вже наявних реальних моделей, щоб показати, як це виглядало б, якби
+        знадобилось.</div>
+      </div>
+
+      <p><b><code>@field_validator("ім'я_поля")</code></b> перевіряє чи трансформує <i>одне
+      конкретне поле</i> — декоратор застосовується до класметоду, який отримує вже приведене
+      до типу значення цього поля й повертає (можливо, змінене) значення або кидає помилку:</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">гіпотетичне розширення VehicleRef</span></div>
+        <pre><code>from pydantic import field_validator
+
+class VehicleRef(BaseModel):
+    id: uuid.UUID
+    plate_number: str | None = None
+
+    @field_validator("plate_number")
+    @classmethod
+    def normalize_plate(cls, v: str | None) -> str | None:
+        return v.strip().upper() if v else v</code></pre>
+      </div>
+
+      <p><b><code>@model_validator(mode="after")</code></b> — інший інструмент для іншої задачі:
+      він бачить <i>уже повністю зібраний</i> екземпляр моделі (<code>self</code>), а не одне
+      поле окремо, тому це правильне місце для перевірок, які залежать від <i>кількох</i> полів
+      одночасно:</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">гіпотетичне розширення OptimizeRequest</span></div>
+        <pre><code>from pydantic import model_validator
+
+class OptimizeRequest(BaseModel):
+    delivery_ids: list[uuid.UUID]
+    vehicle_ids: list[uuid.UUID]
+    depot_id: uuid.UUID
+    return_to_depot: bool = True
+
+    @model_validator(mode="after")
+    def check_not_both_empty(self):
+        if not self.delivery_ids and not self.vehicle_ids:
+            raise ValueError("Потрібен хоча б один delivery_id або vehicle_id")
+        return self</code></pre>
+      </div>
+
+      <p class="muted">Різниця в двох словах: <code>field_validator</code> дивиться на одне
+      поле ізольовано; <code>model_validator(mode="after")</code> дивиться на модель <i>цілком</i>,
+      коли потрібна узгодженість між кількома полями — саме таким є приклад вище: неможливо
+      перевірити "хоча б один із двох списків непорожній", маючи доступ лише до одного з них.</p>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Серіалізація: <code>model_dump()</code>, <code>model_dump_json()</code>, <code>model_validate()</code></h2>
+      <p class="section-desc"><a href="11-serialization-and-numbers.html#s2">Туторіал 11, розділ 2</a> уже показав, що Pydantic автоматично серіалізує "не-JSON" типи (UUID, datetime, Decimal) — тут інша половина: сама механіка перетворення туди й назад.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">модель ↔ dict ↔ JSON</span></div>
+        <pre><code>route = RouteRead(id=some_id, depot_id=some_depot_id, status="pending",
+                  return_to_depot=True, total_distance_km=12.4,
+                  total_duration_minutes=35, created_at=now, updated_at=now)
+
+route.model_dump()          <span class="cmt"># -> звичайний Python dict</span>
+route.model_dump_json()     <span class="cmt"># -> рядок JSON напряму, без проміжного dict</span>
+
+RouteRead.model_validate(route.model_dump())
+<span class="cmt"># -> dict назад у типізований об'єкт RouteRead — той самий екземпляр за змістом</span></code></pre>
+      </div>
+
+      <p><code>model_dump()</code> перетворює модель на звичайний Python <code>dict</code>
+      (зручно, коли дані передаються далі всередині застосунку, не назовні). Наступний рядок
+      кроку — той-таки dict напряму, серіалізований у рядок JSON.
+      <code>model_validate(data)</code> — зворотна дія: класметод, що парсить і валідує вже
+      наявний словник (чи будь-що dict-подібне) у екземпляр моделі — альтернатива виклику
+      конструктора з іменованими аргументами, особливо корисна, коли вхідні дані вже прийшли
+      як dict звідкись іззовні (відповідь стороннього API, рядок із черги).</p>
+
+      <p>Практична деталь для часткових оновлень: <code>model_dump(exclude_unset=True)</code>
+      серіалізує лише ті поля, які клієнт <i>реально передав</i>, а не ті, що тихо отримали
+      дефолтне значення — саме те, що потрібно для PATCH-подібного ендпоінта з кількома
+      необов'язковими полями, де важливо не затерти нулем чи дефолтом те, що клієнт узагалі не
+      чіпав. У поточних схемах цього проєкту немає моделі з кількома незалежними необов'язковими
+      полями, де це було б потрібно, — але саме такий сценарій і є типовим випадком застосування.</p>
+
+      <div class="callout info">
+        <div class="ic">📎</div>
+        <div class="body"><b>v1 проти v2:</b> якщо десь в інтернеті чи в старому коді
+        трапляються <code>.dict()</code>, <code>.json()</code>, <code>.parse_obj()</code> —
+        це назви Pydantic v1. У v2 їх перейменували на <code>.model_dump()</code>,
+        <code>.model_dump_json()</code>, <code>.model_validate()</code> відповідно (старі назви
+        лишились як застарілі alias'и для сумісності, але нові — стандарт).</div>
+      </div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> <code>model_config</code> / <code>ConfigDict</code></h2>
+      <p class="section-desc">Об'єкт налаштувань поведінки моделі — на рівні класу, не окремого поля.</p>
+
+      <p><code>model_config</code> — спеціальний атрибут класу, що замінив вкладений
+      <code>class Config:</code> із Pydantic v1. Реальний приклад із цього проєкту:</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/schemas/route.py</span></div>
+        <pre><code>class RouteRead(BaseModel):
+    ...
+    model_config = ConfigDict(from_attributes=True)</code></pre>
+      </div>
+
+      <p><code>from_attributes=True</code> (у Pydantic v1 ця сама опція звалась
+      <code>orm_mode</code>) дозволяє будувати модель напряму <b>з об'єкта з відповідними
+      атрибутами</b> — наприклад, із рядка SQLAlchemy ORM — а не лише зі словника. Саме тому
+      <code>RouteRead</code>/<code>RouteStopRead</code> у цьому проєкті можна повернути прямо з
+      обробника роутера, отримавши на вході ORM-рядок із бази: Pydantic сам прочитає потрібні
+      атрибути з об'єкта, без ручної конвертації в dict.</p>
+
+      <p><code>populate_by_name</code> працює в парі з <code>alias</code> із розділу 2 —
+      вмикає можливість передати значення поля <i>або</i> під його оригінальним іменем у Python,
+      <i>або</i> під alias'ом, замість жорсткої вимоги лише одного варіанту.</p>
+
+      <p>Ще один реальний приклад із цього проєкту — <code>extra</code>, налаштований у
+      <code>Settings</code> (<code>app/core/config.py</code>):</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/config.py</span></div>
+        <pre><code>model_config = SettingsConfigDict(env_file=".env", extra="ignore")</code></pre>
+      </div>
+
+      <p>Це явно каже: якщо в <code>.env</code> опиниться змінна, якої немає серед оголошених
+      полів <code>Settings</code>, вона просто ігнорується, а не спричиняє помилку валідації.
+      Протилежний варіант — <code>extra="forbid"</code> — навпаки, кидає помилку на будь-яке
+      неочікуване поле, корисно для суворої валідації зовнішнього API-вводу, де зайві поля
+      можуть означати помилку клієнта. Ще одна поширена опція —
+      <code>str_strip_whitespace=True</code>, яка автоматично обрізає пробіли з країв усіх
+      рядкових полів моделі.</p>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> <code>BaseSettings</code>: типізована конфігурація застосунку</h2>
+      <p class="section-desc">Архітектурна роль цього файлу вже введена в <a href="01-architecture.html#s8">туторіалі 1, розділ 8</a> — тут детальніше про сам механізм.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/config.py</span></div>
+        <pre><code>from functools import lru_cache
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    APP_NAME: str = "AI Delivery Planner"
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/ai_delivery_planner"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    <span class="cmt"># ... і решта типізованих полів</span>
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()</code></pre>
+      </div>
+
+      <p><code>BaseSettings</code> — спеціалізований підклас, що вміє читати значення полів не
+      лише з переданих аргументів, а й зі змінних середовища (і з файлу, вказаного через
+      <code>env_file</code>) за їхніми іменами — якщо змінної немає в оточенні, береться
+      дефолт, оголошений у класі. Кожне поле лишається так само типізованим і валідованим, як у
+      звичайному <code>BaseModel</code>: рядок середовища на кшталт
+      <code>ACCESS_TOKEN_EXPIRE_MINUTES=abc</code> провалить валідацію ще на старті застосунку,
+      а не десь посеред обробки випадкового запиту.</p>
+
+      <p><code>@lru_cache</code> тут не другорядна деталь: він гарантує, що зчитування й
+      валідація змінних середовища відбувається <b>рівно один раз</b>, при першому виклику
+      <code>get_settings()</code> — результат кешується, і кожен наступний виклик (а через
+      DI-залежності FastAPI таких викликів за час життя застосунку буде багато) повертає той
+      самий уже готовий об'єкт, а не перечитує оточення заново.</p>
+
+      <div class="callout info">
+        <div class="ic">📦</div>
+        <div class="body"><code>pydantic_settings</code> — окремий пакет, відділений від
+        основного <code>pydantic</code> саме з появою Pydantic v2. Якщо у проєкті встановлено
+        лише <code>pip install pydantic</code>, <code>BaseSettings</code> звідти імпортувати не
+        вийде — потрібна саме <code>pydantic-settings</code>.</div>
+      </div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Помилки валідації: що насправді бачить клієнт API</h2>
+      <p class="section-desc">Пряме продовження прикладу з розділу 1 — тепер із поглядом на структуру помилки й на те, що з нею робить FastAPI.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">структура ValidationError</span></div>
+        <pre><code>try:
+    OptimizeRequest(delivery_ids=[], vehicle_ids=[], depot_id="not-a-uuid")
+except ValidationError as e:
+    print(e.errors())
+
+<span class="cmt"># [{'type': 'uuid_parsing', 'loc': ('depot_id',),
+#   'msg': 'Input should be a valid UUID, ...', 'input': 'not-a-uuid', ...}]</span></code></pre>
+      </div>
+
+      <p><code>e.errors()</code> повертає список словників — по одному на кожне невалідне поле
+      (а не лише перше знайдене) — з ключами <code>type</code> (машинно-читаний код помилки),
+      <code>loc</code> (шлях до поля, включно з вкладеністю — див. розділ 3),
+      <code>msg</code> (людське пояснення) і <code>input</code> (те значення, яке саме
+      провалило перевірку).</p>
+
+      <p>Це не просто внутрішня деталь Pydantic — це <b>буквально</b> те, що бачить клієнт
+      API цього проєкту. FastAPI ловить <code>ValidationError</code>, кинуту Pydantic при
+      парсингу тіла запиту проти схеми ендпоінта, і автоматично повертає HTTP 422 з тілом,
+      побудованим із цих самих словників, під ключем <code>"detail"</code> — без жодного
+      кастомного обробника помилок з боку коду застосунку:</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">приблизне тіло 422-відповіді</span></div>
+        <pre><code>{
+  "detail": [
+    {"type": "uuid_parsing", "loc": ["body", "depot_id"], "msg": "...", "input": "not-a-uuid"}
+  ]
+}</code></pre>
+      </div>
+
+      <p class="muted">Префікс <code>"body"</code> у <code>loc</code> тут додає вже сам
+      FastAPI (він показує, з якої частини запиту прийшло значення — тіло, query-параметр чи
+      шлях), поверх того, що Pydantic сам генерує для структури всередині цього тіла.</p>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Аналоги: коли Pydantic, а коли інше</h2>
+      <p class="section-desc">Pydantic — не єдиний спосіб описати форму даних у Python, і не єдина мова, де ця ідея взагалі існує.</p>
+
+      <table>
+        <tr><th>Бібліотека</th><th>Екосистема</th><th>Ключова відмінність</th></tr>
+        <tr>
+          <td><code>dataclasses</code></td>
+          <td>Python, стандартна бібліотека</td>
+          <td>Лише структура — жодної рантайм-валідації "з коробки"</td>
+        </tr>
+        <tr>
+          <td><code>attrs</code></td>
+          <td>Python</td>
+          <td>Схоже на dataclasses, гнучкіше налаштування, але валідація так само не вбудована за замовчуванням</td>
+        </tr>
+        <tr>
+          <td><code>marshmallow</code></td>
+          <td>Python</td>
+          <td>Старша бібліотека; схема описується окремо від класу даних, а не разом з ним</td>
+        </tr>
+        <tr>
+          <td><code>cerberus</code></td>
+          <td>Python</td>
+          <td>Валідація через словники-схеми, без класів узагалі</td>
+        </tr>
+        <tr>
+          <td><b>Zod</b></td>
+          <td>TypeScript / JS</td>
+          <td>Найближчий міжмовний аналог — schema-first рантайм-валідація для мови, чиї статичні типи так само стираються під час виконання; докладніше — <a href="../js-doc/13-typescript-essentials.html">JS Doc, туторіал 13</a></td>
+        </tr>
+      </table>
+
+      <p>Практичне правило: тягнутись саме до Pydantic варто там, де форма й достовірність
+      даних <i>не повністю під вашим контролем</i> — зовнішній ввід, конфігурація середовища,
+      відповідь стороннього сервісу. Коли дані вже гарантовано "свої" й довірені — внутрішній
+      контейнер для передачі значень між функціями одного модуля — простий
+      <code>dataclass</code> чи <code>attrs</code>-клас зазвичай виграє за швидкістю й
+      прозорістю, без накладних витрат рантайм-валідації, яка там нічого корисного не додає.</p>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Підсумок</h2>
+      <p class="section-desc">Головне з цього туторіалу:</p>
+      <ul>
+        <li>Pydantic перетворює анотації типів, які Python сам ігнорує, на реально працюючий
+        рантайм-контракт — з валідацією <i>і</i> приведенням типів.</li>
+        <li><code>Field()</code> додає обмеження й метадані понад голий тип;
+        <code>@field_validator</code>/<code>@model_validator</code> — довільну логіку, коли
+        обмежень недостатньо.</li>
+        <li><code>model_dump()</code>/<code>model_dump_json()</code>/<code>model_validate()</code> —
+        три напрями конвертації між моделлю, dict і JSON.</li>
+        <li><code>model_config</code>/<code>ConfigDict</code> налаштовує поведінку моделі
+        цілком — від <code>from_attributes</code> (побудова з ORM-об'єкта) до <code>extra</code>
+        (що робити із зайвими полями).</li>
+        <li><code>BaseSettings</code> застосовує ту саму ідею до конфігурації застосунку зі
+        змінних середовища — з кешуванням через <code>@lru_cache</code>.</li>
+        <li>У цьому проєкті Pydantic — це <code>app/schemas/</code> (кожен вхід/вихід API) і
+        <code>app/core/config.py</code> (уся конфігурація), а помилки валідації напряму стають
+        422-відповіддю клієнту без жодного додаткового коду.</li>
+      </ul>
+      <div class="card">
+        ← <a href="19-postgres-storage-and-memory.html">Туторіал 19 — Postgres storage &amp; пам'ять</a>
+        &nbsp;·&nbsp;
+        ↔ <a href="05-python-types.html">Туторіал 5 — Типи в Python</a>
+        &nbsp;·&nbsp;
+        ↔ <a href="11-serialization-and-numbers.html">Туторіал 11 — Серіалізація &amp; числа</a>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал прив'язаний до реального коду репозиторію <code>ai-delivery-planner-backend</code>
+  (<code>app/schemas/route.py</code>, <code>app/core/config.py</code>) станом на момент генерації.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*|\/\/[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b|\bthis\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case|const|let|var|function|interface|type|export|extends|implements|new|void|enum|typeof|instanceof|static|public|private|readonly|null|undefined)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>
