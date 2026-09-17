@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>24. Multi-tenancy — AI Delivery Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout b, .callout strong{color:inherit;}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:640px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  details.qa{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    margin:12px 0; overflow:hidden;
+  }
+  details.qa summary{
+    cursor:pointer; list-style:none; padding:14px 16px; font-weight:600; font-size:14.5px;
+    display:flex; align-items:center; gap:10px;
+  }
+  details.qa summary::-webkit-details-marker{display:none;}
+  details.qa summary::before{content:"▸"; color:var(--accent); flex-shrink:0;}
+  details.qa[open] summary::before{content:"▾";}
+  details.qa .qnum{
+    font-variant-numeric:tabular-nums; color:var(--fg-muted); font-weight:700; font-size:12.5px;
+  }
+  details.qa .a{padding:0 16px 16px 40px; color:var(--fg); font-size:14.5px;}
+  details.qa .a p{margin:8px 0;}
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · Multi-tenancy</div>
+  <h1>Multi-tenancy в SaaS: ізоляція даних, IDOR і ретроактивна міграція</h1>
+  <p class="lead">
+    <code>TenantScopedRepository</code> уже згадувався як факт архітектури в
+    <a href="01-architecture.html#s6">турі 1</a> і як захист від IDOR у
+    <a href="02-async-and-security.html#b5">турі 2</a>. Тут — повний, самостійний розбір теми:
+    три архітектурні моделі multi-tenancy, чому саме одна колонка-дискримінатор обрана тут,
+    реальні тести ізоляції (<code>test_multi_tenancy.py</code>) і те, як цю модель додали в уже
+    наявну базу з даними без явного власника.
+  </p>
+  <div class="pills">
+    <span class="pill">🏢 Shared schema + discriminator</span>
+    <span class="pill">🔒 IDOR</span>
+    <span class="pill">🔄 Ретроактивна міграція</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="21-pydantic.html">21. Pydantic</a>
+        <a href="17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="22-redis.html">22. Redis</a>
+        <a href="23-route-optimization-or-tools.html">23. OR-Tools &amp; VRP</a>
+        <a href="24-multi-tenancy-saas.html" class="active">24. Multi-tenancy</a>
+        <a href="20-testing-cicd-monitoring-cloud.html">20. Тести, CI/CD, моніторинг</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/12-this.html">12. this</a>
+        <a href="../js-doc/13-typescript-essentials.html">13. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/02-browser-internals.html">2. Браузер зсередини</a>
+        <a href="../js-doc/03-frontend-security.html">3. Безпека фронтенду</a>
+        <a href="../js-doc/11-http-anatomy.html">11. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/05-react-deep-dive.html">5. React углиб</a>
+        <a href="../js-doc/06-nextjs-architecture.html">6. Next.js та архітектура</a>
+        <a href="../js-doc/07-nextjs-interview-qa.html">7. Next.js: Q&amp;A</a>
+        <a href="../js-doc/14-frontend-caching-fundamentals.html">14. Caching: основи</a>
+        <a href="../js-doc/15-frontend-caching-libraries.html">15. Caching: бібліотеки</a>
+        <a href="../js-doc/16-frontend-caching-advanced.html">16. Caching: просунуті теми</a>
+        <a href="../js-doc/09-testing-cicd-cloud.html">9. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/10-ai-tools.html">10. AI-інструменти</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s0">0. Три моделі multi-tenancy</a></li>
+      <li><a href="#s1">1. TenantScopedRepository зсередини</a></li>
+      <li><a href="#s2">2. IDOR і другий рівень захисту — FK</a></li>
+      <li><a href="#s3">3. Реальні тести ізоляції</a></li>
+      <li><a href="#s4">4. Ретроактивна міграція на живі дані</a></li>
+      <li><a href="#s5">5. Квоти на рівні organization</a></li>
+      <li><a href="#s6">6. Питання для співбесіди</a></li>
+      <li><a href="#s7">7. Підсумок</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s0">
+      <h2><span class="num">00</span> Три моделі multi-tenancy</h2>
+      <p class="section-desc">Перше архітектурне рішення будь-якого SaaS: як фізично розділити дані різних клієнтів (тенантів) в одній системі.</p>
+
+      <table>
+        <tr><th>Модель</th><th>Як влаштована</th><th>Компроміс</th></tr>
+        <tr>
+          <td><b>Shared DB, shared schema, discriminator column</b> (обрано тут)</td>
+          <td>Одна база, одні таблиці для всіх тенантів; кожен рядок має колонку
+          <code>organization_id</code>, яка каже, кому він належить.</td>
+          <td>Найдешевше в експлуатації (одна база, один набір міграцій, прості агреговані
+          звіти across-tenant для власного адміна) — але <b>вся</b> ізоляція тримається на
+          дисципліні коду: забутий <code>WHERE organization_id = ...</code> в одному запиті —
+          і стався витік даних.</td>
+        </tr>
+        <tr>
+          <td><b>Shared DB, schema-per-tenant</b></td>
+          <td>Одна база сервера, але кожен тенант має власну PostgreSQL-схему
+          (<code>tenant_42.deliveries</code> замість спільної <code>deliveries</code> з
+          колонкою).</td>
+          <td>Ізоляція надійніша (сплутати схеми складніше, ніж забути один <code>WHERE</code>),
+          можна навіть бекапити/відновлювати одного тенанта окремо — але сотні/тисячі схем
+          ускладнюють міграції (прогнати одну міграцію треба на кожну схему окремо) і сам
+          connection-pooling.</td>
+        </tr>
+        <tr>
+          <td><b>Database-per-tenant</b></td>
+          <td>Кожен тенант — фізично окрема база даних (можливо, навіть на окремому сервері).</td>
+          <td>Найсильніша ізоляція з усіх — і найдорожча: власний connection pool, власні
+          бекапи й моніторинг на кожного тенанта; агрегована аналітика across tenants стає
+          окремою (часто ETL) задачею, а не одним SQL-запитом.</td>
+        </tr>
+      </table>
+
+      <p>Проєкт свідомо обрав перший варіант — той, що дешевший в експлуатації, але вимагає
+      найбільшої дисципліни коду. Саме тому <code>TenantScopedRepository</code>
+      (<a href="01-architecture.html#s6">туторіал 1</a>) — не просто зручність, а
+      <b>компенсація</b> цього архітектурного компромісу: якщо ізоляція не гарантована самою
+      структурою бази (як у двох інших моделях), її треба гарантувати структурою коду так, щоб
+      про неї було фізично неможливо забути в конкретному місці виклику.</p>
+    </section>
+
+    <section id="s1">
+      <h2><span class="num">01</span> <code>TenantScopedRepository</code> зсередини</h2>
+      <p class="section-desc">Тур 1 показав <code>get()</code>. Тут — решта методів, і чому кожен із них теж має значення.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/repositories/base.py</span></div>
+        <pre><code>class TenantScopedRepository(BaseRepository[ModelType]):
+    def __init__(self, session, model, organization_id) -> None:
+        super().__init__(session, model)
+        self.organization_id = organization_id      <span class="cmt"># прив'язано ОДИН раз, при створенні</span>
+
+    async def get_many(self, ids) -> list[ModelType]:
+        <span class="cmt"># "Ids belonging to another organization are silently absent from the</span>
+        <span class="cmt"># result — indistinguishable from ids that don't exist at all."</span>
+        stmt = select(self.model).where(
+            self.model.id.in_(ids), self.model.organization_id == self.organization_id
+        )
+        ...
+
+    async def create(self, **kwargs) -> ModelType:
+        kwargs.pop("organization_id", None)     <span class="cmt"># не дати переданому kwarg переписати org</span>
+        return await super().create(organization_id=self.organization_id, **kwargs)
+
+    async def update(self, id, **kwargs) -> ModelType | None:
+        kwargs.pop("organization_id", None)     <span class="cmt"># не дати "перепривласнити" рядок іншому org</span>
+        return await super().update(id, **kwargs)</code></pre>
+      </div>
+
+      <p>Три окремі гарантії, кожна закриває свій сценарій атаки чи бага:</p>
+      <ul>
+        <li><b><code>get_many</code></b> явно документує (коментарем у коді) свою поведінку:
+        чужі id не викидають помилку — вони просто <i>відсутні</i> в результаті, невідмінно
+        від id, яких не існує взагалі. Викликач не має способу дізнатись різницю "не існує" vs
+        "чуже" — і це навмисно (розділ 2).</li>
+        <li><b><code>create</code></b> ігнорує будь-яке значення <code>organization_id</code>,
+        передане ззовні через <code>**kwargs</code>, і завжди підставляє
+        <code>self.organization_id</code> — навіть якщо хтось (по помилці чи зловмисно) передасть
+        інший org id у payload, новий рядок все одно прив'яжеться до організації, з якою
+        репозиторій був створений.</li>
+        <li><b><code>update</code></b> так само не дає жодному виклику "переприписати" вже
+        наявний рядок в іншу організацію, прибираючи <code>organization_id</code> з
+        <code>kwargs</code> ще до виклику базового методу.</li>
+      </ul>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Схоже на <code>axios</code>-інстанс, у якого <code>baseURL</code> і токен авторизації
+        зафіксовані один раз при створенні — і жоден виклик <code>.get()</code> чи
+        <code>.post()</code> потім не може випадково "переслати" запит на інший домен чи з
+        іншим токеном, бо ці два поля просто недоступні для перезапису з місця виклику.
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> IDOR і другий рівень захисту — обмеження зовнішнього ключа</h2>
+      <p class="section-desc">Тур 2 вже пояснив 404-замість-403 для читання. Тут — що відбувається на <i>запис</i>, коли чужий id підставляють не в URL, а в тіло запиту.</p>
+
+      <p><code>TenantScopedRepository</code> захищає читання й прямі мутації "свого" ресурсу за
+      його власним id. Але є інший вектор: що, якщо організація А спробує <i>прив'язати</i>
+      свій ресурс до чужого id — наприклад, створити авто (<code>Vehicle</code>) з
+      <code>driver_id</code>, що насправді належить організації Б?</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/tests/test_multi_tenancy.py</span></div>
+        <pre><code>def test_vehicle_cannot_link_to_foreign_driver(client, other_org_driver) -> None:
+    response = client.post(
+        "/api/v1/vehicles/",
+        json={"plate_number": "DD4444DD", ..., "driver_id": str(other_org_driver.id)},
+    )
+    assert response.status_code == 422</code></pre>
+      </div>
+
+      <p>Це не збіг — це <b>другий, незалежний рівень захисту</b> поверх
+      <code>TenantScopedRepository</code>. Валідація на рівні сервісу (не показана тут — див.
+      <a href="21-pydantic.html">туторіал 21</a> для механіки самої валідації) перевіряє
+      існування <code>driver_id</code> саме в межах org-scoped репозиторія водіїв: чужий
+      <code>driver_id</code> для цього репозиторію не існує <i>взагалі</i> (та сама поведінка
+      <code>get_many</code> з розділу 1) — тому запит на створення авто з ним провалюється як
+      "невалідні дані" (422), а не як спроба щось прочитати. Той самий патерн повторюється й для
+      <code>PUT</code>-оновлення наявного авто (<code>test_vehicle_update_cannot_link_to_foreign_driver</code>).</p>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body">Це ілюструє важливий загальний принцип: <b>ізоляція тенантів — не
+        одна перевірка в одному місці, а властивість, яку треба тримати на кожній межі, де
+        зовнішній ідентифікатор потрапляє в систему</b> — і при читанні за id, і при посиланні
+        на інший ресурс через зовнішній ключ у payload. Одного централізованого фільтра
+        (наприклад, лише в middleware) було б недостатньо для другого сценарію.</div>
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Реальні тести ізоляції</h2>
+      <p class="section-desc"><code>test_multi_tenancy.py</code> — не одиничний smoke-тест, а систематичний прохід по кожному класу можливого витоку.</p>
+
+      <p>Файл побудований навколо фікстур <code>other_org_*</code> — дані, навмисно засіяні в
+      репозиторії, прив'язані до <i>іншої</i> організації, ніж та, від імені якої діє тестовий
+      HTTP-клієнт. Категорії перевірок:</p>
+
+      <ul>
+        <li><b>Список і читання за id.</b> Список ніколи не містить чужого id; пряме
+        звернення <code>GET /deliveries/{чужий_id}</code> повертає 404 — не порожній об'єкт,
+        не 403, саме "не знайдено".</li>
+        <li><b>Оновлення й видалення.</b> <code>PUT</code>/<code>DELETE</code> на чужий ресурс —
+        теж 404, і, найважливіше, тест окремо перевіряє, що чужий рядок дійсно лишився
+        <i>незміненим</i> у базі після спроби (<code>test_update_and_delete_are_org_scoped</code>)
+        — тобто не просто "клієнт отримав помилку", а "сервер фізично нічого не торкнувся".</li>
+        <li><b>Крос-org id всередині складнішого запиту.</b> Найцікавіший випадок —
+        <code>test_optimize_silently_drops_cross_org_delivery</code>: якщо в
+        <code>POST /routes/optimize</code> підставити чужий <code>delivery_id</code> у список
+        доставок, солвер (<a href="23-route-optimization-or-tools.html">туторіал 23</a>)
+        просто не побачить цю доставку — вона не потрапляє ні в маршрути, ні в
+        <code>unassigned_deliveries</code>, ні навіть у <code>skipped_not_geocoded</code>.
+        Поводиться так, ніби id ніколи не існував — це прямий наслідок того, що
+        <code>DeliveryRepository.get_many</code> (org-scoped) мовчки виключає чужі id ще на
+        етапі завантаження вхідних даних для солвера, задовго до того як OR-Tools взагалі
+        побачить задачу.</li>
+        <li><b>Агрегати dashboard.</b> <code>test_dashboard_overview_is_per_organization</code>
+        перевіряє, що зведена статистика (кількість активних водіїв, пройдена відстань) теж
+        рахується виключно по своїй організації — легко забутий випадок, бо агрегатні запити
+        (<code>COUNT</code>, <code>SUM</code>) на перший погляд не "про конкретний ресурс", і
+        про <code>WHERE organization_id</code> в них забути найлегше.</li>
+        <li><b>Наскрізний тест із реальними JWT.</b>
+        <code>test_real_registration_isolates_orgs</code> не використовує тестові фікстури
+        взагалі — реєструє <i>двох реальних користувачів</i> через справжній
+        <code>POST /auth/register</code>, підтверджує обидва email, і перевіряє ізоляцію через
+        справжні токени двох різних сесій. Це страховка на випадок, якщо якийсь із проміжних
+        шарів (JWT → <code>get_current_user</code> → <code>organization_id</code>) працює
+        інакше в реальному потоці, ніж у тестових фікстурах, що напряму створюють об'єкти в
+        базі.</li>
+      </ul>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Ретроактивна міграція на живі дані</h2>
+      <p class="section-desc">Multi-tenancy в цьому проєкті додали не з нуля — колонку <code>organization_id</code> ввели в базу, що вже мала дані без явного власника. Реальний файл міграції, а не навчальний приклад.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">…_add_organization_id_multi_tenancy.py</span></div>
+        <pre><code><span class="cmt"># 1. Додати колонку NULLABLE спочатку — наявні рядки ще не мають значення.</span>
+op.add_column("users", sa.Column("organization_id", sa.Uuid(), nullable=True))
+
+<span class="cmt"># 2. Backfill: кожному наявному users — власна нова Organization.</span>
+<span class="cmt"># П'ять таблиць ресурсів (deliveries, depots, drivers, vehicles, routes)</span>
+<span class="cmt"># не мають колонки "власник" узагалі — усі їхні наявні рядки переносяться</span>
+<span class="cmt"># в одну спільну organization "Legacy Data" з фіксованим id.</span>
+for user_id, email in existing_users:
+    org_id = uuid.uuid4()
+    <span class="cmt"># INSERT organization, потім UPDATE users SET organization_id = ...</span>
+
+<span class="cmt"># 3. Тепер, коли КОЖЕН рядок має значення — увімкнути NOT NULL + FK.</span>
+op.alter_column("users", "organization_id", nullable=False)
+op.create_foreign_key("fk_users_organization_id", "users", "organizations", ...)</code></pre>
+      </div>
+
+      <p>Тристадійний паттерн тут — не випадковість, а єдиний безпечний спосіб додати
+      обов'язкову (<code>NOT NULL</code>) колонку з посиланням на непорожню таблицю:</p>
+      <ol>
+        <li><b>Спочатку nullable.</b> <code>ALTER TABLE ... ADD COLUMN ... NOT NULL</code> без
+        дефолту на таблиці з наявними рядками одразу провалиться — Postgres не знає, чим
+        заповнити вже наявні рядки.</li>
+        <li><b>Backfill окремим кроком.</b> Для <code>users</code> — по одній новій
+        <code>Organization</code> на кожного наявного користувача (зберігаючи правило "один
+        користувач = одна організація", яке з цього моменту діє і для нових реєстрацій). Для
+        ресурсних таблиць, де немає жодної колонки "хто створив" — чесний компроміс: усі старі
+        рядки об'єднуються в одну спільну <code>LEGACY_ORG_ID</code>-організацію, бо
+        атрибутувати їх конкретному користувачу вже неможливо.</li>
+        <li><b>Лише тепер — <code>NOT NULL</code> і зовнішній ключ.</b> Коли кожен рядок вже
+        гарантовано має значення, обмеження можна ввімкнути безпечно.</li>
+      </ol>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Чому <code>downgrade()</code> не видаляє backfilled-організації:</b>
+        коментар у самому файлі пояснює свідомий вибір — видалити колонку легко, але видалити
+        <i>саме ті</i> Organization-рядки, які створив цей backfill (а не ті, що реальні
+        користувачі встигли створити з моменту апгрейду), вже неможливо надійно розрізнити.
+        Автори міграції обрали залишити "осиротілі" рядки як безпечніший результат, ніж ризик
+        видалити щось реальне.</div>
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Квоти на рівні organization</h2>
+      <p class="section-desc">Коротко — щоб не дублювати вже розібране в турі 2: <code>organization_id</code> це не лише межа видимості даних, а й межа білінгу.</p>
+
+      <p>Та сама колонка-дискримінатор, що ізолює <i>дані</i> тенантів одна від одної, природно
+      стає й одиницею обліку <i>споживання</i> — ліміт маршрутів на trial-плані, ліміт викликів
+      геокодування й AI на організацію. Атомарна перевірка-і-запис квоти одним SQL
+      <code>UPDATE ... WHERE</code> (проти TOCTOU race condition) уже детально розібрана в
+      <a href="02-async-and-security.html#b6">турі 2, розділ 6</a> — тут важливо лише
+      підкреслити зв'язок: без надійної ізоляції по <code>organization_id</code> (розділи 1-3)
+      сам облік квоти по organization був би безглуздим — організація А могла б випадково чи
+      навмисно "спожити" ліміт, приписаний організації Б.</p>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Питання для співбесіди</h2>
+      <p class="section-desc">Прив'язані до реального коду й тестів цього проєкту.</p>
+
+      <details class="qa">
+        <summary><span class="qnum">01</span>Які є три основні архітектурні моделі multi-tenancy, і чому ця система обрала найдешевшу з них?</summary>
+        <div class="a"><p>Shared DB + shared schema з колонкою-дискримінатором,
+        shared DB + schema-per-tenant, і database-per-tenant — зростання ізоляції й вартості
+        експлуатації в цьому порядку. Проєкт обрав перший варіант заради простоти операцій
+        (одна база, одні міграції), компенсуючи слабшу структурну ізоляцію дисципліною коду —
+        <code>TenantScopedRepository</code>, що робить забуту фільтрацію фізично неможливою.</p></div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">02</span>Чому <code>get_many</code> у <code>TenantScopedRepository</code> не кидає помилку для чужого id, а просто виключає його з результату?</summary>
+        <div class="a"><p>Щоб зробити "не існує" й "належить іншій організації" невідмінними
+        одне від одного для викликача — той самий принцип, що й 404 замість 403 при прямому
+        читанні: жодна відповідь системи не повинна підтверджувати зловмиснику сам факт
+        існування чужого ресурса.</p></div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">03</span>Що станеться, якщо організація спробує створити Vehicle з <code>driver_id</code>, що належить іншій організації — і чому це не той самий механізм захисту, що для прямого читання за id?</summary>
+        <div class="a"><p>Запит провалюється з 422 (невалідні дані), бо org-scoped
+        репозиторій водіїв для цієї організації просто не бачить чужий <code>driver_id</code> —
+        та сама поведінка <code>get_many</code>, але застосована на етапі валідації зовнішнього
+        ключа в payload, а не на етапі прямого доступу за URL-параметром. Це другий,
+        незалежний рівень захисту: ізоляцію треба тримати на кожній межі, де зовнішній
+        ідентифікатор потрапляє в систему, а не лише в одному централізованому місці.</p></div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">04</span>У тестовому наборі є і фікстурні тести, і один тест із реальними JWT-сесіями двох зареєстрованих користувачів. Навіщо потрібен саме останній, якщо фікстурні тести вже перевіряють ізоляцію?</summary>
+        <div class="a"><p>Фікстурні тести засівають дані напряму через репозиторії, минаючи
+        HTTP і весь ланцюжок автентифікації — вони перевіряють ізоляцію на рівні
+        репозиторія/ендпоінта, але не гарантують, що весь шлях <code>JWT → get_current_user →
+        organization_id</code> насправді працює однаково в реальному потоці запиту. Наскрізний
+        тест із двома реальними зареєстрованими користувачами закриває саме цей розрив —
+        перевіряє інтеграцію всіх шарів разом, а не кожен окремо.</p></div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">05</span>Чому колонку <code>organization_id</code> при retroактивній міграції спочатку додають як nullable, а обмеження NOT NULL і зовнішній ключ вмикають лише третім кроком?</summary>
+        <div class="a"><p>Бо додати обов'язкову колонку без дефолту на таблиці, що вже має
+        рядки, неможливо — база не знає, чим заповнити наявні рядки. Правильна послідовність:
+        додати nullable-колонку → backfill-ити значення для кожного наявного рядка окремим
+        кроком → лише тоді, коли кожен рядок гарантовано має значення, увімкнути
+        <code>NOT NULL</code> і зовнішній ключ.</p></div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">06</span>П'ять ресурсних таблиць (deliveries, depots, drivers, vehicles, routes) не мали колонки "власник" до цієї міграції. Як вирішили, кому передати їхні наявні рядки — і чому саме так?</summary>
+        <div class="a"><p>Усі наявні рядки цих таблиць перенесли в одну спільну організацію
+        з фіксованим id ("Legacy Data"), а не намагались вгадати чи реконструювати
+        справжнього власника — атрибутувати їх конкретному користувачу було вже неможливо,
+        і чесний, безпечний компроміс — явно позначити ці дані як "успадковані", а не
+        вигадувати неправдиву прив'язку.</p></div>
+      </details>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Підсумок</h2>
+      <p class="section-desc">Головне з цього туторіалу:</p>
+      <ul>
+        <li>Три моделі multi-tenancy — shared schema+discriminator (тут), schema-per-tenant,
+        database-per-tenant — компроміс між вартістю експлуатації й силою структурної ізоляції.</li>
+        <li><code>TenantScopedRepository</code> компенсує слабшу структурну ізоляцію дисципліною
+        коду: <code>organization_id</code> прив'язаний один раз при створенні репозиторія й
+        недоступний для перезапису через жоден виклик.</li>
+        <li>Ізоляція тенантів — властивість <i>кожної</i> межі, де приходить зовнішній
+        ідентифікатор: і прямого читання за id (404), і посилання через зовнішній ключ у payload
+        (422), і агрегатних запитів (dashboard).</li>
+        <li>Реальний тестовий набір систематично покриває всі ці межі, включно з наскрізним
+        тестом на справжніх JWT-сесіях двох користувачів.</li>
+        <li>Multi-tenancy можна ввести ретроактивно на живі дані за безпечний трикроковий
+        паттерн: nullable-колонка → backfill → NOT NULL + FK.</li>
+      </ul>
+      <div class="card">
+        ← <a href="23-route-optimization-or-tools.html">Туторіал 23 — OR-Tools &amp; VRP</a>
+        &nbsp;·&nbsp;
+        → <a href="20-testing-cicd-monitoring-cloud.html">Туторіал 20 — Тести, CI/CD, моніторинг</a>
+        &nbsp;·&nbsp;
+        ↔ <a href="02-async-and-security.html#b5">Туторіал 2 — IDOR</a>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал прив'язаний до реального коду репозиторію <code>ai-delivery-planner-backend</code>
+  (<code>app/repositories/base.py</code>, <code>app/tests/test_multi_tenancy.py</code>,
+  <code>db/migrations/versions/..._add_organization_id_multi_tenancy.py</code>) станом на момент
+  генерації.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*|\/\/[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b|\bthis\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case|const|let|var|function|interface|type|export|extends|implements|new|void|enum|typeof|instanceof|static|public|private|readonly|null|undefined)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

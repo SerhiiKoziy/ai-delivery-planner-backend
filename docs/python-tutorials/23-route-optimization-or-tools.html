@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>23. OR-Tools & VRP — AI Delivery Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout b, .callout strong{color:inherit;}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:640px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  details.qa{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    margin:12px 0; overflow:hidden;
+  }
+  details.qa summary{
+    cursor:pointer; list-style:none; padding:14px 16px; font-weight:600; font-size:14.5px;
+    display:flex; align-items:center; gap:10px;
+  }
+  details.qa summary::-webkit-details-marker{display:none;}
+  details.qa summary::before{content:"▸"; color:var(--accent); flex-shrink:0;}
+  details.qa[open] summary::before{content:"▾";}
+  details.qa .qnum{
+    font-variant-numeric:tabular-nums; color:var(--fg-muted); font-weight:700; font-size:12.5px;
+  }
+  details.qa .a{padding:0 16px 16px 40px; color:var(--fg); font-size:14.5px;}
+  details.qa .a p{margin:8px 0;}
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · OR-Tools & VRP</div>
+  <h1>OR-Tools і Vehicle Routing Problem: як насправді рахуються маршрути</h1>
+  <p class="lead">
+    Це — серце продукту, і водночас найменш "звичайна" тема з усього циклу туторіалів: тут не
+    Python-специфіка, а справжня NP-складна задача комбінаторної оптимізації, розв'язана Google
+    OR-Tools. Розбір повністю прив'язаний до реального коду
+    <code>app/services/route_optimizer/</code> — жодного вигаданого прикладу.
+  </p>
+  <div class="pills">
+    <span class="pill">🧩 Constraint Programming</span>
+    <span class="pill">🚚 Vehicle Routing Problem</span>
+    <span class="pill">⏱️ Евристики, не точний оптимум</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="21-pydantic.html">21. Pydantic</a>
+        <a href="17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="22-redis.html">22. Redis</a>
+        <a href="23-route-optimization-or-tools.html" class="active">23. OR-Tools &amp; VRP</a>
+        <a href="24-multi-tenancy-saas.html">24. Multi-tenancy</a>
+        <a href="20-testing-cicd-monitoring-cloud.html">20. Тести, CI/CD, моніторинг</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/12-this.html">12. this</a>
+        <a href="../js-doc/13-typescript-essentials.html">13. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/02-browser-internals.html">2. Браузер зсередини</a>
+        <a href="../js-doc/03-frontend-security.html">3. Безпека фронтенду</a>
+        <a href="../js-doc/11-http-anatomy.html">11. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/05-react-deep-dive.html">5. React углиб</a>
+        <a href="../js-doc/06-nextjs-architecture.html">6. Next.js та архітектура</a>
+        <a href="../js-doc/07-nextjs-interview-qa.html">7. Next.js: Q&amp;A</a>
+        <a href="../js-doc/14-frontend-caching-fundamentals.html">14. Caching: основи</a>
+        <a href="../js-doc/15-frontend-caching-libraries.html">15. Caching: бібліотеки</a>
+        <a href="../js-doc/16-frontend-caching-advanced.html">16. Caching: просунуті теми</a>
+        <a href="../js-doc/09-testing-cicd-cloud.html">9. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/10-ai-tools.html">10. AI-інструменти</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s0">0. Що таке VRP і чому це складно</a></li>
+      <li><a href="#s1">1. Від TSP до VRP</a></li>
+      <li><a href="#s2">2. RoutingProblem: домен → вхід солвера</a></li>
+      <li><a href="#s3">3. Матриця відстаней: MVP-спрощення</a></li>
+      <li><a href="#s4">4. Модель OR-Tools: manager, routing, callbacks</a></li>
+      <li><a href="#s5">5. Виміри: Time і Capacity</a></li>
+      <li><a href="#s6">6. М'які вікна, штрафи, дропи</a></li>
+      <li><a href="#s7">7. Евристика, а не точний оптимум</a></li>
+      <li><a href="#s8">8. Солвер і event loop</a></li>
+      <li><a href="#s9">9. Аналоги OR-Tools</a></li>
+      <li><a href="#s10">10. Питання для співбесіди</a></li>
+      <li><a href="#s11">11. Підсумок</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s0">
+      <h2><span class="num">00</span> Що таке VRP і чому це складно</h2>
+      <p class="section-desc">Формулювання задачі — і чому "просто перебрати всі варіанти" не працює вже на середньому масштабі.</p>
+
+      <p><b>Vehicle Routing Problem (VRP)</b> — задача: маючи депо, набір точок доставки й набір
+      транспортних засобів з обмеженнями (вантажопідйомність, робочий час водія), побудувати
+      маршрут для кожного авто так, щоб обслужити всі (чи максимум) точки з мінімальною сумарною
+      вартістю (відстань, час), не порушивши жодного обмеження. У цьому проєкті це буквально
+      те, що робить <code>RouteOptimizerService.optimize()</code>
+      (<code>app/services/route_optimizer/service.py</code>) на кожен запит створення маршруту.</p>
+
+      <p>VRP — узагальнення ще старішої класичної задачі, <b>Travelling Salesman Problem (TSP)</b>:
+      "одна людина, одне депо, відвідати всі точки з мінімальним пройденим шляхом". VRP додає до
+      TSP кілька транспортних засобів одразу й обмеження на кожен (місткість, час) — і від цього
+      задача не просто складніша, а <b>NP-складна (NP-hard)</b>: не існує відомого алгоритму,
+      що знаходить точний оптимум за час, що поліноміально росте з кількістю точок. Кількість
+      можливих способів розподілити N точок доставки між K машинами й впорядкувати кожен маршрут
+      росте комбінаторно — вже для кількох десятків точок повний перебір фізично неможливий
+      навіть на найпотужнішому залізі.</p>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body">Практичний наслідок NP-складності напряму видно в
+        <code>solver.py</code> цього проєкту (розділ 7): розв'язок шукається не "до знаходження
+        ідеалу", а з жорстким лімітом часу (<code>time_limit.FromSeconds(5)</code>) — і це не
+        недолік реалізації, а єдиний реалістичний спосіб узагалі мати відповідь для NP-складної
+        задачі за прийнятний для HTTP-запиту час.</div>
+      </div>
+    </section>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Від TSP до VRP: граф, вузли, дуги</h2>
+      <p class="section-desc">Той самий словник термінів, яким OR-Tools описує задачу всередині.</p>
+
+      <p>Задачу подають як граф: <b>вузли (nodes)</b> — депо й точки доставки; <b>дуги (arcs)</b>
+      — можливі переїзди між будь-якою парою вузлів, кожна з вагою (вартістю) — зазвичай
+      відстань чи час у дорозі. Маршрут одного транспортного засобу — це шлях по цьому графу, що
+      починається й закінчується в депо (вузол 0), проходячи підмножину точок доставки рівно по
+      одному разу.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 640 260" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="320" cy="40" r="18" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <text x="320" y="45" text-anchor="middle" font-size="11" fill="currentColor" font-weight="700">Депо</text>
+          <text x="320" y="20" text-anchor="middle" font-size="9.5" fill="currentColor">вузол 0</text>
+
+          <circle cx="120" cy="140" r="16" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <text x="120" y="145" text-anchor="middle" font-size="10.5" fill="currentColor">Stop 1</text>
+          <circle cx="260" cy="190" r="16" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <text x="260" y="195" text-anchor="middle" font-size="10.5" fill="currentColor">Stop 2</text>
+          <circle cx="420" cy="190" r="16" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <text x="420" y="195" text-anchor="middle" font-size="10.5" fill="currentColor">Stop 3</text>
+          <circle cx="540" cy="130" r="16" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <text x="540" y="135" text-anchor="middle" font-size="10.5" fill="currentColor">Stop 4</text>
+
+          <line x1="320" y1="55" x2="130" y2="126" stroke="currentColor" stroke-width="1.4" marker-end="url(#arv)"/>
+          <line x1="132" y1="152" x2="248" y2="182" stroke="currentColor" stroke-width="1.4" marker-end="url(#arv)"/>
+          <line x1="272" y1="192" x2="320" y2="55" stroke="currentColor" stroke-width="1.4" stroke-dasharray="4 3" marker-end="url(#arv)"/>
+
+          <line x1="330" y1="55" x2="530" y2="118" stroke="currentColor" stroke-width="1.4" stroke-dasharray="1 1" opacity="0.5" marker-end="url(#arv2)"/>
+          <line x1="530" y1="140" x2="432" y2="188" stroke="currentColor" stroke-width="1.4" stroke-dasharray="1 1" opacity="0.5" marker-end="url(#arv2)"/>
+          <line x1="410" y1="185" x2="330" y2="55" stroke="currentColor" stroke-width="1.4" stroke-dasharray="1 1" opacity="0.5" marker-end="url(#arv2)"/>
+
+          <defs>
+            <marker id="arv" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L6,3 L0,6 z" fill="currentColor"/>
+            </marker>
+            <marker id="arv2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L6,3 L0,6 z" fill="currentColor" opacity="0.6"/>
+            </marker>
+          </defs>
+
+          <text x="20" y="235" font-size="10.5" fill="currentColor">Суцільна лінія — маршрут авто 1 (депо → Stop1 → Stop2 → депо).</text>
+          <text x="20" y="250" font-size="10.5" fill="currentColor">Пунктир — маршрут авто 2 (депо → Stop4 → Stop3 → депо). Кожен вузол відвідано рівно раз.</text>
+        </svg>
+        <figcaption>VRP з двома транспортними засобами: граф із депо в центрі та точками
+        доставки, розбитий на два незалежні цикли — по одному на кожне авто.</figcaption>
+      </figure>
+
+      <p>OR-Tools матеріалізує цю модель через два ключові об'єкти —
+      <code>RoutingIndexManager</code> (переклад "індексів солвера" в "номери вузлів" і назад —
+      технічна деталь, потрібна, бо солвер внутрішньо оперує не самими номерами вузлів, а
+      власним індексуванням, зручним для декількох транспортних засобів одразу) і
+      <code>RoutingModel</code> (сама модель задачі: вартість дуг, обмеження, виміри) — обидва
+      видно вже в <a href="#s4">розділі 4</a> на реальному коді <code>solver.py</code>.</p>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> <code>RoutingProblem</code>: як домен перетворюється на вхід солвера</h2>
+      <p class="section-desc">OR-Tools нічого не знає про <code>Delivery</code>/<code>Vehicle</code>/<code>Driver</code> — <code>builder.py</code> перекладає доменні сутності на мову солвера.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/services/route_optimizer/builder.py</span></div>
+        <pre><code>stops.append(
+    Stop(
+        id=str(delivery.id),
+        latitude=delivery.latitude,
+        longitude=delivery.longitude,
+        demand_weight_grams=round(delivery.weight_kg * 1000),
+        demand_volume_ml=round(delivery.volume_m3 * 1_000_000),
+        service_minutes=delivery.unloading_minutes,
+        time_window=time_window,
+        late_penalty=LATE_PENALTY_BY_PRIORITY[priority_key],
+        drop_penalty=DROP_PENALTY_BY_PRIORITY[priority_key],
+    )
+)</code></pre>
+      </div>
+
+      <p>Кілька деталей тут невипадкові:</p>
+      <ul>
+        <li><b>Все — цілі числа.</b> Вага в грамах, об'єм у мілілітрах (а не кілограми/кубометри
+        з плаваючою комою) — OR-Tools внутрішньо працює з цілочисельною арифметикою для вимірів
+        (<a href="#s5">розділ 5</a>); переведення на менші одиниці — спосіб зберегти потрібну
+        точність без чисел із плаваючою комою там, де солвер їх не приймає.</li>
+        <li><b>Штрафи прив'язані до бізнес-пріоритету ще на етапі побудови</b>
+        (<code>LATE_PENALTY_BY_PRIORITY</code>, <code>DROP_PENALTY_BY_PRIORITY</code> —
+        <code>models.py</code>), а не десь глибоко в солвері — бізнес-правило "VIP-клієнта
+        відкидати найостаннішим" виражене одразу як число, зрозуміле оптимізатору.</li>
+      </ul>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body">Значення штрафів у <code>models.py</code> навмисно розділені на
+        два порядки величини: <code>DROP_PENALTY_BY_PRIORITY</code> (мільйони) завжди набагато
+        більший за будь-який <code>LATE_PENALTY_BY_PRIORITY</code> (сотні-тисячі) — навіть
+        <code>LATE_PENALTY</code> для VIP (10 000) на порядки менший за
+        <code>DROP_PENALTY</code> для найнижчого пріоритету (1 000 000). Це гарантує бізнес-
+        правило текстом коментаря в самому файлі: "ніколи не викидай зупинку лише щоб уникнути
+        невеликого штрафу за запізнення" — розставлені як завгодно пріоритети однаково
+        поважають це правило, бо порядки величин не перетинаються.</div>
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Матриця відстаней: чесне MVP-спрощення</h2>
+      <p class="section-desc">Солверу потрібна вартість переїзду між <i>кожною</i> парою вузлів — звідки вона береться сьогодні.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/services/route_optimizer/distance.py</span></div>
+        <pre><code>"""MVP simplification: real turn-by-road distance and live traffic would come
+from the Google Distance Matrix API. This module estimates both from
+great-circle distance and an assumed average urban delivery speed..."""
+
+EARTH_RADIUS_KM = 6371.0
+AVERAGE_SPEED_KMH = 30.0
+
+def haversine_km(lat1, lng1, lat2, lng2) -> float:
+    <span class="cmt"># формула great-circle відстані по сфері (напряму, без урахування доріг)</span>
+    ...</code></pre>
+      </div>
+
+      <p>Матриця — квадратна NxN (N = депо + всі точки), симетрична (відстань A→B дорівнює B→A —
+      справедливо для формули з прямої лінії, але вже не завжди справедливо для реальних доріг з
+      одностороннім рухом) і <b>цілочисельна</b> — вимога самого OR-Tools для callback-ів
+      транзитної вартості. Сьогодні відстань — це <b>haversine</b> (відстань по великому колу,
+      "по прямій" між двома точками на сфері Землі), а не реальна відстань по дорогах, і час у
+      дорозі — грубе припущення (30 км/год середньої міської швидкості), а не дані з реального
+      трафіку.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body">Це <b>свідоме, задокументоване прямо в коді</b> MVP-спрощення — не
+        недогляд. Модуль спроєктований так, щоб замінити цю реалізацію на виклик платного
+        Google Distance Matrix API можна було, торкнувшись лише
+        <code>build_distance_duration_matrix</code>: викликачі (<code>builder.py</code>,
+        <code>solver.py</code>) не знають і не повинні знати, звідки саме взялась матриця, —
+        інверсія залежностей у дії (<a href="16-oop-and-solid.html">туторіал 16</a>).</div>
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Модель OR-Tools: <code>manager</code>, <code>routing</code>, callbacks</h2>
+      <p class="section-desc">Три об'єкти, довкола яких побудований увесь <code>solver.py</code>.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/services/route_optimizer/solver.py — build_model()</span></div>
+        <pre><code>self.manager = pywrapcp.RoutingIndexManager(num_nodes, num_vehicles, 0)
+self.routing = pywrapcp.RoutingModel(self.manager)
+
+def distance_callback(from_index, to_index):
+    from_node = self.manager.IndexToNode(from_index)
+    to_node = self.manager.IndexToNode(to_index)
+    if not problem.return_to_depot and to_node == 0:
+        return 0
+    return self.distance_matrix[from_node][to_node]
+
+distance_callback_index = self.routing.RegisterTransitCallback(distance_callback)
+self.routing.SetArcCostEvaluatorOfAllVehicles(distance_callback_index)</code></pre>
+      </div>
+
+      <ul>
+        <li><b><code>RoutingIndexManager(num_nodes, num_vehicles, depot=0)</code></b> —
+        перекладач між "внутрішнім індексом" солвера (кожне авто внутрішньо має власну
+        нумерацію вузлів для свого маршруту) і реальним номером вузла (0 — депо, 1..N — точки).
+        <code>IndexToNode</code>/<code>NodeToIndex</code> — методи саме цього перекладу, вони
+        зустрічаються в кожному callback-у.</li>
+        <li><b><code>RoutingModel</code></b> — сама модель: сюди реєструють функції вартості
+        (callbacks) і обмеження (виміри, <a href="#s5">розділ 5</a>).</li>
+        <li><b>Transit callback</b> — функція "вартість переїзду з вузла A у вузол B", яку
+        солвер викликає мільйони разів під час пошуку. <code>RegisterTransitCallback</code>
+        реєструє її під індексом, який потім передається в
+        <code>SetArcCostEvaluatorOfAllVehicles</code> — "мінімізуй суму цих значень по всьому
+        маршруту".</li>
+      </ul>
+
+      <p>Реальна деталь бізнес-логіки прямо всередині <code>distance_callback</code>: якщо
+      <code>return_to_depot=False</code> (водій не повертається в депо після останньої
+      доставки — реальна опція цього продукту), "переїзд" у вузол депо коштує <b>нуль</b> —
+      бо такого переїзду фізично не буде, і його не можна ні мінімізувати, ні враховувати в
+      сумарну відстань маршруту.</p>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Виміри (Dimensions): Time і Capacity</h2>
+      <p class="section-desc">Вимір OR-Tools — накопичувана величина вздовж маршруту (час у дорозі, вага вантажу), а не одноразова вартість дуги.</p>
+
+      <p>На відміну від вартості дуги (одне число на переїзд, що просто підсумовується для
+      мети "мінімізувати"), <b>вимір</b> накопичує значення вздовж усього маршруту й дозволяє
+      ставити обмеження на цю накопичену суму <i>в кожній точці</i> шляху — а не лише на
+      фінальний підсумок.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">solver.py — вимір "Time"</span></div>
+        <pre><code>self.routing.AddDimension(
+    time_callback_index,
+    HORIZON_MINUTES,  <span class="cmt"># slack_max — дозволити "чекати" на вікно доставки хоч цілу добу</span>
+    HORIZON_MINUTES,  <span class="cmt"># максимальне накопичене значення</span>
+    False,            <span class="cmt"># НЕ форсувати старт у 0 — авто стартують у свій робочий час</span>
+    "Time",
+)</code></pre>
+      </div>
+
+      <p><b>Capacity</b> — другий вимір, і показово, що в цьому проєкті їх одразу <b>два
+      незалежні</b>: вага й об'єм (<code>constraints.py</code>,
+      <code>apply_capacity_constraints</code>). Вантаж може вичерпати місткість авто по вазі,
+      не вичерпавши по об'єму, чи навпаки (легкі, але громіздкі коробки) — тому це дві окремі
+      функції-калькулятори попиту, зареєстровані як два незалежні виміри, кожен зі своєю межею
+      на транспортний засіб (<code>AddDimensionWithVehicleCapacity</code>).</p>
+
+      <p><b>Working hours</b> (<code>apply_working_hours_constraints</code>) використовує той
+      самий вимір "Time", тільки прив'язує його межі до старту й кінця маршруту конкретного
+      авто (<code>routing.Start(vehicle_id)</code>/<code>routing.End(vehicle_id)</code>):
+      старт не раніше початку зміни водія, кінець не пізніше її завершення, і додатково —
+      "жорстке" обмеження солвера (<code>routing.solver().Add(...)</code>) на те, що різниця
+      між ними не перевищує <code>max_working_minutes</code>.</p>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> М'які вікна доставки, штрафи, "дропи"</h2>
+      <p class="section-desc">Найцікавіша бізнес-вимога цього солвера: "якщо приїхав раніше — чекає, якщо запізнився — штраф, а не провал".</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">constraints.py — apply_time_window_constraints</span></div>
+        <pre><code>time_dimension.CumulVar(index).SetRange(stop.time_window.start_minutes, HORIZON_MINUTES)
+time_dimension.SetCumulVarSoftUpperBound(index, stop.time_window.end_minutes, stop.late_penalty)</code></pre>
+      </div>
+
+      <p><code>SetRange(start, HORIZON_MINUTES)</code> — <b>жорстка</b> нижня межа: приїхати
+      раніше початку вікна фізично неможливо для солвера (авто просто чекатиме, "з'їдаючи"
+      слек виміру Time). А верхня межа — навпаки, <b>м'яка</b>
+      (<code>SetCumulVarSoftUpperBound</code>): запізнення не робить розв'язок недопустимим,
+      воно лише додає <code>late_penalty</code> (масштабований пріоритетом — розділ 2) до
+      загальної вартості. Це прямо відповідає бізнес-специфікації, зафіксованій коментарем у
+      самому коді: "якщо приїхав раніше — чекає, якщо запізнився — отримує штраф".</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 640 170" xmlns="http://www.w3.org/2000/svg">
+          <line x1="40" y1="90" x2="600" y2="90" stroke="currentColor" stroke-width="1.2"/>
+          <rect x="220" y="75" width="140" height="30" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="3 2"/>
+          <text x="290" y="65" text-anchor="middle" font-size="10.5" fill="currentColor">вікно доставки [start, end]</text>
+
+          <circle cx="180" cy="90" r="5" fill="currentColor"/>
+          <text x="180" y="120" text-anchor="middle" font-size="10" fill="currentColor">приїзд раніше</text>
+          <text x="180" y="134" text-anchor="middle" font-size="9.5" fill="currentColor">→ чекає (без штрафу)</text>
+
+          <circle cx="420" cy="90" r="5" fill="currentColor"/>
+          <text x="420" y="120" text-anchor="middle" font-size="10" fill="currentColor">приїзд пізніше</text>
+          <text x="420" y="134" text-anchor="middle" font-size="9.5" fill="currentColor">→ late_penalty (масштаб. пріоритетом)</text>
+
+          <text x="40" y="30" font-size="10.5" fill="currentColor">Нижня межа вікна — жорстка (SetRange).</text>
+          <text x="40" y="45" font-size="10.5" fill="currentColor">Верхня межа — м'яка (SetCumulVarSoftUpperBound): розв'язок лишається допустимим.</text>
+        </svg>
+        <figcaption>М'яке верхнє й жорстке нижнє вікно доставки — запізнення коштує штраф,
+        а не робить увесь маршрут нерозв'язним.</figcaption>
+      </figure>
+
+      <p><b>Дроп замість провалу (<code>AddDisjunction</code>).</b> Ще один рівень тієї самої
+      ідеї "краще неідеальний розв'язок, ніж жоден": якщо фізично неможливо об'їхати всі точки
+      (забагато замовлень на наявні авто чи час), солвер може повністю <b>пропустити</b> точку
+      ціною <code>drop_penalty</code> — теж масштабованого пріоритетом (розділ 2) — замість
+      того щоб <code>optimize()</code> взагалі кинув виняток "рішення не знайдено".
+      <code>mapper.py</code> окремо збирає такі пропущені точки в
+      <code>unassigned_stop_ids</code>, які сервіс повертає викликачу як явний список, а не
+      мовчки губить.</p>
+
+      <div class="callout info">
+        <div class="ic">📎</div>
+        <div class="body"><b>Best-effort обмеження перерви водія.</b>
+        <code>apply_break_constraints</code> — найтендітніша частина API OR-Tools у цьому
+        коді, обгорнута в <code>try/except</code> в <code>solver.py</code>: якщо жорстке
+        планування перерви через <code>FixedDurationIntervalVar</code> не вдається, помилка
+        логується, а решта солвера продовжує працювати без цього обмеження — усвідомлена
+        деградація, а не крах усього ендпоінту через одну примхливу частину API.</div>
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Евристика, а не точний оптимум</h2>
+      <p class="section-desc">Прямий наслідок NP-складності (розділ 0): OR-Tools у цьому проєкті свідомо шукає "достатньо добре", а не "найкраще з можливих".</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">solver.py — solve()</span></div>
+        <pre><code>search_parameters.first_solution_strategy = (
+    routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+)
+search_parameters.local_search_metaheuristic = (
+    routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
+)
+search_parameters.time_limit.FromSeconds(5)</code></pre>
+      </div>
+
+      <p>Два окремі етапи пошуку, кожен зі своєю роллю:</p>
+      <ul>
+        <li><b><code>PATH_CHEAPEST_ARC</code></b> (стратегія <i>першого</i> розв'язку) —
+        жадібна (greedy) евристика: будувати маршрут, на кожному кроці додаючи
+        найдешевшу доступну дугу. Швидко дає хоч якийсь допустимий розв'язок — часто далекий
+        від оптимального, зате майже миттєво.</li>
+        <li><b><code>GUIDED_LOCAL_SEARCH</code></b> (метаевристика <i>покращення</i>) — бере
+        цей перший розв'язок і далі ітеративно покращує його локальними змінами (переставити
+        дві точки, перенести точку в інший маршрут), "штрафуючи" вже досліджені дороги дуги,
+        щоб не застрягати в одному й тому самому локальному мінімумі повторно.</li>
+        <li><b><code>time_limit.FromSeconds(5)</code></b> — жорсткий бюджет часу: що б не
+        знайшла метаевристика за ці 5 секунд, це і повертається як фінальний
+        <code>assignment</code>. Довше — потенційно краще (для NP-складної задачі гарантії
+        "коли зупинитись і мати вже найкраще" не існує), але 5 секунд — свідомий компроміс
+        між якістю маршруту й часом відповіді HTTP-запиту.</li>
+      </ul>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Ключовий висновок для співбесіди:</b> результат
+        <code>optimize()</code> — це <i>допустимий і добрий</i> розв'язок, а не <i>доведено
+        найкращий можливий</i>. Два послідовні виклики з тими самими вхідними даними теоретично
+        можуть повернути дещо різні (хоч і однаково допустимі) маршрути, якщо локальний пошук
+        встигає дослідити різну кількість варіантів у межах тих самих 5 секунд — детермінізм
+        тут не гарантований так, як для звичайного SQL-запиту.</div>
+      </div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Солвер і event loop: чому <code>asyncio.to_thread</code></h2>
+      <p class="section-desc">Пряме продовження вже розібраного в іншому турі — тут лише зв'язок із конкретним кодом цього модуля.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">service.py</span></div>
+        <pre><code>def _build_and_solve(solver: RouteSolver):
+    solver.build_model()
+    return solver.solve()
+
+result = await asyncio.to_thread(_build_and_solve, solver)</code></pre>
+      </div>
+
+      <p><code>build_model()</code> і <code>solve()</code> — синхронний, CPU-зв'язаний код
+      (сам OR-Tools написаний на C++ і викликається через Python-обгортку, що утримує
+      контроль виконання на весь час пошуку) — без жодного <code>await</code> усередині. Якби
+      його викликали напряму з <code>async def optimize(...)</code>, до 5 секунд роботи
+      солвера заблокували б <b>увесь</b> event loop процесу — жоден інший одночасний HTTP-
+      запит не обробився б за цей час, навіть найпростіший. <code>asyncio.to_thread</code>
+      виносить увесь виклик в окремий потік, звільняючи event loop для решти застосунку — це
+      той самий фікс, що детально розібраний у
+      <a href="02-async-and-security.html#a6">турі 2, розділ 6</a> і в самому першому запиті
+      цієї серії туторіалів.</p>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Аналоги OR-Tools</h2>
+      <p class="section-desc">OR-Tools — не єдиний спосіб розв'язувати VRP, і питання "чому саме він" цілком типове.</p>
+
+      <table>
+        <tr><th>Інструмент</th><th>Ключова відмінність</th></tr>
+        <tr>
+          <td><b>Google OR-Tools</b> (використано тут)</td>
+          <td>Безкоштовний, open-source, C++ із біндингами для Python/Java/C#. Constraint
+          Programming рушій загального призначення — VRP тут лише одна з підтримуваних
+          категорій задач (є ще bin packing, scheduling).</td>
+        </tr>
+        <tr>
+          <td><b>Gurobi / CPLEX</b></td>
+          <td>Комерційні MILP-солвери (Mixed-Integer Linear Programming) промислового рівня —
+          зазвичай точніші й швидші на дуже великих задачах, але платні (ліцензії коштують
+          тисячі доларів на рік) — типовий вибір великих логістичних компаній, а не для MVP.</td>
+        </tr>
+        <tr>
+          <td><b>VROOM</b></td>
+          <td>Open-source, написаний спеціально й лише для VRP (на відміну від OR-Tools
+          загального призначення) — легший інтеграційний поріг для чистого VRP без потреби в
+          інших видах CP-задач.</td>
+        </tr>
+        <tr>
+          <td><b>jsprit</b></td>
+          <td>Java-бібліотека, теж спеціалізована на VRP, з метаевристиками на кшталт
+          large neighborhood search — природний вибір, якщо стек команди — JVM, а не Python/C++.</td>
+        </tr>
+        <tr>
+          <td><b>Власна евристика "з нуля"</b> (naive nearest-neighbor, генетичний алгоритм)</td>
+          <td>Найдешевше почати, найдорожче підтримувати: правильно врахувати одразу вікна
+          часу, кілька вимірів місткості й м'які штрафи — саме та складність, яку OR-Tools уже
+          вирішив і перевірив за вас.</td>
+        </tr>
+      </table>
+
+      <p class="muted">Практичне правило вибору: OR-Tools — розумний баланс "безкоштовно,
+      достатньо потужно, з готовою підтримкою складних обмежень (вікна часу, кілька вимірів
+      місткості, м'які штрафи)" — саме тому він і обраний тут замість написання власного
+      евристичного алгоритму або платного MILP-солвера.</p>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Питання для співбесіди</h2>
+      <p class="section-desc">Прив'язані до реального коду цього модуля — не загальні визначення з підручника.</p>
+
+      <details class="qa">
+        <summary><span class="qnum">01</span>Чому VRP вважається NP-складною задачею, і що це означає практично для дизайну солвера?</summary>
+        <div class="a"><p>Кількість способів розподілити N точок між K машинами й
+        упорядкувати кожен маршрут росте комбінаторно з N — не існує відомого алгоритму, що
+        гарантовано знаходить точний оптимум за поліноміальний час. Практично це означає: для
+        реалістичної кількості точок доведеться або обмежити час пошуку й погодитись на
+        "достатньо добрий" розв'язок (підхід цього проєкту — <code>time_limit.FromSeconds(5)</code>),
+        або мати справу з нереалістично довгим часом очікування точного оптимуму.</p></div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">02</span>У чому різниця між вартістю дуги (arc cost) і виміром (dimension) в OR-Tools?</summary>
+        <div class="a"><p>Вартість дуги — одне число на кожен переїзд, що просто підсумовується
+        в загальну мету "мінімізувати". Вимір — накопичувана вздовж усього маршруту величина
+        (час, вага), на яку можна ставити обмеження в <i>кожній</i> точці шляху, а не лише на
+        фінальну суму — саме через вимір "Time" у цьому проєкті реалізовані і вікна доставки, і
+        робочий час водія одночасно.</p></div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">03</span>Чим м'яке обмеження відрізняється від жорсткого — і де в цьому коді використано обидва для того самого вікна доставки?</summary>
+        <div class="a"><p>Жорстке обмеження робить розв'язок, що його порушує, недопустимим
+        узагалі. М'яке — дозволяє порушення ціною штрафу до загальної вартості. У
+        <code>apply_time_window_constraints</code> нижня межа вікна доставки жорстка
+        (<code>SetRange</code> — приїхати раніше фізично неможливо для солвера), а верхня —
+        м'яка (<code>SetCumulVarSoftUpperBound</code> — запізнення коштує
+        <code>late_penalty</code>, але не ламає розв'язок).</p></div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">04</span>Що робить <code>AddDisjunction</code>, і навіщо він потрібен, якщо в системі вже є м'які вікна часу?</summary>
+        <div class="a"><p>Дозволяє солверу повністю пропустити (не відвідати) конкретну точку
+        ціною <code>drop_penalty</code>, замість того щоб узагалі не знайти жодного допустимого
+        розв'язку. М'які вікна часу рятують від конфлікту "затримка проти дедлайну", але не
+        рятують, коли фізично бракує сумарної місткості чи часу на всіх водіїв обслужити всіх —
+        у такому разі саме дроп точки, а не провал усього запиту, дозволяє повернути хоч якийсь
+        корисний результат.</p></div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">05</span>Чому <code>DROP_PENALTY_BY_PRIORITY</code> і <code>LATE_PENALTY_BY_PRIORITY</code> навмисно розділені на різні порядки величини?</summary>
+        <div class="a"><p>Щоб бізнес-правило "ніколи не викидай точку лише заради невеликого
+        штрафу за запізнення" виконувалось автоматично, для будь-якого пріоритету: навіть
+        найбільший можливий <code>late_penalty</code> (VIP, 10 000) на порядки менший за
+        найменший можливий <code>drop_penalty</code> (low, 1 000 000) — тому оптимізатор завжди
+        обере "запізнитись", а не "пропустити", коли обидва варіанти технічно можливі.</p></div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">06</span>Чому солвер запускається через <code>asyncio.to_thread</code>, а не напряму з async-функції?</summary>
+        <div class="a"><p>OR-Tools — синхронний, CPU-зв'язаний код (C++ під Python-обгорткою)
+        без жодного <code>await</code> усередині; виклик напряму заблокував би event loop на
+        весь час пошуку (до 5 секунд), зупинивши обробку будь-яких інших одночасних запитів
+        процесу. <code>asyncio.to_thread</code> виносить виклик в окремий потік, звільняючи
+        event loop.</p></div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">07</span>Чи гарантує цей солвер один і той самий маршрут для одних і тих самих вхідних даних при повторному запуску?</summary>
+        <div class="a"><p>Не обов'язково точно однаковий — детермінізм тут не гарантований так,
+        як для SQL-запиту. Локальний пошук (<code>GUIDED_LOCAL_SEARCH</code>) — ітеративний
+        процес, обмежений часом (5 секунд); те, скільки варіантів він встигне дослідити й у
+        якому порядку, теоретично може відрізнятись між запусками, тож результат — допустимий і
+        добрий, але не обов'язково побітово ідентичний.</p></div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">08</span>Матриця відстаней сьогодні рахується через haversine, а не реальні дороги. У чому конкретно це може призвести до неоптимального (чи навіть нереалістичного) маршруту?</summary>
+        <div class="a"><p>Haversine — відстань "по прямій" по сфері, що ігнорує річки, будівлі,
+        одностороній рух, реальну дорожню мережу й трафік. Дві точки, дуже близькі по прямій,
+        можуть насправді вимагати великого об їзду по дорогах (наприклад, через річку без
+        мосту поруч) — солвер вважатиме їх дешевими для послідовного відвідування, хоча
+        реальний водій витратить значно більше часу й палива, ніж передбачено моделлю.</p></div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">09</span>Чому вага і об'єм реалізовані як два окремі виміри місткості, а не один комбінований показник?</summary>
+        <div class="a"><p>Бо вантаж може вичерпати місткість авто по одному показнику, не
+        вичерпавши по іншому — важкі, компактні коробки вичерпують вагу раніше об'єму; легкі,
+        громіздкі — навпаки. Об'єднання в один показник ("умовна одиниця") втратило б цю
+        незалежність і могло б або занизити реальне обмеження (перевантажити авто по вазі), або
+        завищити (недовантажити по об'єму), тоді як два незалежні виміри перевіряють обидва
+        фізичні обмеження одночасно й точно.</p></div>
+      </details>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Підсумок</h2>
+      <p class="section-desc">Головне з цього туторіалу:</p>
+      <ul>
+        <li>VRP — NP-складне узагальнення TSP на кілька транспортних засобів з обмеженнями;
+        точний оптимум за прийнятний час у загальному випадку недосяжний.</li>
+        <li><code>builder.py</code> перекладає домен (Delivery/Vehicle/Driver) у нейтральний
+        <code>RoutingProblem</code> із цілочисельними одиницями й бізнес-штрафами, вираженими
+        як числа.</li>
+        <li><code>manager</code>/<code>routing</code>/callbacks — базова тріада OR-Tools;
+        виміри (Time, Capacity) — накопичувані обмеження вздовж усього маршруту, на відміну
+        від одноразової вартості дуги.</li>
+        <li>М'які вікна часу й <code>AddDisjunction</code>-дропи втілюють правило "краще
+        неідеальний розв'язок, ніж жоден" — прямо як бізнес-специфікація вимагає.</li>
+        <li>Розв'язок шукається евристично (<code>PATH_CHEAPEST_ARC</code> →
+        <code>GUIDED_LOCAL_SEARCH</code>) з жорстким лімітом часу — свідомий компроміс якості
+        проти швидкості відповіді, не помилка й не недбалість.</li>
+        <li>Синхронний, CPU-зв'язаний виклик солвера завжди офлоаджиться через
+        <code>asyncio.to_thread</code>, щоб не заморожувати event loop на час пошуку.</li>
+      </ul>
+      <div class="card">
+        ← <a href="22-redis.html">Туторіал 22 — Redis</a>
+        &nbsp;·&nbsp;
+        → <a href="24-multi-tenancy-saas.html">Туторіал 24 — Multi-tenancy</a>
+        &nbsp;·&nbsp;
+        ↔ <a href="02-async-and-security.html#a6">Туторіал 2 — OR-Tools блокує event loop</a>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал прив'язаний до реального коду репозиторію <code>ai-delivery-planner-backend</code>
+  (<code>app/services/route_optimizer/builder.py</code>, <code>distance.py</code>,
+  <code>constraints.py</code>, <code>solver.py</code>, <code>mapper.py</code>, <code>service.py</code>,
+  <code>models.py</code>) станом на момент генерації.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*|\/\/[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b|\bthis\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case|const|let|var|function|interface|type|export|extends|implements|new|void|enum|typeof|instanceof|static|public|private|readonly|null|undefined)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

@@ -262,6 +262,8 @@
         <a href="18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
         <a href="19-postgres-storage-and-memory.html" class="active">19. Postgres storage &amp; пам'ять</a>
         <a href="22-redis.html">22. Redis</a>
+        <a href="23-route-optimization-or-tools.html">23. OR-Tools &amp; VRP</a>
+        <a href="24-multi-tenancy-saas.html">24. Multi-tenancy</a>
         <a href="20-testing-cicd-monitoring-cloud.html">20. Тести, CI/CD, моніторинг</a>
         <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
       </nav>
@@ -298,7 +300,8 @@
       <li><a href="#s6">6. Ручний gc.collect()</a></li>
       <li><a href="#s7">7. Перезапуск воркера після N запитів</a></li>
       <li><a href="#s8">8. Інші способи проти витоків</a></li>
-      <li><a href="#s9">9. Підсумок</a></li>
+      <li><a href="#s9">9. Alembic-міграції на практиці</a></li>
+      <li><a href="#s10">10. Підсумок</a></li>
     </ol>
   </aside>
 
@@ -692,7 +695,94 @@ WHERE id = '3f2e...';
     </section>
 
     <section id="s9">
-      <h2><span class="num">09</span> Підсумок</h2>
+      <h2><span class="num">09</span> Alembic-міграції на практиці</h2>
+      <p class="section-desc">Тур 18 (питання 23) уже пояснив <i>навіщо</i> взагалі потрібні окремі файли міграцій, а не "просто змінити модель". Тут — як це реально виглядає в цьому проєкті, на двох справжніх файлах з <code>db/migrations/versions/</code>.</p>
+
+      <p><code>db/migrations/env.py</code> цього проєкту — асинхронний варіант стандартного
+      Alembic-оточення: сам Alembic усередині синхронний, тож асинхронний рушій підключається
+      через <code>async_engine_from_config</code>, а фактичний виклик <code>context.run_migrations()</code>
+      обгортається в <code>connection.run_sync(...)</code> — та сама техніка "синхронний виклик
+      усередині async-коду", що й <code>asyncio.to_thread</code> у
+      <a href="02-async-and-security.html#a5">тур 2, розділ 5</a>, тільки на рівні одного
+      з'єднання, а не окремого потоку.</p>
+
+      <h3>Приклад 1: безпечне додавання NOT NULL колонки</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">…_add_is_verified_to_users.py</span></div>
+        <pre><code>def upgrade() -> None:
+    <span class="cmt"># server_default='true' grandfathers in every pre-existing user (created</span>
+    <span class="cmt"># before email verification existed); the app always passes</span>
+    <span class="cmt"># is_verified=False explicitly on new registrations, overriding this</span>
+    <span class="cmt"># default for rows inserted from here on.</span>
+    op.add_column(
+        "users",
+        sa.Column("is_verified", sa.Boolean(), nullable=False, server_default=sa.true()),
+    )
+
+def downgrade() -> None:
+    op.drop_column("users", "is_verified")</code></pre>
+      </div>
+      <p>Класична пастка тут — додати колонку <code>NOT NULL</code> <i>без</i> дефолту на
+      таблиці, де вже є рядки: Postgres не знає, яким значенням заповнити існуючі рядки, і
+      міграція просто провалиться на непорожній таблиці. <code>server_default=sa.true()</code>
+      вирішує це на рівні самої БД — усі наявні рядки миттєво отримують <code>true</code> в
+      момент виконання <code>ALTER TABLE</code>, а код застосунку далі явно передає
+      <code>is_verified=False</code> для щойно зареєстрованих користувачів, перекриваючи цей
+      дефолт для нових рядків. <code>downgrade()</code> тут тривіальний і безпечний —
+      <code>drop_column</code> не втрачає нічого, крім самого поля.</p>
+
+      <h3>Приклад 2: міграція, народжена реальним багом</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">…_normalize_subscription_plan_casing.py</span></div>
+        <pre><code>def upgrade() -> None:
+    <span class="cmt"># Fixes a real data-corruption bug: the `subscription_plan` Enum column</span>
+    <span class="cmt"># lacked `values_callable`, so SQLAlchemy bound/read it by enum MEMBER</span>
+    <span class="cmt"># NAME ("TRIAL") instead of `.value` ("trial") for ORM-created rows...</span>
+    <span class="cmt"># Normalize every value to lowercase so both old and new rows agree.</span>
+    op.execute("UPDATE organizations SET subscription_plan = lower(subscription_plan)")
+
+def downgrade() -> None:
+    <span class="cmt"># No meaningful reverse: which rows were originally upper vs lower case</span>
+    <span class="cmt"># is not recoverable after the forward migration has run.</span>
+    pass</code></pre>
+      </div>
+      <p>Це не вигаданий навчальний приклад — реальний інцидент цього проєкту: колонку
+      <code>subscription_plan</code> (Enum) було оголошено без <code>values_callable</code>, тож
+      SQLAlchemy деякий час записувало значення за <b>іменем</b> члена enum
+      (<code>"TRIAL"</code>) замість <code>.value</code> (<code>"trial"</code>) — і після
+      виправлення самої моделі старі рядки лишились "зіпсованими" з великої літери. Міграція
+      вище — не зміна схеми, а <b>міграція даних</b>: одноразовий <code>UPDATE</code>, що
+      наводить лад у вже наявних рядках. Саме тому в <code>downgrade()</code> чесно стоїть
+      <code>pass</code> із коментарем "нема куди відкочувати" — інформація про те, який рядок
+      спочатку був у якому регістрі, безповоротно втрачена ще на кроці <code>upgrade()</code>.
+      Це важлива і чесна деталь: не кожна міграція взагалі має змістовний відкат.</p>
+
+      <div class="callout info">
+        <div class="ic">📎</div>
+        <div class="body"><b>Autogenerate — помічник, не оракул.</b>
+        <code>alembic revision --autogenerate</code> порівнює поточні ORM-моделі зі
+        станом бази й сам пише каркас міграції для змін схеми (нова колонка, новий індекс,
+        нова таблиця) — але не бачить намірів: перейменування колонки autogenerate завжди
+        прочитає як "видалити стару колонку" + "додати нову" (і тим самим втратити дані), якщо
+        це не виправити вручну на <code>op.alter_column(..., new_column_name=...)</code>.
+        А міграцію даних (як приклад 2 вище) autogenerate не згенерує ніколи — таку логіку
+        завжди пишуть руками, бо вона не випливає з жодної різниці в оголошеннях моделей.</div>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Лінійний ланцюжок ревізій.</b> Кожен файл посилається на
+        попередній через <code>down_revision</code>, утворюючи один зв'язний список. Якщо два
+        розробники паралельно створять міграції від однієї й тієї самої "голови" в різних
+        гілках git — при злитті виникає <b>розгалуження</b> (дві ревізії з однаковим
+        <code>down_revision</code>), і Alembic відмовиться застосовувати їх, доки хтось не
+        додасть merge-міграцію (<code>alembic merge</code>) чи вручну не перелінкує
+        <code>down_revision</code> одного з файлів на інший.</div>
+      </div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Підсумок</h2>
       <p class="section-desc">Дві половини цього туторіалу — і що з ними робити в цьому проєкті вже сьогодні.</p>
       <ul>
         <li><b>Postgres-половина:</b> MVCC дає конкурентні читання/записи "безкоштовно" через
@@ -705,6 +795,10 @@ WHERE id = '3f2e...';
         <li><b>Перезапуск воркера</b> як прийом проти витоків у цьому проєкті поки не налаштований
         зовсім — з голим uvicorn без gunicorn це варто додати <i>до</i> того, як це стане реальним
         інцидентом, а не після.</li>
+        <li><b>Alembic-міграції</b> — не лише зміна схеми (нова колонка з безпечним
+        <code>server_default</code>), а часом і одноразова міграція даних без змістовного
+        відкату (реальний приклад — нормалізація регістру <code>subscription_plan</code> після
+        бага з відсутнім <code>values_callable</code>).</li>
       </ul>
       <div class="card">
         ← <a href="18-databases-interview-qa.html">Туторіал 18 — Бази даних: Q&amp;A</a>

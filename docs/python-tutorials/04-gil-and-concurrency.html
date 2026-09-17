@@ -364,6 +364,8 @@
         <a href="18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
         <a href="19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
         <a href="22-redis.html">22. Redis</a>
+        <a href="23-route-optimization-or-tools.html">23. OR-Tools &amp; VRP</a>
+        <a href="24-multi-tenancy-saas.html">24. Multi-tenancy</a>
         <a href="20-testing-cicd-monitoring-cloud.html">20. Тести, CI/CD, моніторинг</a>
         <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
       </nav>
@@ -822,6 +824,97 @@ async def good():
         не дасть жодного приросту швидкості — і навіть додасть невеликі накладні витрати на сам
         event loop.</div>
       </div>
+
+      <h3>Future, Task і <code>asyncio.gather</code></h3>
+      <p><b>Future</b> — низькорівневий об'єкт-"обіцянка результату, якого ще немає": у нього
+      можна записати результат чи виняток пізніше, а той, хто на нього чекає, отримає значення,
+      щойно воно з'явиться. <b>Task</b> — підклас <code>Future</code>, який додає одну ключову
+      річ: він одразу <i>планує виконання корутини</i> в event loop-і, а не просто чекає, поки
+      хтось інший заповнить результат. Саме тому <code>asyncio.create_task(coro())</code>
+      запускає корутину у фоні негайно, тоді як голий <code>await coro()</code> виконує її
+      синхронно, у поточному місці коду, без паралельності з чимось іншим.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">послідовно vs паралельно</span></div>
+        <pre><code>async def fetch(url): ...
+
+<span class="cmt"># ❌ послідовно — другий запит чекає завершення першого</span>
+a = await fetch(url1)
+b = await fetch(url2)
+
+<span class="cmt"># ✅ паралельно — обидва запити "в польоті" одночасно</span>
+a, b = await asyncio.gather(fetch(url1), fetch(url2))</code></pre>
+      </div>
+
+      <p><code>asyncio.gather(*aws)</code> запускає всі передані корутини/задачі конкурентно й
+      повертає їхні результати одним списком, у тому самому порядку, в якому їх передали
+      (незалежно від того, яка з них фактично завершилась першою). За замовчуванням перший-таки
+      виняток з будь-якої з них одразу скасовує <code>gather</code> і прокидається назовні —
+      інші задачі при цьому лишаються запущеними у фоні. Параметр
+      <code>return_exceptions=True</code> змінює цю поведінку: виняток кожної задачі
+      повертається як звичайний елемент результуючого списку, замість того щоб перериватись
+      достроково — корисно, коли треба дочекатись <i>усіх</i> задач і обробити часткові
+      відмови окремо, а не втратити результати вже успішних.</p>
+
+      <h3>Скасування задачі</h3>
+      <p>Виклик <code>task.cancel()</code> не зупиняє задачу миттєво: він лише запам'ятовує
+      запит на скасування й кидає <code>asyncio.CancelledError</code> усередину задачі — але
+      рівно в наступній точці, де вона сама віддає керування (наступний <code>await</code>).
+      Якщо задача в цей момент виконує довгий синхронний шматок коду без жодного
+      <code>await</code>, вона фізично не може відреагувати на скасування, доки цей шматок не
+      завершиться.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">коректне прибирання при скасуванні</span></div>
+        <pre><code>async def worker():
+    try:
+        await long_io_operation()
+    except asyncio.CancelledError:
+        <span class="cmt"># звільнити ресурси (закрити з'єднання, відкотити стан) —</span>
+        <span class="cmt"># і майже завжди прокинути виняток далі</span>
+        await cleanup()
+        raise</code></pre>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body">Типова пастка: перехопити <code>CancelledError</code> і <i>не</i>
+        прокинути його далі (проковтнути). Формально <code>CancelledError</code> — це просто
+        ще один виняток, тому Python дозволяє це синтаксично, але для event loop-а це виглядає
+        так, ніби задача благополучно завершилась сама, а не була скасована — це ламає логіку
+        коду, який очікує на реальне підтвердження скасування (наприклад,
+        <code>asyncio.wait_for</code> із таймаутом).</div>
+      </div>
+
+      <h3><code>contextvars</code>: стан, що не "протікає" між задачами</h3>
+      <p>Проблема, яку <code>contextvars</code> вирішує: у синхронному багатопотоковому коді для
+      "даних, прив'язаних саме до цього потоку" використовують <code>threading.local()</code>.
+      В asyncio немає окремих потоків на кожну задачу — усі <code>Task</code> виконуються в
+      <i>одному й тому самому</i> потоці, тож <code>threading.local()</code> тут марний: усі
+      задачі бачили б одне й те саме значення, перезаписуючи його одна одній.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">contextvars.ContextVar</span></div>
+        <pre><code>import contextvars
+
+request_id_var = contextvars.ContextVar("request_id", default=None)
+
+async def handle_request(rid: str):
+    request_id_var.set(rid)
+    await do_work()          <span class="cmt"># усередині do_work() request_id_var.get() поверне саме "rid"</span>
+
+async def do_work():
+    print(request_id_var.get())   <span class="cmt"># бачить значення, встановлене своєю задачею, а не чужою</span></code></pre>
+      </div>
+
+      <p><code>asyncio.create_task(...)</code> копіює поточний контекст у момент створення
+      задачі — тож кожна задача отримує свій ізольований "знімок" значень
+      <code>ContextVar</code>, і зміна значення в одній задачі не видима іншим паралельним
+      задачам. Це саме той механізм, на якому в реальних застосунках будують "поточний ID
+      запиту" чи "поточного користувача" для логування (див. <a href="10-logging.html">туторіал
+      10</a>) без ризику, що конкурентні запити переплутають контексти одне одного — на відміну
+      від звичайної глобальної змінної, яку паралельні задачі одного event loop-а ділили б
+      небезпечно.</p>
     </section>
 
     <section id="s10">

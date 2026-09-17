@@ -302,6 +302,8 @@
         <a href="18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
         <a href="19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
         <a href="22-redis.html">22. Redis</a>
+        <a href="23-route-optimization-or-tools.html">23. OR-Tools &amp; VRP</a>
+        <a href="24-multi-tenancy-saas.html">24. Multi-tenancy</a>
         <a href="20-testing-cicd-monitoring-cloud.html">20. Тести, CI/CD, моніторинг</a>
         <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
       </nav>
@@ -641,6 +643,60 @@ class TenantScopedRepository(BaseRepository[ModelType]):
         і далі всі запити через нього автоматично його використовують — тільки тут "прив'язка" це
         фільтр по орендарю (org), а не заголовок.
       </div>
+
+      <h3>N+1 запитів: чому цей проєкт структурно від нього захищений</h3>
+      <p>Класична пастка ORM у будь-якому бекенді — <b>проблема N+1</b>: спочатку один запит
+      забирає список із N рядків, а тоді код у циклі робить ще N окремих запитів, щоб дістати
+      пов'язані дані для кожного рядка окремо — замість одного (чи двох) запитів на все.
+      У цьому проєкті ORM-моделі (<code>app/db/models/</code>) свідомо <b>не використовують</b>
+      декларативний <code>relationship()</code> SQLAlchemy — саме той механізм, через який N+1
+      найчастіше й виникає непомітно (звернення до <code>route.driver.name</code> у циклі
+      виглядає як звичайний доступ до атрибута, а насправді тихо йде в базу вкотре). Замість
+      цього репозиторії явно будують потрібні <code>select()</code>/агрегатні запити самі.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/services/dashboard/service.py — реальний приклад "добре"</span></div>
+        <pre><code><span class="cmt"># ✅ ОДИН згрупований запит за весь діапазон днів одразу</span>
+routes_by_day = {
+    row.day: (row.routes_count, row.distance_km)
+    for row in (await self.session.execute(
+        select(route_day.label("day"), func.count(), func.sum(Route.total_distance_km))
+        .where(Route.organization_id == self.organization_id, route_day >= start_date)
+        .group_by(route_day)
+    )).all()
+}
+
+<span class="cmt"># цикл далі лише читає вже готовий словник у пам'яті — жодного нового запиту в базу</span>
+for offset in range(days):
+    day = start_date + timedelta(days=offset)
+    routes_count, distance_km = routes_by_day.get(day, (0, 0.0))</code></pre>
+      </div>
+
+      <p>Це і є правильний патерн боротьби з N+1: замість "запит на кожен елемент циклу" —
+      один запит, що одразу згруповує чи об'єднує потрібні дані, а цикл після нього лише формує
+      відповідь із уже наявного результату. У термінах SQLAlchemy це загальний принцип
+      <b>eager loading</b> — свідомо забрати пов'язані дані заздалегідь одним запитом, а не
+      покладатись на <b>lazy loading</b> (типову поведінку "з коробки" для
+      <code>relationship()</code>, коли пов'язаний об'єкт довантажується окремим запитом лише
+      в момент першого звернення до атрибута).</p>
+
+      <div class="callout info">
+        <div class="ic">📎</div>
+        <div class="body"><b>Гіпотетичний приклад</b> (у цьому коді немає жодного
+        <code>relationship()</code>, тож наступне — не з реального репозиторію, а типовий
+        SQLAlchemy-патерн, який варто знати для співбесіди): якби <code>Route</code> мав
+        <code>stops: Mapped[list["RouteStop"]] = relationship(...)</code>, забір 50 маршрутів і
+        подальше звернення до <code>route.stops</code> для кожного в циклі дало б 51 запит
+        (1 + 50). Виправлення — попросити SQLAlchemy довантажити зв'язок одразу в тому самому
+        запиті: <code>select(Route).options(selectinload(Route.stops))</code> (окремий
+        додатковий запит виду <code>WHERE route_id IN (...)</code> — уже 2 запити замість 51)
+        або <code>joinedload(Route.stops)</code> (один <code>JOIN</code>-запит — 1 запит
+        замість 51, ціною дублювання колонок <code>Route</code> у кожному рядку результату).
+        Правило вибору між ними: <code>selectinload</code> для зв'язків "один-до-багатьох" із
+        великою кількістю дочірніх рядків (уникає дублювання батьківських даних),
+        <code>joinedload</code> — для зв'язків "багато-до-одного"/"один-до-одного", де
+        дублювання батьківського рядка не відбувається взагалі.</div>
+      </div>
     </section>
 
     <section id="s7">
@@ -733,6 +789,45 @@ def get_delivery_service(
         де компонент оголошує "мені потрібен цей сервіс", а хто саме його створює й з чим —
         компонент не знає і не повинен знати. FastAPI робить це на рівні функцій, а не класів
         з декораторами <code>@Injectable()</code>.
+      </div>
+
+      <h3>Генератор-залежність із <code>yield</code>: як звільняється сесія БД</h3>
+      <p>Одна деталь із ланцюжка вище часто вислизає з уваги: <code>get_db</code> — не
+      звичайна функція, а <b>генератор-залежність</b>:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/dependencies.py</span></div>
+        <pre><code>async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async for session in get_session():
+        yield session      <span class="cmt"># усе, що ПІСЛЯ yield, виконається вже після відповіді</span></code></pre>
+      </div>
+      <p>Коли залежність оголошена через <code>yield</code>, FastAPI трактує все, що стоїть
+      <i>до</i> нього, як налаштування (тут — відкриття сесії), а саме значення <code>yield</code>
+      — як те, що передається в обробник запиту. Найважливіше — код <i>після</i>
+      <code>yield</code> гарантовано виконається вже <b>після того, як відповідь сформована</b>
+      (навіть якщо в обробнику стався виняток) — саме туди природно лягає закриття сесії чи
+      відкат транзакції. Це той самий патерн, що й <code>try</code>/<code>finally</code> навколо
+      всього тіла запиту, тільки оформлений як звичайна залежність, яку можна перевикористовувати
+      й підміняти в тестах.</p>
+
+      <h3>Depends кешується в межах одного запиту</h3>
+      <p>У ланцюжку <code>get_delivery_service</code> вище <code>get_db</code> запитується
+      <i>непрямо</i> кількома різними гілками (через <code>get_delivery_repository</code> і
+      через <code>get_organization_repository</code>). Природне запитання: чи це означає дві
+      окремі сесії БД на один HTTP-запит? Ні — FastAPI кешує результат кожної залежності
+      <b>в межах одного запиту</b>: скільки б разів <code>Depends(get_db)</code> не з'явився в
+      дереві залежностей одного й того самого запиту, сама функція <code>get_db</code>
+      виконається рівно один раз, а всі, хто на неї посилається, отримають той самий об'єкт
+      сесії. Це критично важливо саме для сесії БД: якби кожна гілка отримувала окрему
+      сесію/транзакцію, зміни, зроблені через <code>DeliveryRepository</code>, могли б бути не
+      видимі <code>OrganizationRepository</code> в межах того самого запиту.</p>
+
+      <div class="callout info">
+        <div class="ic">📎</div>
+        <div class="body">Цю поведінку можна вимкнути явно —
+        <code>Depends(get_db, use_cache=False)</code> — якщо для конкретної гілки дерева
+        свідомо потрібна саме нова, незалежна сесія. За замовчуванням же кеш завжди увімкнено,
+        і саме на ньому тримається гарантія "один запит — одна транзакція" для всього дерева
+        залежностей.</div>
       </div>
     </section>
 
