@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>22. Redis — AI Delivery Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout b, .callout strong{color:inherit;}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:640px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  details.qa{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    margin:12px 0; overflow:hidden;
+  }
+  details.qa summary{
+    cursor:pointer; list-style:none; padding:14px 16px; font-weight:600; font-size:14.5px;
+    display:flex; align-items:center; gap:10px;
+  }
+  details.qa summary::-webkit-details-marker{display:none;}
+  details.qa summary::before{content:"▸"; color:var(--accent); flex-shrink:0;}
+  details.qa[open] summary::before{content:"▾";}
+  details.qa .qnum{
+    font-variant-numeric:tabular-nums; color:var(--fg-muted); font-weight:700; font-size:12.5px;
+  }
+  details.qa .a{padding:0 16px 16px 40px; color:var(--fg); font-size:14.5px;}
+  details.qa .a p{margin:8px 0;}
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал · Redis</div>
+  <h1>Redis: для чого він, аналоги і що з ним реально відбувається в цьому проєкті</h1>
+  <p class="lead">
+    Redis у цьому бекенді вже присутній у коді — <code>REDIS_URL</code> в конфігурації,
+    <code>celery_app.py</code>, змінна оточення — але, як чесно сказано ще в
+    <a href="17-databases-fundamentals.html#s8">туторіалі 17</a>, у продовому трафіку він поки що
+    <b>жодного разу реально не викликається</b>. Це не привід його пропустити — навпаки, чудова
+    нагода розібратись, для чого він взагалі існує, чим відрізняється від сусідів по ніші, і що
+    саме потрібно буде ввімкнути в цьому проєкті першим, коли Redis дійсно знадобиться.
+  </p>
+  <div class="pills">
+    <span class="pill">⚡ In-memory data store</span>
+    <span class="pill">📨 Celery broker/backend</span>
+    <span class="pill">🔑 TTL, eviction, pub/sub</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="05-python-types.html">5. Типи</a>
+        <a href="07-classes-decorators-syntax.html">7. Класи &amp; цукор</a>
+        <a href="04-gil-and-concurrency.html">4. GIL &amp; Конкурентність</a>
+        <a href="09-generators-iterators-exceptions.html">9. Генератори &amp; Винятки</a>
+        <a href="12-stdlib-utilities.html">12. Утиліти stdlib</a>
+        <a href="15-memory-management.html">15. Пам'ять &amp; GC</a>
+        <a href="08-wsgi-asgi.html">8. WSGI vs ASGI</a>
+        <a href="10-logging.html">10. Логування</a>
+        <a href="13-packaging-and-dependencies.html">13. Пакування</a>
+        <a href="14-design-patterns.html">14. Патерни</a>
+        <a href="16-oop-and-solid.html">16. ООП &amp; SOLID</a>
+        <a href="11-serialization-and-numbers.html">11. Серіалізація &amp; числа</a>
+        <a href="21-pydantic.html">21. Pydantic</a>
+        <a href="17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="22-redis.html" class="active">22. Redis</a>
+        <a href="20-testing-cicd-monitoring-cloud.html">20. Тести, CI/CD, моніторинг</a>
+        <a href="06-senior-interview-qa.html">6. 30 питань Senior</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/12-this.html">12. this</a>
+        <a href="../js-doc/13-typescript-essentials.html">13. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/02-browser-internals.html">2. Браузер зсередини</a>
+        <a href="../js-doc/03-frontend-security.html">3. Безпека фронтенду</a>
+        <a href="../js-doc/11-http-anatomy.html">11. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/05-react-deep-dive.html">5. React углиб</a>
+        <a href="../js-doc/06-nextjs-architecture.html">6. Next.js та архітектура</a>
+        <a href="../js-doc/07-nextjs-interview-qa.html">7. Next.js: Q&amp;A</a>
+        <a href="../js-doc/14-frontend-caching-fundamentals.html">14. Caching: основи</a>
+        <a href="../js-doc/15-frontend-caching-libraries.html">15. Caching: бібліотеки</a>
+        <a href="../js-doc/16-frontend-caching-advanced.html">16. Caching: просунуті теми</a>
+        <a href="../js-doc/09-testing-cicd-cloud.html">9. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/10-ai-tools.html">10. AI-інструменти</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s0">0. Що таке Redis і для чого він</a></li>
+      <li><a href="#s1">1. Аналоги: Memcached, Valkey, KeyDB, Dragonfly</a></li>
+      <li><a href="#s2">2. На якому етапі цей проєкт його використовує</a></li>
+      <li><a href="#s3">3. TTL, expiration і eviction policies</a></li>
+      <li><a href="#s4">4. Pub/Sub проти Streams</a></li>
+      <li><a href="#s5">5. Redis як брокер Celery: broker vs backend</a></li>
+      <li><a href="#s6">6. Атомарність: INCR, EXPIRE і гонитва станів</a></li>
+      <li><a href="#s7">7. Sentinel проти Cluster</a></li>
+      <li><a href="#s8">8. Патерни кешування: aside / through / behind</a></li>
+      <li><a href="#s9">9. Питання для співбесіди</a></li>
+      <li><a href="#s10">10. Підсумок</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s0">
+      <h2><span class="num">00</span> Що таке Redis і для чого він</h2>
+      <p class="section-desc">Одне визначення — і одразу межа з тим, що вже розказано в інших турах, щоб не повторюватись.</p>
+
+      <p><b>Redis</b> (REmote DIctionary Server) — сховище даних типу "ключ-значення", яке
+      тримає весь основний набір даних <b>в оперативній пам'яті</b>, а не на диску. Звідси й
+      головна властивість: операції над простими типами виконуються за мікросекунди, на порядки
+      швидше за похід у реляційну базу на диску. <a href="17-databases-fundamentals.html#s5">Туторіал 17</a>
+      вже класифікував Redis як key-value базу в загальному ландшафті NoSQL, а
+      <a href="18-databases-interview-qa.html#catC">туторіал 18, категорія C</a> вже розібрав
+      однопотокову модель продуктивності, персистентність (RDB/AOF) і базовий набір структур
+      даних — тут це не повторюється, натомість дано практичну карту: коли Redis узагалі
+      беруть, і які теми довкола нього <i>не</i> потрапили в жоден із попередніх турів.</p>
+
+      <p>Чотири типові ролі, під які Redis реально ставлять у бекенд-системах:</p>
+      <ol>
+        <li><b>Кеш</b> — результат дорогого обчислення чи запиту в основну базу лежить у Redis
+        з TTL, замість того щоб рахуватись заново на кожен запит.</li>
+        <li><b>Сховище сесій</b> — коли застосунок працює на кількох процесах/інстансах, сесія
+        не може жити в пам'яті одного процесу (наступний запит може прилетіти на інший) — Redis
+        стає спільним місцем, яке бачать усі інстанси.</li>
+        <li><b>Брокер повідомлень / черга задач</b> — саме ця роль сконфігурована в цьому
+        проєкті для Celery (розділ 5).</li>
+        <li><b>Лічильники й обмеження швидкості (rate limiting)</b> — атомарний
+        <code>INCR</code> на спільному ключі, видимий одразу всім процесам (розділ 6, і саме
+        це — план на майбутнє для <code>app/core/rate_limiting.py</code> цього проєкту).</li>
+      </ol>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body">Спільна нитка всіх чотирьох ролей: Redis потрібен там, де кілька
+        окремих процесів чи інстансів застосунку мусять <b>бачити один спільний стан</b>
+        швидше, ніж дозволяє диск. Це саме та властивість, якої зараз бракує in-memory
+        лічильнику rate limiting цього проєкту — детальніше в розділі 2.</div>
+      </div>
+    </section>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Аналоги: Memcached, Valkey, KeyDB, Dragonfly</h2>
+      <p class="section-desc">Redis — не єдиний гравець у цій ніші, і питання "чому саме Redis" — цілком типове на співбесіді.</p>
+
+      <table>
+        <tr><th>Система</th><th>Ключова відмінність від Redis</th></tr>
+        <tr>
+          <td><b>Memcached</b></td>
+          <td>Старший і простіший: лише рядки (byte-стрічки), без структур даних (списків,
+          множин, sorted sets), без персистентності на диск, без pub/sub. Натомість —
+          нативна багатопотоковість "з коробки" (Redis до версії 6 був повністю однопотоковим
+          у виконанні команд). Береться, коли реально потрібен лише найпростіший
+          key→value кеш і нічого більше.</td>
+        </tr>
+        <tr>
+          <td><b>Valkey</b></td>
+          <td>Форк Redis під егідою Linux Foundation (за участі AWS, Google Cloud, Oracle
+          та інших), що з'явився після зміни ліцензії Redis з відкритої BSD на більш
+          обмежувальну. Протокол і команди — сумісні з Redis, тому міграція здебільшого
+          зводиться до зміни рядка підключення. На практиці — головна причина, чому команда
+          сьогодні може свідомо обрати "Redis-сумісну" систему, а не сам Redis.</td>
+        </tr>
+        <tr>
+          <td><b>KeyDB</b></td>
+          <td>Ще один сумісний з Redis форк, головна фішка — багатопотокова обробка команд
+          "з коробки" для кращого використання багатоядерних машин, там де Redis традиційно
+          використовує одне ядро.</td>
+        </tr>
+        <tr>
+          <td><b>Dragonfly</b></td>
+          <td>Написана з нуля (не форк), сумісна з протоколом Redis, розрахована на сучасне
+          багатоядерне залізо — інша внутрішня архітектура заради вищої пропускної здатності
+          на одному інстансі, без потреби в шардингу/кластері раніше, ніж це реально треба.</td>
+        </tr>
+        <tr>
+          <td><b>Просто in-process кеш</b> (наприклад, <code>dict</code> у пам'яті процесу)</td>
+          <td>Найпростіший "аналог" — узагалі без окремого сервісу. Саме такий підхід
+          сьогодні використовує <code>app/core/rate_limiting.py</code> цього проєкту.
+          Найдешевший варіант, доки застосунок працює як один процес; ламається одразу, як
+          тільки процесів чи інстансів стає більше одного, — детальніше в розділі 2.</td>
+        </tr>
+      </table>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Ліцензійний контекст, який варто знати:</b> у 2024 Redis Ltd.
+        змінила ліцензію основного проєкту з BSD на комбінацію SSPL/RSALv2 — більш
+        обмежувальну для хмарних провайдерів, які продають Redis як послугу, не роблячи
+        внесків у сам проєкт. Valkey — прямий наслідок цього рішення: спільнота й великі хмарні
+        гравці форкнули останню BSD-версію й продовжили розвиток окремо. На співбесіді це
+        часто спливає як питання "чому не просто Redis" — відповідь рідко технічна, частіше
+        ліцензійна/організаційна.</div>
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> На якому етапі цей проєкт його використовує</h2>
+      <p class="section-desc">Чесний, прив'язаний до реального коду розділ — без прикрашання того, що Redis тут поки не робить.</p>
+
+      <p>У <code>app/core/config.py</code> оголошено поле конфігурації:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/config.py</span></div>
+        <pre><code># Redis / Celery
+REDIS_URL: str = "redis://localhost:6379/0"</code></pre>
+      </div>
+
+      <p>Це значення споживає <code>app/workers/celery_app.py</code>, де Redis виступає
+      <b>і брокером, і бекендом</b> Celery одночасно (що означають ці дві ролі — розділ 5):</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/workers/celery_app.py</span></div>
+        <pre><code>celery_app = Celery(
+    "ai_delivery_planner",
+    broker=settings.REDIS_URL,
+    backend=settings.REDIS_URL,
+)</code></pre>
+      </div>
+
+      <p>А в <code>app/workers/tasks.py</code> зареєстровано рівно дві Celery-задачі — і обидві
+      є заглушками:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/workers/tasks.py</span></div>
+        <pre><code>@celery_app.task(name="optimize_routes_task")
+def optimize_routes_task(route_request_id: str) -> None:
+    """Run route optimization asynchronously and persist the result."""
+    raise NotImplementedError
+
+
+@celery_app.task(name="analyze_delivery_list_task")
+def analyze_delivery_list_task(import_batch_id: str) -> None:
+    """Run LLM-based delivery list analysis asynchronously."""
+    raise NotImplementedError</code></pre>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Практичний висновок:</b> ці задачі жодного разу не викликаються
+        ніде в коді застосунку (обробка маршруту й аналіз списку доставок сьогодні виконуються
+        синхронно, у самому запиті — офлоад у чергу лишається запланованим кроком, про який
+        згадано в <a href="03-scaling.html">туторіалі 3</a>). А відсутні виклики означають, що
+        жодна команда ще не пішла в Redis по мережі — з'єднання конфігуроване, але
+        <b>непрограмоване в дію</b>. Класична ситуація "інфраструктура підготовлена наперед",
+        яка сама собою — чесна тема для співбесіди (розділ 9, питання 7).</div>
+      </div>
+
+      <p>Другий, окремий факт: обмеження швидкості запитів для незалогованих ендпоінтів
+      (реєстрація, логін) сьогодні реалізоване не через Redis, а через простий лічильник у
+      пам'яті процесу:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/rate_limiting.py</span></div>
+        <pre><code>"""In-memory, not Redis-backed: nothing in this deployment assumes more than
+a single API process (no redis/queue service is wired up for the app itself
+— only Celery's broker). If this ever runs as multiple worker processes or
+instances, swap the in-memory `_WINDOWS` dict for a Redis-backed counter."""
+
+_WINDOWS: dict[str, deque] = defaultdict(deque)</code></pre>
+      </div>
+
+      <p>Це — не випадковий недогляд, а свідомий, задокументований у самому коді компроміс: коли
+      застосунок працює як рівно один процес, звичайний <code>dict</code> у пам'яті бачать усі
+      запити однаково добре, і Redis тут був би зайвою мережевою залежністю без користі. Саме
+      тому в <code>fly.toml</code> стоїть жорстке обмеження:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">fly.toml</span></div>
+        <pre><code>[http_service]
+  min_machines_running = 1</code></pre>
+      </div>
+
+      <p>Ці два факти — одне рішення, розказане з двох боків. <code>min_machines_running = 1</code>
+      існує <i>тому що</i> лічильник rate limiting не переживе появу другого процесу (кожен
+      інстанс мав би власний окремий <code>_WINDOWS</code>, і ліміт фактично подвоївся б чи
+      більше). Redis тут — не абстрактна "хороша практика", а конкретний, наперед відомий крок:
+      як тільки з'явиться реальна потреба масштабуватись за межі одного інстансу, перше, що
+      доведеться зробити, — перенести саме цей лічильник у вже сконфігурований Redis.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 640 210" xmlns="http://www.w3.org/2000/svg">
+          <rect x="10" y="20" width="150" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <text x="85" y="40" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">FastAPI-процес</text>
+          <text x="85" y="57" text-anchor="middle" font-size="10.5" fill="currentColor">(1 інстанс, Fly.io)</text>
+
+          <rect x="30" y="90" width="110" height="46" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <text x="85" y="108" text-anchor="middle" font-size="10.5" fill="currentColor">_WINDOWS: dict</text>
+          <text x="85" y="122" text-anchor="middle" font-size="10" fill="currentColor">(in-memory)</text>
+
+          <line x1="85" y1="70" x2="85" y2="90" stroke="currentColor" stroke-width="1.2"/>
+
+          <rect x="250" y="20" width="150" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <text x="325" y="40" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">FastAPI-процес #2</text>
+          <text x="325" y="57" text-anchor="middle" font-size="10.5" fill="currentColor">(гіпотетичний)</text>
+
+          <rect x="270" y="90" width="110" height="46" rx="6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <text x="325" y="108" text-anchor="middle" font-size="10.5" fill="currentColor">власний _WINDOWS</text>
+          <text x="325" y="122" text-anchor="middle" font-size="10" fill="currentColor">(інший словник!)</text>
+
+          <line x1="325" y1="70" x2="325" y2="90" stroke="currentColor" stroke-width="1.2"/>
+
+          <text x="200" y="105" text-anchor="middle" font-size="16" fill="currentColor">✗</text>
+
+          <rect x="470" y="60" width="150" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <text x="545" y="80" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">Redis</text>
+          <text x="545" y="97" text-anchor="middle" font-size="10.5" fill="currentColor">спільний лічильник</text>
+
+          <line x1="140" y1="113" x2="470" y2="90" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3"/>
+          <line x1="380" y1="113" x2="470" y2="90" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3"/>
+
+          <text x="500" y="150" font-size="10.5" fill="currentColor">→ обидва процеси бачать</text>
+          <text x="500" y="164" font-size="10.5" fill="currentColor">   один і той самий лічильник</text>
+
+          <text x="20" y="185" font-size="10.5" fill="currentColor">Сьогодні: 1 процес → dict у пам'яті працює коректно.</text>
+          <text x="20" y="199" font-size="10.5" fill="currentColor">Завтра (2+ процеси): dict роздвоюється → потрібен Redis.</text>
+        </svg>
+        <figcaption>Чому <code>min_machines_running = 1</code> у <code>fly.toml</code> прямо пов'язаний
+        з тим, що rate limiting цього проєкту ще не переїхав у Redis.</figcaption>
+      </figure>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> TTL, expiration і eviction policies</h2>
+      <p class="section-desc">Тема, якої не було в туторіалі 18 — механіка "часу життя" ключа і що робить Redis, коли пам'яті бракує.</p>
+
+      <p>Будь-якому ключу можна призначити час життя: <code>EXPIRE key 60</code> (або одразу при
+      записі — <code>SET key value EX 60</code>). Після спливання TTL ключ вважається
+      неіснуючим для будь-якого читання — але фізично він не зникає з пам'яті миттєво в момент
+      спливання. Redis прибирає протерміновані ключі двома паралельними механізмами:</p>
+      <ul>
+        <li><b>Лінива (lazy) експірація</b> — коли клієнт звертається саме до цього ключа,
+        Redis спершу перевіряє TTL і, якщо він сплив, видаляє ключ і повертає "не знайдено",
+        замість застарілого значення.</li>
+        <li><b>Активна (active) експірація</b> — фоновий цикл, що періодично (за замовчуванням
+        десять разів на секунду) бере випадкову вибірку ключів із TTL і видаляє прострочені,
+        навіть якщо їх ніхто не запитує. Це потрібно, бо суто лінивого підходу недостатньо:
+        ключ, до якого ніхто не звертається, лежав би в пам'яті вічно.</li>
+      </ul>
+
+      <p>Друге, окреме питання — що робити, коли пам'яті, виділеної під <code>maxmemory</code>,
+      більше немає, а хтось намагається записати новий ключ. Політика витіснення
+      (<b>eviction policy</b>) визначає поведінку:</p>
+
+      <table>
+        <tr><th>Політика</th><th>Поведінка</th></tr>
+        <tr><td><code>noeviction</code></td><td>Нічого не витісняти — новий запис відхиляється
+        з помилкою. Правильний вибір, коли Redis тримає дані, втрату яких неможливо
+        компенсувати (наприклад, чергу задач).</td></tr>
+        <tr><td><code>allkeys-lru</code></td><td>Витісняти найдавніше не використовуваний ключ
+        серед <i>усіх</i> ключів. Типовий вибір для чистого кешу без TTL на кожному ключі.</td></tr>
+        <tr><td><code>volatile-lru</code></td><td>Те саме, але тільки серед ключів, у яких
+        узагалі встановлено TTL — ключі без терміну дії ніколи не чіпаються.</td></tr>
+        <tr><td><code>allkeys-lfu</code></td><td>Витісняти найрідше використовуваний ключ
+        (frequency, а не recency) — краще за LRU, коли є "гарячі" ключі, до яких рідко, але
+        регулярно звертаються великими сплесками.</td></tr>
+        <tr><td><code>volatile-ttl</code></td><td>Серед ключів із TTL — витісняти той, у
+        якого найменше часу лишилось до природного спливання.</td></tr>
+        <tr><td><code>allkeys-random</code></td><td>Випадковий ключ — рідко використовується
+        свідомо, здебільшого як найпростіший baseline.</td></tr>
+      </table>
+
+      <div class="callout info">
+        <div class="ic">📎</div>
+        <div class="body">Якби цей проєкт сьогодні тримав у Redis лише кеш (наприклад,
+        результати геокодування), природним вибором була б <code>allkeys-lru</code> чи
+        <code>allkeys-lfu</code> — втрата кешованого значення просто означає один зайвий похід
+        у джерело даних. Але для лічильника rate limiting (розділ 2) чи черги Celery-задач
+        втрата ключа означає втрату реального стану — там правильний вибір ближчий до
+        <code>noeviction</code> з окремим, достатньо великим лімітом пам'яті.</div>
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Pub/Sub проти Streams</h2>
+      <p class="section-desc">Дві різні моделі "надіслати повідомлення багатьом" усередині одного Redis.</p>
+
+      <p><b>Pub/Sub</b> (<code>PUBLISH channel message</code> / <code>SUBSCRIBE channel</code>) —
+      модель "вистрілив і забув": повідомлення миттєво розсилається всім, хто в цю мить
+      підписаний на канал, і ніде не зберігається. Якщо в момент публікації підписників немає —
+      повідомлення втрачається назавжди, без жодного сліду. Підходить для сценаріїв на кшталт
+      "розіслати сповіщення про live-оновлення всім активним WebSocket-з'єднанням прямо зараз",
+      де відсутність історії — прийнятна ціна за простоту.</p>
+
+      <p><b>Redis Streams</b> (<code>XADD</code>/<code>XREAD</code>/<code>XREADGROUP</code>) —
+      структура даних, що поводиться як журнал доповнення (append-only log): кожен запис
+      зберігається з унікальним ID і лишається доступним для читання навіть після публікації.
+      Streams підтримують <b>consumer groups</b> — кілька споживачів можуть ділити між собою
+      обробку одного потоку так, щоб кожен запис обробив рівно один із них, з підтвердженням
+      (<code>XACK</code>) і можливістю повторно прочитати необроблені записи після збою
+      споживача. Це вже набагато ближче до повноцінної черги повідомлень, ніж до простого
+      сповіщення.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Практичне правило</div>
+        Якщо втрата повідомлення при відсутності живого підписника прийнятна — Pub/Sub.
+        Якщо кожне повідомлення обов'язково має бути оброблене рівно один раз, навіть якщо
+        споживач у момент публікації офлайн чи впав, — Streams (або окрема черга на кшталт
+        того, як Celery в цьому проєкті вже використовує Redis, розділ 5).
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Redis як брокер Celery: <code>broker</code> vs <code>backend</code></h2>
+      <p class="section-desc">Прив'язано напряму до <code>app/workers/celery_app.py</code> цього проєкту.</p>
+
+      <p>Celery розділяє дві принципово різні ролі, і в конфігурації цього проєкту обидві
+      закриті <i>однією й тією самою</i> Redis-URL:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/workers/celery_app.py</span></div>
+        <pre><code>celery_app = Celery(
+    "ai_delivery_planner",
+    broker=settings.REDIS_URL,
+    backend=settings.REDIS_URL,
+)</code></pre>
+      </div>
+
+      <ul>
+        <li><b>Broker</b> — місце, куди FastAPI-обробник кладе повідомлення "виконай задачу
+        X із аргументами Y", і звідки Celery-воркер це повідомлення забирає. Це, по суті,
+        черга задач.</li>
+        <li><b>Backend</b> — місце, куди воркер після виконання задачі записує результат
+        (або факт помилки), щоб той, хто задачу запустив, міг пізніше запитати статус чи
+        отримати повернуте значення через <code>AsyncResult</code>.</li>
+      </ul>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 640 220" xmlns="http://www.w3.org/2000/svg">
+          <rect x="10" y="80" width="130" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <text x="75" y="102" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">FastAPI</text>
+          <text x="75" y="118" text-anchor="middle" font-size="10.5" fill="currentColor">обробник запиту</text>
+
+          <rect x="255" y="20" width="130" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <text x="320" y="42" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">Redis</text>
+          <text x="320" y="58" text-anchor="middle" font-size="10.5" fill="currentColor">роль: broker (черга)</text>
+
+          <rect x="255" y="150" width="130" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <text x="320" y="172" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">Redis</text>
+          <text x="320" y="188" text-anchor="middle" font-size="10.5" fill="currentColor">роль: backend (результат)</text>
+
+          <rect x="500" y="80" width="130" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <text x="565" y="100" text-anchor="middle" font-size="12" fill="currentColor" font-weight="700">Celery-воркер</text>
+          <text x="565" y="116" text-anchor="middle" font-size="10.5" fill="currentColor">optimize_routes_task</text>
+
+          <line x1="140" y1="95" x2="255" y2="55" stroke="currentColor" stroke-width="1.2" marker-end="url(#ar1)"/>
+          <text x="185" y="65" font-size="10" fill="currentColor">1. поклав задачу</text>
+
+          <line x1="385" y1="55" x2="500" y2="95" stroke="currentColor" stroke-width="1.2" marker-end="url(#ar1)"/>
+          <text x="420" y="65" font-size="10" fill="currentColor">2. забрав задачу</text>
+
+          <line x1="500" y1="115" x2="385" y2="165" stroke="currentColor" stroke-width="1.2" marker-end="url(#ar1)"/>
+          <text x="415" y="160" font-size="10" fill="currentColor">3. записав результат</text>
+
+          <line x1="255" y1="175" x2="140" y2="120" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#ar1)"/>
+          <text x="150" y="155" font-size="10" fill="currentColor">4. пізніше: запит статусу</text>
+
+          <defs>
+            <marker id="ar1" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L6,3 L0,6 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <text x="20" y="210" font-size="10.5" fill="currentColor">Один і той самий Redis-інстанс обслуговує обидва напрямки трафіку.</text>
+        </svg>
+        <figcaption>Broker і backend Celery в цьому проєкті — один і той самий Redis; на більшому
+        масштабі їх зазвичай розносять на окремі інстанси, щоб черга задач і трафік результатів
+        не заважали одне одному.</figcaption>
+      </figure>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Компроміс, який варто вміти назвати:</b> використання однієї
+        Redis-URL і для broker, і для backend — цілком нормальне рішення для невеликого чи
+        раннього проєкту (саме так налаштовано тут), але на більшому навантаженні трафік черги
+        задач і трафік результатів починають конкурувати за одні й ті самі ресурси одного
+        інстансу. Типове масштабне рішення — розвести їх на окремі бази/інстанси Redis
+        (наприклад, <code>redis://.../0</code> для broker, <code>redis://.../1</code> для
+        backend), або взагалі винести backend в іншу систему (базу даних, RPC-результат).</div>
+      </div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Атомарність: <code>INCR</code>, <code>EXPIRE</code> і гонитва станів</h2>
+      <p class="section-desc">Туторіал 18 (питання 12) уже пояснив, <i>навіщо</i> потрібен спільний атомарний лічильник для rate limiting. Тут — про те, як його <i>коректно</i> побудувати, і де ховається типова пастка.</p>
+
+      <p>Наївний спосіб реалізувати "лічильник запитів за вікно часу з автоматичним скиданням"
+      виглядає як дві команди підряд:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">наївна, ламка версія</span></div>
+        <pre><code>count = redis.incr(key)      # 1) збільшити лічильник
+if count == 1:
+    redis.expire(key, 60)    # 2) якщо це перший запит у вікні — поставити TTL</code></pre>
+      </div>
+
+      <p>Проблема — між кроком 1 і кроком 2 процес може впасти (або мережевий виклик
+      <code>expire</code> може не дійти) саме тоді, коли <code>count == 1</code>. Результат:
+      ключ <b>назавжди лишається без TTL</b> і ніколи природно не скидається — лічильник
+      "протікає" й рано чи пізно назавжди блокує клієнта, для якого мало бути тимчасове
+      обмеження.</p>
+
+      <p>Три способи закрити цю прогалину коректно:</p>
+      <ul>
+        <li><b><code>SET key value EX seconds NX</code></b> — атомарно "встановити значення й
+        TTL одночасно, лише якщо ключа ще не існує" — годиться, коли лічильник по суті булевий
+        (є запис у вікні чи ні).</li>
+        <li><b><code>MULTI</code>/<code>EXEC</code> (транзакція Redis)</b> — обидві команди
+        (<code>INCR</code> і <code>EXPIRE</code>) відправляються в одному пакеті й гарантовано
+        виконуються без переривання іншими клієнтами між ними.</li>
+        <li><b>Lua-скрипт через <code>EVAL</code></b> — найгнучкіший варіант: уся логіка
+        "інкремент + умовний expire" виконується на самому сервері Redis як єдина атомарна
+        операція, без жодного проміжного мережевого кроку між частинами.</li>
+      </ul>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body">Саме ця деталь — типовий "просунутий" наступний крок після базового
+        питання туторіалу 18 про rate limiting: кандидат, який знає <i>що</i> Redis тут потрібен,
+        і кандидат, який ще й знає <i>про цю конкретну гонитву станів</i> та її виправлення —
+        це помітно різний рівень глибини на співбесіді.</div>
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Sentinel проти Cluster</h2>
+      <p class="section-desc">Дві різні відповіді на питання "а що, як Redis впаде чи не влізе в один інстанс".</p>
+
+      <p><b>Redis Sentinel</b> вирішує проблему <b>доступності</b>: група Sentinel-процесів
+      постійно моніторить одну пару "primary + репліки", і якщо primary стає недоступним —
+      автоматично призначає нову primary серед реплік і повідомляє клієнтів про нову адресу.
+      Дані ті самі, просто з відмовостійкістю; обсяг даних, який влазить в один Redis-інстанс,
+      не змінюється.</p>
+
+      <p><b>Redis Cluster</b> вирішує іншу проблему — <b>горизонтальне масштабування обсягу</b>:
+      весь простір ключів ділиться на 16384 хеш-слоти, розподілені між кількома вузлами. Кожен
+      ключ детерміновано потрапляє в конкретний слот (за хешем ключа), і клієнт із самого
+      початку знає, до якого вузла звертатись. Це дозволяє тримати набір даних, що не влазить
+      в оперативну пам'ять жодної окремої машини.</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Коли що</div>
+        Потрібна лише стійкість до падіння одного вузла, а дані й так влазять в один
+        інстанс — Sentinel. Дані фізично не влазять в один інстанс (обсяг, а не
+        відмовостійкість) — Cluster. Для масштабу цього проєкту сьогодні не потрібне жодне з
+        двох: один невеликий Redis-інстанс з головою покриває чергу Celery-задач і майбутній
+        лічильник rate limiting.
+      </div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Патерни кешування: aside / through / behind</h2>
+      <p class="section-desc">Загальна ідея, яка не прив'язана лише до Redis — але саме на Redis її найчастіше й реалізують на бекенді.</p>
+
+      <table>
+        <tr><th>Патерн</th><th>Хто пише в кеш і коли</th></tr>
+        <tr>
+          <td><b>Cache-aside (lazy loading)</b></td>
+          <td>Застосунок сам перевіряє кеш; при промаху — читає з основної бази й сам же кладе
+          результат у кеш. Найпоширеніший патерн: простий, кеш і база незалежні, але між
+          записом у базу й оновленням кешу можливе тимчасове неузгодження.</td>
+        </tr>
+        <tr>
+          <td><b>Write-through</b></td>
+          <td>Кожен запис одразу йде і в кеш, і в основну базу синхронно, як одна операція.
+          Кеш завжди узгоджений з базою, ціна — трохи вищий час запису.</td>
+        </tr>
+        <tr>
+          <td><b>Write-behind (write-back)</b></td>
+          <td>Запис одразу підтверджується клієнту після потрапляння в кеш, а в основну базу
+          відкладено скидається пізніше, асинхронно, пачками. Найшвидший запис, але з ризиком
+          втрати останніх змін, якщо кеш впаде до фактичного скидання в базу.</td>
+        </tr>
+      </table>
+
+      <p class="muted">Це — той самий концептуальний вибір, який <a href="../js-doc/14-frontend-caching-fundamentals.html">JS Doc, туторіал 14</a>
+      уже розбирав із боку браузера й CDN (TTL проти явної інвалідації кешу): різниця лише в
+      тому, що там кеш живе в браузері чи на CDN-вузлі, а тут — у Redis на бекенді. Сам
+      компроміс "швидкість проти свіжості даних" — однаковий по всьому стеку.</p>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Питання для співбесіди</h2>
+      <p class="section-desc">Нові питання, яких немає в категорії C туторіалу 18 (там уже є: чому Redis швидкий попри однопотоковість, RDB/AOF, структури даних, навіщо спільний лічильник для rate limiting).</p>
+
+      <details class="qa">
+        <summary><span class="qnum">01</span>У Celery є поняття broker і backend — у чому різниця, і чим ризикований той факт, що в цьому проєкті вони налаштовані на одну й ту саму Redis-URL?</summary>
+        <div class="a">
+          <p>Broker — черга, куди кладуться повідомлення "виконай задачу", і звідки їх забирають
+          воркери. Backend — місце, куди воркер пише результат виконання, щоб той, хто задачу
+          запустив, міг пізніше його прочитати. В <code>celery_app.py</code> цього проєкту обидві
+          ролі використовують один <code>REDIS_URL</code> — прийнятно для невеликого масштабу, але
+          на більшому навантаженні трафік черги й трафік результатів починають конкурувати за
+          ресурси одного інстансу; типове рішення на зростанні — розвести їх на окремі бази чи
+          інстанси Redis.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">02</span>Лічильник побудований як <code>INCR</code>, а потім, окремою командою, <code>EXPIRE</code>. Що станеться, якщо процес впаде рівно між цими двома викликами — і як це виправити?</summary>
+        <div class="a">
+          <p>Ключ отримає збільшене значення, але ніколи не отримає TTL — а отже, ніколи
+          природно не скинеться, і лічильник "протікає" назавжди. Виправлення: атомарний
+          <code>SET key value EX seconds NX</code> (коли лічильник булевий), транзакція
+          <code>MULTI</code>/<code>EXEC</code>, або Lua-скрипт через <code>EVAL</code>, що виконує
+          інкремент і умовний expire як одну неподільну операцію на сервері.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">03</span>Чим Pub/Sub у Redis принципово відрізняється від Redis Streams?</summary>
+        <div class="a">
+          <p>Pub/Sub — "вистрілив і забув": повідомлення нікуди не зберігається, і якщо в момент
+          публікації немає живих підписників — воно втрачається безслідно. Streams — журнал
+          доповнення з унікальними ID записів, що лишаються доступними для читання й підтримують
+          consumer groups: кілька споживачів ділять обробку потоку, з підтвердженням і можливістю
+          повторно прочитати необроблене після збою.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">04</span>Які є політики eviction у Redis, і яку з них варто обрати для чистого кешу, а яку — для черги задач, яку не можна втрачати?</summary>
+        <div class="a">
+          <p><code>noeviction</code>, <code>allkeys-lru</code>, <code>volatile-lru</code>,
+          <code>allkeys-lfu</code>, <code>volatile-ttl</code>, <code>allkeys-random</code>. Для
+          чистого кешу — <code>allkeys-lru</code> чи <code>allkeys-lfu</code> (втрата ключа коштує
+          лише зайвого походу в джерело даних). Для черги задач чи іншого стану, втрату якого
+          неможливо компенсувати, — <code>noeviction</code> із достатнім лімітом пам'яті, щоб узагалі
+          не доходило до вибору, що видаляти.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">05</span>Чому Redis використовує і ліниву, і активну експірацію ключів одночасно, а не лише один із цих механізмів?</summary>
+        <div class="a">
+          <p>Чиста лінива експірація (перевірка TTL лише при зверненні до ключа) лишала б у пам'яті
+          назавжди ключі, до яких ніхто вже не звертається. Чиста активна експірація (лише фоновий
+          цикл) не гарантувала б миттєвого прибирання протермінованого ключа саме в момент
+          звернення. Разом вони покривають обидва випадки: гарячі ключі прибираються одразу при
+          читанні, холодні — фоновим циклом вибіркового сканування.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">06</span>Чим Redis Sentinel відрізняється від Redis Cluster — яку проблему вирішує кожен?</summary>
+        <div class="a">
+          <p>Sentinel вирішує доступність: моніторить пару primary+репліки й автоматично перемикає
+          primary при падінні, без зміни обсягу даних, що зберігаються. Cluster вирішує масштаб
+          обсягу: шардує простір ключів на 16384 хеш-слоти між кількома вузлами, дозволяючи тримати
+          набір даних, що не влазить у пам'ять однієї машини.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">07</span>Який реальний статус Redis у цьому проєкті сьогодні — і що саме має статись, щоб він почав реально використовуватись у продовому трафіку?</summary>
+        <div class="a">
+          <p>Redis повністю сконфігурований (<code>REDIS_URL</code>, Celery broker+backend), але
+          жодна Celery-задача (<code>optimize_routes_task</code>, <code>analyze_delivery_list_task</code>)
+          сьогодні не реалізована — обидві кидають <code>NotImplementedError</code> і ніде не
+          викликаються, оскільки обробка маршруту й аналіз списку виконуються синхронно в самому
+          запиті. Тригер для реального увімкнення — момент, коли синхронна обробка стане надто
+          повільною для одного HTTP-запиту (наприклад, довгий OR-Tools solve) і задачі реально
+          підуть у чергу Celery.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">08</span>Чому rate limiting цього проєкту сьогодні in-memory, а не Redis-backed — і що конкретно зламається, якщо додати другий інстанс без цієї зміни?</summary>
+        <div class="a">
+          <p>Бо весь деплой сьогодні свідомо обмежений одним процесом (<code>min_machines_running = 1</code>
+          у <code>fly.toml</code>) — за таких умов простий <code>dict</code> у пам'яті бачать усі
+          запити однаково добре, і Redis був би зайвою мережевою залежністю без користі. Якщо
+          додати другий інстанс без зміни лічильника, кожен процес матиме власний окремий словник
+          лічильників — реальний ліміт запитів на клієнта фактично подвоїться (чи помножиться на
+          кількість інстансів), бо жоден процес не бачить лічильник іншого.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">09</span>Що таке Valkey, і чому команда сьогодні може свідомо обрати його замість Redis?</summary>
+        <div class="a">
+          <p>Valkey — форк Redis під Linux Foundation, створений після зміни ліцензії Redis Ltd. з
+          відкритої BSD на більш обмежувальну (SSPL/RSALv2) у 2024 році. Протокол і команди
+          сумісні з Redis, тому вибір здебільшого не технічний, а організаційний/ліцензійний —
+          команди й хмарні провайдери, яким важлива саме відкрита ліцензія, переходять на
+          останню відкриту гілку, яку продовжує розвивати спільнота.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">10</span>Коли варто обрати Memcached замість Redis?</summary>
+        <div class="a">
+          <p>Коли реально потрібен лише найпростіший кеш "ключ → рядок байтів", без структур даних,
+          без персистентності на диск, без pub/sub — і важлива нативна багатопотокова обробка
+          команд "з коробки". Якщо потрібно щось із розширеного функціоналу Redis (списки, множини,
+          TTL-політики, Streams, транзакції) — Memcached цього просто не має.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">11</span>Чим транзакція Redis (<code>MULTI</code>/<code>EXEC</code>) відрізняється від "справжньої" ACID-транзакції в реляційній базі?</summary>
+        <div class="a">
+          <p>Redis гарантує, що всі команди між <code>MULTI</code> і <code>EXEC</code> виконаються
+          без переривання іншим клієнтом (ізольований пакет), але не гарантує відкату при помилці
+          <i>під час</i> виконання самої команди (наприклад, операція над ключем неправильного
+          типу) — попередні команди пакету все одно застосуються. Реляційна ж транзакція здатна
+          повністю відкотити всі зміни при будь-якій помилці всередині неї. Redis перевіряє лише
+          помилки постановки в чергу (наприклад, синтаксис команди) ще до виконання пакету.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">12</span>Що таке cache-aside, write-through і write-behind — і який компроміс лежить в основі вибору між ними?</summary>
+        <div class="a">
+          <p>Cache-aside — застосунок сам читає з кешу, при промаху йде в базу й сам оновлює кеш;
+          write-through — кожен запис синхронно йде і в кеш, і в базу; write-behind — запис
+          одразу підтверджується з кешу, а в базу скидається пізніше асинхронно. Компроміс той
+          самий, що й у будь-якому кешуванні: cache-aside й write-through безпечніші, але
+          повільніші на запис; write-behind найшвидший, але ризикує втратити останні зміни, якщо
+          кеш впаде до скидання в базу.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">13</span>Якщо в майбутньому в цьому проєкті реально ввімкнути персистентність Redis (RDB чи AOF) на Fly.io, про що додатково доведеться подбати?</summary>
+        <div class="a">
+          <p>Про постійний том (persistent volume), змонтований у контейнер саме під директорію,
+          де Redis зберігає файл дампу — інакше при кожному передеплої (новий контейнер) файл
+          persistence зникне разом зі старим контейнером, і Redis почне з порожньої бази. Це та
+          сама категорія проблеми, яку для PostgreSQL цього проєкту вирішує керована база даних, а
+          не контейнер додатку.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">14</span>У чому суть TTL-інвалідації кешу проти явної інвалідації — і де в цьому ж стеку вже розбирався той самий компроміс з іншого боку?</summary>
+        <div class="a">
+          <p>TTL-інвалідація — кеш сам протухає через фіксований час, просто й передбачувано, але
+          якщо джерело даних змінилось раніше — клієнт короткий час бачить застарілі дані. Явна
+          інвалідація — код сам видаляє чи оновлює конкретний ключ одразу в момент зміни джерела:
+          завжди свіжо, але вимагає не забути інвалідувати кеш у кожному місці, де дані змінюються.
+          Точно той самий компроміс уже розібраний з боку браузера й CDN у
+          <a href="../js-doc/14-frontend-caching-fundamentals.html">JS Doc, туторіалі 14</a> —
+          різниця лише в тому, який шар стека тримає кеш.</p>
+        </div>
+      </details>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Підсумок</h2>
+      <p class="section-desc">Головне з цього туторіалу:</p>
+      <ul>
+        <li>Redis — key-value сховище в оперативній пам'яті; головні ролі — кеш, сесії, брокер
+        черги задач, атомарні лічильники.</li>
+        <li>Аналоги: Memcached (простіший, без структур і персистентності), Valkey (BSD-форк
+        після зміни ліцензії Redis), KeyDB/Dragonfly (багатопотокові альтернативи), або взагалі
+        простий in-process <code>dict</code>, як сьогодні в цьому проєкті.</li>
+        <li>У цьому проєкті Redis повністю сконфігурований для Celery (<code>broker</code> і
+        <code>backend</code> — одна URL), але обидві задачі — заглушки, тож у продовому трафіку
+        Redis сьогодні мовчить; <code>min_machines_running = 1</code> у <code>fly.toml</code> —
+        пряме наслідок того, що rate limiting ще не переїхав з in-memory лічильника в Redis.</li>
+        <li>TTL живе через ліниву + активну експірацію; eviction policies вирішують, що робити,
+        коли пам'яті бракує; Pub/Sub — без збереження, Streams — з журналом і consumer groups.</li>
+        <li>Атомарність <code>INCR</code>+<code>EXPIRE</code> — класична пастка гонитви станів;
+        правильне рішення — <code>SET NX EX</code>, транзакція, або Lua-скрипт.</li>
+        <li>Sentinel вирішує доступність, Cluster — горизонтальний обсяг; жодне з двох сьогодні
+        цьому проєкту не потрібне.</li>
+      </ul>
+      <div class="card">
+        ← <a href="19-postgres-storage-and-memory.html">Туторіал 19 — Postgres storage &amp; пам'ять</a>
+        &nbsp;·&nbsp;
+        → <a href="20-testing-cicd-monitoring-cloud.html">Туторіал 20 — Тести, CI/CD, моніторинг</a>
+        &nbsp;·&nbsp;
+        ↔ <a href="18-databases-interview-qa.html#catC">Туторіал 18 — Redis Q&amp;A (категорія C)</a>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Туторіал прив'язаний до реального коду репозиторію <code>ai-delivery-planner-backend</code>
+  (<code>app/core/config.py</code>, <code>app/workers/celery_app.py</code>, <code>app/workers/tasks.py</code>,
+  <code>app/core/rate_limiting.py</code>, <code>fly.toml</code>) станом на момент генерації.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*|\/\/[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b|\bthis\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case|const|let|var|function|interface|type|export|extends|implements|new|void|enum|typeof|instanceof|static|public|private|readonly|null|undefined)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>
