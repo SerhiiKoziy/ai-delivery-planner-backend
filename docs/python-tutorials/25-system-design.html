@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>25. Системний дизайн — AI Delivery Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--accent); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent-soft);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:12px 0 4px;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.9px; display:flex; align-items:baseline; gap:10px;
+  }
+  .qa summary .qnum{
+    color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700;
+    flex-shrink:0;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 18px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .a p{margin:8px 0; color:var(--fg-muted);}
+  .qa .a p:first-child{margin-top:0;}
+  .qa .checks{
+    margin-top:10px; padding:10px 12px; border-radius:9px; background:var(--interview-bg);
+    border:1px solid var(--interview-border); font-size:13.2px; color:var(--interview);
+  }
+  .qa .checks b{color:var(--interview);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:2px; vertical-align:middle; flex-shrink:0;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .qa .difficulty.sys{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+
+  .cat-head{
+    display:flex; align-items:center; gap:12px; margin-bottom:4px;
+  }
+  .cat-letter{
+    width:34px; height:34px; border-radius:10px; background:var(--accent-soft); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;
+  }
+
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал 25 · Системний дизайн</div>
+  <h1>Системний дизайн: теорія і популярні задачі</h1>
+  <p class="lead">
+    Туторіал 24, категорія G, дає легкий "preview" на 3 питання системного дизайну, вплетені
+    у звичайну Python-співбесіду. Тут — повноцінний, окремий розбір: як оцінювати системи
+    числами (не "відчуттями"), 11 наскрізних тем (масштабування, кешування, черги, надійність,
+    капасіті-планування) і 10 класичних кейсів формату "спроєктуйте X", включно з дизайном
+    масової оптимізації маршрутів — доменом саме цього проєкту. Де можливо, теорія прив'язана
+    до реального коду й конфігів цього бекенду, а не до абстрактного прикладу з підручника.
+  </p>
+  <div class="pills">
+    <span class="pill">📐 11 розділів теорії + 10 практичних кейсів</span>
+    <span class="pill">🧮 Back-of-envelope розрахунки</span>
+    <span class="pill">🎯 Прив'язано до реального коду проєкту</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-python-types.html">4. Типи</a>
+        <a href="05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="11-logging.html">11. Логування</a>
+        <a href="12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="13-design-patterns.html">13. Патерни</a>
+        <a href="14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="16-pydantic.html">16. Pydantic</a>
+        <a href="17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="20-redis.html">20. Redis</a>
+        <a href="21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="25-system-design.html" class="active">25. Системний дизайн</a>
+        <a href="26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/12-this.html">12. this</a>
+        <a href="../js-doc/13-typescript-essentials.html">13. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/02-browser-internals.html">2. Браузер зсередини</a>
+        <a href="../js-doc/03-frontend-security.html">3. Безпека фронтенду</a>
+        <a href="../js-doc/11-http-anatomy.html">11. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/05-react-deep-dive.html">5. React углиб</a>
+        <a href="../js-doc/06-nextjs-architecture.html">6. Next.js та архітектура</a>
+        <a href="../js-doc/07-nextjs-interview-qa.html">7. Next.js: Q&amp;A</a>
+        <a href="../js-doc/14-frontend-caching-fundamentals.html">14. Caching: основи</a>
+        <a href="../js-doc/15-frontend-caching-libraries.html">15. Caching: бібліотеки</a>
+        <a href="../js-doc/16-frontend-caching-advanced.html">16. Caching: просунуті теми</a>
+        <a href="../js-doc/09-testing-cicd-cloud.html">9. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/10-ai-tools.html">10. AI-інструменти</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — Теорія</div>
+    <ol>
+      <li><a href="#s1">1. Як оцінювати системи числами</a></li>
+      <li><a href="#s2">2. Вертикальне/горизонтальне, stateless/stateful</a></li>
+      <li><a href="#s3">3. Балансування навантаження</a></li>
+      <li><a href="#s4">4. CAP-теорема на практиці</a></li>
+      <li><a href="#s5">5. Кешування: стампід і CDN</a></li>
+      <li><a href="#s6">6. Масштабування бази даних</a></li>
+      <li><a href="#s7">7. Черги та асинхронна обробка</a></li>
+      <li><a href="#s8">8. Алгоритми rate limiting</a></li>
+      <li><a href="#s9">9. Патерни надійності</a></li>
+      <li><a href="#s10">10. API Gateway, монолiт vs мікросервіси</a></li>
+      <li><a href="#s11">11. Спостережуваність і капасіті-планування</a></li>
+    </ol>
+    <div class="toc-group">Частина II — Популярні задачі</div>
+    <ol>
+      <li><a href="#catA">A. Класичні системи <span class="toc-count">5</span></a></li>
+      <li><a href="#catB">B. Дані, стійкість і власний домен <span class="toc-count">5</span></a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Теорія</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Як оцінювати системи числами</h2>
+      <p class="section-desc">Системний дизайн — це не "розкажи про мікросервіси", а вміння підкріпити рішення числами: скільки запитів, яка затримка прийнятна, скільки downtime дозволено.</p>
+
+      <p><b>QPS/RPS</b> (queries/requests per second) — базова одиниця навантаження. <b>Latency</b>
+      (затримка одного запиту) і <b>throughput</b> (скільки запитів система обробляє за одиницю
+      часу) — різні осі: систему можна зробити "throughput-friendly" (черга, батчинг), пожертвувавши
+      latency окремого запиту, і навпаки. Середнє (avg) latency обманює — воно ховає "довгий хвіст":
+      завжди дивляться на <b>перцентилі</b> — p50 (медіана), p95, p99 ("1% користувачів чекає
+      ось стільки"). Саме p99, а не середнє, зазвичай визначає, чи скаржаться реальні користувачі.</p>
+
+      <div class="cheat">
+        <table>
+          <tr><th>Операція</th><th>Приблизна затримка</th></tr>
+          <tr><td>Читання з оперативної пам'яті</td><td>~100 наносекунд</td></tr>
+          <tr><td>Читання з SSD</td><td>~100-150 мікросекунд (у ~1000× повільніше за RAM)</td></tr>
+          <tr><td>Round trip у тому самому дата-центрі</td><td>~0.5 мс</td></tr>
+          <tr><td>Round trip між регіонами (напр. Європа ↔ США)</td><td>~100-150 мс</td></tr>
+        </table>
+      </div>
+      <p class="muted">Ці порядки величин варто пам'ятати напам'ять: вони одразу підказують, чому
+      "просто зробити ще один мережевий виклик у циклі" — найдорожча помилка в дизайні системи.</p>
+
+      <p><b>Availability</b> вимірюють у "дев'ятках":</p>
+      <div class="cheat">
+        <table>
+          <tr><th>SLA</th><th>Простою на рік</th></tr>
+          <tr><td>99% (&quot;2 дев'ятки&quot;)</td><td>~3.65 дня</td></tr>
+          <tr><td>99.9% (&quot;3 дев'ятки&quot;)</td><td>~8.76 години</td></tr>
+          <tr><td>99.99% (&quot;4 дев'ятки&quot;)</td><td>~52.6 хвилини</td></tr>
+          <tr><td>99.999% (&quot;5 дев'яток&quot;)</td><td>~5.26 хвилини</td></tr>
+        </table>
+      </div>
+
+      <div class="callout info">
+        <div class="ic">📐</div>
+        <div class="body"><b>Метод back-of-envelope estimation</b> (типовий крок system design
+        інтерв'ю): 1) уточнити вимоги й припущення вголос (скільки користувачів, read чи
+        write-heavy); 2) оцінити масштаб (QPS, обсяг даних за день/рік); 3) визначити, який
+        ресурс впреться в стелю першим (CPU, пам'ять, мережа, диск, зовнішній rate limit);
+        4) перевірити цифру на здоровий глузд порівняно з таблицею затримок вище.</div>
+      </div>
+
+      <p><b>Приклад на цьому проєкті.</b> Припустимо: 200 організацій, кожна оптимізує в
+      середньому 15 маршрутів/день, рівномірно за 10-годинний робочий день.</p>
+      <div class="stat-row">
+        <div class="stat"><div class="k">Запитів/день</div><div class="v">3 000</div></div>
+        <div class="stat"><div class="k">Середній QPS</div><div class="v">~0.08</div></div>
+        <div class="stat"><div class="k">Пік (×10 від середнього)</div><div class="v">~0.8 QPS</div></div>
+      </div>
+      <p class="muted">Навіть із десятикратним запасом на пікове навантаження це набагато менше
+      одного запиту в секунду — впритул до стелі, окресленої в <a href="03-scaling.html">туторіалі 3</a>
+      (одна машина, <code>shared-cpu-1x</code>), проєкт наблизиться не через кількість запитів,
+      а через <i>тривалість</i> кожного (5-секундний солвер, розділ 07 нижче) — класичний приклад
+      того, що "оцінити систему числами" означає не лише порахувати QPS, а знайти, який саме
+      ресурс реально закінчиться першим.</p>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Вертикальне й горизонтальне масштабування, stateless vs stateful</h2>
+      <p class="section-desc">Найважливіший практичний висновок цього розділу: горизontальне масштабування можливе лише тоді, коли сервіс не тримає стан "у собі".</p>
+
+      <p><b>Вертикальне масштабування</b> — більша машина (більше CPU/RAM). Просто, але має
+      фізичну стелю і зазвичай вимагає короткого downtime на ресайз. <b>Горизонтальне</b> —
+      більше однакових машин за балансувальником; майже необмежене, але вимагає, щоб кожен
+      інстанс був <b>stateless</b> — не зберігав нічого, що потрібне для обробки <i>наступного</i>
+      запиту, у власній пам'яті процесу. Якщо стан потрібен (сесії, лічильники, кеш) — він
+      переїжджає у спільне зовнішнє сховище (Redis, БД), яке бачать усі інстанси однаково.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Живий приклад stateful-компонента прямо в цьому бекенді</b> —
+        <code>app/core/rate_limiting.py</code>. Лічильники запитів лежать у звичайному
+        Python-<code>dict</code> у пам'яті процесу. Docstring файлу прямо це фіксує: <i>"In-memory,
+        not Redis-backed: nothing in this deployment assumes more than a single API process
+        (...) If this ever runs as multiple worker processes or instances, swap the in-memory
+        <code>_WINDOWS</code> dict for a Redis-backed counter (...), since separate processes
+        don't share this dict."</i> Два інстанси за балансувальником = два незалежні лічильники
+        = реальний ліміт запитів мовчки подвоюється. Саме тому <code>fly.toml</code> тримає
+        <code>min_machines_running = 1</code> — це не забудькуватість, а пряме наслідок цього
+        одного stateful-рішення (докладніше — <a href="03-scaling.html#s2">туторіал 3</a>).</div>
+      </div>
+
+      <p>Шлях до горизонтального масштабування тут уже описаний у самому коді: перенести
+      лічильники в Redis (наприклад, атомарний <code>INCR</code> + <code>EXPIRE</code>, див.
+      <a href="20-redis.html#s6">туторіал 20</a>) — тоді будь-яка кількість API-інстансів
+      бачитиме той самий, спільний лічильник, і сервіс стає по-справжньому stateless.</p>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Балансування навантаження</h2>
+      <p class="section-desc">Балансувальник розподіляє запити між інстансами й перестає надсилати трафік на "хворі" — але лише якщо є за чим розподіляти.</p>
+
+      <table>
+        <tr><th>Алгоритм</th><th>Коли підходить</th></tr>
+        <tr><td>Round robin</td><td>Запити приблизно однакові за вартістю — найпростіший дефолт</td></tr>
+        <tr><td>Least connections</td><td>Запити різні за тривалістю (напр., один солвер-запит vs одне читання) — не заливає повільний інстанс новими запитами</td></tr>
+        <tr><td>Consistent hashing / sticky по ключу</td><td>Потрібна "прилипливість" до конкретного інстансу (кеш у пам'яті процесу, WebSocket-з'єднання)</td></tr>
+      </table>
+
+      <p><b>L4 vs L7:</b> L4-балансувальник (TCP/UDP-рівень) швидший, але не бачить вміст HTTP —
+      не може маршрутизувати за шляхом чи заголовком. L7 (HTTP-aware) повільніший, зате вміє
+      SSL-термінацію, маршрутизацію за URL, і — найважливіше для надійності — <b>health checks</b>:
+      періодично стукає у спеціальний ендпоінт і виводить інстанс з ротації, якщо той не відповідає.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">fly.toml</span></div>
+<pre><code>[[http_service.checks]]
+  method = "GET"
+  path = "/health"
+  interval = "15s"
+  timeout = "5s"
+  grace_period = "10s"</code></pre></div>
+      <p>Це вже L7-стиль health check із конфігурації цього проєкту: Fly.io стукає у
+      <code>GET /health</code> кожні 15 секунд і, якщо відповідь не приходить за 5 секунд,
+      вважає інстанс нездоровим (після 10-секундного "пільгового" періоду на старті). Сам
+      балансувальник поки що тривіальний — балансувати нема між чим, поки
+      <code>min_machines_running</code> дорівнює 1 (розділ 02 вище); але health check уже
+      готовий до того моменту, коли машин стане більше.</p>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> CAP-теорема на практиці</h2>
+      <p class="section-desc">Сама теорема (consistency, availability, partition tolerance — вибирай два з трьох під час розділення мережі) уже розібрана в <a href="17-databases-fundamentals.html#s5">туторіалі 17</a>. Тут — як вона впливає на конкретні архітектурні рішення.</p>
+
+      <p>Розділення мережі (partition) рано чи пізно станеться — тому реальний вибір завжди
+      між <b>CP</b> (під час розділення система відмовляє в обслуговуванні, але ніколи не
+      віддасть застарілі дані) і <b>AP</b> (система завжди відповідає, навіть ціною тимчасово
+      неактуальних даних). "Строга" (strong) консистентність означає, що будь-яке читання одразу
+      після запису бачить нове значення скрізь; "eventual" — що всі репліки <i>зрештою</i>
+      зійдуться, але коротке вікно розсинхронізації допустиме.</p>
+
+      <table>
+        <tr><th>Сценарій в домені цього проєкту</th><th>Правильний вибір</th><th>Чому</th></tr>
+        <tr>
+          <td>Списання квоти на платну дію (<code>try_consume_quota</code>)</td>
+          <td><b>CP</b> / строга консистентність</td>
+          <td>Подвійне списання чи "проґавлений" ліміт — це реальні гроші; саме тому в
+          <code>organization_repository.py</code> це один атомарний <code>UPDATE ... WHERE</code>,
+          а не EAFP-читання-потім-запис (див. <a href="24-senior-interview-qa.html#catC">туторіал 24, питання 14</a>)</td>
+        </tr>
+        <tr>
+          <td>Гіпотетичне: трансляція живої позиції водія у декількох регіонах</td>
+          <td><b>AP</b> / eventual</td>
+          <td>Позиція, застаріла на 2-3 секунди, некритична — набагато гірше, якщо весь UI
+          "зависає", доки не переконається у 100% свіжості координати</td>
+        </tr>
+      </table>
+      <div class="checks" style="margin-top:12px; padding:10px 12px; border-radius:9px; background:var(--interview-bg); border:1px solid var(--interview-border); font-size:13.2px; color:var(--interview);">
+        <b>🎯 Головний висновок:</b> CAP — не властивість "системи загалом", а рішення, яке
+        приймають <i>окремо для кожного типу даних</i>. В одному бекенді нормально мати і CP-, і
+        AP-частини одночасно, як у таблиці вище.
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Кешування: стампід, TTL-джиттер і CDN</h2>
+      <p class="section-desc">Патерни cache-aside / write-through / write-behind і eviction-політики вже детально розібрані в <a href="20-redis.html#s8">туторіалі 20</a>. Тут — те, чого там немає: що ламається в кеші під навантаженням і на масштабі, ширшому за один Redis.</p>
+
+      <div class="callout bad">
+        <div class="ic">🐘</div>
+        <div class="body"><b>Cache stampede (thundering herd)</b> — коли популярний ключ
+        закінчується (TTL сплив), і одразу <i>сотні</i> паралельних запитів б'ють мимо кеша в
+        базу одночасно, намагаючись перерахувати те саме значення — база отримує сплеск
+        навантаження, якого при "теплому" кеші ніколи не бачила. Мітигації: <b>лок на
+        перерахунок</b> (лише один запит справді йде в базу, решта чекають чи отримують старе
+        значення); <b>stale-while-revalidate</b> (віддати прострочене значення одразу, оновити
+        у фоні); <b>TTL-джиттер</b> — додати невеликий випадковий розкид до TTL, щоб масово
+        записані в один момент ключі не закінчувались усі одночасно.</div>
+      </div>
+
+      <p><b>CDN-кешування</b> — той самий cache-aside патерн, але на межі мережі, географічно
+      ближче до користувача: статичні файли, а іноді й відповіді GET-ендпоінтів з довгим TTL
+      кешуються на edge-вузлах, і мільйони користувачів ніколи не доходять до origin-сервера
+      взагалі. Хороший кандидат у домені цього проєкту: результат геокодування адреси
+      (<code>GoogleGeocodingClient.geocode()</code>) для однієї й тієї самої адреси не
+      змінюється практично ніколи — ідеальний випадок для довгого TTL cache-aside (у поточному
+      коді такого кешування ще немає — кожен виклик реально йде в Google API, це природний
+      кандидат на оптимізацію, коли обсяг запитів виросте).</p>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Масштабування бази даних</h2>
+      <p class="section-desc">Реляційна модель, ACID/BASE і "коли SQL, а коли NoSQL" вже є в <a href="17-databases-fundamentals.html">туторіалі 17</a>, а MVCC/VACUUM для Postgres — у <a href="19-postgres-storage-and-memory.html">туторіалі 19</a>. Тут — як БД масштабують, коли одного інстансу вже мало.</p>
+
+      <p><b>Реплікація</b> (leader-replica): один вузол приймає записи (leader), одна чи кілька
+      read-реплік асинхронно копіюють дані й обслуговують читання — розвантажує leader, якщо
+      навантаження read-heavy, ціною короткого replication lag (реплика на мілісекунди-секунди
+      відстає — ще один прояв eventual consistency з розділу 04). <b>Партиціювання/шардинг</b> —
+      коли дані фізично діляться на кілька БД-інстансів за ключем шарду (наприклад,
+      <code>organization_id</code> — природний ключ для multi-tenant SaaS, див.
+      <a href="22-multi-tenancy-saas.html">туторіал 22</a>): кожен шард самостійно тримає свою
+      частину даних, і жоден окремий інстанс не мусить вміщати всю базу.</p>
+
+      <p><b>Consistent hashing</b> для маршрутизації шардів вирішує конкретну проблему: при
+      наївному <code>hash(key) % N</code> додавання чи видалення одного шарду перемішує
+      <i>майже всі</i> ключі на нові вузли. Consistent hashing розміщує і шарди, і ключі на
+      одному кільці хешів — додавання/видалення вузла переміщує лише ключі навколо цієї
+      конкретної точки кільця, а не весь датасет.</p>
+
+      <div class="callout info">
+        <div class="ic">🗂️</div>
+        <div class="body"><b>Цей проєкт сьогодні</b> — один Postgres-інстанс, без реплік і без
+        шардингу (природно для поточного масштабу з розділу 01). Але схема даних уже готова до
+        шардингу за <code>organization_id</code>, якщо колись знадобиться: кожен запит уже
+        проходить через <code>TenantScopedRepository</code> (<a href="22-multi-tenancy-saas.html#s1">туторіал 22</a>),
+        який і так фільтрує все за <code>organization_id</code> — той самий ключ природно стає
+        ключем шарду, без переписування бізнес-логіки.</div>
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Черги та асинхронна обробка</h2>
+      <p class="section-desc">Queue, pub/sub, event-driven — три способи розв'язати виробника й споживача в часі. У цьому бекенді риштування (Celery + Redis) вже підключено — розібрано в <a href="03-scaling.html#s3">туторіалі 3</a> — але самі задачі ще заглушки.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">app/workers/tasks.py</span></div>
+<pre><code>@celery_app.task(name="optimize_routes_task")
+def optimize_routes_task(route_request_id: str) -> None:
+    <span class="cmt">"""Run route optimization asynchronously and persist the result."""</span>
+    raise NotImplementedError</code></pre></div>
+
+      <p><b>Queue (черга завдань)</b> — виробник кладе задачу, один із пулу воркерів забирає й
+      обробляє її рівно один раз (типова модель Celery). <b>Pub/Sub</b> — повідомлення дістається
+      <i>усім</i> підписаним споживачам незалежно, а не одному з пулу — підходить, коли кілька
+      різних сервісів мають незалежно відреагувати на ту саму подію. <b>Event-driven архітектура</b>
+      — сервіси спілкуються подіями ("маршрут оптимізовано"), а не прямими викликами — знижує
+      зв'язність, ціною складнішого трасування "хто на що відреагував".</p>
+
+      <div class="callout warn">
+        <div class="ic">🔀</div>
+        <div class="body"><b>Outbox pattern</b> — розв'язує класичну проблему подвійного запису:
+        якщо код спершу пише результат у БД, а потім окремим викликом публікує подію в чергу,
+        збій рівно між цими двома кроками губить подію назавжди (БД вже оновлена, підписники —
+        ні). Рішення: записати й результат, і "подію на публікацію" в одну й ту саму
+        БД-транзакцію (окрема <code>outbox</code>-таблиця), а окремий фоновий процес читає цю
+        таблицю й надійно, з ретраями, публікує події в чергу — 100%-consistency між станом БД
+        і тим, що піде в чергу, ціною невеликої затримки публікації.</div>
+      </div>
+
+      <p class="muted">Коли <code>optimize_routes_task</code> перестане бути заглушкою, саме
+      цей патерн стане актуальним: якщо результат солвера пишеться в БД і водночас має
+      "штовхнути" сповіщення на фронтенд, потрібна гарантія, що ці два кроки не розійдуться при
+      збої воркера. Ідемпотентність самих Celery-задач (повторний виклик з тим самим
+      <code>route_request_id</code> не повинен зіпсувати стан) — та сама тема, що вже розібрана
+      для черг повідомлень загалом у <a href="24-senior-interview-qa.html#catH">туторіалі 24, категорія H</a>.</p>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Алгоритми rate limiting</h2>
+      <p class="section-desc">Rate limiting по IP у цьому бекенді вже описаний у <a href="02-async-and-security.html#b4">туторіалі 2</a>. Тут — порівняння алгоритмів і точна відповідність тому, що реально в коді.</p>
+
+      <table>
+        <tr><th>Алгоритм</th><th>Як працює</th><th>Компроміс</th></tr>
+        <tr><td>Fixed window</td><td>Лічильник скидається кожні N секунд одним махом</td><td>Найпростіший, але до 2× ліміту може пройти впритул навколо межі вікна</td></tr>
+        <tr><td>Sliding window log</td><td>Зберігається таймстемп кожного запиту; старі (за межею вікна) відкидаються</td><td>Точний, без "проблеми межі", ціною пам'яті — O(ліміт) записів на ключ</td></tr>
+        <tr><td>Sliding window counter</td><td>Зважена інтерполяція між двома сусідніми fixed-window лічильниками</td><td>Компроміс точності й пам'яті між двома попередніми</td></tr>
+        <tr><td>Token bucket</td><td>"Відро" токенів поповнюється зі сталим темпом; запит списує токен</td><td>Дозволяє короткі сплески до розміру відра, підтримуючи стабільний середній темп — типовий вибір production API gateway</td></tr>
+        <tr><td>Leaky bucket</td><td>Черга запитів "витікає" назовні зі сталою швидкістю</td><td>Згладжує сплески повністю (на відміну від token bucket), ціною затримки пікових запитів</td></tr>
+      </table>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Що реально реалізовано в <code>app/core/rate_limiting.py</code>:</b>
+        <code>deque</code> таймстемпів на кожен ключ (<code>scope:ip</code>), з якого при
+        кожному запиті вирізаються записи старші за <code>window_seconds</code>, і перевіряється
+        <code>len(window) &gt;= max_requests</code>. Це підручниковий <b>sliding window log</b>,
+        <i>не</i> fixed window — межа вікна тут ковзна й перераховується на кожен запит, а не
+        скидається одним махом за таймером.</div>
+      </div>
+      <p class="muted">Дрібне уточнення до <a href="24-senior-interview-qa.html#catG">туторіалу 24,
+      питання 29</a>: там ця сама реалізація описана як приклад fixed window — точніше називати
+      її sliding window log; сам компроміс "простіше, але пам'яті на ключ пропорційно ліміту"
+      від цього не змінюється, і для поточних лімітів (5-20 запитів на ключ) ця пам'ять
+      мізерна.</p>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Патерни надійності</h2>
+      <p class="section-desc">Graceful degradation на прикладах геокодування й OpenAI вже розібрано в <a href="24-senior-interview-qa.html#catG">туторіалі 24, питання 30</a>. Тут — решта класичного набору патернів стійкості.</p>
+
+      <table>
+        <tr><th>Патерн</th><th>Що вирішує</th></tr>
+        <tr><td><b>Timeout</b></td><td>Не чекати відповіді залежності нескінченно — вивільнити ресурс (потік, з'єднання) за розумний час</td></tr>
+        <tr><td><b>Retry + exponential backoff + jitter</b></td><td>Повторити тимчасово невдалий запит, але з часом, що росте експоненційно, плюс випадковий розкид (jitter) — інакше всі клієнти, що зазнали збою одночасно, ретраять одночасно й повторюють той самий сплеск навантаження (той самий "стампід" з розділу 05, тільки на вихідних запитах)</td></tr>
+        <tr><td><b>Circuit breaker</b></td><td>Після N поспіль невдач "розмикається" й перестає навіть намагатись викликати залежність якийсь час (стан <i>open</i>) — дає залежності час відновитись і не витрачає ресурси на завідомо невдалі виклики; періодично пробує один запит (<i>half-open</i>), щоб перевірити відновлення</td></tr>
+        <tr><td><b>Bulkhead isolation</b></td><td>Окремий пул ресурсів (потоків, з'єднань) на кожну зовнішню залежність — повільний/впалий сервіс вичерпує лише свій пул, а не всі воркери застосунку</td></tr>
+      </table>
+
+      <div class="callout warn">
+        <div class="ic">🧱</div>
+        <div class="body"><b>Bulkhead у цьому проєкті — де його насправді бракує.</b>
+        <code>solver.solve()</code> в <code>app/services/route_optimizer/solver.py</code> має
+        жорсткий ліміт <code>time_limit.FromSeconds(5)</code>, але виконується <b>синхронно</b>
+        всередині <code>async def optimize()</code> (<a href="03-scaling.html#s2">туторіал 3</a>) —
+        тобто цей CPU-bound виклик монополізує єдиний потік event loop на весь час рахування,
+        і жоден інший запит (навіть легкий <code>GET /health</code>) не обробляється в цей
+        момент. Правильний bulkhead тут — винести солвер у Celery-воркер (риштування вже є,
+        розділ 07) або хоча б у <code>run_in_executor</code>: тоді "важкий" ресурс (CPU для
+        солвера) фізично ізольований від "легкого" (обробка звичайних HTTP-запитів).</div>
+      </div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> API Gateway, service discovery, монолiт vs мікросервіси</h2>
+      <p class="section-desc">Класична "розвилка" системного дизайну — і причина, чому цей конкретний бекенд свідомо лишається монолітом на поточному етапі.</p>
+
+      <p><b>API Gateway</b> — єдина точка входу перед кількома внутрішніми сервісами: термінує
+      TLS, робить аутентифікацію/rate limiting одноразово "на вході", маршрутизує запит до
+      потрібного сервісу. <b>Service discovery</b> — механізм, яким сервіс дізнається <i>поточну</i>
+      мережеву адресу іншого сервісу в динамічному середовищі (контейнери переїжджають, IP
+      змінюються) — реєстр (Consul, Kubernetes DNS/Service) замість захардкодженого хоста.</p>
+
+      <table>
+        <tr><th></th><th>Моноліт</th><th>Мікросервіси</th></tr>
+        <tr><td>Деплой</td><td>Один артефакт, простий CI/CD</td><td>Незалежний деплой кожного сервісу, складніший оркестратор</td></tr>
+        <tr><td>Масштабування</td><td>Масштабується весь застосунок разом</td><td>Кожен сервіс масштабується окремо під власне навантаження</td></tr>
+        <tr><td>Складність на старті</td><td>Низька</td><td>Висока — мережеві виклики замість функцій, розподілене трасування, eventual consistency між сервісами</td></tr>
+        <tr><td>Командна робота</td><td>Одна команда, спільна кодова база</td><td>Природний кордон для кількох незалежних команд</td></tr>
+      </table>
+
+      <div class="callout good">
+        <div class="ic">🏛️</div>
+        <div class="body"><b>Свідомий вибір цього проєкту</b> — моноліт, і <a href="03-scaling.html#s4">драбина
+        масштабування з туторіалу 3</a> прямо це підтверджує: кожен наступний крок (додати
+        воркерів uvicorn, увімкнути Celery-воркери, додати read-репліку) набагато дешевший, ніж
+        передчасний перехід на мікросервіси. Розділяти на сервіси варто тоді, коли з'являється
+        реальна причина — різні команди, що заважають одна одній в одній кодовій базі, або
+        частина системи (наприклад, солвер), яку потрібно масштабувати незалежно від решти —
+        а не "про всяк випадок" на старті.</div>
+      </div>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Спостережуваність і капасіті-планування</h2>
+      <p class="section-desc">Як зрозуміти, що застосунок зламався (healthchecks, алерти, логи, дашборди), уже детально розписано в <a href="24-senior-interview-qa.html#catJ">туторіалі 24, питання 61</a>. Тут — словник SLI/SLO/SLA і практична вправа на оцінку капасіті саме для цього проєкту.</p>
+
+      <table>
+        <tr><th>Термін</th><th>Означення</th></tr>
+        <tr><td><b>SLI</b> (indicator)</td><td>Конкретна вимірювана метрика — наприклад, "частка запитів із latency &lt; 2с"</td></tr>
+        <tr><td><b>SLO</b> (objective)</td><td>Внутрішня ціль команди для SLI — наприклад, "99% запитів &lt; 2с за місяць"</td></tr>
+        <tr><td><b>SLA</b> (agreement)</td><td>Зовнішнє, контрактне зобов'язання перед клієнтом — зазвичай слабше за внутрішній SLO, із зафіксованими наслідками порушення</td></tr>
+      </table>
+      <p class="muted"><code>GET /health</code> із <code>fly.toml</code> (розділ 03) — це
+      найпростіший можливий SLI ("процес живий"), а не повноцінний SLO — саме ту різницю фіксує
+      і туторіал 23 (питання про health-check у розділі 18).</p>
+
+      <div class="callout info">
+        <div class="ic">🧮</div>
+        <div class="body"><b>Вправа на капасіті-планування.</b> Припустимо, проєкт виріс до
+        500 організацій, кожна оптимізує в середньому 15 маршрутів/день (як у розділі 01) — і
+        <code>optimize_routes_task</code> нарешті реалізовано як реальний Celery-воркер (не
+        заглушка).</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><div class="k">Маршрутів/день</div><div class="v">7 500</div></div>
+        <div class="stat"><div class="k">Макс. CPU-секунд солвера/день</div><div class="v">≤ 37 500 с</div></div>
+        <div class="stat"><div class="k">≈ CPU-годин/добу</div><div class="v">~10.4 год</div></div>
+      </div>
+      <p>Кожен виклик <code>solver.solve()</code> обмежений <code>time_limit.FromSeconds(5)</code>
+      (розділ 09) — тобто <i>найгірший</i> випадок: 7 500 × 5с = 37 500 CPU-секунд солвер-часу на
+      добу. Розподілене рівномірно за 10-годинний робочий день це вимагало б трохи більше одного
+      постійно зайнятого CPU-ядра — але реальний трафік нерівномірний (пікові години), тож
+      практичний висновок: <b>2-4 Celery-воркери</b> з окремими процесами дають достатній запас
+      на пікові години, лишаючись набагато дешевшими за передчасний перехід на окремий
+      "solver-мікросервіс" із розділу 10.</p>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · Популярні задачі</div><div class="line"></div></div>
+
+    <p class="section-desc" style="margin-top:-8px;">Кожна відповідь нижче структурована так,
+    як очікують на реальному system design інтерв'ю: уточнення вимог → прикидка масштабу →
+    високорівневий дизайн → заглиблення в 1-2 вузькі місця → усвідомлені компроміси. Мета
+    відповіді на такому інтерв'ю — не "вгадати правильну архітектуру", а показати саме цей хід
+    міркувань вголос.</p>
+
+    <div class="legend">
+      <span><span class="dot" style="background:var(--info)"></span>База — типовий стартовий кейс</span>
+      <span><span class="dot" style="background:var(--fun)"></span>Просунуте — очікує глибшого заглиблення</span>
+      <span><span class="dot" style="background:var(--good)"></span>Системний дизайн — повноцінний кейс "спроєктуйте X"</span>
+    </div>
+
+    <section id="catA">
+      <div class="cat-head"><div class="cat-letter">A</div><h2 style="margin:0;">Класичні системи</h2></div>
+      <p class="section-desc">Найчастіше запитувані кейси на будь-якій system design співбесіді — незалежно від домену компанії.</p>
+
+      <details class="qa">
+        <summary><span class="qnum">01</span><span class="difficulty core">База</span>Спроєктуйте URL shortener (на кшталт bit.ly)</summary>
+        <div class="a">
+          <p><b>Вимоги:</b> створити короткий код для довгого URL; редирект короткого коду на
+          оригінал з мінімальною затримкою; опційно — статистика переходів.</p>
+          <p><b>Оцінка масштабу:</b> read-heavy навантаження — переходів за коротким лінком
+          зазвичай на 1-2 порядки більше, ніж створень нових. Це одразу підказує, що читання
+          варто агресивно кешувати, а запис може бути повільнішим.</p>
+          <p><b>Дизайн:</b> генерація коду — або хеш URL, обрізаний до 6-7 символів (з
+          перевіркою колізій), або лічильник, перекодований у base62 (гарантовано унікальний,
+          без перевірки колізій, але вимагає централізованого джерела наступного числа).
+          Зберігання — просто <code>short_code → original_url</code> у ключ-значення сховищі
+          чи звичайній таблиці з індексом по <code>short_code</code>. Кеш (Redis) перед базою
+          для найпопулярніших кодів — редирект має бути O(1) і майже завжди відповідати з
+          кеша.</p>
+          <p><b>Вузьке місце:</b> генерація унікального коду при масовому паралельному
+          створенні — тут або централізований лічильник (проста атомарність, потенційний
+          bottleneck), або розподілений генератор ID (питання 05 нижче) з подальшим base62-кодуванням.</p>
+          <div class="checks"><b>🎯 Компроміс, який варто озвучити:</b> хеш-підхід простіший,
+          але вимагає перевірки колізій при кожному записі; лічильник — простіший запис, але
+          сам лічильник стає єдиною точкою, яку потрібно масштабувати окремо.</div>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">02</span><span class="difficulty sys">Системний дизайн</span>Спроєктуйте rate limiter як окремий сервіс (а не бібліотеку в коді застосунку)</summary>
+        <div class="a">
+          <p><b>Вимоги:</b> будь-який з N незалежних застосунків-клієнтів звертається до одного
+          rate-limiting сервісу перед виконанням дії; рішення "дозволено/ні" має прийматись за
+          одиниці мілісекунд, щоб не стати новим вузьким місцем.</p>
+          <p><b>Дизайн:</b> сервіс — тонкий шар над Redis: кожен запит на перевірку — один
+          виклик <code>Lua</code>-скрипта в Redis (щоб "читання лічильника + інкремент +
+          перевірка ліміту" були атомарними за один round trip, а не трьома окремими викликами
+          з вікном для гонки). Алгоритм — token bucket (розділ 08 теорії): дозволяє короткі
+          легітимні сплески, підтримуючи стабільний середній темп.</p>
+          <p><b>Вузьке місце:</b> сам Redis стає єдиною точкою відмови для <i>усіх</i>
+          застосунків одразу. Мітигація — Redis Cluster (шардинг за ключем ліміту) чи fail-open
+          стратегія (якщо rate-limiting сервіс недоступний — свідомо пропускати запити, а не
+          валити весь трафік через відмову допоміжного сервісу).</p>
+          <div class="checks"><b>🎯 Пов'язано з проєктом:</b> протилежність цього дизайну — саме
+          той in-memory варіант з розділу 02 теорії вище, свідомо обраний для одного процесу
+          замість окремого сервісу, бо масштаб поки цього не виправдовує.</div>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">03</span><span class="difficulty sys">Системний дизайн</span>Спроєктуйте систему сповіщень (notifications) у реальному часі</summary>
+        <div class="a">
+          <p><b>Вимоги:</b> доставити сповіщення користувачу за секунди після події; підтримати
+          кілька каналів (push, email, in-app); користувач може бути offline.</p>
+          <p><b>Дизайн:</b> подія потрапляє в чергу (розділ 07 теорії) → notification-сервіс
+          визначає канали доставки для користувача → for online-користувачів — push через
+          WebSocket/довге з'єднання (питання 07 нижче); для offline — запис у "поштову скриньку"
+          в БД, яку користувач побачить при наступному вході, плюс push-сповіщення через
+          APNs/FCM. Ідемпотентність критична: та сама подія не повинна дублювати сповіщення
+          при ретраї (той самий патерн, що й ідемпотентні консьюмери черг, <a href="24-senior-interview-qa.html#catH">туторіал 24, категорія H</a>).</p>
+          <p><b>Вузьке місце:</b> fan-out — одна подія (наприклад, "маршрут готовий") може
+          означати сповіщення десяткам підписаних диспетчерів одночасно; список отримувачів
+          варто резолвити асинхронно у воркері, а не в гарячому шляху, що згенерував подію.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">04</span><span class="difficulty adv">Просунуте</span>Спроєктуйте стрічку новин / activity feed</summary>
+        <div class="a">
+          <p><b>Вимоги:</b> користувач бачить хронологічну стрічку подій від тих, на кого
+          підписаний; мільйони користувачів, деякі — з мільйонами підписників ("celebrity"-проблема).</p>
+          <p><b>Fan-out-on-write:</b> при публікації події вона одразу копіюється в
+          "передобчислену" стрічку кожного підписника. Читання стрічки — миттєве (просто читаєш
+          свій готовий список). Проблема: у користувача з мільйонами підписників один пост
+          означає мільйони записів одразу — дорого й повільно саме в момент публікації.</p>
+          <p><b>Fan-out-on-read:</b> стрічка збирається "на льоту" в момент запиту — злиття
+          останніх подій від усіх, на кого підписаний користувач. Публікація дешева (один
+          запис), але читання дорожче, особливо для активних читачів із багатьма підписками.</p>
+          <p><b>Практичний гібрид</b> (як роблять великі системи): fan-out-on-write для
+          звичайних користувачів, fan-out-on-read (або окрема обробка) для акаунтів із
+          аномально великою кількістю підписників — уникає "гарячого" запису мільйонів копій за
+          одну подію.</p>
+          <div class="checks"><b>🎯 Що перевіряють:</b> чи розумієте ви, що це вибір write-heavy
+          проти read-heavy оптимізації, а не "правильна відповідь" — і чи вмієте розпізнати
+          скошений (skewed) розподіл підписників як причину для гібридного підходу.</div>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">05</span><span class="difficulty adv">Просунуте</span>Спроєктуйте розподілений генератор унікальних ID</summary>
+        <div class="a">
+          <table>
+            <tr><th>Підхід</th><th>Плюси</th><th>Мінуси</th></tr>
+            <tr><td><b>UUID (v4)</b></td><td>Генерується локально, без координації, колізії астрономічно малоймовірні</td><td>128 біт, не сортується за часом створення, гірший як індекс у БД (випадковий порядок вставки фрагментує B-tree)</td></tr>
+            <tr><td><b>Database sequence / auto-increment</b></td><td>Просто, гарантовано послідовний і компактний</td><td>Єдина точка координації — сама БД; погано масштабується на кілька незалежних БД-інстансів (шардинг)</td></tr>
+            <tr><td><b>Snowflake-подібний ID</b> (timestamp + machine ID + лічильник у бітах одного 64-бітного числа)</td><td>Генерується локально на кожній машині без координації, при цьому сортується за часом (timestamp — старші біти), компактний</td><td>Вимагає синхронізованого годинника між машинами; лічильник у межах мілісекунди обмежує пікову швидкість генерації на одній машині</td></tr>
+          </table>
+          <p><b>Коли який:</b> UUID — коли простота й відсутність координації важливіші за
+          сортованість (типовий вибір для більшості CRUD-сутностей, зокрема — первинні ключі
+          в цьому проєкті). Snowflake — коли потрібен масштаб <i>і</i> сортованість за часом
+          створення одночасно (стрічки подій, розподілені логи).</p>
+        </div>
+      </details>
+    </section>
+
+    <section id="catB">
+      <div class="cat-head"><div class="cat-letter">B</div><h2 style="margin:0;">Дані, стійкість і власний домен</h2></div>
+      <p class="section-desc">Кейси, ближчі до реальних архітектурних рішень цього конкретного бекенду — включно з дизайном системи, найближчої до того, що проєкт реально робить.</p>
+
+      <details class="qa">
+        <summary><span class="qnum">06</span><span class="difficulty sys">Системний дизайн</span>Спроєктуйте розподілений кеш (на кшталт власного Redis Cluster)</summary>
+        <div class="a">
+          <p><b>Вимоги:</b> кеш не вміщається на одну машину; потрібна прозора маршрутизація
+          "цей ключ — на цій ноді" і стійкість до відмови окремої ноди.</p>
+          <p><b>Маршрутизація ключів — consistent hashing</b> (розділ 06 теорії): ноди й ключі
+          мапляться на одне кільце хешів; додавання/видалення ноди рухає лише сусідні на кільці
+          ключі, а не весь датасет — на відміну від наївного <code>hash(key) % N</code>.</p>
+
+          <figure class="diagram">
+            <svg viewBox="0 0 400 400" role="img" aria-label="Кільце consistent hashing з трьома нодами A, B, C та ключами, розподіленими за найближчою за годинниковою стрілкою нодою">
+              <circle cx="200" cy="200" r="150" fill="none" stroke="var(--border)" stroke-width="2"/>
+              <circle cx="200" cy="55" r="9" fill="var(--accent)"/>
+              <text x="200" y="38" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent)">Нода A</text>
+              <circle cx="330" cy="275" r="9" fill="var(--good)"/>
+              <text x="352" y="290" text-anchor="middle" font-size="13" font-weight="700" fill="var(--good)">Нода B</text>
+              <circle cx="70" cy="275" r="9" fill="var(--interview)"/>
+              <text x="48" y="290" text-anchor="middle" font-size="13" font-weight="700" fill="var(--interview)">Нода C</text>
+
+              <circle cx="260" cy="70" r="4" fill="currentColor" opacity="0.7"/>
+              <text x="272" y="65" font-size="10.5" opacity="0.7" fill="currentColor">key1</text>
+              <circle cx="300" cy="140" r="4" fill="currentColor" opacity="0.7"/>
+              <text x="312" y="135" font-size="10.5" opacity="0.7" fill="currentColor">key2</text>
+              <circle cx="150" cy="330" r="4" fill="currentColor" opacity="0.7"/>
+              <text x="105" y="345" font-size="10.5" opacity="0.7" fill="currentColor">key3</text>
+
+              <path d="M 260 70 A 150 150 0 0 1 200 55" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="3,3"/>
+              <path d="M 300 140 A 150 150 0 0 1 330 275" fill="none" stroke="var(--good)" stroke-width="1.5" stroke-dasharray="3,3"/>
+              <path d="M 150 330 A 150 150 0 0 1 70 275" fill="none" stroke="var(--interview)" stroke-width="1.5" stroke-dasharray="3,3"/>
+
+              <text x="200" y="200" text-anchor="middle" font-size="11" fill="var(--fg-muted)">кожен ключ іде до</text>
+              <text x="200" y="216" text-anchor="middle" font-size="11" fill="var(--fg-muted)">найближчої ноди за</text>
+              <text x="200" y="232" text-anchor="middle" font-size="11" fill="var(--fg-muted)">годинниковою стрілкою</text>
+            </svg>
+            <figcaption>key1 належить ноді A, key2 — ноді B, key3 — ноді C: кожен ключ маршрутизується до першої ноди, зустрінутої за годинниковою стрілкою на кільці. Видалення ноди B перерозподілить лише key2 (та інші ключі в її секторі) — решта кільця не зміниться.</figcaption>
+          </figure>
+
+          <p><b>Реплікація</b> — кожен ключ пишеться не на одну, а на N сусідніх за кільцем нод
+          (типово N=3), щоб відмова однієї ноди не губила дані. <b>Стратегія узгодженості
+          реплік</b> — типово AP (розділ 04): читання може повернути трохи застаріле значення з
+          репліки замість відмови, коли лідер тимчасово недоступний.</p>
+          <p><b>Вузьке місце:</b> "гарячі" ключі (один надпопулярний ключ отримує непропорційно
+          багато трафіку) — усе ще впираються в одну ноду, навіть при ідеальному розподілі
+          решти ключів; вирішується додатковою реплікацією саме гарячих ключів або
+          client-side кешем перед розподіленим кешем.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">07</span><span class="difficulty sys">Системний дизайн</span>Спроєктуйте чат/месенджер у реальному часі</summary>
+        <div class="a">
+          <p><b>Вимоги:</b> двостороння доставка повідомлень з мінімальною затримкою; коректний
+          порядок повідомлень у межах діалогу; повідомлення не губляться, якщо отримувач
+          offline.</p>
+          <p><b>Транспорт — WebSocket</b> (уже розібраний загалом у <a href="24-senior-interview-qa.html#catJ">туторіалі 24, питання 53</a>):
+          постійне двостороннє з'єднання замість поллінгу чи повторних HTTP-запитів.</p>
+          <p><b>Порядок і доставка:</b> кожне повідомлення отримує зростаючий
+          <code>sequence_id</code> у межах діалогу (не глобальний timestamp — годинники різних
+          серверів не синхронізовані ідеально, розділ 05 попереднього питання актуальний і тут).
+          Сервер підтверджує отримання (delivery ack) окремо від "прочитано" (read receipt) —
+          ті самі рівні гарантій доставки at-least-once/exactly-once, що й для черг повідомлень
+          загалом (<a href="24-senior-interview-qa.html#catH">туторіал 24, категорія H</a>).
+          Для offline-отримувача повідомлення зберігається в БД і надсилається push-сповіщенням
+          (питання 03 вище) — доставляється WebSocket-повідомленням при наступному підключенні.</p>
+          <p><b>Вузьке місце:</b> утримання мільйонів одночасних WebSocket-з'єднань відкритими
+          — це вже stateful-навантаження (розділ 02 теорії): конкретний сервер повинен знати,
+          яке з'єднання належить якому користувачу, тому проста горизонтальна балансувальна
+          схема (розділ 03) тут не працює напряму — потрібен або sticky routing за
+          consistent hashing, або окремий "реєстр з'єднань" (напр. в Redis), щоб будь-який
+          інстанс міг знайти, на якому саме сервері зараз сидить отримувач.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">08</span><span class="difficulty sys">Системний дизайн</span>Спроєктуйте систему масової оптимізації маршрутів (домен цього проєкту)</summary>
+        <div class="a">
+          <p><b>Вимоги:</b> прийняти запит із набором зупинок, транспортом, часовими вікнами й
+          обмеженнями місткості; повернути оптимізований маршрут; масштабуватись на суттєво
+          більшу кількість одночасних запитів, ніж сьогодні.</p>
+          <p><b>Поточний стан цього самого бекенду</b> — весь розрахунок виконується синхронно
+          в HTTP-запиті: <code>build_distance_duration_matrix</code> будує матрицю
+          відстаней/часу O(n²) від кількості зупинок, після чого
+          <code>RouteSolver.solve()</code> (OR-Tools, <a href="21-route-optimization-or-tools.html">туторіал 21</a>)
+          шукає розв'язок із жорстким лімітом <code>time_limit.FromSeconds(5)</code>. Це
+          прийнятно для сьогоднішнього масштабу (розділ 01 теорії), але не масштабується
+          горизонтально — важкий CPU-bound виклик блокує єдиний event loop (розділ 09 теорії).</p>
+          <p><b>Дизайн на суттєво більший масштаб:</b></p>
+          <ul>
+            <li><b>Винести солвер у пул воркерів</b> — API одразу повертає <code>202
+            Accepted</code> з ідентифікатором задачі, кладе <code>route_request_id</code> у
+            чергу (риштування Celery+Redis вже є, розділ 07 теорії), і клієнт опитує статус чи
+            отримує WebSocket/push-сповіщення (питання 03, 07 вище) про готовність.</li>
+            <li><b>Батчинг і пул воркерів, а не один процес на запит</b> — кожен воркер бере
+            задачу з черги, будує матрицю відстаней і рахує OR-Tools у своєму власному процесі;
+            кількість воркерів масштабується горизонтально незалежно від API-шару (природний
+            кандидат на мікросервіс, якщо колись знадобиться — розділ 10 теорії).</li>
+            <li><b>Кешування матриці відстаней</b> — для тієї самої пари координат (наприклад,
+            той самий депо + та сама популярна адреса) відстань/час не змінюються між
+            запитами; cache-aside з розумним TTL (розділ 05 теорії) прибирає повторні виклики
+            зовнішнього geo-провайдера й основну частину O(n²)-обчислення для повторюваних
+            точок.</li>
+            <li><b>Часовий бюджет солвера як параметр, а не константа</b> — фіксовані 5 секунд
+            підходять для невеликих задач; для великих (сотні зупинок) варто динамічно
+            підвищувати ліміт, а для типових малих задач — навпаки, знижувати його, щоб
+            вивільняти воркер швидше.</li>
+          </ul>
+          <div class="checks"><b>🎯 Головне вузьке місце для заглиблення:</b> сам солвер —
+          NP-важка задача (Vehicle Routing Problem), тому "просто додати більше CPU" масштабує
+          <i>пропускну здатність</i> (більше задач одночасно), але не <i>швидкість однієї задачі</i>
+          — для цього єдиний важіль це компроміс якість/час у самому <code>time_limit</code> і
+          вибір стратегії пошуку в OR-Tools (<a href="21-route-optimization-or-tools.html">туторіал 21</a>).</div>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">09</span><span class="difficulty sys">Системний дизайн</span>Як спроєктувати систему, стійку до відмови однієї ноди?</summary>
+        <div class="a">
+          <p><b>Redundancy (резервування)</b> — базова умова: якщо критичний компонент існує в
+          єдиному екземплярі, будь-яка стійкість до відмов неможлива за визначенням. Мінімум
+          N+1 (а краще N+2) однакових інстансів кожного критичного сервісу.</p>
+          <p><b>Failover</b> — автоматичне перемикання трафіку на здоровий інстанс, коли
+          основний падає; вимагає health checks (розділ 03 теорії), щоб взагалі виявити відмову.</p>
+          <p><b>Leader election</b> — коли рівно один інстанс мусить виконувати певну роль
+          (наприклад, приймати записи в реплікованій БД, розділ 06 теорії, або бути єдиним, хто
+          запускає періодичне завдання), інші вузли домовляються, хто "лідер", і автоматично
+          обирають нового, якщо поточний лідер перестає відповідати (алгоритми на кшталт Raft
+          чи Paxos — за лаштунками ZooKeeper/etcd/Consul).</p>
+          <div class="callout warn">
+            <div class="ic">⚠️</div>
+            <div class="body"><b>Цей бекенд сьогодні свідомо не стійкий до відмови ноди</b> —
+            <code>min_machines_running = 1</code> (розділ 02 теорії) означає, що відмова єдиної
+            машини = повний простій, компенсований лише автоматичним рестартом Fly.io. Це
+            прийнятний ризик для поточної стадії проєкту (та ж драбина пріоритетів із
+            <a href="03-scaling.html">туторіалу 3</a>) — але перший крок до реальної стійкості
+            вже описаний там само: перенести stateful-частини (розділ 02 теорії) у зовнішнє
+            сховище, і лише <i>потім</i> піднімати другу машину.</div>
+          </div>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">10</span><span class="difficulty core">База</span>Практичний чек-лист: коли обирати SQL, а коли NoSQL?</summary>
+        <div class="a">
+          <p>Таблиця вибору за характеристиками вже є в <a href="17-databases-fundamentals.html#s7">туторіалі 17</a>.
+          Тут — коротший, дієвий чек-лист саме для system design інтерв'ю:</p>
+          <ul>
+            <li>Дані природно реляційні, з багатьма зв'язками й потребою в складних
+            JOIN-запитах, транзакціях на кількох таблицях одночасно → <b>SQL</b>.</li>
+            <li>Схема даних нестабільна чи різні записи мають різний набір полів (напр.
+            каталог товарів з довільними атрибутами) → <b>document NoSQL</b> (MongoDB-подібні).</li>
+            <li>Потрібна екстремальна горизонтальна масштабованість запису на мільйони
+            операцій/секунду, а модель даних проста ("ключ → значення") → <b>key-value
+            NoSQL</b> (DynamoDB-подібні) чи розподілений кеш (питання 06 вище).</li>
+            <li>Дані природно є графом зі складними, багаторівневими зв'язками (соціальна
+            мережа, рекомендації) → <b>graph DB</b>.</li>
+            <li>Потрібна строга (CP) консистентність фінансових чи квотних операцій (розділ 04
+            теорії) → <b>SQL</b> майже завжди виграє за готовими транзакційними гарантіями "з
+            коробки".</li>
+          </ul>
+          <div class="checks"><b>🎯 Пов'язано з проєктом:</b> цей бекенд — типовий кандидат на
+          SQL (Postgres): багато зв'язаних сутностей (organization → users → routes → stops),
+          строга консистентність квот (розділ 04 теорії) і зв'язки, які регулярно
+          запитуються JOIN'ами, а не окремими незалежними документами.</div>
+        </div>
+      </details>
+    </section>
+
+    <div class="card">
+      Цей туторіал доповнює, а не замінює <a href="24-senior-interview-qa.html">туторіал 24,
+      категорію G</a> — той короткий "preview" системного дизайну лишається дійсним, просто
+      тепер має куди вести далі. Якщо якась базова тема виявилась незрозумілою — почніть з
+      <a href="03-scaling.html">туторіалу 3</a> (масштабування цього проєкту),
+      <a href="17-databases-fundamentals.html">17</a> (СAP-теорема, SQL vs NoSQL) чи
+      <a href="20-redis.html">20</a> (кешування) — усі приклади тут побудовані на них.
+    </div>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Теорія й кейси відібрані як типовий набір для system design співбесід; де можливо, прив'язані
+  до реального коду репозиторію <code>ai-delivery-planner-backend</code>.
+</footer>
+
+</body>
+</html>

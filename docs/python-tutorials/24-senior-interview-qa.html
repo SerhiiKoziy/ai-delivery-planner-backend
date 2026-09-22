@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>24. 30 питань Senior Python — AI Delivery Planner</title>
+<title>24. 74 питання Senior Python — AI Delivery Planner</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
 <style>
   :root{
@@ -302,17 +302,19 @@
 
 <div class="hero">
   <div class="kicker">Бонус-туторіал · Підготовка до співбесіди</div>
-  <h1>30 складних питань — Senior Python Developer</h1>
+  <h1>74 складних питання — Senior Python Developer</h1>
   <p class="lead">
     Не базовий скринінг, а рівень, на якому senior-кандидатів реально ламають: внутрішня кухня
     інтерпретатора, пам'ять і продуктивність, ООП-патерни по-пайтонівськи, просунута
     асинхронність, БД/ORM-нюанси, тестування і трохи системного дизайну. Питання про GIL,
     конкурентність і базові типи вже розібрані в <a href="06-gil-and-concurrency.html">туторіалі 6</a>
     та <a href="04-python-types.html">туторіалі 4</a> — тут беремо за основу, що ви це знаєте,
-    і йдемо глибше.
+    і йдемо глибше. Категорії H-J (питання 31-74) додані окремо — це теми, яких немає в жодному
+    з туторіалів 1-23 (черги повідомлень, Docker/Kubernetes/git, і розсипані дрібні пастки), але
+    які регулярно спливають на тих самих співбесідах.
   </p>
   <div class="pills">
-    <span class="pill">🧩 7 категорій · 30 питань</span>
+    <span class="pill">🧩 10 категорій · 74 питання</span>
     <span class="pill">💻 Код для складних відповідей</span>
     <span class="pill">🎯 "Що насправді перевіряють"</span>
   </div>
@@ -354,7 +356,9 @@
         <a href="21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
         <a href="22-multi-tenancy-saas.html">22. Multi-tenancy</a>
         <a href="23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
-        <a href="24-senior-interview-qa.html" class="active">24. 30 питань Senior</a>
+        <a href="24-senior-interview-qa.html" class="active">24. 74 питання Senior</a>
+        <a href="25-system-design.html">25. Системний дизайн</a>
+        <a href="26-sentry-monitoring.html">26. Sentry: моніторинг</a>
       </nav>
       <nav class="nav-links jsdoc">
         <a href="../js-doc/00-methodology.html">0. Методологія</a>
@@ -387,6 +391,9 @@
       <li><a href="#catE">E. Бази даних та ORM <span class="toc-count">4</span></a></li>
       <li><a href="#catF">F. Тестування <span class="toc-count">3</span></a></li>
       <li><a href="#catG">G. Системний дизайн (лайт) <span class="toc-count">3</span></a></li>
+      <li><a href="#catH">H. Черги повідомлень: RabbitMQ, Kafka, Celery <span class="toc-count">10</span></a></li>
+      <li><a href="#catI">I. Docker, Kubernetes, Git <span class="toc-count">8</span></a></li>
+      <li><a href="#catJ">J. Ще питання зі співбесід <span class="toc-count">26</span></a></li>
     </ol>
   </aside>
 
@@ -827,7 +834,7 @@ def flaky_call(): ...</code></pre></div>
 
     <section id="catG">
       <div class="cat-head"><div class="cat-letter">7</div><h2 style="margin:0;">Системний дизайн (лайт)</h2></div>
-      <p class="section-desc">Не повноцінний system design interview, а невеликі, дуже практичні питання, які часто вплітають у "звичайну" Python-співбесіду.</p>
+      <p class="section-desc">Не повноцінний system design interview, а невеликі, дуже практичні питання, які часто вплітають у "звичайну" Python-співбесіду. Повноцінний розбір теорії й 10 класичних кейсів формату "спроєктуйте X" — окремо, у <a href="25-system-design.html">туторіалі 25</a>.</p>
 
       <details class="qa">
         <summary><span class="qnum">28</span><span class="difficulty sys">Системний дизайн</span>Що таке ідемпотентність API і навіщо вона потрібна для платних операцій?</summary>
@@ -913,6 +920,461 @@ def flaky_call(): ...</code></pre></div>
         </div>
       </details>
     </section>
+
+    <section id="catH">
+      <div class="cat-head"><div class="cat-letter">8</div><h2 style="margin:0;">Черги повідомлень: RabbitMQ, Kafka, Celery</h2></div>
+      <p class="section-desc">Ця тема жодного разу не зустрічається в туторіалах 1-23 (проєкт використовує лише Redis як брокер Celery) — а на співбесідах її питають майже завжди. Дев'ять питань нижче закривають типовий набір.</p>
+
+      <details class="qa">
+        <summary><span class="qnum">31</span><span class="difficulty core">База</span>За рахунок чого RabbitMQ гарантує доставку повідомлень?</summary>
+        <div class="a">
+          <p>Комбінацією чотирьох механізмів, а не якимось одним "перемикачем":</p>
+          <ul style="margin:6px 0 0 18px; padding:0;">
+            <li><b>Стійкість</b> — черга оголошується <code>durable</code> (переживає рестарт брокера), повідомлення позначається <code>delivery_mode=2</code> / <code>persistent</code> (пишеться на диск).</li>
+            <li><b>Підтвердження</b> — <i>publisher confirm</i> каже видавцю, що брокер прийняв і зберіг повідомлення; <i>consumer ack</i> (<code>basic_ack</code>) каже брокеру, що споживач обробив його — без ack повідомлення повертається в чергу.</li>
+            <li><b>Реплікація</b> — <i>quorum queues</i> (сучасний варіант) або застарілі mirrored queues копіюють повідомлення на кілька нод, щоб падіння однієї не губило дані.</li>
+            <li><b>Dead Letter Exchange</b> — повідомлення, які не вдалось обробити, йдуть в окрему чергу для аналізу чи повторної обробки, а не губляться мовчки.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">32</span><span class="difficulty sys">Системний дизайн</span>Які рівні гарантій доставки бувають у RabbitMQ і Kafka?</summary>
+        <div class="a">
+          <p>Обидва брокери дають той самий вибір із трьох рівнів, тільки різними механізмами:</p>
+          <ul style="margin:6px 0 0 18px; padding:0;">
+            <li><b>At-most-once</b> — найшвидше, повідомлення може загубитись: без publisher confirm / без чекання ack від брокера.</li>
+            <li><b>At-least-once</b> — надійно, але можливі дублікати: <code>persistent</code> + <code>durable</code> + <code>ack</code> у RabbitMQ; ack від брокера продюсеру + ретраї у Kafka. Вимагає ідемпотентної обробки на споживачі.</li>
+            <li><b>Exactly-once</b> — RabbitMQ сам по собі цього не гарантує, це будується поверх at-least-once через ідемпотентність застосунку; Kafka має нативну підтримку через <code>enable.idempotence=true</code> + транзакційний продюсер (<code>transactional.id</code>) + <code>read_committed</code> на споживачі.</li>
+          </ul>
+          <div class="checks"><b>🎯 Що перевіряють:</b> чи розумієте ви, що "exactly-once" — це завжди компроміс складності, а не безкоштовна опція, і що в реальних системах найчастіше свідомо обирають at-least-once + ідемпотентність.</div>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">33</span><span class="difficulty adv">Просунуте</span>Як під капотом влаштована Kafka?</summary>
+        <div class="a">
+          <p>Kafka — розподілений <b>append-only лог</b>, а не черга в класичному сенсі. Кожна партиція — це файл, куди нові повідомлення лише дописуються в кінець (найшвидша можлива операція на диску), а прочитані повідомлення <i>не видаляються</i> одразу — вони живуть за retention-політикою (час/розмір), і різні консьюмери можуть незалежно "перемотувати" свій <code>offset</code> назад. Продуктивність тримається на <i>zero-copy</i> I/O (дані йдуть із page cache напряму в сокет, без зайвих копіювань у пам'яті процесу) та на паралелізмі партицій. Кластер із кількох брокерів реплікує кожну партицію (один лідер, кілька фолловерів), а метаданими й виборами лідера керує <b>Zookeeper</b> (застаріле) або вбудований <b>KRaft</b> (сучасні версії).</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">34</span><span class="difficulty core">База</span>Що таке топік і партиція в Kafka?</summary>
+        <div class="a">
+          <p><b>Топік</b> — логічна назва каналу повідомлень (наприклад, <code>order_status_changed</code>); сам по собі він нічого не зберігає. <b>Партиція</b> — фізичний сегмент топіку: незалежний, впорядкований лог зі своїм лічильником <code>offset</code>. Kafka гарантує порядок повідомлень <i>лише в межах однієї партиції</i>, а не між партиціями того самого топіку — тому повідомлення з одним ключем (наприклад, <code>user_id</code>) свідомо направляють в одну й ту саму партицію, якщо порядок для цього ключа важливий.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">35</span><span class="difficulty core">База</span>Що таке Dead Letter Exchange у RabbitMQ?</summary>
+        <div class="a">
+          <p>Спеціальний "запасний" exchange, куди RabbitMQ автоматично перенаправляє повідомлення, які не вдалось обробити: відхилені (<code>nack</code>/<code>reject</code> з <code>requeue=False</code>), протерміновані за TTL, або такі, що не влізли в чергу через ліміт розміру. Налаштовується аргументом <code>x-dead-letter-exchange</code> на звичайній черзі. Дає місце для аналізу помилок чи ручного/автоматичного повторного програвання замість того, щоб "погане" повідомлення губилось або нескінченно блокувало чергу.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">36</span><span class="difficulty sys">Системний дизайн</span>Як захиститись від невизнаних/недооброблених повідомлень брокера?</summary>
+        <div class="a">
+          <p>Три доповнюючі одна одну техніки:</p>
+          <ul style="margin:6px 0 0 18px; padding:0;">
+            <li><b>Ручний ack/nack</b> — вимкнути <code>auto_ack</code>; підтверджувати обробку явно після успіху, <code>nack</code>/<code>reject</code> при помилці (з <code>requeue=True/False</code> залежно від того, чи має сенс повторна спроба).</li>
+            <li><b>TTL + Dead Letter Exchange</b> — повідомлення, необроблене за час X або після N невдалих спроб, автоматично йде в окрему чергу замість того, щоб нескінченно висіти "в польоті".</li>
+            <li><b>Ідемпотентність обробника</b> — повторна доставка при збоях (краш споживача до ack) є нормою, а не винятком; зберігайте оброблені <code>message_id</code> (Redis/Postgres) і пропускайте дублікати.</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">37</span><span class="difficulty adv">Просунуте</span>Чи є пріоритизація повідомлень у RabbitMQ, і чи переходить пріоритет між чергами?</summary>
+        <div class="a">
+          <p>Так, RabbitMQ підтримує <i>priority queues</i>: черга оголошується з <code>x-max-priority</code> (типово 5-10 рівнів), а кожне повідомлення публікується з полем <code>priority</code> — вищий пріоритет обробляється раніше, навіть якщо опубліковано пізніше; повідомлення з однаковим пріоритетом ідуть у порядку FIFO.</p>
+          <p>Але <b>пріоритет ніколи не "переходить" між різними чергами</b> — це не глобальний механізм кластера. Черга сама по собі є атомарною одиницею маршрутизації; якщо пріоритетна черга спорожніла, це ніяк не впливає на порядок в інших чергах. Якщо потрібна єдина пріоритизація — використовують <i>одну</i> чергу з <code>x-max-priority</code>, а не окремі черги "high"/"low".</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">38</span><span class="difficulty adv">Просунуте</span>Як Celery працює з пріоритетними задачами?</summary>
+        <div class="a">
+          <p>Через аргумент <code>priority</code> у <code>apply_async(..., priority=9)</code> — Celery кладе його в AMQP-властивість повідомлення, а RabbitMQ сортує чергу за ним (та сама черга мусить бути створена з <code>x-max-priority</code>). Обмеження варто знати заздалегідь: діапазон пріоритету — 0-9 (чи менше, скільки задано в <code>x-max-priority</code>); пріоритет діє <i>лише в межах однієї черги</i>, немає пріоритету між чергами <code>high</code>/<code>low</code>; <b>Redis-брокер пріоритети не підтримує взагалі</b> (лише RabbitMQ, частково SQS через хаки); а великий <code>prefetch_count</code> може звести пріоритет нанівець, якщо воркер вже "нахапав" низькопріоритетних задач наперед.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">39</span><span class="difficulty sys">Системний дизайн</span>Два повідомлення в черзі змінюють те саме поле користувача — як обрати, яке застосувати?</summary>
+        <div class="a">
+          <p>Обробляти в порядку надходження в чергу небезпечно — мережеві затримки й ретраї можуть переставити повідомлення місцями. Два стандартні рішення:</p>
+          <ul style="margin:6px 0 0 18px; padding:0;">
+            <li><b><code>event_time</code></b> — кожне повідомлення несе час, коли зміну <i>сформовано</i> (не коли вона прийшла); споживач застосовує зміну, лише якщо <code>event_time</code> новіший за збережений у БД час останнього оновлення цього поля, інакше тихо ігнорує.</li>
+            <li><b>Версійність</b> — повідомлення несе <code>version</code>/<code>seq_id</code>; застосовується, лише якщо <code>version &gt; поточна_версія_в_БД</code>.</li>
+          </ul>
+          <p>Без жодного з двох підходів виникає гонка між застарілою та актуальною подіями — особливо помітно при ретраях і паралельних воркерах.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">40</span><span class="difficulty core">База</span>Як переконатись, що Celery-таска дійсно виконається?</summary>
+        <div class="a">
+          <p>Повної "гарантії" з коробки немає, але надійність збирають зі знайомих цеглинок: увімкнути <code>result_backend</code>, щоб мати змогу опитати статус і результат задачі; <code>acks_late=True</code>, щоб таска підтверджувалась брокеру лише <i>після</i> успішного виконання (а не одразу при отриманні воркером) — тоді краш воркера поверне задачу в чергу; моніторинг (Flower, Sentry, Prometheus) для видимості зависань і помилок; і власний <code>try/except</code> з ретраєм (<code>self.retry(...)</code>) навколо нестабільних кроків.</p>
+        </div>
+      </details>
+    </section>
+
+    <section id="catI">
+      <div class="cat-head"><div class="cat-letter">9</div><h2 style="margin:0;">Docker, Kubernetes, Git</h2></div>
+      <p class="section-desc">Проєкт реально використовує Docker (<a href="12-packaging-and-dependencies.html">туторіал 12</a>) і згадує Kubernetes як варіант масштабування (<a href="03-scaling.html">туторіал 3</a>), але базові означення цих технологій — і git-флоу — досі ніде не пояснені окремо.</p>
+
+      <details class="qa">
+        <summary><span class="qnum">41</span><span class="difficulty core">База</span>Чим Docker відрізняється від віртуальної машини?</summary>
+        <div class="a">
+          <p>Docker-контейнер ділить ядро ОС хоста й ізолює процеси на рівні операційної системи (namespaces, cgroups) — тому запускається за секунди, важить мегабайти, а продуктивність близька до нативної. Віртуальна машина через гіпервізор емулює повноцінне "залізо" й запускає власну ОС — тому старт займає хвилини, розмір вимірюється гігабайтами, а частина ресурсів іде на сам шар віртуалізації. Наслідок для практики: на одному сервері можна тримати сотні контейнерів, але лише одиниці-десятки повноцінних ВМ.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">42</span><span class="difficulty core">База</span>Які основні сутності є в Docker?</summary>
+        <div class="a">
+          <p><b>Image</b> — незмінний, шаруватий шаблон (ОС + залежності + код), з якого запускають контейнери; кожен крок <code>Dockerfile</code> — окремий кешований шар. <b>Container</b> — запущений (або зупинений) екземпляр image, ізольований від хоста й інших контейнерів. <b>Dockerfile</b> — рецепт побудови image. <b>Volume</b> — сховище даних поза životним циклом контейнера (щоб дані бази чи логи не зникали разом з контейнером). <b>Network</b> — віртуальна мережа для взаємодії контейнерів (<code>bridge</code> — типова, на одному хості; <code>host</code> — мережевий стек хоста напряму; <code>none</code> — повна ізоляція; <code>overlay</code> — між хостами в Swarm).</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">43</span><span class="difficulty core">База</span>Яка типова структура Dockerfile?</summary>
+        <div class="a">
+          <div class="codecard"><div class="bar"><span class="path">типовий Dockerfile для Python-застосунку</span></div>
+<pre><code>FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+RUN apt-get update && apt-get install -y build-essential
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0"]</code></pre></div>
+          <p><code>FROM</code> — базовий образ; <code>ENV</code> — змінні середовища контейнера; <code>RUN</code> — команди на етапі збірки (системні пакети, залежності); <code>WORKDIR</code> — робоча директорія для наступних кроків; <code>COPY</code> — копіювання файлів з хоста (файл залежностей копіюють <i>окремо й раніше</i> коду, щоб кеш Docker не злітав при кожній зміні коду); <code>EXPOSE</code> — декларативна документація порту (не відкриває його сам по собі); <code>CMD</code> — команда запуску контейнера.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">44</span><span class="difficulty core">База</span>Основні команди Docker?</summary>
+        <div class="a">
+          <table>
+            <tr><td><code>docker build .</code></td><td>зібрати image з Dockerfile у поточній директорії</td></tr>
+            <tr><td><code>docker images</code></td><td>список локальних образів</td></tr>
+            <tr><td><code>docker run &lt;image&gt;</code></td><td>запустити контейнер з образу</td></tr>
+            <tr><td><code>docker ps</code> / <code>docker ps -a</code></td><td>запущені контейнери / усі, включно зі зупиненими</td></tr>
+            <tr><td><code>docker stop &lt;id&gt;</code></td><td>зупинити контейнер</td></tr>
+            <tr><td><code>docker exec -it &lt;id&gt; sh</code></td><td>зайти всередину працюючого контейнера</td></tr>
+            <tr><td><code>docker logs &lt;id&gt;</code></td><td>переглянути логи контейнера</td></tr>
+            <tr><td><code>docker volume ls</code> / <code>docker network ls</code></td><td>список томів / мереж</td></tr>
+          </table>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">45</span><span class="difficulty core">База</span>Що таке под і нода в Kubernetes?</summary>
+        <div class="a">
+          <p><b>Нода (node)</b> — фізична чи віртуальна машина в кластері, на якій справді виконуються задачі: на ній працюють <code>kubelet</code>, <code>kube-proxy</code> і container runtime. <b>Под (pod)</b> — найменша одиниця розгортання в Kubernetes: один або кілька контейнерів, що завжди запускаються разом, ділять IP-адресу/порти й можуть ділити volume (типово — один контейнер на под, кілька — для sidecar-патернів на кшталт логера чи проксі). Кластер розподіляє поди по нодах з урахуванням ресурсів; якщо нода падає, Kubernetes пересоздає її поди на іншій доступній ноді.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">46</span><span class="difficulty core">База</span>Як "перенести" чужий коміт у свою гілку?</summary>
+        <div class="a">
+          <div class="codecard"><div class="bar"><span class="path">cherry-pick</span></div>
+<pre><code>git checkout my-feature
+git cherry-pick &lt;commit_hash&gt;</code></pre></div>
+          <p><code>cherry-pick</code> застосовує зміни одного конкретного коміту з іншої гілки поверх поточної, створюючи новий коміт із тим самим змістом — без злиття всієї гілки-джерела.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">47</span><span class="difficulty adv">Просунуте</span>Як під капотом працює <code>git merge</code>?</summary>
+        <div class="a">
+          <p>Залежить від налаштування Merge Request: звичайний merge переносить <i>усі</i> коміти гілки-джерела в цільову гілку зі збереженням історії (merge-коміт із двома батьками). Якщо ввімкнено <b>Squash commits</b>, усі коміти гілки-джерела об'єднуються в один перед злиттям — зручно, коли в робочій гілці накопичилось багато дрібних "wip"-комітів, які не мають сенсу тягнути в основну історію окремо.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">48</span><span class="difficulty trick">Пастка</span>Як терміново залити зміни в <code>main</code>?</summary>
+        <div class="a">
+          <p>Правильна відповідь на співбесіді — "все одно через Merge Request", навіть у терміновому випадку: CI (лінтери, тести) — це саме той запобіжник, який найдорожче обходити під тиском часу. Якщо процес абсолютно не дозволяє чекати на звичайний review-цикл — <code>cherry-pick</code> потрібного коміту в підготовлену гілку для хотфіксу з прискореним, але не пропущеним, review. <code>--no-verify</code> чи прямий push у <code>main</code> — це усвідомлений ризик, а не "хороша практика", і жодна співбесіда не зарахує це як правильну відповідь.</p>
+        </div>
+      </details>
+    </section>
+
+    <section id="catJ">
+      <div class="cat-head"><div class="cat-letter">10</div><h2 style="margin:0;">Ще питання, які часто ловлять на співбесідах</h2></div>
+      <p class="section-desc">Різне з інших частих співбесідних списків, чого немає в туторіалах 1-23: тестування, структури даних, продакшн-експлуатація, дрібний Python-синтаксис.</p>
+
+      <details class="qa">
+        <summary><span class="qnum">49</span><span class="difficulty core">База</span>Що таке Mock-об'єкт у тестуванні?</summary>
+        <div class="a">
+          <p>Підставний об'єкт, що імітує поведінку реального (БД, зовнішній API, файлова система) для ізоляції тестованого коду від залежностей. Дає три речі одразу: <b>ізоляцію</b> — тест не залежить від реальної мережі/БД; <b>контроль</b> — можна задати, що саме поверне метод (<code>mock.return_value = ...</code>); <b>перевірку викликів</b> — скільки разів і з якими аргументами метод був викликаний (<code>mock.assert_called_with(...)</code>). У Python — <code>unittest.mock.Mock</code>/<code>MagicMock</code>/<code>patch</code>.</p>
+          <div class="checks"><b>🎯 Пов'язано з проєктом:</b> <a href="23-testing-cicd-monitoring-cloud.html">туторіал 23</a> вже показує реальні fixtures і тести цього репозиторію — поверх over-mocking там же розібрана суміжна пастка (<code>catF</code>, розділ 25).</div>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">50</span><span class="difficulty adv">Просунуте</span>Як розв'язуються колізії хешів у <code>dict</code>?</summary>
+        <div class="a">
+          <p>CPython-словник — хеш-таблиця з <b>відкритою адресацією</b>: <code>hash(key)</code> визначає початковий індекс комірки в масиві; якщо вона зайнята (колізія — два різні ключі дали той самий індекс), інтерпретатор пробує наступну комірку за псевдовипадковою послідовністю кроків (не просто "+1", щоб уникнути кластеризації), поки не знайде вільну або комірку з тим самим ключем. При збігу хешів ключі додатково звіряються через <code>__eq__</code> — саме тому й хеш, і рівність мають узгоджуватись (<code>a == b ⇒ hash(a) == hash(b)</code>).</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">51</span><span class="difficulty adv">Просунуте</span>Що таке досконала (perfect) хеш-функція?</summary>
+        <div class="a">
+          <p>Хеш-функція, побудована під <i>заздалегідь відомий, фіксований</i> набір ключів так, щоб узагалі не давати колізій для цього набору — на відміну від хеш-функції загального призначення в <code>dict</code>. Використовується там, де набір ключів не змінюється в рантаймі: ключові слова мови в компіляторах, таблиці маршрутизації, фіксовані конфігурації. Ціна — функція працює лише для того набору, під який побудована; додати новий ключ означає перебудувати її заново.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">52</span><span class="difficulty core">База</span>Яка складність пошуку в різних структурах даних Python?</summary>
+        <div class="a">
+          <table>
+            <tr><td><code>list</code> (непосортований)</td><td>O(n) — лінійний перебір</td></tr>
+            <tr><td><code>list</code> (відсортований, бінарний пошук)</td><td>O(log n) — тільки для читання, вставка все одно O(n)</td></tr>
+            <tr><td><code>dict</code> / <code>set</code></td><td>O(1) у середньому (хеш-таблиця); O(n) у виродженому найгіршому випадку при масових колізіях</td></tr>
+          </table>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">53</span><span class="difficulty core">База</span>Що таке семафори?</summary>
+        <div class="a">
+          <p>Примітив синхронізації з лічильником дозволів: обмежує, скільки потоків/процесів <i>одночасно</i> можуть користуватись ресурсом — на відміну від <code>Lock</code>, який пускає рівно одного. Ініціалізується числом N ("N квитків"); <code>.acquire()</code> забирає квиток і зменшує лічильник, <code>.release()</code> повертає його; коли квитків 0 — наступний потік чекає. Проєктний приклад асинхронного варіанту (<code>asyncio.Semaphore</code>) розібраний у розділі 19 цього туторіалу.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">54</span><span class="difficulty sys">Системний дизайн</span>Як кілька процесів можуть безпечно працювати з одним файлом чи ресурсом?</summary>
+        <div class="a">
+          <p>Без координації виникають гонка даних, втрата чи неконсистентне читання "напівоновленого" стану. Робочі підходи: <b>файлові блокування</b> на рівні ОС (<code>fcntl</code> на Unix, бібліотеки на кшталт <code>portalocker</code>/<code>filelock</code>); <b>міжпроцесна синхронізація</b> — <code>multiprocessing.Lock</code>/<code>Semaphore</code>/<code>Queue</code>; <b>атомарні операції</b> ОС/файлової системи там, де можливо обійтись без явного лока; <b>copy-on-write</b> — робота з копією ресурсу й безпечна заміна оригіналу наприкінці. Для складної конкурентної роботи найнадійніше — не винаходити координацію самостійно, а покластися на СУБД, яка вже має вбудовані транзакції й блокування.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">55</span><span class="difficulty sys">Системний дизайн</span>Дві транзакції одночасно змінюють таблицю — виник deadlock. Що робити?</summary>
+        <div class="a">
+          <p>Deadlock виникає, коли транзакція A тримає рядок X і чекає Y, а транзакція B тримає Y і чекає X — обидві висять назавжди. БД (Postgres, MySQL) сама виявляє це й примусово перериває одну з транзакцій помилкою <code>deadlock detected</code>, тож застосунок повинен це ловити й ретраїти. Профілактика: завжди блокувати ресурси в <b>однаковому порядку</b> (наприклад, за зростанням <code>id</code>) в усіх транзакціях; тримати транзакції <b>короткими</b>; уникати <code>SELECT ... FOR UPDATE</code>, якщо без нього можна обійтись; не використовувати вищий рівень ізоляції (<code>SERIALIZABLE</code>), ніж дійсно потрібно.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">56</span><span class="difficulty adv">Просунуте</span>Як event loop вирішує, якій корутині передати керування?</summary>
+        <div class="a">
+          <p>Через <b>селектори ОС</b> (<code>selectors.DefaultSelector</code>, під капотом <code>epoll</code>/<code>kqueue</code>/<code>select</code>). Коли корутина робить <code>await</code> на I/O, вона реєструє відповідний файловий дескриптор у селекторі й повертає керування в loop. Loop викликає <code>selector.select(timeout)</code> — блокуючий виклик, що каже "розбуди мене, коли будь-який із зареєстрованих дескрипторів готовий". Коли ОС сигналізує готовність (сокет можна читати/писати), event loop ставить відповідний <code>Future</code>/<code>Task</code> у чергу готових і на наступній ітерації відновлює саме цю корутину з місця зупинки. Тобто loop ніколи не обирає "довільно" — лише реагує на готовність, повідомлену селектором, або на явно заплановані виклики (<code>call_soon</code>).</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">57</span><span class="difficulty adv">Просунуте</span>Що таке "прогрів" пулу з'єднань (pool warm-up) у SQLAlchemy?</summary>
+        <div class="a">
+          <p>SQLAlchemy за замовчуванням створює з'єднання з БД <i>лениво</i> — за потребою. Прогрів — свідоме створення N з'єднань <i>заздалегідь</i>, ще до першого реального запиту (наприклад, при старті застосунку), щоб перший користувацький запит не платив ціну встановлення TLS-з'єднання й хендшейку з базою, і щоб проблеми з підключенням виявились одразу при старті, а не в момент першого запиту від реального користувача.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">58</span><span class="difficulty sys">Системний дизайн</span>Через що асинхронний сервіс може деградувати при вибірці великих обсягів даних?</summary>
+        <div class="a">
+          <ul style="margin:6px 0 0 18px; padding:0;">
+            <li><b>Пам'ять</b> — <code>fetchall()</code>/<code>execute(...).all()</code> завантажує весь результат у RAM; для сотень тисяч рядків це ріст пам'яті аж до OOM.</li>
+            <li><b>Блокування в БД</b> — важкі <code>JOIN</code>/<code>GROUP BY</code>/<code>ORDER BY</code> під навантаженням тримають з'єднання довго, використовують тимчасові таблиці, зачіпають продуктивність усієї бази.</li>
+            <li><b>Перевантаження event loop</b> — асинхронність рятує лише I/O-bound патерн; важка CPU-обробка результату (серіалізація, трансформації) у Python-коді все одно блокує loop.</li>
+            <li><b>Серіалізація</b> — Pydantic-валідація й перетворення в JSON для тисяч об'єктів одразу дорого навантажує CPU й пам'ять.</li>
+          </ul>
+          <p>Лік — стрімінг замість повного <code>fetchall()</code> (курсор з ітерацією) та chunked-вигрузка (<code>LIMIT</code>/<code>OFFSET</code> чи keyset pagination) замість одного гігантського запиту.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">59</span><span class="difficulty sys">Системний дизайн</span>Які проблеми має асинхронний код загалом?</summary>
+        <div class="a">
+          <p>Складність трасування (фрагментований стек викликів, "проковтнуті" винятки з незачеканих корутин); блокуючий виклик усередині <code>async def</code> (<code>time.sleep</code>, синхронний <code>requests.get</code>) заморожує <i>весь</i> event loop, а не лише свою задачу; не всі бібліотеки мають async-аналог (потрібні <code>aiohttp</code>, <code>asyncpg</code> замість звичних синхронних клієнтів, або обгортка через <code>run_in_executor</code>); async не обходить GIL і не пришвидшує CPU-bound код; тестування вимагає окремої інфраструктури (<code>pytest-asyncio</code>); і найчастіша реальна помилка — передчасний перехід на async там, де I/O-навантаження цього не виправдовує, що просто збільшує складність без вигоди.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">60</span><span class="difficulty adv">Просунуте</span>Які проблеми виникають з логуванням в асинхронному коді?</summary>
+        <div class="a">
+          <p>Стандартний <code>logging</code> синхронний навіть коли викликається з <code>async def</code> — часте логування (запис у файл/мережу) може блокувати event loop так само, як будь-який інший блокуючий виклик. Повідомлення з різних одночасних задач можуть переплітатись у виводі, якщо не додавати контекст (наприклад, <code>correlation ID</code> — детальніше в <a href="11-logging.html">туторіалі 11</a>) для розрізнення, яке повідомлення від якого запиту. Рішення: асинхронні логери (<code>aiologger</code>) або <code>QueueHandler</code> з окремим потоком/процесом для фактичного запису, плюс лінива підстановка аргументів (<code>logging.info("User %s", user_id)</code>) замість форматування рядка щоразу.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">61</span><span class="difficulty core">База</span>Як зрозуміти, що застосунок зламався?</summary>
+        <div class="a">
+          <p>Одного способу недостатньо — типова комбінація: <b>healthchecks</b> (<code>/live</code> — чи живий процес, <code>/ready</code> — чи готовий приймати трафік, <code>/health</code> — узагальнена перевірка), на які періодично стукає оркестратор чи балансувальник; <b>алерти</b> по метриках (частка 5xx, відсутність трафіку, p95-затримка, ріст черги, CPU/пам'ять) через Prometheus+Alertmanager, Grafana, Sentry; <b>логи помилок</b> зі stacktrace (ELK, Loki, Sentry); <b>дашборди</b> для спостереження в реальному часі; і <b>synthetic monitoring</b> — бот, що періодично ходить по ключових ендпоінтах і перевіряє відповідь.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">62</span><span class="difficulty sys">Системний дизайн</span>За якою стратегією білди зазвичай котяться на продакшн?</summary>
+        <div class="a">
+          <p>Універсального правильного варіанту немає — залежить від розміру команди й архітектури. Типовий безпечний потік: розробка у feature-гілках → MR у гілку <code>test</code> (пайплайн лінтерів/тестів як обов'язкові ворота перед merge, періодичний ручний регрес) → MR із <code>test</code> у <code>main</code> (ще один прогін CI) → окремо мігрції БД і сам деплой застосунку як два різні кроки, щоб їх можна було контролювати незалежно. Розділення "спершу міграція, потім код" важливе саме через сумісність версій під час викатки (див. питання 68 нижче).</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">63</span><span class="difficulty core">База</span>Що таке pre-commit?</summary>
+        <div class="a">
+          <p>Інструмент, що запускає перевірки й автоформатування (наприклад, <code>black</code>, <code>flake8</code>, видалення зайвих пробілів) автоматично <i>перед</i> кожним <code>git commit</code>. Якщо перевірка провалюється — коміт блокується, поки проблему не виправлено; це ловить дрібні проблеми стилю й очевидні помилки ще до того, як вони потрапляють у CI чи ревʼю.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">64</span><span class="difficulty trick">Пастка</span>Чим LEFT/RIGHT/INNER/FULL OUTER JOIN відрізняються один від одного?</summary>
+        <div class="a">
+          <table>
+            <tr><td><code>INNER JOIN</code></td><td>лише рядки, для яких є збіг в обох таблицях</td></tr>
+            <tr><td><code>LEFT JOIN</code></td><td>усі рядки лівої таблиці + збіги з правої; де збігу нема — <code>NULL</code></td></tr>
+            <tr><td><code>RIGHT JOIN</code></td><td>дзеркально: усі рядки правої таблиці + збіги з лівої</td></tr>
+            <tr><td><code>FULL OUTER JOIN</code></td><td>усі рядки з обох таблиць, <code>NULL</code> там, де пари немає в жодну сторону</td></tr>
+          </table>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">65</span><span class="difficulty adv">Просунуте</span>Що таке часткові (partial) індекси в БД?</summary>
+        <div class="a">
+          <p>Індекс, побудований лише для підмножини рядків, що задовольняють умову <code>WHERE</code> — а не для всієї таблиці. Корисно, коли типові запити завжди фільтрують по одному й тому ж значенню (наприклад, <code>WHERE status = 'active'</code>): індекс менший, швидший у побудові й підтримці, займає менше диска. Ціна — він допомагає лише запитам, чия умова дійсно "накривається" умовою індекса; не всі СУБД його підтримують (у MySQL нативної підтримки немає, на відміну від PostgreSQL).</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">66</span><span class="difficulty trick">Пастка</span>Чому видалення поля в міграції небезпечне при CI/CD, і як це робити правильно?</summary>
+        <div class="a">
+          <p>Якщо в одному MR одночасно видалити колонку з БД і прибрати її використання в коді, під час викатки виникає вікно, де міграція вже застосувалась (колонки нема), а старий код (ще не задеплоєний) усе ще очікує це поле — падає з помилками. Рішення — два окремі MR: спершу прибрати з коду будь-яке використання поля (деплоїти, поки колонка ще існує в БД, просто не читається/не пишеться), і лише другим MR — окрема міграція, яка фізично видаляє колонку.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">67</span><span class="difficulty core">База</span>Чим функціональне програмування відрізняється від ООП?</summary>
+        <div class="a">
+          <p><b>ООП</b> об'єднує дані й поведінку в об'єктах (інкапсуляція, успадкування, поліморфізм), стан об'єкта може змінюватись — добре пасує до систем зі складною ієрархією сутностей (бізнес-логіка, веб-застосунки). <b>Функціональне програмування</b> будується на чистих функціях (однаковий вхід → однаковий вихід, без побічних ефектів) і незмінних (immutable) даних — програма складається з композиції функцій, а не взаємодії об'єктів; ефективне для обчислень, обробки потоків даних і паралелізму, де важлива передбачуваність.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">68</span><span class="difficulty core">База</span>Що таке композиція (на противагу успадкуванню)?</summary>
+        <div class="a">
+          <p>Принцип "має" (has-a) замість "є" (is-a): об'єкт містить інший об'єкт і користується його функціональністю через посилання, а не успадковує від нього.</p>
+          <div class="codecard"><div class="bar"><span class="path">композиція: Car "має" Engine, а не "є" Engine</span></div>
+<pre><code>class Engine:
+    def start(self):
+        return "vroom"
+
+class Car:
+    def __init__(self):
+        self.engine = Engine()   <span class="cmt"># композиція: Car ВИКОРИСТОВУЄ Engine</span>
+
+    def start(self):
+        return self.engine.start()</code></pre></div>
+          <p>Гнучкіше за успадкування: <code>Engine</code> можна підмінити іншою реалізацією без зміни ієрархії класів — тому спільнота Python часто радить "композицію над успадкуванням" (детальніше про мікси й межі цього принципу — <a href="14-oop-and-solid.html">туторіал 14</a>, розділ 10, і <a href="24-senior-interview-qa.html#catC">розділ C, питання 12</a> цього туторіалу).</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">69</span><span class="difficulty core">База</span>Як працюють <code>map</code> і <code>filter</code>?</summary>
+        <div class="a">
+          <p><code>map(function, iterable)</code> застосовує функцію до кожного елемента й лениво повертає ітератор результатів. <code>filter(function, iterable)</code> лишає лише ті елементи, для яких функція повернула truthy-значення.</p>
+          <div class="codecard"><div class="bar"><span class="path">map / filter</span></div>
+<pre><code>squares = map(lambda x: x ** 2, [1, 2, 3])       <span class="cmt"># &lt;map object&gt; -- лінивий ітератор</span>
+list(squares)                                     <span class="cmt"># [1, 4, 9]</span>
+
+evens = filter(lambda x: x % 2 == 0, range(6))
+list(evens)                                       <span class="cmt"># [0, 2, 4]</span></code></pre></div>
+          <p>Обидва повертають ітератор, а не список — значення обчислюються лише при ітерації; list comprehension (<a href="05-classes-decorators-syntax.html">туторіал 5</a>, розділ 13) частіше вважають більш "пайтонічною" заміною для простих випадків.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">70</span><span class="difficulty adv">Просунуте</span>Що таке замикання (closure) в Python?</summary>
+        <div class="a">
+          <p>Вкладена функція, яка "запам'ятовує" й зберігає доступ до змінних оточуючої функції навіть після того, як та вже завершила виконання.</p>
+          <div class="codecard"><div class="bar"><span class="path">замикання</span></div>
+<pre><code>def make_multiplier(factor):
+    def multiply(x):
+        return x * factor    <span class="cmt"># factor "захоплено" із зовнішньої функції</span>
+    return multiply
+
+times3 = make_multiplier(3)   <span class="cmt"># make_multiplier вже завершилась</span>
+times3(10)                    <span class="cmt"># 30 -- factor=3 усе одно живий</span>
+times3.__closure__             <span class="cmt"># підтвердження: комірка з захопленою змінною</span></code></pre></div>
+          <p>Застосування: фабрики функцій із зафіксованими параметрами, приховування "приватного" стану без класу, і саме на цьому механізмі побудовані декоратори (<a href="05-classes-decorators-syntax.html">туторіал 5</a>, розділи 7-9). Якщо потрібно <i>змінювати</i> (не лише читати) зовнішню змінну зсередини вкладеної функції — потрібне ключове слово <code>nonlocal</code>, інакше Python вважає її новою локальною змінною. Зворотна сторона: замикання, що тримають посилання на великі об'єкти, можуть непомітно продовжувати їм життя — це вже розібрано як джерело витоків пам'яті в <a href="09-memory-management.html">туторіалі 9</a>, розділ 11.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">71</span><span class="difficulty trick">Пастка</span>Декоратор для асинхронної функції — сам працює синхронно чи асинхронно?</summary>
+        <div class="a">
+          <p>Залежить виключно від того, як написаний сам декоратор — асинхронність обгорнутої функції цього не визначає автоматично.</p>
+          <div class="codecard"><div class="bar"><span class="path">неправильно: синхронний wrapper над async-функцією</span></div>
+<pre><code>def bad_decorator(func):
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)   <span class="cmt"># поверне coroutine-об'єкт, а НЕ результат</span>
+    return wrapper</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">правильно: async wrapper</span></div>
+<pre><code>def good_decorator(func):
+    async def wrapper(*args, **kwargs):
+        return await func(*args, **kwargs)   <span class="cmt"># дочекались реального результату</span>
+    return wrapper</code></pre></div>
+          <p>Якщо декоратор не <code>async</code> і просто викликає <code>func(...)</code> без <code>await</code>, виклик поверне непрочитаний coroutine-об'єкт замість результату — типова тиха помилка. Правильний декоратор над <code>async def</code> сам мусить бути написаний як <code>async def wrapper</code> з <code>await</code> усередині.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">72</span><span class="difficulty core">База</span>Декоратор для заміру часу виконання функції</summary>
+        <div class="a">
+          <div class="codecard"><div class="bar"><span class="path">timing-декоратор (sync і async варіант)</span></div>
+<pre><code>import time
+import functools
+
+def timed(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        print(f"{func.__name__} took {time.perf_counter() - start:.4f}s")
+        return result
+    return wrapper
+
+def timed_async(func):
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        result = await func(*args, **kwargs)
+        print(f"{func.__name__} took {time.perf_counter() - start:.4f}s")
+        return result
+    return wrapper</code></pre></div>
+          <p><code>functools.wraps</code> обов'язковий, щоб декорована функція не втратила своє ім'я й docstring (детальніше — <a href="05-classes-decorators-syntax.html">туторіал 5</a>, розділ 9). Для <code>async def</code>-функцій потрібен саме <code>async</code>-варіант декоратора з <code>await</code> усередині — див. попереднє питання.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">73</span><span class="difficulty core">База</span>Який магічний метод використовувати для зміни типів даних?</summary>
+        <div class="a">
+          <table>
+            <tr><td><code>__int__(self)</code></td><td>виклик <code>int(obj)</code></td></tr>
+            <tr><td><code>__float__(self)</code></td><td>виклик <code>float(obj)</code></td></tr>
+            <tr><td><code>__str__(self)</code></td><td>виклик <code>str(obj)</code> / <code>print(obj)</code></td></tr>
+            <tr><td><code>__repr__(self)</code></td><td>виклик <code>repr(obj)</code> — представлення для розробника</td></tr>
+            <tr><td><code>__bool__(self)</code></td><td>виклик <code>bool(obj)</code> і перевірка в <code>if obj:</code></td></tr>
+            <tr><td><code>__bytes__(self)</code></td><td>виклик <code>bytes(obj)</code></td></tr>
+            <tr><td><code>__complex__(self)</code></td><td>виклик <code>complex(obj)</code></td></tr>
+          </table>
+          <p>Загальний механізм дандер-методів як "data model" Python уже розібраний у <a href="05-classes-decorators-syntax.html">туторіалі 5</a>, розділ 3 — тут лише повний перелік саме для приведення типів.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">74</span><span class="difficulty sys">Системний дизайн</span>Що швидше відпрацьовує в авторизації — JWT чи сесії, і чому?</summary>
+        <div class="a">
+          <p><b>JWT</b> зазвичай швидший: уся інформація про користувача вже лежить усередині токена, тож сервер лише розшифровує й перевіряє підпис — операція повністю в оперативній пам'яті, без звернень до зовнішнього сховища. <b>Сесії</b> вимагають додаткового кроку на кожен запит: клієнт передає ідентифікатор сесії (типово через cookie), а сервер мусить піти в Redis/БД/файлову систему, щоб дістати за цим ідентифікатором дані користувача — саме цей зовнішній запит і робить сесії повільнішими, особливо під навантаженням чи коли сховище на іншому сервері. Компроміс, який варто згадати: швидкість JWT дається ціною складнішого миттєвого відкликання токена (детальніше про access/refresh — <a href="02-async-and-security.html">туторіал 2</a>, розділ 2).</p>
+        </div>
+      </details>
+    </section>
+
 
     <div class="card">
       Це — надбудова над попередніми туторіалами, не заміна: якщо якесь питання виявилось

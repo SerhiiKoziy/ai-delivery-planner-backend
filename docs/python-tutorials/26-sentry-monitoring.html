@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>26. Sentry: моніторинг — AI Delivery Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--accent); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent-soft);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:12px 0 4px;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.9px; display:flex; align-items:baseline; gap:10px;
+  }
+  .qa summary .qnum{
+    color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700;
+    flex-shrink:0;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 18px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .a p{margin:8px 0; color:var(--fg-muted);}
+  .qa .a p:first-child{margin-top:0;}
+  .qa .checks{
+    margin-top:10px; padding:10px 12px; border-radius:9px; background:var(--interview-bg);
+    border:1px solid var(--interview-border); font-size:13.2px; color:var(--interview);
+  }
+  .qa .checks b{color:var(--interview);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:2px; vertical-align:middle; flex-shrink:0;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .qa .difficulty.sys{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+
+  .cat-head{
+    display:flex; align-items:center; gap:12px; margin-bottom:4px;
+  }
+  .cat-letter{
+    width:34px; height:34px; border-radius:10px; background:var(--accent-soft); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;
+  }
+
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал 26 · Моніторинг помилок і APM</div>
+  <h1>Sentry: можливості, де використовувати, топ-кейси</h1>
+  <p class="lead">
+    Чесно на старті: Sentry в цьому бекенді сьогодні <b>не підключений</b> — його немає ні в
+    <code>pyproject.toml</code>, ні в коді (тільки коротка згадка в
+    <a href="23-testing-cicd-monitoring-cloud.html#s16">туторіалі 23</a> як "чого поки бракує").
+    Цей туторіал не прикидається, що інтеграція вже є — натомість детально показує, що Sentry
+    вміє, де саме в реальному коді цього проєкту він би найбільше допоміг, і як виглядала б
+    інтеграція, якби її додали сьогодні.
+  </p>
+  <div class="pills">
+    <span class="pill">🧩 8 можливостей із поясненням "навіщо"</span>
+    <span class="pill">🔥 3 топ-кейси з реального коду проєкту</span>
+    <span class="pill">⚠️ Чесно: поки не інтегровано</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-python-types.html">4. Типи</a>
+        <a href="05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="11-logging.html">11. Логування</a>
+        <a href="12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="13-design-patterns.html">13. Патерни</a>
+        <a href="14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="16-pydantic.html">16. Pydantic</a>
+        <a href="17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="20-redis.html">20. Redis</a>
+        <a href="21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="25-system-design.html">25. Системний дизайн</a>
+        <a href="26-sentry-monitoring.html" class="active">26. Sentry: моніторинг</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/12-this.html">12. this</a>
+        <a href="../js-doc/13-typescript-essentials.html">13. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/02-browser-internals.html">2. Браузер зсередини</a>
+        <a href="../js-doc/03-frontend-security.html">3. Безпека фронтенду</a>
+        <a href="../js-doc/11-http-anatomy.html">11. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/05-react-deep-dive.html">5. React углиб</a>
+        <a href="../js-doc/06-nextjs-architecture.html">6. Next.js та архітектура</a>
+        <a href="../js-doc/07-nextjs-interview-qa.html">7. Next.js: Q&amp;A</a>
+        <a href="../js-doc/14-frontend-caching-fundamentals.html">14. Caching: основи</a>
+        <a href="../js-doc/15-frontend-caching-libraries.html">15. Caching: бібліотеки</a>
+        <a href="../js-doc/16-frontend-caching-advanced.html">16. Caching: просунуті теми</a>
+        <a href="../js-doc/09-testing-cicd-cloud.html">9. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/10-ai-tools.html">10. AI-інструменти</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — Теорія й можливості</div>
+    <ol>
+      <li><a href="#s1">1. Sentry vs logging: інша задача</a></li>
+      <li><a href="#s2">2. Вісім можливостей Sentry</a></li>
+      <li><a href="#s3">3. Як би це виглядало в цьому проєкті</a></li>
+      <li><a href="#s4">4. Топ-кейс 1: тихі падіння Celery-тасок</a></li>
+      <li><a href="#s5">5. Топ-кейс 2: регрес продуктивності солвера</a></li>
+      <li><a href="#s6">6. Топ-кейс 3: N+1-запити через APM</a></li>
+      <li><a href="#s7">7. Компроміси й обмеження</a></li>
+      <li><a href="#s8">8. Коли досить logging, а коли — Sentry</a></li>
+    </ol>
+    <div class="toc-group">Частина II — Питання зі співбесід</div>
+    <ol>
+      <li><a href="#catA">A. Sentry / error monitoring <span class="toc-count">5</span></a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Теорія й можливості</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Sentry vs logging: інша задача, не заміна</h2>
+      <p class="section-desc">Стандартне логування (<a href="11-logging.html">туторіал 11</a>) уже є в цьому проєкті. Sentry не замінює його — він вирішує іншу задачу, яку текстові логи вирішують погано.</p>
+
+      <p><code>logging</code> пише розрізнені текстові рядки в stdout чи файл: кожен виклик
+      <code>logger.error(...)</code> — окремий рядок, без жодного зв'язку з іншими рядками, крім
+      сусідства за часом. Щоб зрозуміти, що насправді сталось, треба вручну <code>grep</code>-ати
+      за timestamp і власноруч відновлювати картину: яка це помилка, чи траплялась вона раніше,
+      скільки разів, у кого саме з користувачів. Sentry вирішує саме це:</p>
+
+      <table>
+        <tr><th>Що саме</th><th><code>logging</code> (тур. 11)</th><th>Sentry</th></tr>
+        <tr>
+          <td>Групування</td>
+          <td>Немає — кожен рядок незалежний</td>
+          <td>Автоматичне: однакові помилки (за стек-трейсом) збираються в один Issue</td>
+        </tr>
+        <tr>
+          <td>Контекст падіння</td>
+          <td>Те, що явно передали в <code>logger.exception(...)</code></td>
+          <td>Повний стек-трейс + значення локальних змінних у кожному фреймі на момент краху</td>
+        </tr>
+        <tr>
+          <td>"Що сталось до цього"</td>
+          <td>Треба вручну шукати сусідні рядки логу за часом</td>
+          <td>Breadcrumbs — автоматична стрічка подій перед падінням (HTTP-запити, SQL-запити, попередні log-рядки)</td>
+        </tr>
+        <tr>
+          <td>Продуктивність запитів</td>
+          <td>Не показує</td>
+          <td>APM: транзакції, spans, флейм-графи повільних ділянок</td>
+        </tr>
+        <tr>
+          <td>Вартість впровадження</td>
+          <td>Вже вбудований у stdlib, безкоштовний</td>
+          <td>Окремий SDK + сервіс (SaaS або self-hosted), ціноутворення за обсягом подій</td>
+        </tr>
+      </table>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body">Найкоротше формулювання: <b>logging — для того, що ви свідомо
+        вирішили записати</b> (audit trail, "цей крок пройшов"); <b>Sentry — для того, чого ви
+        не очікували</b> (винятки, регреси, повільні запити), плюс автоматичне групування й
+        трасування продуктивності поверх цього. Хороша система моніторингу використовує обидва
+        одночасно, а не одне замість іншого.</div>
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Вісім можливостей Sentry</h2>
+      <p class="section-desc">Sentry давно переріс "просто трекер помилок" — нижче основні можливості платформи, коротко й без маркетингової води.</p>
+
+      <h3>Error tracking / групування помилок (issue grouping)</h3>
+      <p>Ядро продукту. Кожен захоплений виняток autoматично <b>групується</b> зі схожими за
+      стек-трейсом у один <i>Issue</i> — замість тисячі окремих подій ви бачите "цей самий баг
+      стався 340 разів за останню годину". Issue має стан (<code>unresolved</code> /
+      <code>resolved</code> / <code>ignored</code>), може бути призначений на конкретну людину,
+      і показує повний стек-трейс з локальними змінними в кожному фреймі — не лише "де впало",
+      а й "з якими саме значеннями".</p>
+
+      <h3>Performance Monitoring / APM</h3>
+      <p>Кожен HTTP-запит (чи Celery-таска) стає <i>transaction</i>, усередині якої SDK
+      автоматично створює <i>spans</i> — окремі вкладені відрізки часу для SQL-запитів,
+      зовнішніх HTTP-викликів, шаблонізації тощо. Результат — флейм-графік: видно не просто "цей
+      ендпоінт повільний", а <i>що саме</i> в ньому займає час. Зокрема, інтеграція з ORM
+      (<code>SqlalchemyIntegration</code>) показує N+1-запити прямо на цьому графіку: серію з
+      багатьох майже однакових SQL-spans поспіль усередині однієї транзакції — саме та проблема,
+      яку <a href="18-databases-interview-qa.html#catF">туторіал 18</a> розбирає в теорії, а
+      Sentry APM виявляє автоматично, без ручного читання логів запитів.</p>
+
+      <h3>Release Health і виявлення регресій</h3>
+      <p>Кожна подія прив'язується до конкретного <i>релізу</i> (версії/коміту), який був
+      задеплоєний у момент падіння. Це дозволяє відповісти на питання "ця помилка нова, чи вона
+      була завжди?" і "чи саме вчорашній деплой підняв частоту цього Issue?" — набагато точніше,
+      ніж співставляти timestamp логів із часом деплою вручну.</p>
+
+      <h3>Alerting</h3>
+      <table>
+        <tr><th>Тип алерту</th><th>Спрацьовує, коли</th></tr>
+        <tr><td><b>Issue alert</b></td><td>З'явився новий Issue, або частота існуючого різко зросла</td></tr>
+        <tr><td><b>Metric alert</b></td><td>Метрика перетнула поріг — наприклад, p95 latency чи error rate за останні N хвилин</td></tr>
+      </table>
+      <p>Обидва типи інтегруються зі Slack, PagerDuty, email чи вебхуком — команда дізнається про
+      проблему одразу, а не постфактум, коли клієнт напише скаргу.</p>
+
+      <h3>Cron Monitoring</h3>
+      <p>Для періодичних задач (Celery beat, cron) SDK надсилає "пінг" на початок і кінець
+      кожного запуску; якщо задача не запустилась вчасно чи не завершилась — Sentry алертить.
+      <span class="muted">У цьому конкретному проєкті ця можливість поки не застосовна:
+      <code>app/workers/celery_app.py</code> має явний коментар <code>TODO: no periodic (celery
+      beat) tasks exist yet</code> — жодних періодичних задач тут ще немає, усе виконується
+      або синхронно в запиті, або on-demand через <code>optimize_routes_task</code>/
+      <code>analyze_delivery_list_task</code>. Cron Monitoring стане корисним у момент, коли
+      з'явиться перша <code>beat_schedule</code>-задача, а не раніше.</span></p>
+
+      <h3>Profiling</h3>
+      <p>Континуальний семплюючий CPU-профайлер, що працює прямо в проді з мінімальними
+      накладними витратами. Природний наступний крок <i>після</i> того, як APM (вище) уже
+      вказав на конкретний повільний ендпоінт чи задачу — профайлер показує, яка саме функція чи
+      рядок коду з'їдає CPU всередині цього відрізку.</p>
+
+      <h3>Context, tags, user</h3>
+      <p>До кожної події можна прикріпити довільний контекст: <code>user_id</code>,
+      <code>organization_id</code>, версію API тощо. Для мультитенантного SaaS
+      (<a href="22-multi-tenancy-saas.html">туторіал 22</a>) це особливо цінно: замість "десь
+      комусь щось зламалось" — фільтр "показати всі помилки саме цієї організації за останній
+      тиждень", що напряму допомагає підтримці й дебагу конкретної скарги клієнта.</p>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Як би це виглядало в цьому проєкті</h2>
+      <p class="section-desc">Нижче — типова інтеграція <code>sentry-sdk</code> для FastAPI + Celery + SQLAlchemy, побудована на реальних іменах і файлах цього репозиторію. Сам SDK у проєкті не встановлений — це ілюстрація, як саме додати його, а не опис уже наявного коду.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">pyproject.toml — одна нова залежність</span></div>
+<pre><code>dependencies = [
+    "fastapi",
+    ...
+    "celery",
+    "redis",
+    "sentry-sdk[fastapi,celery,sqlalchemy]",
+]</code></pre></div>
+
+      <p><code>app/core/config.py</code> уже має патерн "порожній рядок = провайдер не
+      налаштований" для <code>GOOGLE_MAPS_API_KEY</code> і <code>GMAIL_ADDRESS</code>/
+      <code>GMAIL_APP_PASSWORD</code> — <code>SENTRY_DSN</code> природно лягає в той самий
+      патерн, і <code>ENVIRONMENT</code> вже готовий для параметра <code>environment=</code>:</p>
+
+      <div class="codecard"><div class="bar"><span class="path">app/core/config.py</span></div>
+<pre><code>    # Third-party APIs
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4.1-mini"
+    GOOGLE_MAPS_API_KEY: str = ""
+
+    # Monitoring — empty means "Sentry not configured", same pattern as
+    # the email/Google Maps providers above.
+    SENTRY_DSN: str = ""</code></pre></div>
+
+      <p>Ініціалізація — до створення застосунку, на початку <code>app/main.py</code>, перед
+      викликом <code>create_app()</code>:</p>
+
+      <div class="codecard"><div class="bar"><span class="path">app/main.py</span></div>
+<pre><code>import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.celery import CeleryIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+settings = get_settings()
+
+if settings.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.ENVIRONMENT,
+        integrations=[FastApiIntegration(), CeleryIntegration(), SqlalchemyIntegration()],
+        traces_sample_rate=0.2,       <span class="cmt"># 20% транзакцій — компроміс видимості й вартості, розділ 07</span>
+        send_default_pii=False,       <span class="cmt"># не надсилати IP/cookies за замовчуванням</span>
+        before_send=_scrub_sentry_event,
+    )</code></pre></div>
+
+      <p class="muted">Точні назви класів інтеграцій (<code>FastApiIntegration</code>,
+      <code>CeleryIntegration</code>, <code>SqlalchemyIntegration</code>) і параметр
+      <code>traces_sample_rate</code> — стандартне, стабільне API <code>sentry-sdk</code>, але
+      воно не перевірене запуском саме в цьому репозиторії (пакет не встановлений) — перед
+      реальним впровадженням варто звірити з актуальною версією SDK в офіційній документації.</p>
+
+      <div class="callout warn">
+        <div class="ic">🔒</div>
+        <div class="body"><b><code>before_send</code> — обов'язковий, не опційний, хук.</b>
+        Без нього є реальний ризик відправити в Sentry секрети чи PII: значення локальних
+        змінних у стек-трейсі можуть містити <code>JWT_SECRET</code>, пароль із форми логіну,
+        <code>OPENAI_API_KEY</code> з об'єкта налаштувань, чи персональні дані користувача з
+        тіла запиту. <code>before_send(event, hint)</code> викликається перед кожним
+        відправленням і повинен вирізати такі поля з <code>event</code> (чи повернути
+        <code>None</code>, щоб не відправляти подію взагалі) — та сама дисципліна "не логувати
+        секрети", яка вже застосована в цьому проєкті до rate-limiting і auth-коду.</div>
+      </div>
+
+      <p><b>Взаємодія з наявними обробниками помилок.</b>
+      <code>app/core/error_handlers.py</code> уже централізує перетворення винятків у чисту
+      JSON-відповідь клієнту (<code>register_exception_handlers</code>) — Sentry цьому не
+      заважає й нічого в HTTP-відповіді не змінює: він працює <i>паралельно</i>, лише для
+      захоплення події на власному сервері. Для непередбачених помилок, що долітають до
+      <code>handle_unexpected_error</code> (catch-all на <code>Exception</code>, який уже робить
+      <code>logger.exception(...)</code>), типова поведінка Sentry FastAPI-integration —
+      автоматично захопити той самий виняток без додаткового коду. А для <i>очікуваного</i>,
+      уже обробленого винятку на кшталт <code>QuotaExceededError</code> (в нього вже є власний
+      handler, що повертає чистий 403 — Sentry автоматичне захоплення тут не спрацює, бо
+      виняток нікуди "непередбачено" не долітає) можна свідомо додати ручний виклик, якщо
+      важлива видимість частоти таких подій:</p>
+
+      <div class="codecard"><div class="bar"><span class="path">app/core/error_handlers.py</span></div>
+<pre><code>    @app.exception_handler(QuotaExceededError)
+    async def handle_quota_exceeded(request: Request, exc: QuotaExceededError) -> JSONResponse:
+        sentry_sdk.capture_exception(exc)   <span class="cmt"># видимість тренду квот, без зміни HTTP-відповіді нижче</span>
+        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"detail": str(exc)})</code></pre></div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Топ-кейси саме для цього бекенду</div><div class="line"></div></div>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Топ-кейс 1: тихі падіння Celery-тасок</h2>
+      <p class="section-desc">Найважливіший кейс для цього конкретного проєкту — і причина, чому Sentry тут цінніший за звичайне логування навіть на невеликому масштабі.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">app/workers/tasks.py</span></div>
+<pre><code>@celery_app.task(name="optimize_routes_task")
+def optimize_routes_task(route_request_id: str) -> None:
+    <span class="cmt">"""Run route optimization asynchronously and persist the result."""</span>
+    raise NotImplementedError
+
+
+@celery_app.task(name="analyze_delivery_list_task")
+def analyze_delivery_list_task(import_batch_id: str) -> None:
+    <span class="cmt">"""Run LLM-based delivery list analysis asynchronously."""</span>
+    raise NotImplementedError</code></pre></div>
+
+      <p>Сьогодні обидві задачі — заглушки. Але коли їх реалізують, будь-яка необроблена помилка
+      всередині <code>@celery_app.task</code> опиниться в принципово іншій ситуації, ніж
+      помилка в HTTP-запиті: <b>немає жодного HTTP-клієнта, який побачить 500</b> — фоновий
+      воркер просто залогує traceback у свій stdout (якщо хтось туди дивиться <i>саме зараз</i>)
+      і мовчки перейде до наступної задачі з черги. Користувач, що ініціював запит, ніколи не
+      дізнається, що його маршрут не був оптимізований — доки не поскаржиться сам.</p>
+
+      <div class="callout bad">
+        <div class="ic">🕳️</div>
+        <div class="body"><b>Це саме та "тиха відмова", проти якої безсилий stdlib
+        <code>logging</code>.</b> Рядок у логах існує, але його ніхто не читає в реальному часі
+        — потрібен хтось, хто активно моніторить stdout воркера 24/7, щоб узагалі помітити
+        проблему. <code>CeleryIntegration</code> вирішує це без жодного додаткового коду в
+        самих тасках: кожен необроблений виняток усередині <code>@celery_app.task</code>
+        автоматично захоплюється, групується в Issue з повним контекстом (аргументи таски,
+        <code>route_request_id</code>/<code>import_batch_id</code>, скільки разів вона
+        ретраїлась) — і, за налаштованим alert-правилом (розділ 02), одразу летить у Slack.</div>
+      </div>
+
+      <p class="muted">Пов'язано з ідемпотентністю фонових задач, уже розібраною для черг
+      повідомлень загалом у <a href="24-senior-interview-qa.html#catH">туторіалі 24, категорія
+      H</a>: видимість падінь із Sentry — необхідна, але не достатня умова надійності; сама
+      задача все одно повинна безпечно перезапускатись повторно.</p>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Топ-кейс 2: регрес продуктивності солвера</h2>
+      <p class="section-desc">Приклад Performance Monitoring, а не Error tracking — тут узагалі немає винятку, який стався, лише повільна ділянка, яку варто помітити <i>до</i> скарг користувачів.</p>
+
+      <p><code>app/services/route_optimizer/solver.py</code> задає солверу жорсткий ліміт
+      <code>time_limit.FromSeconds(5)</code>, а <code>app/services/route_optimizer/service.py</code>
+      викликає <code>solver.solve()</code> синхронно всередині <code>async def optimize()</code>
+      — уже розібрано як bulkhead-проблему в <a href="25-system-design.html#s9">туторіалі 25,
+      розділ 09</a>. З точки зору APM це означає: якщо середній час розв'язання почне повзти
+      вгору (більше зупинок на маршрут, складніші обмеження часових вікон), кожен запит на
+      оптимізацію все частіше впиратиметься в цю 5-секундну стелю — і user experience
+      деградуватиме задовго до того, як хтось напише "чому все зависає".</p>
+
+      <div class="codecard"><div class="bar"><span class="path">app/services/route_optimizer/solver.py — custom span</span></div>
+<pre><code>import sentry_sdk
+
+def solve(self) -> SolveResult:
+    with sentry_sdk.start_span(op="solver.solve", description="OR-Tools VRP solve") as span:
+        result = self._run_solver()
+        span.set_data("stops_count", len(self._stops))
+        span.set_data("hit_time_limit", result.hit_time_limit)
+        return result</code></pre></div>
+
+      <p>Такий custom span з'являється у флейм-графіку транзакції поруч зі звичайними
+      автоматично зібраними SQL-spans (розділ 06 нижче) — і дозволяє поставити metric alert
+      саме на p95 тривалості цього конкретного span'а: "алертити, коли p95 часу солвера
+      наближається до 5 секунд" — це <i>leading indicator</i> проблеми масштабування (той самий
+      розрахунок капасіті, що й у <a href="25-system-design.html#s11">туторіалі 25, розділ
+      11</a>), а не її наслідок.</p>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Топ-кейс 3: N+1-запити через APM</h2>
+      <p class="section-desc">Коротший кейс — той самий N+1, що вже розібраний в теорії, але тепер з точки зору "як його узагалі помітити на проді", а не лише "як його полагодити".</p>
+
+      <p><a href="18-databases-interview-qa.html#catF">Туторіал 18</a> вже пояснює, <i>чому</i>
+      N+1 виникає непомітно через ORM, і <i>як</i> його лагодити (<code>selectinload</code> /
+      <code>joinedload</code>). Проблема цієї теорії окремо від практики: у звичайному коді N+1
+      не кидає жодного винятку — застосунок просто працює повільніше, і без цілеспрямованого
+      профілювання цей факт легко пропустити, доки таблиця не виросте настільки, що стане
+      відчутно.</p>
+
+      <p><code>SqlalchemyIntegration</code> вирішує це автоматично: кожен SQL-запит стає
+      окремим span усередині транзакції ендпоінта, і серія з десятків майже ідентичних SQL-spans
+      поспіль <i>візуально</i> впадає в очі на флейм-графіку транзакції — не треба вручну
+      рахувати запити в логах чи здогадуватись, що саме повільне. Sentry навіть має вбудований
+      детектор саме цього патерну ("N+1 API Call"/"N+1 DB Query" performance issue), який
+      автоматично створює окремий Issue, коли такий патерн трапляється в проді регулярно.</p>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Компроміси й обмеження</h2>
+      <p class="section-desc">Sentry не безкоштовний і не нейтральний за замовчуванням — варто свідомо керувати трьома речами.</p>
+
+      <table>
+        <tr><th>Компроміс</th><th>Що робити</th></tr>
+        <tr>
+          <td><b>Вартість</b> — ціноутворення за обсягом подій (error events + performance
+          transactions)</td>
+          <td><code>traces_sample_rate</code> контролює частку транзакцій, що взагалі
+          трасуються (не всі 100% запитів потребують повного APM); <code>sample_rate</code> —
+          аналогічно для помилок при дуже високому трафіку однотипних збоїв</td>
+        </tr>
+        <tr>
+          <td><b>Шум</b> — очікувані/некритичні винятки засмічують Issue-стрічку</td>
+          <td><code>ignore_errors</code> для явно очікуваних типів винятків (напр.
+          <code>RequestValidationError</code> — уже й так чисто оброблений у
+          <code>error_handlers.py</code>) — інакше кожна помилка валідації форми на фронтенді
+          створює шум, що маскує реальні проблеми</td>
+        </tr>
+        <tr>
+          <td><b>Витік PII/секретів</b></td>
+          <td><code>before_send</code> хук (розділ 03) + <code>send_default_pii=False</code> —
+          без цього значення локальних змінних у стек-трейсі можуть потрапити на сторонній
+          сервер</td>
+        </tr>
+        <tr>
+          <td><b>Накладні витрати на продуктивність</b></td>
+          <td>Незначні при розумному <code>traces_sample_rate</code>, але не нульові —
+          профайлер (розділ 02) додає трохи більше, ніж просте захоплення помилок</td>
+        </tr>
+        <tr>
+          <td><b>SaaS vs self-hosted</b></td>
+          <td>SaaS (sentry.io) — найшвидший старт, дані йдуть на сторонній сервер;
+          self-hosted — повний контроль над даними, але власна інфраструктура для підтримки</td>
+        </tr>
+      </table>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Коли досить <code>logging</code>, а коли потрібен Sentry</h2>
+      <p class="section-desc">Практичний чек-лист вибору, що підсумовує розділ 01.</p>
+
+      <ul>
+        <li>Потрібен audit trail свідомих подій ("користувач X увійшов", "квота списана") →
+        <code>logging</code> (<a href="11-logging.html">туторіал 11</a>) цілком достатній.</li>
+        <li>Потрібно знати, <i>що саме</i> й <i>як часто</i> ламається непередбачено, без
+        ручного читання логів → Sentry error tracking.</li>
+        <li>Кілька людей у команді мають бачити один і той самий баг як один Issue, а не
+        окремо шукати його кожен у своїх логах → Sentry (групування, розділ 02).</li>
+        <li>Потрібно знайти, <i>яка саме</i> ділянка коду повільна, а не просто "ендпоінт X
+        іноді гальмує" → Sentry APM (розділи 05-06).</li>
+        <li>Команда з одного розробника, ранній етап проєкту, невеликий трафік, ще немає
+        production-користувачів, чиї скарги критичні → <code>logging</code> + health check
+        (<a href="03-scaling.html">туторіал 3</a>) — цілком свідомий, прийнятний рівень
+        інвестицій в observability, той самий висновок, що вже зроблено в
+        <a href="23-testing-cicd-monitoring-cloud.html#s16">туторіалі 23</a>.</li>
+      </ul>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Це не "або-або".</b> Sentry не замінює <code>logging</code> —
+        типова зріла конфігурація тримає обидва: <code>logging</code> для явного audit trail і
+        структурованих подій (розділи 8-9 <a href="11-logging.html">туторіалу 11</a>), Sentry —
+        для всього непередбаченого поверх нього.</div>
+      </div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · Питання зі співбесід</div><div class="line"></div></div>
+
+    <div class="legend">
+      <span><span class="dot" style="background:var(--info)"></span>База — має знати кожен middle+</span>
+      <span><span class="dot" style="background:var(--interview)"></span>Пастка — типове "trick question"</span>
+      <span><span class="dot" style="background:var(--fun)"></span>Просунуте — справжній senior-рівень</span>
+    </div>
+
+    <section id="catA">
+      <div class="cat-head"><div class="cat-letter">A</div><h2 style="margin:0;">Sentry / error monitoring</h2></div>
+      <p class="section-desc">П'ять питань, які регулярно спливають, щойно в резюме чи описі проєкту згадується моніторинг помилок.</p>
+
+      <details class="qa">
+        <summary><span class="qnum">01</span><span class="difficulty core">База</span>Як Sentry групує схожі помилки (fingerprinting)?</summary>
+        <div class="a">
+          <p>За замовчуванням Sentry будує "відбиток" (fingerprint) події на основі стек-трейсу
+          — типу винятку, послідовності функцій/модулів у ньому, і структури, а не конкретних
+          значень (наприклад, конкретний <code>user_id</code> у повідомленні помилки не впливає
+          на групування). Дві події з ідентичним "структурним" стек-трейсом падають в один
+          Issue, навіть якщо трапились у різний час і з різними вхідними даними. Fingerprint
+          можна перевизначити вручну (<code>set_fingerprint(...)</code>), якщо дефолтна логіка
+          помилково розділяє те, що насправді одна й та сама проблема, або навпаки — об'єднує
+          різні.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">02</span><span class="difficulty core">База</span>Чим breadcrumbs відрізняються від звичайних логів?</summary>
+        <div class="a">
+          <p>Breadcrumb — це запис у стрічці подій, що передували конкретній помилці, і
+          показується <i>прикріплено до цього конкретного Issue</i>, а не в окремому суцільному
+          потоці, як звичайний лог-файл. SDK автоматично додає breadcrumbs для HTTP-запитів,
+          SQL-запитів, навігації, і навіть звичайних <code>logging</code>-викликів (якщо
+          <code>LoggingIntegration</code> увімкнена) — тобто вони будуються <i>з тих самих</i>
+          логів, які й так генеруються, просто автоматично прив'язуються до конкретного краху й
+          показуються як його передісторія, а не вимагають ручного grep за timestamp.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">03</span><span class="difficulty adv">Просунуте</span>Як контролювати вартість/шум при високому трафіку?</summary>
+        <div class="a">
+          <p>Три незалежні важелі, які варто комбінувати: <b><code>traces_sample_rate</code></b>
+          — трасувати не всі 100% транзакцій, а задану частку (розділ 07); <b><code>sample_rate</code></b>
+          — аналогічно для events, коли один і той самий тип помилки трапляється тисячі разів на
+          хвилину; <b><code>ignore_errors</code></b> — повністю виключити явно очікувані,
+          некритичні типи винятків зі збору; <b><code>before_send</code></b> — точковий фільтр
+          "не відправляти цю конкретну подію", коли перших трьох механізмів недостатньо
+          (наприклад, ігнорувати помилки від відомих сканерів-ботів за User-Agent).</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">04</span><span class="difficulty core">База</span>Чим error tracking відрізняється від APM/tracing?</summary>
+        <div class="a">
+          <p><b>Error tracking</b> реагує на подію "щось впало" — виняток, необроблений або
+          явно захоплений. <b>APM/tracing</b> вимірює <i>час</i> — скільки тривала транзакція і
+          кожен її span, незалежно від того, чи стався виняток узагалі. Це доповнюючі, а не
+          конкуруючі системи: повільний, але успішний запит не згенерує жодної помилки, проте
+          APM усе одно покаже його як проблему; аварійний краш узагалі не має тривалості, яку
+          варто аналізувати — важливий сам факт і контекст падіння.</p>
+        </div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="qnum">05</span><span class="difficulty trick">Пастка</span>Як не злити секрети чи PII у Sentry?</summary>
+        <div class="a">
+          <p>Найпоширеніша помилка — увімкнути Sentry "за замовчуванням" і не подумати про
+          <code>before_send</code>: стек-трейс за дизайном показує значення локальних змінних у
+          кожному фреймі, а це можуть бути паролі з тіла запиту, JWT-токени, ключі
+          зовнішніх API з об'єкта налаштувань. Обов'язкові кроки: <code>send_default_pii=False</code>
+          (не відправляти IP-адреси й cookies автоматично); власний <code>before_send</code>
+          хук, що явно вирізає відомі чутливі поля з <code>event</code> перед відправленням;
+          і уникати логування "просто всього об'єкта запиту/налаштувань" у повідомленнях
+          винятків — та сама дисципліна, що вже застосована до логів і повідомлень про помилки
+          в цьому проєкті (<a href="02-async-and-security.html">туторіал 2</a>).</p>
+        </div>
+      </details>
+    </section>
+
+    <div class="card">
+      Цей туторіал доповнює <a href="23-testing-cicd-monitoring-cloud.html#s16">туторіал 23</a>
+      (розділ "Чого чесно немає") і <a href="25-system-design.html#s9">туторіал 25</a> (патерни
+      надійності) — там Sentry згадується побіжно як частина ширшої картини observability, тут —
+      детально, саме про нього. Якщо контекст навколо (Celery-черги, N+1, мультитенантність)
+      виявився незнайомим — почніть з <a href="11-logging.html">туторіалу 11</a>,
+      <a href="18-databases-interview-qa.html">18</a> чи <a href="22-multi-tenancy-saas.html">22</a>.
+    </div>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Можливості описані за загальновідомою поведінкою Sentry SDK; де можливо, приклади й факти про
+  код прив'язані до реального стану репозиторію <code>ai-delivery-planner-backend</code>
+  (Sentry в самому проєкті поки не встановлений).
+</footer>
+
+</body>
+</html>
