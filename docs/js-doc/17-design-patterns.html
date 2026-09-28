@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>17. Патерни проєктування — JS Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{max-width:1180px; margin:0 auto; padding:14px 24px;}
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--fun); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:780px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+
+  article section{margin-bottom:44px; scroll-margin-top:80px;}
+  .cat-head{display:flex; align-items:center; gap:12px; margin-bottom:4px;}
+  .cat-letter{
+    width:34px; height:34px; border-radius:10px; background:var(--accent-soft); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;
+  }
+  article h2{font-size:22px; margin:0; letter-spacing:-.01em;}
+  article p{color:var(--fg); margin:10px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:16px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+
+  .legend{display:flex; gap:14px; flex-wrap:wrap; margin:16px 0 22px; font-size:12.8px; color:var(--fg-muted);}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  section h3{font-size:16px; margin:26px 0 8px;}
+  .codecard{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:14px 0; background:var(--code-bg);}
+  .codecard .bar{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%); border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);}
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre; font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-def{color:#ffc66d;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+  article p a, article td a, figcaption a, .callout a{color:var(--accent);}
+  .level-divider{margin:40px 0 -8px; font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--fun);}
+  .level-divider::after{content:""; display:block; height:1px; background:var(--border); margin-top:8px;}
+  ol li.toc-group{list-style:none; margin:10px 0 2px -14px; font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--fg-muted);}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">📚 JS Interview Prep <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">JS Doc · Категорія 17</div>
+  <h1>Патерни проєктування: від функції до архітектури</h1>
+  <p class="lead">
+    Дев'ятнадцять патернів у порядку зростання масштабу: від інкапсуляції в одному модулі до
+    структури всього застосунку. Кожен пояснено через <b>проблему</b>, яку він вирішує, з
+    ідіоматичним JS-прикладом і вказівкою, де ви його вже використовуєте щодня.
+  </p>
+  <div class="pills">
+    <span class="pill">🟣 Від простого до архітектурного</span>
+    <span class="pill">🔴 Часте питання на співбесідах</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 30 питань Senior</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="00-methodology.html">0. Методологія</a>
+        <a href="01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="02-this.html">2. this</a>
+        <a href="03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="09-react-deep-dive.html">9. React углиб</a>
+        <a href="10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="16-ai-tools.html">16. AI-інструменти</a>
+        <a href="17-design-patterns.html" class="active">17. Патерни проєктування</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li class="toc-group">Базові</li>
+      <li><a href="#t1">1. Module</a></li>
+      <li><a href="#t2">2. Factory</a></li>
+      <li><a href="#t3">3. Singleton</a></li>
+      <li class="toc-group">Структурні</li>
+      <li><a href="#t4">4. Decorator</a></li>
+      <li><a href="#t5">5. Adapter і Facade</a></li>
+      <li><a href="#t6">6. Proxy</a></li>
+      <li class="toc-group">Поведінкові</li>
+      <li><a href="#t7">7. Observer і Pub/Sub</a></li>
+      <li><a href="#t8">8. Strategy</a></li>
+      <li><a href="#t9">9. Command</a></li>
+      <li><a href="#t10">10. Iterator</a></li>
+      <li><a href="#t11">11. Middleware</a></li>
+      <li><a href="#t12">12. State Machine</a></li>
+      <li class="toc-group">React</li>
+      <li><a href="#t13">13. Патерни компонентів</a></li>
+      <li class="toc-group">Архітектурні</li>
+      <li><a href="#t14">14. Dependency Injection</a></li>
+      <li><a href="#t15">15. API-шар: Repository</a></li>
+      <li><a href="#t16">16. Flux, MVC, MVVM</a></li>
+      <li><a href="#t17">17. Шари і FSD</a></li>
+      <li><a href="#t18">18. Micro-frontends</a></li>
+      <li><a href="#t19">19. Шпаргалка</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="level-divider">Рівень 1 · Базові патерни мови</div>
+
+    <section id="t1">
+      <div class="topic-head"><span class="tag notes">🟣</span><h2>Module — інкапсуляція</h2></div>
+      <p><b>Проблема:</b> усе, що лежить у глобальній області, може змінити будь-який код, і
+      незрозуміло, хто саме це зробив. <b>Рішення:</b> приховати стан усередині модуля й віддати
+      назовні лише функції, через які з ним можна працювати.</p>
+      <p>У сучасному JS кожен ES-модуль уже є «Module-патерном»: усе, що не <code>export</code>,
+      недоступне ззовні. Раніше те саме робили через IIFE і замикання, а в класах для цього є
+      приватні поля <code>#field</code>.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">cart.js</span></div>
+        <pre><code>// items не експортується → ніхто ззовні не може його зіпсувати
+const items = new Map();
+
+export function add(id, qty = 1) {
+  items.set(id, (items.get(id) ?? 0) + qty);
+}
+
+export function total(prices) {
+  let sum = 0;
+  for (const [id, qty] of items) sum += prices[id] * qty;
+  return sum;
+}</code></pre>
+      </div>
+      <p><b>Коли:</b> завжди, це базова одиниця організації коду. <b>Пастка:</b> стан на рівні
+      модуля живе, поки живе застосунок. Про наслідки цього — у темі 3 (Singleton).</p>
+    </section>
+
+    <section id="t2">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>Factory — функція, що створює об'єкти</h2></div>
+      <p><b>Проблема:</b> код, який створює об'єкт, не повинен знати всіх деталей його побудови
+      і того, яку саме реалізацію обрати. <b>Рішення:</b> звичайна функція, яка приймає
+      налаштування й повертає готовий об'єкт.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">logger.js — factory function</span></div>
+        <pre><code>export function createLogger({ level = 'info', prefix = '' } = {}) {
+  const order = ['debug', 'info', 'warn', 'error'];
+  const enabled = l => order.indexOf(l) >= order.indexOf(level);
+  const make = l => (...args) => enabled(l) && console[l](prefix, ...args);
+
+  return { debug: make('debug'), info: make('info'), warn: make('warn'), error: make('error') };
+}
+
+const log = createLogger({ level: 'warn', prefix: '[api]' });
+log.info('не виведеться');   // нижче за поріг warn
+log.error('виведеться');</code></pre>
+      </div>
+      <p><b>Factory vs <code>class</code>:</b> фабрика не потребує <code>new</code>, не має проблем
+      із втраченим <code>this</code> (див. <a href="02-this.html">туторіал 2</a>), а приватність дає
+      замикання. Ціна — кожен екземпляр отримує власні копії функцій, а не спільні з прототипу.
+      Для тисяч об'єктів клас економніший, для сервісів і конфігурованих утиліт зручніша фабрика.
+      Коротші приклади Factory, Builder і Prototype є в
+      <a href="04-algorithms-patterns.html#t9">туторіалі 4</a>.</p>
+    </section>
+
+    <section id="t3">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>Singleton — один екземпляр на весь застосунок</h2></div>
+      <p><b>Проблема:</b> деякі речі мають існувати в одному екземплярі: API-клієнт, WebSocket-з'єднання,
+      конфіг. <b>Рішення в JS:</b> окремий клас із <code>getInstance()</code> зазвичай не потрібен.
+      ES-модуль виконується <b>один раз</b> і кешується, тому експортований об'єкт уже є singleton.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">api-client.js</span></div>
+        <pre><code>class ApiClient {
+  constructor(baseUrl) { this.baseUrl = baseUrl; }
+  get(path) { return fetch(this.baseUrl + path).then(r => r.json()); }
+}
+
+// усі import { api } отримують той самий об'єкт
+export const api = new ApiClient(import.meta.env.VITE_API_URL);</code></pre>
+      </div>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Дві реальні пастки.</b> (1) <b>Тести:</b> стан singleton переходить
+        між тестами, і вони починають залежати від порядку запуску. (2) <b>SSR (Next.js):</b> на сервері
+        модуль один на <i>всі запити всіх користувачів</i>. Якщо покласти в модульну змінну
+        «поточного користувача», один клієнт побачить дані іншого. На сервері стан на запит
+        створюють для кожного запиту окремо, а не в модулі.</div>
+      </div>
+    </section>
+
+    <div class="level-divider">Рівень 2 · Структурні: обгортки навколо коду</div>
+
+    <section id="t4">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>Decorator — додати поведінку, не змінюючи функцію</h2></div>
+      <p><b>Проблема:</b> повтор запиту, кешування, логування потрібні багатьом функціям, і
+      копіювати цю логіку в кожну погано. <b>Рішення:</b> функція вищого порядку, яка приймає
+      функцію й повертає нову з тим самим інтерфейсом, але з додатковою поведінкою.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">decorators.js</span></div>
+        <pre><code>export function withRetry(fn, { retries = 3, delay = 300 } = {}) {
+  return async function (...args) {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await fn.apply(this, args);
+      } catch (err) {
+        if (attempt >= retries) throw err;
+        await new Promise(r => setTimeout(r, delay * 2 ** attempt)); // 300, 600, 1200 мс
+      }
+    }
+  };
+}
+
+export function memoize(fn) {
+  const cache = new Map();
+  return arg => {
+    if (!cache.has(arg)) cache.set(arg, fn(arg));
+    return cache.get(arg);
+  };
+}
+
+const fetchUser = id => fetch(`/api/users/${id}`).then(r => r.json());
+// порядок має значення: кешуємо вже «надійну» версію
+export const getUser = memoize(withRetry(fetchUser));</code></pre>
+      </div>
+      <p><b>Порядок обгорток важливий.</b> Якщо зробити навпаки, <code>withRetry(memoize(fetchUser))</code>,
+      memoize закешує перший <i>відхилений</i> Promise, і всі повторні спроби отримають ту саму помилку
+      з кешу. Це гарне уточнювальне питання на співбесіді.</p>
+      <p>Той самий патерн зустрічається під іншими назвами: <b>HOC</b> у React
+      (<code>withAuth(Component)</code>), синтаксис <code>@decorator</code> у TypeScript/NestJS/Angular
+      (TC39 decorators), interceptors в axios.</p>
+    </section>
+
+    <section id="t5">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>Adapter і Facade — підлаштувати й спростити</h2></div>
+      <p><b>Adapter</b> перетворює чужий інтерфейс на той, якого очікує ваш код. Найчастіший приклад
+      на фронтенді — DTO з бекенду: <code>snake_case</code>, дати рядками, вкладені поля.
+      Адаптер робить це перетворення один раз на межі, і компоненти ніколи не бачать сирого формату API.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">route.adapter.js</span></div>
+        <pre><code>export function toRoute(dto) {
+  return {
+    id: dto.route_id,
+    stops: dto.stops.map(s => ({ lat: s.latitude, lng: s.longitude })),
+    createdAt: new Date(dto.created_at),
+  };
+}</code></pre>
+      </div>
+      <p><b>Facade</b> ховає складну підсистему за простим входом. Замість того щоб у кожному
+      компоненті писати <code>fetch</code> + токен + JSON + обробку помилок, є один об'єкт <code>http</code>:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">http.js — facade над fetch</span></div>
+        <pre><code>export const http = {
+  async request(path, { method = 'GET', body } = {}) {
+    const res = await fetch(BASE_URL + path, {
+      method,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+      body: body &amp;&amp; JSON.stringify(body),
+    });
+    if (!res.ok) throw new HttpError(res.status, await res.text());
+    return res.status === 204 ? null : res.json();
+  },
+  get: path =&gt; http.request(path),
+  post: (path, body) =&gt; http.request(path, { method: 'POST', body }),
+};</code></pre>
+      </div>
+      <p>Чотири «обгорткові» патерни легко сплутати. Різниця — у тому, що відбувається з інтерфейсом:</p>
+      <table>
+        <tr><th>Патерн</th><th>Інтерфейс</th><th>Навіщо</th></tr>
+        <tr><td><b>Adapter</b></td><td>Змінює на інший, очікуваний</td><td>Сумісність: чужий формат → свій</td></tr>
+        <tr><td><b>Facade</b></td><td>Новий, простіший, над кількома частинами</td><td>Сховати складність підсистеми</td></tr>
+        <tr><td><b>Decorator</b></td><td>Той самий</td><td>Додати поведінку (retry, кеш, лог)</td></tr>
+        <tr><td><b>Proxy</b></td><td>Той самий</td><td>Контролювати доступ (валідація, lazy, реактивність)</td></tr>
+      </table>
+    </section>
+
+    <section id="t6">
+      <div class="topic-head"><span class="tag notes">🟣</span><h2>Proxy — перехопити доступ до об'єкта</h2></div>
+      <p><b>Проблема:</b> потрібно реагувати на кожне читання чи запис властивості: валідувати,
+      логувати, відстежувати зміни. <b>Рішення:</b> вбудований <code>Proxy</code> ставить «пастки»
+      (<code>get</code>, <code>set</code>, <code>has</code>, <code>deleteProperty</code>…) перед
+      справжнім об'єктом.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">validated.js</span></div>
+        <pre><code>function validated(target, rules) {
+  return new Proxy(target, {
+    set(obj, key, value) {
+      if (key in rules &amp;&amp; !rules[key](value)) {
+        throw new TypeError(`Invalid ${String(key)}: ${value}`);
+      }
+      obj[key] = value;
+      return true; // false у strict mode кине TypeError
+    },
+  });
+}
+
+const settings = validated({}, { volume: v =&gt; v &gt;= 0 &amp;&amp; v &lt;= 100 });
+settings.volume = 50;  // ok
+settings.volume = 150; // TypeError: Invalid volume: 150</code></pre>
+      </div>
+      <p><b>Де працює під капотом:</b> реактивність Vue 3 і MobX (перехоплюють <code>get</code>, щоб
+      знати, хто що читає, і <code>set</code>, щоб перерендерити), Immer (пише «мутації» в чернетку
+      й будує з них новий імутабельний об'єкт). <b>Ціна:</b> кожен доступ проходить через пастку, тож
+      це повільніше, а <code>proxy !== target</code>, що ламає порівняння за посиланням.</p>
+    </section>
+
+    <div class="level-divider">Рівень 3 · Поведінкові: як частини спілкуються</div>
+
+    <section id="t7">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>Observer і Pub/Sub — підписка на події</h2></div>
+      <p><b>Проблема:</b> коли щось змінилось, про це мають дізнатися кілька інших частин, а
+      джерело не повинно знати їх поіменно. <b>Рішення:</b> підписники реєструються, джерело
+      сповіщає всіх зареєстрованих.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">emitter.js</span></div>
+        <pre><code>export class Emitter {
+  #handlers = new Map();
+
+  on(event, fn) {
+    if (!this.#handlers.has(event)) this.#handlers.set(event, new Set());
+    this.#handlers.get(event).add(fn);
+    return () =&gt; this.#handlers.get(event).delete(fn); // функція відписки
+  }
+
+  emit(event, payload) {
+    this.#handlers.get(event)?.forEach(fn =&gt; fn(payload));
+  }
+}
+
+// у React: відписка обов'язково в cleanup, інакше витік пам'яті
+useEffect(() =&gt; bus.on('order:paid', refresh), []);</code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 700 225" role="img" aria-label="Observer: subject напряму тримає список підписників. Pub/Sub: видавець шле в брокер-канал, а брокер доставляє підписникам, і вони не знають одне про одного">
+          <defs>
+            <marker id="obs-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+            <marker id="obs-arrow-acc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+            </marker>
+          </defs>
+
+          <text x="20" y="18" font-size="12.5" font-weight="700" fill="var(--accent)">Observer</text>
+          <rect x="20" y="78" width="130" height="50" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+          <text x="85" y="100" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">Subject</text>
+          <text x="85" y="115" text-anchor="middle" font-size="9" fill="var(--fg-muted)">тримає список</text>
+          <rect x="215" y="35" width="115" height="36" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="272" y="57" text-anchor="middle" font-size="10.5" fill="currentColor">Observer A</text>
+          <rect x="215" y="85" width="115" height="36" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="272" y="107" text-anchor="middle" font-size="10.5" fill="currentColor">Observer B</text>
+          <rect x="215" y="135" width="115" height="36" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="272" y="157" text-anchor="middle" font-size="10.5" fill="currentColor">Observer C</text>
+          <line x1="150" y1="95" x2="215" y2="55" stroke="var(--accent)" stroke-width="1.3" marker-end="url(#obs-arrow-acc)"/>
+          <line x1="150" y1="103" x2="215" y2="103" stroke="var(--accent)" stroke-width="1.3" marker-end="url(#obs-arrow-acc)"/>
+          <line x1="150" y1="111" x2="215" y2="151" stroke="var(--accent)" stroke-width="1.3" marker-end="url(#obs-arrow-acc)"/>
+          <text x="175" y="200" text-anchor="middle" font-size="9.5" font-style="italic" fill="var(--fg-muted)">subject знає кожного підписника напряму</text>
+
+          <line x1="355" y1="15" x2="355" y2="210" stroke="var(--border)" stroke-width="1.2"/>
+
+          <text x="375" y="18" font-size="12.5" font-weight="700" fill="var(--accent)">Pub/Sub</text>
+          <rect x="375" y="80" width="85" height="46" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="417" y="101" text-anchor="middle" font-size="10.5" fill="currentColor">Publisher</text>
+          <text x="417" y="115" text-anchor="middle" font-size="9" fill="var(--fg-muted)">emit</text>
+          <rect x="485" y="70" width="95" height="66" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+          <text x="532" y="94" text-anchor="middle" font-size="10.5" font-weight="700" fill="currentColor">Брокер</text>
+          <text x="532" y="109" text-anchor="middle" font-size="9" fill="var(--fg-muted)">канал</text>
+          <text x="532" y="122" text-anchor="middle" font-size="9" fill="var(--fg-muted)">"order:paid"</text>
+          <line x1="460" y1="103" x2="485" y2="103" stroke="currentColor" stroke-width="1.2" marker-end="url(#obs-arrow)"/>
+          <rect x="605" y="35" width="80" height="36" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="645" y="57" text-anchor="middle" font-size="10" fill="currentColor">Sub A</text>
+          <rect x="605" y="85" width="80" height="36" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="645" y="107" text-anchor="middle" font-size="10" fill="currentColor">Sub B</text>
+          <rect x="605" y="135" width="80" height="36" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="645" y="157" text-anchor="middle" font-size="10" fill="currentColor">Sub C</text>
+          <line x1="580" y1="92" x2="605" y2="55" stroke="var(--accent)" stroke-width="1.3" marker-end="url(#obs-arrow-acc)"/>
+          <line x1="580" y1="103" x2="605" y2="103" stroke="var(--accent)" stroke-width="1.3" marker-end="url(#obs-arrow-acc)"/>
+          <line x1="580" y1="114" x2="605" y2="151" stroke="var(--accent)" stroke-width="1.3" marker-end="url(#obs-arrow-acc)"/>
+          <text x="530" y="200" text-anchor="middle" font-size="9.5" font-style="italic" fill="var(--fg-muted)">видавець і підписники не знають одне про одного</text>
+        </svg>
+        <figcaption>Різниця — чи є посередник. В <b>Observer</b> subject сам викликає своїх
+        підписників (<code>addEventListener</code> на DOM-елементі, підписка на Redux store). У
+        <b>Pub/Sub</b> усі спілкуються через канал за назвою (event bus, <code>BroadcastChannel</code>,
+        Redis Pub/Sub, Kafka), тож сторони можна додавати й прибирати незалежно. Ціна — важче
+        простежити, хто реагує на подію.</figcaption>
+      </figure>
+    </section>
+
+    <section id="t8">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>Strategy — замінити <code>switch</code> набором взаємозамінних функцій</h2></div>
+      <p><b>Проблема:</b> великий <code>if/else</code> чи <code>switch</code>, до якого з кожною
+      новою вимогою дописують ще одну гілку. <b>Рішення:</b> кожен варіант поведінки — окрема
+      функція з однаковим інтерфейсом, а вибір — за ключем.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">pricing.js</span></div>
+        <pre><code>const shipping = {
+  standard: order =&gt; 0,
+  express:  order =&gt; 15,
+  free:     order =&gt; (order.subtotal &gt;= 100 ? 0 : 7),
+};
+
+export function total(order) {
+  const strategy = shipping[order.shipping];
+  if (!strategy) throw new Error(`Unknown shipping: ${order.shipping}`);
+  return order.subtotal + strategy(order);
+}
+
+// новий спосіб доставки = новий рядок у об'єкті, total() не змінюється
+shipping.pickup = () =&gt; 0;</code></pre>
+      </div>
+      <p>Це і є принцип Open/Closed на практиці: код відкритий для розширення й закритий для змін.
+      Strategy ви вже використовуєте щодня: компаратор у <code>arr.sort((a, b) =&gt; …)</code>,
+      стратегії Passport.js, резолвери валідації у формах, різні алгоритми оптимізації маршруту за
+      одним інтерфейсом.</p>
+    </section>
+
+    <section id="t9">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>Command — дія як об'єкт (undo/redo)</h2></div>
+      <p><b>Проблема:</b> дію потрібно не лише виконати, а й скасувати, повторити, поставити в
+      чергу чи залогувати. <b>Рішення:</b> кожна дія — об'єкт із методами <code>do</code> і
+      <code>undo</code>, а історія зберігає ці об'єкти у двох стеках.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">history.js</span></div>
+        <pre><code>export function createHistory() {
+  const undoStack = [];
+  const redoStack = [];
+  return {
+    run(cmd)  { cmd.do(); undoStack.push(cmd); redoStack.length = 0; }, // нова дія стирає redo
+    undo()    { const c = undoStack.pop(); if (c) { c.undo(); redoStack.push(c); } },
+    redo()    { const c = redoStack.pop(); if (c) { c.do();   undoStack.push(c); } },
+  };
+}
+
+const moveStop = (route, from, to) =&gt; ({
+  do:   () =&gt; route.move(from, to),
+  undo: () =&gt; route.move(to, from),
+});
+
+history.run(moveStop(route, 2, 5));</code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 700 230" role="img" aria-label="Command: undo знімає команду з undo-стека, викликає її undo і кладе в redo-стек; redo робить зворотне">
+          <defs>
+            <marker id="cmd-arrow-acc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+            </marker>
+            <marker id="cmd-arrow-good" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--good)"/>
+            </marker>
+          </defs>
+
+          <text x="120" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">Undo-стек</text>
+          <rect x="40" y="88" width="160" height="28" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+          <text x="120" y="106" text-anchor="middle" font-size="10" fill="currentColor">move(2→5)  ← верх</text>
+          <rect x="40" y="119" width="160" height="28" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+          <text x="120" y="137" text-anchor="middle" font-size="10" fill="currentColor">add(stop 7)</text>
+          <rect x="40" y="150" width="160" height="28" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+          <text x="120" y="168" text-anchor="middle" font-size="10" fill="currentColor">remove(stop 3)</text>
+
+          <rect x="290" y="105" width="120" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="350" y="127" text-anchor="middle" font-size="11" fill="currentColor">Стан</text>
+          <text x="350" y="142" text-anchor="middle" font-size="9" fill="var(--fg-muted)">маршруту</text>
+
+          <text x="580" y="78" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">Redo-стек</text>
+          <rect x="500" y="150" width="160" height="28" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+          <text x="580" y="168" text-anchor="middle" font-size="10" fill="currentColor">rename("Київ-2")</text>
+
+          <path d="M 200 96 C 310 20, 450 20, 575 145" fill="none" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#cmd-arrow-acc)"/>
+          <text x="390" y="40" text-anchor="middle" font-size="10" fill="var(--accent)">undo(): pop → cmd.undo() → push у redo</text>
+
+          <path d="M 585 180 C 470 225, 250 225, 125 182" fill="none" stroke="var(--good)" stroke-width="1.4" marker-end="url(#cmd-arrow-good)"/>
+          <text x="355" y="222" text-anchor="middle" font-size="10" fill="var(--good)">redo(): pop → cmd.do() → push в undo</text>
+        </svg>
+        <figcaption>Команда переміщується між стеками, а стан маршруту змінюють лише її методи
+        <code>do</code>/<code>undo</code>. Будь-яка <i>нова</i> дія очищує redo-стек, бо «майбутнє»,
+        яке можна було повторити, вже не існує. Той самий принцип — у Redux DevTools (time travel),
+        undo в редакторах і черзі офлайн-дій, що відправляються після відновлення мережі.</figcaption>
+      </figure>
+    </section>
+
+    <section id="t10">
+      <div class="topic-head"><span class="tag notes">🟣</span><h2>Iterator — однаковий обхід будь-якого джерела</h2></div>
+      <p><b>Проблема:</b> споживачу даних байдуже, звідки вони: масив, дерево чи API з пагінацією.
+      Він хоче просто <code>for…of</code>. <b>Рішення:</b> протокол ітератора, а найзручніше —
+      генератор. Async-генератор ховає пагінацію повністю:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">paginate.js</span></div>
+        <pre><code>async function* paginate(url) {
+  while (url) {
+    const page = await fetch(url).then(r =&gt; r.json());
+    yield* page.items;
+    url = page.next; // null на останній сторінці → цикл завершиться
+  }
+}
+
+for await (const order of paginate('/api/orders?page=1')) {
+  if (order.total &gt; 1000) { console.log(order.id); break; } // break → решту сторінок не вантажимо
+}</code></pre>
+      </div>
+      <p>Ключова властивість — <b>лінивість</b>: наступну сторінку завантажено лише тоді, коли
+      споживач до неї дійшов. Як генератори працюють усередині, розібрано в
+      <a href="01-core-js-engine.html">туторіалі 1</a>.</p>
+    </section>
+
+    <section id="t11">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>Middleware / Chain of Responsibility — конвеєр обробників</h2></div>
+      <p><b>Проблема:</b> кожен запит має пройти логування, автентифікацію, парсинг, обробку
+      помилок, і ці кроки треба комбінувати й переставляти. <b>Рішення:</b> ланцюжок функцій
+      <code>(ctx, next)</code>: кожна робить свою частину й викликає <code>next()</code>, щоб
+      передати керування далі.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">compose.js — те, що всередині Koa / Redux middleware</span></div>
+        <pre><code>function compose(middlewares) {
+  return ctx =&gt; {
+    const dispatch = i =&gt; {
+      const fn = middlewares[i];
+      return fn ? Promise.resolve(fn(ctx, () =&gt; dispatch(i + 1))) : Promise.resolve();
+    };
+    return dispatch(0);
+  };
+}
+
+const logger = async (ctx, next) =&gt; {
+  const start = Date.now();
+  await next();                                  // усе нижче виконається на «зворотному шляху»
+  console.log(ctx.url, ctx.status, Date.now() - start, 'ms');
+};
+const auth = async (ctx, next) =&gt; {
+  if (!ctx.user) { ctx.status = 401; return; }   // не викликаємо next → ланцюг зупинено
+  await next();
+};
+const handler = async ctx =&gt; { ctx.status = 200; ctx.body = 'ok'; };
+
+compose([logger, auth, handler])({ url: '/me', user: null }); // лог: /me 401 0 ms</code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 700 215" role="img" aria-label="Middleware: запит іде зліва направо через logger, auth, handler, викликаючи next, а відповідь повертається справа наліво; auth може зупинити ланцюг">
+          <defs>
+            <marker id="mw-arrow-acc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+            </marker>
+            <marker id="mw-arrow-good" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--good)"/>
+            </marker>
+          </defs>
+
+          <rect x="15" y="30" width="90" height="36" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="60" y="52" text-anchor="middle" font-size="10.5" fill="currentColor">Запит</text>
+          <rect x="15" y="130" width="90" height="36" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="60" y="152" text-anchor="middle" font-size="10.5" fill="currentColor">Відповідь</text>
+
+          <rect x="145" y="20" width="140" height="156" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+          <text x="215" y="44" text-anchor="middle" font-size="9" fill="var(--fg-muted)">до next(): start = now</text>
+          <text x="215" y="102" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">logger</text>
+          <text x="215" y="162" text-anchor="middle" font-size="9" fill="var(--fg-muted)">після next(): лог часу</text>
+
+          <rect x="325" y="20" width="140" height="156" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+          <text x="395" y="44" text-anchor="middle" font-size="9" fill="var(--fg-muted)">перевірка user</text>
+          <text x="395" y="102" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">auth</text>
+          <text x="395" y="120" text-anchor="middle" font-size="9" fill="var(--bad)">немає user → 401,</text>
+          <text x="395" y="132" text-anchor="middle" font-size="9" fill="var(--bad)">next() не викликано</text>
+
+          <rect x="505" y="20" width="140" height="156" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="575" y="102" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">handler</text>
+          <text x="575" y="118" text-anchor="middle" font-size="9" fill="var(--fg-muted)">бізнес-логіка</text>
+
+          <line x1="105" y1="48" x2="145" y2="48" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#mw-arrow-acc)"/>
+          <line x1="285" y1="60" x2="325" y2="60" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#mw-arrow-acc)"/>
+          <text x="305" y="75" text-anchor="middle" font-size="9" fill="var(--accent)">next()</text>
+          <line x1="465" y1="60" x2="505" y2="60" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#mw-arrow-acc)"/>
+          <text x="485" y="75" text-anchor="middle" font-size="9" fill="var(--accent)">next()</text>
+
+          <line x1="505" y1="145" x2="465" y2="145" stroke="var(--good)" stroke-width="1.4" marker-end="url(#mw-arrow-good)"/>
+          <line x1="325" y1="145" x2="285" y2="145" stroke="var(--good)" stroke-width="1.4" marker-end="url(#mw-arrow-good)"/>
+          <line x1="145" y1="148" x2="105" y2="148" stroke="var(--good)" stroke-width="1.4" marker-end="url(#mw-arrow-good)"/>
+
+          <text x="350" y="202" text-anchor="middle" font-size="10" font-style="italic" fill="var(--fg-muted)">вперед — синім (до next), назад — зеленим (після await next); будь-який шар може зупинити ланцюг</text>
+        </svg>
+        <figcaption>Модель «цибулі»: кожен middleware обгортає всі наступні. Тому logger, що стоїть
+        першим, бачить повний час обробки, а auth, що не викликав <code>next()</code>, не пускає
+        запит до handler. Той самий патерн — в Express/Koa, Redux middleware (<code>thunk</code>,
+        логер), <code>middleware.ts</code> у Next.js і interceptors в axios.</figcaption>
+      </figure>
+    </section>
+
+    <section id="t12">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>State Machine — лише дозволені стани й переходи</h2></div>
+      <p><b>Проблема:</b> «суп із булевих прапорців»: <code>isLoading</code>, <code>isError</code>,
+      <code>isSuccess</code>. Чотири прапорці дають 16 комбінацій, а осмислених із них лише кілька.
+      Звідси баги на кшталт одночасних спінера й повідомлення про помилку. <b>Рішення:</b> один
+      рядок-стан і таблиця дозволених переходів.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">fetch-machine.js</span></div>
+        <pre><code>const machine = {
+  idle:    { FETCH: 'loading' },
+  loading: { RESOLVE: 'success', REJECT: 'error' },
+  success: { FETCH: 'loading' },
+  error:   { RETRY: 'loading' },
+};
+
+export const transition = (state, event) =&gt; machine[state][event] ?? state; // невідомий перехід ігнорується
+
+// у React це звичайний useReducer
+const [status, send] = useReducer(transition, 'idle');
+send('FETCH');</code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 700 230" role="img" aria-label="Скінченний автомат запиту: idle → loading за FETCH; loading → success за RESOLVE або error за REJECT; error → loading за RETRY; success → loading за FETCH">
+          <defs>
+            <marker id="fsm-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+            <marker id="fsm-arrow-good" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--good)"/>
+            </marker>
+            <marker id="fsm-arrow-bad" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--bad)"/>
+            </marker>
+          </defs>
+
+          <rect x="40" y="90" width="110" height="50" rx="25" fill="none" stroke="currentColor" stroke-width="1.4"/>
+          <text x="95" y="120" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">idle</text>
+          <rect x="250" y="90" width="120" height="50" rx="25" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+          <text x="310" y="120" text-anchor="middle" font-size="12" font-weight="700" fill="var(--accent)">loading</text>
+          <rect x="480" y="30" width="120" height="50" rx="25" fill="var(--good-bg)" stroke="var(--good)" stroke-width="1.4"/>
+          <text x="540" y="60" text-anchor="middle" font-size="12" font-weight="700" fill="var(--good)">success</text>
+          <rect x="480" y="150" width="120" height="50" rx="25" fill="var(--bad-bg)" stroke="var(--bad)" stroke-width="1.4"/>
+          <text x="540" y="180" text-anchor="middle" font-size="12" font-weight="700" fill="var(--bad)">error</text>
+
+          <line x1="150" y1="115" x2="250" y2="115" stroke="currentColor" stroke-width="1.3" marker-end="url(#fsm-arrow)"/>
+          <text x="200" y="108" text-anchor="middle" font-size="10" fill="currentColor">FETCH</text>
+          <line x1="370" y1="103" x2="480" y2="62" stroke="var(--good)" stroke-width="1.3" marker-end="url(#fsm-arrow-good)"/>
+          <text x="432" y="100" text-anchor="middle" font-size="10" fill="var(--good)">RESOLVE</text>
+          <line x1="370" y1="127" x2="480" y2="168" stroke="var(--bad)" stroke-width="1.3" marker-end="url(#fsm-arrow-bad)"/>
+          <text x="432" y="138" text-anchor="middle" font-size="10" fill="var(--bad)">REJECT</text>
+          <path d="M 490 36 C 420 5, 330 25, 312 88" fill="none" stroke="currentColor" stroke-width="1.2" marker-end="url(#fsm-arrow)"/>
+          <text x="400" y="18" text-anchor="middle" font-size="10" fill="currentColor">FETCH (оновити)</text>
+          <path d="M 490 194 C 420 225, 330 205, 312 142" fill="none" stroke="currentColor" stroke-width="1.2" marker-end="url(#fsm-arrow)"/>
+          <text x="400" y="222" text-anchor="middle" font-size="10" fill="currentColor">RETRY</text>
+        </svg>
+        <figcaption>Стану «loading і водночас error» просто немає в таблиці, тож він неможливий
+        за побудовою, а не завдяки уважності розробника. Подія, для якої немає стрілки (наприклад,
+        <code>RETRY</code> у стані <code>success</code>), ігнорується. Для складних потоків (оформлення
+        замовлення, онбординг) є бібліотека XState із візуалізацією автомата.</figcaption>
+      </figure>
+    </section>
+
+    <div class="level-divider">Рівень 4 · Компонентні патерни React</div>
+
+    <section id="t13">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>Патерни компонентів: hooks, compound, render props, HOC</h2></div>
+      <p>Усі вони відповідають на одне питання: як перевикористати логіку чи структуру між
+      компонентами. Історично їх змінювали один за одним, і сьогодні більшість задач закривають
+      кастомні хуки.</p>
+      <table>
+        <tr><th>Патерн</th><th>Що перевикористовує</th><th>Коли сьогодні</th></tr>
+        <tr><td><b>Custom hook</b> <code>useX()</code></td><td>Логіку зі станом (запит, підписка, форма)</td><td>Вибір за замовчуванням для спільної логіки</td></tr>
+        <tr><td><b>Compound components</b></td><td>Структуру з неявним спільним станом (<code>Tabs</code>, <code>Select</code>, <code>Accordion</code>)</td><td>Гнучкі UI-кіти: Radix, Headless UI, shadcn</td></tr>
+        <tr><td><b>Render props</b> <code>children(fn)</code></td><td>Логіку, а рендер віддає викликачу</td><td>Рідко; здебільшого замінено хуками</td></tr>
+        <tr><td><b>HOC</b> <code>withX(Comp)</code></td><td>Обгортку навколо компонента (Decorator із теми 4)</td><td>Легасі та крос-різальні речі (<code>withAuth</code>); створює «пекло обгорток»</td></tr>
+        <tr><td><b>Container / Presentational</b></td><td>Розділення «звідки дані» і «як виглядає»</td><td>Як ідея живий: хук + «тупий» компонент; у Next.js — Server + Client Component</td></tr>
+        <tr><td><b>Provider</b></td><td>Значення для всього піддерева (тема, auth, i18n)</td><td>Глобальні рідко змінні дані; не як заміна state manager</td></tr>
+        <tr><td><b>Controlled / Uncontrolled</b></td><td>Хто володіє станом: батько (<code>value</code>+<code>onChange</code>) чи сам компонент (<code>defaultValue</code>)</td><td>Бібліотечні компоненти підтримують обидва режими</td></tr>
+      </table>
+      <p><b>Compound components</b> — найчастіше питання з цієї групи. Батько тримає стан у
+      контексті, а дочірні частини читають його самі, тож користувач компонента складає їх як
+      HTML-теги:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">Tabs.jsx</span></div>
+        <pre><code>const TabsCtx = createContext(null);
+
+export function Tabs({ defaultValue, children }) {
+  const [value, setValue] = useState(defaultValue);
+  return &lt;TabsCtx value={{ value, setValue }}&gt;{children}&lt;/TabsCtx&gt;; // React 19: контекст як провайдер
+}
+
+Tabs.Tab = function Tab({ id, children }) {
+  const { value, setValue } = useContext(TabsCtx);
+  return &lt;button role="tab" aria-selected={value === id} onClick={() =&gt; setValue(id)}&gt;{children}&lt;/button&gt;;
+};
+
+Tabs.Panel = function Panel({ id, children }) {
+  const { value } = useContext(TabsCtx);
+  return value === id ? &lt;div role="tabpanel"&gt;{children}&lt;/div&gt; : null;
+};
+
+// використання — жодних пропсів activeTab/onChange між частинами
+&lt;Tabs defaultValue="map"&gt;
+  &lt;Tabs.Tab id="map"&gt;Карта&lt;/Tabs.Tab&gt;
+  &lt;Tabs.Tab id="list"&gt;Список&lt;/Tabs.Tab&gt;
+  &lt;Tabs.Panel id="map"&gt;&lt;RouteMap /&gt;&lt;/Tabs.Panel&gt;
+  &lt;Tabs.Panel id="list"&gt;&lt;StopList /&gt;&lt;/Tabs.Panel&gt;
+&lt;/Tabs&gt;</code></pre>
+      </div>
+      <p>Більше про хуки й композицію — у <a href="09-react-deep-dive.html">туторіалі 9</a>.</p>
+    </section>
+
+    <div class="level-divider">Рівень 5 · Архітектурні патерни</div>
+
+    <section id="t14">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>Dependency Injection — залежності передаються ззовні</h2></div>
+      <p><b>Проблема:</b> сервіс сам робить <code>import { http }</code> і <code>Date.now()</code>,
+      тому його неможливо протестувати без моків модулів і неможливо підмінити реалізацію.
+      <b>Рішення:</b> сервіс отримує залежності параметрами. Хто їх створює, вирішує «збирач» на
+      верхньому рівні (composition root).</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">route-service.js</span></div>
+        <pre><code>export function createRouteService({ http, cache, clock = Date }) {
+  return {
+    async list() {
+      const hit = cache.get('routes');
+      if (hit &amp;&amp; clock.now() - hit.at &lt; 60_000) return hit.data;
+      const data = await http.get('/routes');
+      cache.set('routes', { data, at: clock.now() });
+      return data;
+    },
+  };
+}
+
+// прод: збираємо один раз
+export const routeService = createRouteService({ http, cache: new Map() });
+
+// тест: жодного jest.mock — просто передаємо фейки
+const svc = createRouteService({
+  http: { get: async () =&gt; [{ id: 1 }] },
+  cache: new Map(),
+  clock: { now: () =&gt; 0 },
+});</code></pre>
+      </div>
+      <p>У React роль DI-контейнера часто грає <b>Context</b>: провайдер на верхньому рівні
+      вирішує, яку реалізацію (справжню чи фейкову для Storybook і тестів) отримають компоненти.
+      Angular і NestJS мають повноцінні DI-контейнери з декораторами. Базовий приклад DI також є в
+      <a href="04-algorithms-patterns.html#t9">туторіалі 4</a>.</p>
+    </section>
+
+    <section id="t15">
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>API-шар: Repository + Service замість <code>fetch</code> у компонентах</h2></div>
+      <p><b>Проблема:</b> URL-и, формат бекенду й обробка помилок розкидані по десятках
+      компонентів, і зміна одного поля в API тягне правки по всьому проєкту. <b>Рішення:</b>
+      шари, кожен з однією відповідальністю:</p>
+      <table>
+        <tr><th>Шар</th><th>Відповідальність</th><th>Приклад</th></tr>
+        <tr><td>Компонент</td><td>Лише показати дані й зібрати дії користувача</td><td><code>&lt;RouteList /&gt;</code></td></tr>
+        <tr><td>Хук / query</td><td>Кеш, стан завантаження, інвалідація</td><td><code>useRoutes()</code> на TanStack Query</td></tr>
+        <tr><td>Repository</td><td>Єдине місце, що знає URL-и й формат DTO</td><td><code>routeRepo.list()</code></td></tr>
+        <tr><td>Adapter</td><td>DTO → доменний об'єкт і назад</td><td><code>toRoute(dto)</code></td></tr>
+        <tr><td>HTTP facade</td><td>Токен, заголовки, помилки, retry</td><td><code>http.get()</code></td></tr>
+      </table>
+      <div class="codecard">
+        <div class="bar"><span class="path">entities/route/api.js</span></div>
+        <pre><code>export const routeRepo = {
+  list:   ()    =&gt; http.get('/routes').then(list =&gt; list.map(toRoute)),
+  byId:   id    =&gt; http.get(`/routes/${id}`).then(toRoute),
+  create: draft =&gt; http.post('/routes', toRouteDto(draft)).then(toRoute),
+};
+
+export const useRoutes = () =&gt; useQuery({ queryKey: ['routes'], queryFn: routeRepo.list });</code></pre>
+      </div>
+      <p>Бонус: коли бекенд перейменує <code>route_id</code>, правка буде в одному адаптері.
+      Коли потрібні моки для Storybook, підміняється один репозиторій (або весь API через MSW).</p>
+    </section>
+
+    <section id="t16">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>Flux / односпрямований потік даних, MVC і MVVM</h2></div>
+      <p><b>Проблема:</b> у двосторонньому зв'язуванні будь-яка частина може змінити будь-яку
+      іншу, і в великому застосунку неможливо відповісти на питання «чому змінився цей стан?».
+      <b>Рішення Flux:</b> дані течуть лише в один бік, а змінити стан можна тільки через дію (action).</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 700 175" role="img" aria-label="Flux: View відправляє Action, reducer обчислює новий стан у Store, Store повідомляє View, і цикл замикається лише в одному напрямку">
+          <defs>
+            <marker id="flux-arrow-acc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+            </marker>
+            <marker id="flux-arrow-good" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--good)"/>
+            </marker>
+          </defs>
+
+          <rect x="20" y="30" width="140" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="90" y="54" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">View</text>
+          <text x="90" y="71" text-anchor="middle" font-size="9" fill="var(--fg-muted)">компонент</text>
+          <rect x="190" y="30" width="140" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="260" y="54" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">Action</text>
+          <text x="260" y="71" text-anchor="middle" font-size="9" fill="var(--fg-muted)">{ type: 'stop/added' }</text>
+          <rect x="360" y="30" width="140" height="56" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+          <text x="430" y="54" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">Reducer</text>
+          <text x="430" y="71" text-anchor="middle" font-size="9" fill="var(--fg-muted)">(state, action) → new</text>
+          <rect x="530" y="30" width="140" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+          <text x="600" y="54" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">Store</text>
+          <text x="600" y="71" text-anchor="middle" font-size="9" fill="var(--fg-muted)">єдине джерело правди</text>
+
+          <line x1="160" y1="58" x2="190" y2="58" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#flux-arrow-acc)"/>
+          <line x1="330" y1="58" x2="360" y2="58" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#flux-arrow-acc)"/>
+          <line x1="500" y1="58" x2="530" y2="58" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#flux-arrow-acc)"/>
+          <text x="175" y="22" text-anchor="middle" font-size="9" fill="var(--accent)">dispatch</text>
+
+          <path d="M 600 86 C 600 145, 90 145, 90 90" fill="none" stroke="var(--good)" stroke-width="1.4" marker-end="url(#flux-arrow-good)"/>
+          <text x="345" y="160" text-anchor="middle" font-size="10" fill="var(--good)">підписка: View ре-рендериться з новим станом</text>
+        </svg>
+        <figcaption>View ніколи не змінює Store напряму, лише надсилає опис того, що сталося.
+        Тому кожну зміну стану можна залогувати, відтворити й «перемотати» (Redux DevTools). Детальніше
+        порівняння Redux і Flux — у <a href="09-react-deep-dive.html#t4">туторіалі 9</a>.</figcaption>
+      </figure>
+
+      <table>
+        <tr><th>Патерн</th><th>Як тече потік</th><th>Де зустрічається</th></tr>
+        <tr><td><b>MVC</b></td><td>Controller приймає ввід і змінює Model, View відображає Model</td><td>Серверні фреймворки (Rails, Django, Spring MVC), ранній Backbone</td></tr>
+        <tr><td><b>MVVM</b></td><td>ViewModel із двостороннім зв'язуванням: View ⇄ ViewModel</td><td>Angular (<code>[(ngModel)]</code>), Vue (<code>v-model</code>), Knockout</td></tr>
+        <tr><td><b>Flux / Redux</b></td><td>Односпрямовано: View → Action → Reducer → Store → View</td><td>React + Redux, Zustand, <code>useReducer</code></td></tr>
+      </table>
+    </section>
+
+    <section id="t17">
+      <div class="topic-head"><span class="tag notes">🟣</span><h2>Шарова архітектура фронтенду і Feature-Sliced Design</h2></div>
+      <p><b>Проблема:</b> структура «за типом файлу» (<code>components/</code>, <code>hooks/</code>,
+      <code>utils/</code>) на 50+ фічах перетворюється на смітник, де все імпортує все.
+      <b>Рішення:</b> організувати код за бізнес-сутностями й фічами, з одним жорстким правилом:
+      шар може імпортувати лише шари, нижчі за нього.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 700 300" role="img" aria-label="Шари Feature-Sliced Design зверху вниз: app, pages, widgets, features, entities, shared; імпортувати можна лише шари нижче">
+          <defs>
+            <marker id="fsd-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+            </marker>
+          </defs>
+
+          <rect x="40" y="16" width="470" height="36" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2"/>
+          <text x="58" y="39" font-size="12" font-weight="700" fill="currentColor">app</text>
+          <text x="170" y="39" font-size="10" fill="var(--fg-muted)">провайдери, роутер, глобальні стилі</text>
+          <rect x="40" y="60" width="470" height="36" rx="8" fill="none" stroke="currentColor" stroke-width="1.2"/>
+          <text x="58" y="83" font-size="12" font-weight="700" fill="currentColor">pages</text>
+          <text x="170" y="83" font-size="10" fill="var(--fg-muted)">RoutePlannerPage — збирає віджети</text>
+          <rect x="40" y="104" width="470" height="36" rx="8" fill="none" stroke="currentColor" stroke-width="1.2"/>
+          <text x="58" y="127" font-size="12" font-weight="700" fill="currentColor">widgets</text>
+          <text x="170" y="127" font-size="10" fill="var(--fg-muted)">RouteMapPanel — великий самостійний блок</text>
+          <rect x="40" y="148" width="470" height="36" rx="8" fill="none" stroke="currentColor" stroke-width="1.2"/>
+          <text x="58" y="171" font-size="12" font-weight="700" fill="currentColor">features</text>
+          <text x="170" y="171" font-size="10" fill="var(--fg-muted)">optimize-route, add-stop — дії користувача</text>
+          <rect x="40" y="192" width="470" height="36" rx="8" fill="none" stroke="currentColor" stroke-width="1.2"/>
+          <text x="58" y="215" font-size="12" font-weight="700" fill="currentColor">entities</text>
+          <text x="170" y="215" font-size="10" fill="var(--fg-muted)">route, vehicle, depot — модель + repo + UI-картка</text>
+          <rect x="40" y="236" width="470" height="36" rx="8" fill="var(--bg-soft)" stroke="currentColor" stroke-width="1.2"/>
+          <text x="58" y="259" font-size="12" font-weight="700" fill="currentColor">shared</text>
+          <text x="170" y="259" font-size="10" fill="var(--fg-muted)">http facade, UI-кіт, утиліти — без бізнес-логіки</text>
+
+          <line x1="555" y1="26" x2="555" y2="266" stroke="var(--accent)" stroke-width="2" marker-end="url(#fsd-arrow)"/>
+          <text x="572" y="130" font-size="10.5" font-weight="700" fill="var(--accent)">import</text>
+          <text x="572" y="145" font-size="10" fill="currentColor">лише вниз</text>
+          <text x="572" y="160" font-size="10" fill="currentColor">↓ дозволено</text>
+          <text x="572" y="178" font-size="10" fill="var(--bad)">↑ заборонено</text>
+
+          <text x="275" y="292" text-anchor="middle" font-size="9.5" font-style="italic" fill="var(--fg-muted)">сусіди одного шару теж не імпортують одне одного: features/a ✗→ features/b</text>
+        </svg>
+        <figcaption>Правило «лише вниз» робить залежності ациклічними: <code>entities/route</code>
+        ніколи не зламається через зміну в <code>features/optimize-route</code>. Кожен слайс
+        назовні відкриває лише свій <code>index.js</code> (public API, Module-патерн з теми 1), а
+        дотримання правил перевіряє лінтер (<code>eslint-plugin-boundaries</code>, Steiger).</figcaption>
+      </figure>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">структура src/</span></div>
+        <pre><code class="no-hl">src/
+  app/            providers.jsx, router.jsx
+  pages/          route-planner/
+  widgets/        route-map-panel/
+  features/       optimize-route/  (ui/, model/, api/, index.js)
+  entities/       route/  vehicle/  depot/
+  shared/         api/http.js  ui/Button.jsx  lib/format.js</code></pre>
+      </div>
+    </section>
+
+    <section id="t18">
+      <div class="topic-head"><span class="tag notes">🟣</span><h2>Micro-frontends — застосунок із незалежних частин</h2></div>
+      <p><b>Проблема:</b> над одним фронтендом працюють кілька команд, і вони блокують одна одну
+      спільним релізом, спільною версією React і довгим CI. <b>Рішення:</b> розрізати застосунок
+      на частини, які окремо збираються й деплояться, а зводить їх разом shell (host).</p>
+      <table>
+        <tr><th>Спосіб</th><th>Як</th><th>Компроміс</th></tr>
+        <tr><td>Module Federation</td><td>Host під час роботи завантажує <code>remoteEntry.js</code> іншої збірки</td><td>Спільні залежності, але потрібна узгодженість версій</td></tr>
+        <tr><td>Multi-zones (Next.js)</td><td>Різні застосунки на різних шляхах одного домену</td><td>Просто, але перехід між зонами — повне перезавантаження</td></tr>
+        <tr><td>iframe</td><td>Повна ізоляція</td><td>Найгірший UX, складна комунікація</td></tr>
+      </table>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Це організаційний патерн, а не технічний.</b> Він вирішує проблему
+        «багато команд на одному коді» ціною складності: кілька версій бібліотек, узгоджений UI-кіт,
+        важчий дебаг. Для однієї команди майже завжди краще добре структурований моноліт (тема 17).
+        Детальніше — у <a href="10-nextjs-architecture.html">туторіалі 10</a>.</div>
+      </div>
+    </section>
+
+    <section id="t19">
+      <div class="topic-head"><span class="tag recurring">🔴</span><h2>Шпаргалка: патерн → проблема → де ви його вже бачили</h2></div>
+      <table>
+        <tr><th>Патерн</th><th>Яку проблему вирішує</th><th>Де в реальному коді</th></tr>
+        <tr><td>Module</td><td>Приховати стан</td><td>Кожен ES-модуль, <code>#private</code></td></tr>
+        <tr><td>Factory</td><td>Створення без знання деталей</td><td><code>createStore</code>, <code>createContext</code>, <code>axios.create</code></td></tr>
+        <tr><td>Singleton</td><td>Один спільний екземпляр</td><td>API-клієнт, <code>QueryClient</code>, WebSocket</td></tr>
+        <tr><td>Decorator</td><td>Додати поведінку без змін</td><td>HOC, <code>withRetry</code>, <code>@Injectable</code></td></tr>
+        <tr><td>Adapter</td><td>Несумісний формат</td><td>DTO → модель, обгортка над сторонньою бібліотекою</td></tr>
+        <tr><td>Facade</td><td>Складна підсистема</td><td><code>http</code>-клієнт, jQuery, SDK</td></tr>
+        <tr><td>Proxy</td><td>Контроль доступу / реактивність</td><td>Vue 3, MobX, Immer</td></tr>
+        <tr><td>Observer / Pub-Sub</td><td>Сповістити багатьох</td><td><code>addEventListener</code>, store.subscribe, event bus</td></tr>
+        <tr><td>Strategy</td><td>Розрослий <code>switch</code></td><td>Компаратор <code>sort</code>, Passport, валідатори</td></tr>
+        <tr><td>Command</td><td>Undo/redo, черга дій</td><td>Redux actions, редактори, офлайн-черга</td></tr>
+        <tr><td>Iterator</td><td>Однаковий обхід</td><td><code>for…of</code>, генератори, пагінація</td></tr>
+        <tr><td>Middleware</td><td>Конвеєр обробки</td><td>Express/Koa, Redux, Next.js middleware, axios interceptors</td></tr>
+        <tr><td>State Machine</td><td>Неможливі стани</td><td><code>useReducer</code>, XState</td></tr>
+        <tr><td>Compound components</td><td>Гнучка композиція UI</td><td>Radix, Headless UI</td></tr>
+        <tr><td>DI</td><td>Тестованість, заміна реалізацій</td><td>React Context, Angular, NestJS</td></tr>
+        <tr><td>Repository</td><td>Розкидані API-виклики</td><td>API-шар поверх TanStack Query</td></tr>
+        <tr><td>Flux</td><td>Непередбачувані зміни стану</td><td>Redux, Zustand</td></tr>
+        <tr><td>FSD / шари</td><td>Хаос імпортів</td><td>Структура великих SPA</td></tr>
+        <tr><td>Micro-frontends</td><td>Багато команд, спільний реліз</td><td>Module Federation, Next.js multi-zones</td></tr>
+      </table>
+
+      <div class="callout good">
+        <div class="ic">🎯</div>
+        <div class="body"><b>Що перевіряють насправді:</b> не вміння назвати патерн, а вміння
+        почати з <i>проблеми</i>. Сильна відповідь звучить так: «у нас був <code>switch</code> на 12 гілок
+        для розрахунку доставки, кожна нова вимога ламала старі — ми винесли гілки в Strategy, і
+        новий тип доставки став одним рядком». Друга часта перевірка — чи знаєте ви ціну: Singleton
+        ускладнює тести й небезпечний в SSR, Pub/Sub ускладнює трасування, micro-frontends — це
+        складність заради незалежності команд. Типові питання: Decorator vs Proxy vs Adapter;
+        Observer vs Pub/Sub; навіщо DI, якщо є <code>jest.mock</code>; як уникнути неможливих станів.</div>
+      </div>
+    </section>
+
+    <div class="card">
+      ← <a href="16-ai-tools.html">16. AI-інструменти</a>
+      &nbsp;·&nbsp;
+      ↑ <a href="00-methodology.html">Карта всіх тем</a>
+      <p class="section-desc" style="margin:8px 0 0;">Це остання категорія довідника JS Doc. Після неї варто повернутись до карти тем і пріоритетів, щоб спланувати порядок підготовки.</p>
+    </div>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Теми узагальнені з патернів реального фідбеку технічних інтерв'ю — без імен, компаній чи
+  контактних даних, лише самі теми для цілеспрямованої підготовки.
+</footer>
+
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code:not(.no-hl)');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>
