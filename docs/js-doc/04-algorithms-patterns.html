@@ -326,7 +326,7 @@
       <li><a href="#t3">3. Базові структури даних</a></li>
       <li><a href="#t4">4. Рекурсія на практиці</a></li>
       <li><a href="#t5">5. Сортування: що варто знати</a></li>
-      <li><a href="#t6">6. Пошук: бінарний пошук</a></li>
+      <li><a href="#t6">6. Бінарний пошук і його варіанти</a></li>
       <li><a href="#t7">7. Патерни: two pointers, sliding window, monotonic stack, backtracking</a></li>
       <li><a href="#t8">8. Дизайн-принципи на практиці</a></li>
       <li><a href="#t9">9. Патерни проєктування й DI</a></li>
@@ -441,6 +441,68 @@ function hasPairWithSum(sortedArr, target) {
 }</code></pre>
       </div>
 
+      <p>
+        Чому логарифм — це "майже константа" на практиці: кількість кроків росте на <b>одиницю</b>
+        щоразу, коли вхід <b>подвоюється</b>. Мільйон елементів — це лише ~20 кроків, мільярд —
+        ~30:
+      </p>
+      <div class="codecard">
+        <div class="bar"><span class="path">O(log n) — скільки кроків на реальних розмірах</span></div>
+        <pre><code>halvingSteps(16);            // 4   (16 → 8 → 4 → 2 → 1)
+halvingSteps(1_000);         // 9
+halvingSteps(1_000_000);     // 19  ≈ log2(1 000 000) ≈ 19.9
+halvingSteps(1_000_000_000); // 29  — у 1000 разів більше даних, лише +10 кроків
+
+// Для порівняння: O(n) на мільярді — це мільярд кроків,
+// O(log n) — три десятки.</code></pre>
+      </div>
+      <p>
+        Логарифм з'являється всюди, де на кожному кроці задача <b>зменшується в константну
+        кількість разів</b> (удвічі, в 10 разів), а не на константу. Три класичні приклади поза
+        бінарним пошуком:
+      </p>
+      <div class="codecard">
+        <div class="bar"><span class="path">O(log n) — швидке піднесення до степеня, НСД, кількість цифр</span></div>
+        <pre><code>// 1. Швидке піднесення до степеня (exponentiation by squaring) — O(log exp)
+function fastPow(base, exp) {
+  let result = 1;
+  while (exp &gt; 0) {
+    if (exp % 2 === 1) result *= base; // непарний степінь — "відкладаємо" один множник
+    base *= base;                       // x, x², x⁴, x⁸, ...
+    exp = Math.floor(exp / 2);          // степінь удвічі менший → log2(exp) ітерацій
+  }
+  return result;
+}
+fastPow(2, 10); // 1024 — exp: 10 → 5 → 2 → 1 → 0, тобто 4 ітерації замість 10 множень
+
+// 2. Найбільший спільний дільник, алгоритм Евкліда — O(log min(a, b))
+function gcd(a, b) {
+  while (b !== 0) {
+    [a, b] = [b, a % b]; // залишок щонайменше вдвічі менший за a кожні два кроки
+  }
+  return a;
+}
+gcd(48, 18); // 6 — (48,18) → (18,12) → (12,6) → (6,0)
+
+// 3. Кількість цифр числа — O(log₁₀ n): ділимо на 10, а не на 2
+function countDigits(n) {
+  let digits = 1;
+  while (n &gt;= 10) {
+    n = Math.floor(n / 10);
+    digits++;
+  }
+  return digits;
+}
+countDigits(987_654_321); // 9 — дев'ять ітерацій для числа близько мільярда</code></pre>
+      </div>
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body"><b>Основа логарифма в Big O не важлива:</b> <code>log₁₀ n</code> і
+        <code>log₂ n</code> відрізняються лише на константний множник
+        (<code>log₂ n ≈ 3.32 · log₁₀ n</code>), а константи Big O відкидає. Тому пишуть просто
+        <code>O(log n)</code> — і для ділення навпіл, і для ділення на 10.</div>
+      </div>
+
       <h3>O(n²) — квадратична</h3>
       <p>Вкладені цикли по тому самому входу — типова "наївна" перша версія рішення:</p>
       <div class="codecard">
@@ -471,6 +533,34 @@ function hasPairWithSum(sortedArr, target) {
   const right = mergeSort(arr.slice(mid));
   return merge(left, right); // O(n) на кожному рівні злиття, log n рівнів → O(n log n)
 }</code></pre>
+      </div>
+      <p>
+        Найпростіше побачити <code>n log n</code> на двох вкладених циклах, де зовнішній іде
+        лінійно, а внутрішній — подвоєнням лічильника. І найчастіший практичний випадок —
+        "спершу відсортувати, потім один прохід":
+      </p>
+      <div class="codecard">
+        <div class="bar"><span class="path">O(n log n) — вкладений цикл з подвоєнням і "sort + scan"</span></div>
+        <pre><code>function countOps(n) {
+  let ops = 0;
+  for (let i = 0; i &lt; n; i++) {        // n разів
+    for (let j = 1; j &lt; n; j *= 2) {   // log2(n) разів — j: 1, 2, 4, 8, ...
+      ops++;
+    }
+  }
+  return ops;
+}
+countOps(1024); // 10 240 = 1024 × 10  (а O(n²) дало б 1 048 576)
+
+// Та сама задача hasDuplicate, що й в O(n²) вище, але через сортування:
+function hasDuplicateSorted(arr) {
+  const sorted = [...arr].sort((a, b) =&gt; a - b); // O(n log n); копія — не мутуємо вхід
+  for (let i = 1; i &lt; sorted.length; i++) {      // O(n) — дублікати тепер поруч
+    if (sorted[i] === sorted[i - 1]) return true;
+  }
+  return false;
+} // разом O(n log n) + O(n) = O(n log n), пам'ять O(n) на копію
+// (через Set було б O(n) за часом — але сортування корисне, коли потрібен ще й порядок)</code></pre>
       </div>
       <div class="callout warn">
         <div class="ic">⚠️</div>
@@ -613,6 +703,45 @@ class LinkedList {
         іншу структуру (наприклад, чергу на основі зв'язного списку або двох стеків).</div>
       </div>
 
+      <div class="codecard">
+        <div class="bar"><span class="path">Stack і Queue з O(1) на всі операції</span></div>
+        <pre><code>class Stack {
+  #items = [];
+  push(x) { this.#items.push(x); }        // O(1)
+  pop() { return this.#items.pop(); }     // O(1)
+  peek() { return this.#items.at(-1); }   // O(1) — верхівка без видалення
+  get size() { return this.#items.length; }
+}
+
+class Queue {
+  #items = [];
+  #head = 0;                              // індекс "голови" замість shift()
+
+  enqueue(x) { this.#items.push(x); }     // O(1)
+
+  dequeue() {                             // O(1) — нічого не зсуваємо
+    if (this.#head === this.#items.length) return undefined;
+    const x = this.#items[this.#head];
+    this.#items[this.#head++] = undefined; // звільняємо посилання для GC
+    if (this.#head &gt; 1024 &amp;&amp; this.#head * 2 &gt; this.#items.length) {
+      this.#items = this.#items.slice(this.#head); // зрідка "стискаємо" масив
+      this.#head = 0;                              // → амортизовано все ще O(1)
+    }
+    return x;
+  }
+
+  get size() { return this.#items.length - this.#head; }
+}
+
+const q = new Queue();
+q.enqueue('a'); q.enqueue('b');
+q.dequeue(); // 'a' — FIFO
+
+const s = new Stack();
+s.push('a'); s.push('b');
+s.pop();     // 'b' — LIFO</code></pre>
+      </div>
+
       <h3>Дерево та бінарне дерево пошуку (BST)</h3>
       <p>
         У бінарному дереві пошуку для кожного вузла всі значення в лівому піддереві менші за
@@ -669,6 +798,133 @@ function inOrder(node, out = []) {
         <figcaption>Результат послідовної вставки 5, 3, 8, 1, 4, 7, 9 у код вище. Кожне ліве піддерево цілком менше за свого батька, кожне праве — цілком більше (звідси й відсортований in-order обхід). Дерево тут збалансоване — висота log₂(7)≈3 рівні дають O(log n) пошук; та сама вставка вже <i>відсортованих</i> 1,3,4,5,7,8,9 одне за одним дала б пряму лінію заввишки 7 рівнів — O(n), як у зв'язному списку (пастка з тексту вище).</figcaption>
       </figure>
 
+      <p>
+        Звідки береться <code>O(log n)</code> у дереві: на кожному вузлі пошук іде <b>або</b>
+        ліворуч, <b>або</b> праворуч — тобто відкидає ціле піддерево (у збалансованому дереві це
+        приблизно половина елементів). Кількість кроків дорівнює висоті дерева, а висота
+        збалансованого дерева з <code>n</code> вузлів — <code>≈ log₂ n</code>:
+      </p>
+      <div class="codecard">
+        <div class="bar"><span class="path">BST: пошук, мінімум, висота + демонстрація пастки з виродженням</span></div>
+        <pre><code>function searchBST(node, target) {
+  let steps = 0;
+  while (node !== null) {
+    steps++;
+    if (target === node.value) return { found: true, steps };
+    node = target &lt; node.value ? node.left : node.right; // відкидаємо ціле піддерево
+  }
+  return { found: false, steps };
+} // O(h), де h — висота: O(log n) для збалансованого, O(n) для виродженого
+
+function minBST(node) {
+  while (node.left !== null) node = node.left; // мінімум — крайній лівий вузол, O(h)
+  return node.value;
+}
+
+function height(node) {
+  if (node === null) return 0;
+  return 1 + Math.max(height(node.left), height(node.right));
+}
+
+// Ті самі 7 значень — різний порядок вставки
+let balanced = null;
+for (const v of [5, 3, 8, 1, 4, 7, 9]) balanced = insertBST(balanced, v);
+let degenerate = null;
+for (const v of [1, 3, 4, 5, 7, 8, 9]) degenerate = insertBST(degenerate, v);
+
+height(balanced);                // 3  ≈ log2(7)
+height(degenerate);              // 7  — по суті зв'язний список
+searchBST(balanced, 9).steps;    // 3  (5 → 8 → 9)
+searchBST(degenerate, 9).steps;  // 7  (1 → 3 → 4 → 5 → 7 → 8 → 9) — вже O(n)
+
+// Як побудувати збалансоване дерево з відсортованого масиву:
+// корінь — середина, ліве/праве піддерево — рекурсивно з половинок
+function buildBalanced(sorted, lo = 0, hi = sorted.length - 1) {
+  if (lo &gt; hi) return null;
+  const mid = Math.floor((lo + hi) / 2);
+  return {
+    value: sorted[mid],
+    left: buildBalanced(sorted, lo, mid - 1),
+    right: buildBalanced(sorted, mid + 1, hi),
+  };
+}
+height(buildBalanced([1, 3, 4, 5, 7, 8, 9])); // 3 — знову log2(n)</code></pre>
+      </div>
+
+      <h3>Купа (heap) і пріоритетна черга — O(log n) на вставку й видалення</h3>
+      <p>
+        <b>Бінарна купа</b> — це "майже повне" бінарне дерево, яке зберігають у звичайному
+        масиві: діти вузла з індексом <code>i</code> лежать на <code>2i + 1</code> і
+        <code>2i + 2</code>, батько — на <code>⌊(i − 1) / 2⌋</code>. У <b>min-heap</b> кожен
+        батько ≤ своїх дітей, тому мінімум завжди в корені — <code>O(1)</code>. Вставка й
+        видалення мінімуму — <code>O(log n)</code>, бо елемент "спливає" або "тоне" лише вздовж
+        одного шляху від кореня до листа, а висота такого дерева завжди <code>⌊log₂ n⌋</code>
+        (воно не може виродитись, на відміну від BST). У JS вбудованої купи немає — на
+        співбесіді її часто просять написати.
+      </p>
+      <div class="codecard">
+        <div class="bar"><span class="path">MinHeap на масиві</span></div>
+        <pre><code>class MinHeap {
+  constructor() { this.data = []; }
+  get size() { return this.data.length; }
+  peek() { return this.data[0]; }                // O(1) — мінімум у корені
+
+  push(value) {                                  // O(log n)
+    const a = this.data;
+    a.push(value);                               // кладемо в кінець (наступний лист)
+    let i = a.length - 1;
+    while (i &gt; 0) {
+      const parent = Math.floor((i - 1) / 2);
+      if (a[parent] &lt;= a[i]) break;              // порядок відновлено
+      [a[parent], a[i]] = [a[i], a[parent]];     // "спливаємо" на рівень вище
+      i = parent;
+    }
+  }
+
+  pop() {                                        // O(log n)
+    const a = this.data;
+    const top = a[0];
+    const last = a.pop();
+    if (a.length &gt; 0) {
+      a[0] = last;                               // останній лист — у корінь
+      let i = 0;
+      while (true) {
+        const l = 2 * i + 1;
+        const r = 2 * i + 2;
+        let smallest = i;
+        if (l &lt; a.length &amp;&amp; a[l] &lt; a[smallest]) smallest = l;
+        if (r &lt; a.length &amp;&amp; a[r] &lt; a[smallest]) smallest = r;
+        if (smallest === i) break;
+        [a[smallest], a[i]] = [a[i], a[smallest]]; // "тонемо" до меншої дитини
+        i = smallest;
+      }
+    }
+    return top;
+  }
+}
+
+const h = new MinHeap();
+[5, 1, 8, 3, 2].forEach((x) =&gt; h.push(x));
+h.pop(); // 1
+h.pop(); // 2  — завжди поточний мінімум
+
+// Класична задача: k-й найбільший елемент — O(n log k), а не O(n log n) як через sort
+function kthLargest(nums, k) {
+  const heap = new MinHeap();       // тримаємо лише k найбільших
+  for (const x of nums) {
+    heap.push(x);                   // O(log k)
+    if (heap.size &gt; k) heap.pop();  // викидаємо найменший з "топу"
+  }
+  return heap.peek();               // найменший серед k найбільших = k-й найбільший
+}
+kthLargest([3, 2, 1, 5, 6, 4], 2); // 5</code></pre>
+      </div>
+      <p class="muted">
+        Де купа трапляється в реальному житті: планувальники задач за пріоритетом, алгоритм
+        Дейкстри (найкоротший шлях у зваженому графі), злиття k відсортованих потоків, "топ-N"
+        у стрімі подій без сортування всього масиву.
+      </p>
+
       <h3>Хеш-таблиця зсередини</h3>
       <p>
         Під капотом хеш-функція перетворює ключ на індекс "відра" (bucket) у внутрішньому
@@ -679,6 +935,59 @@ function inOrder(node, out = []) {
         наступне вільне відро за визначеним правилом (наприклад, наступне по порядку) і кладе
         запис туди. В обох випадках багато колізій псують заявлений <code>O(1)</code> — деталі
         дивіться в питанні про це в розділі 11.
+      </p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">хеш-таблиця з ланцюжками (separate chaining) і resize</span></div>
+        <pre><code>class HashTable {
+  constructor(capacity = 8) {
+    this.buckets = Array.from({ length: capacity }, () =&gt; []);
+    this.size = 0;
+  }
+
+  #hash(key) {
+    let h = 0;
+    for (const ch of String(key)) {
+      h = (h * 31 + ch.charCodeAt(0)) &gt;&gt;&gt; 0; // &gt;&gt;&gt; 0 — тримаємо як 32-бітне беззнакове
+    }
+    return h % this.buckets.length;           // індекс відра
+  }
+
+  set(key, value) {                           // O(1) у середньому
+    const bucket = this.buckets[this.#hash(key)];
+    const entry = bucket.find((e) =&gt; e[0] === key);
+    if (entry) entry[1] = value;              // ключ уже є — перезаписуємо
+    else {
+      bucket.push([key, value]);              // колізія? просто ще один запис у ланцюжку
+      this.size++;
+    }
+    if (this.size &gt; this.buckets.length * 0.75) this.#resize(); // load factor 0.75
+  }
+
+  get(key) {                                  // O(1) у середньому, O(n) якщо все в одному відрі
+    const bucket = this.buckets[this.#hash(key)];
+    return bucket.find((e) =&gt; e[0] === key)?.[1];
+  }
+
+  #resize() {                                 // O(n), але рідко → амортизовано O(1) на set
+    const old = this.buckets;
+    this.buckets = Array.from({ length: old.length * 2 }, () =&gt; []);
+    this.size = 0;
+    for (const bucket of old) {
+      for (const [k, v] of bucket) this.set(k, v); // перехешування: індекси змінились
+    }
+  }
+}
+
+const t = new HashTable();
+t.set('apple', 3);
+t.set('pear', 5);
+t.get('apple'); // 3</code></pre>
+      </div>
+      <p class="muted">
+        Саме через <code>resize</code> вставка в хеш-мапу — це <i>амортизований</i> O(1):
+        більшість вставок миттєві, а рідкісна дорога (подвоєння й перехешування) "розмазується"
+        по всіх попередніх. Так само працює й <code>push</code> у динамічний масив.
       </p>
 
       <h3>Граф і обхід (BFS/DFS)</h3>
@@ -795,6 +1104,46 @@ function dfs(start, visited = new Set(), order = []) {
         але варто впевнено пояснити, чому кожне з них O(n²): усі вони, у тій чи іншій формі,
         порівнюють кожен елемент з кожним іншим через вкладені цикли.
       </p>
+      <div class="codecard">
+        <div class="bar"><span class="path">O(n²) сортування: бульбашкою, вибором, вставками</span></div>
+        <pre><code>function bubbleSort(arr) {
+  for (let i = 0; i &lt; arr.length - 1; i++) {
+    let swapped = false;
+    for (let j = 0; j &lt; arr.length - 1 - i; j++) { // найбільший "спливає" в кінець
+      if (arr[j] &gt; arr[j + 1]) {
+        [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
+        swapped = true;
+      }
+    }
+    if (!swapped) break; // жодного обміну — вже відсортовано (найкращий випадок O(n))
+  }
+  return arr;
+}
+
+function selectionSort(arr) {
+  for (let i = 0; i &lt; arr.length - 1; i++) {
+    let min = i;
+    for (let j = i + 1; j &lt; arr.length; j++) {
+      if (arr[j] &lt; arr[min]) min = j;            // шукаємо мінімум у залишку
+    }
+    [arr[i], arr[min]] = [arr[min], arr[i]];     // ставимо його на позицію i
+  }
+  return arr; // завжди O(n²), навіть на відсортованому вході
+}
+
+function insertionSort(arr) {
+  for (let i = 1; i &lt; arr.length; i++) {
+    const current = arr[i];
+    let j = i - 1;
+    while (j &gt;= 0 &amp;&amp; arr[j] &gt; current) {
+      arr[j + 1] = arr[j];                       // зсуваємо більші праворуч
+      j--;
+    }
+    arr[j + 1] = current;                        // вставляємо на звільнене місце
+  }
+  return arr; // на майже відсортованих даних ~O(n) — тому рушії беруть його для малих шматків
+}</code></pre>
+      </div>
       <p>
         <b>Сортування злиттям</b> — найкращий вибір для повної реалізації на співбесіді, бо воно
         напряму ілюструє межу TC/SC, яку ми обговорили в розділі 2:
@@ -829,6 +1178,38 @@ function merge(left, right) {
         випадково або як медіану з трьох кандидатів, що робить деградацію статистично
         малоймовірною.
       </p>
+      <div class="codecard">
+        <div class="bar"><span class="path">quicksort на місці з випадковим pivot</span></div>
+        <pre><code>function quickSort(arr, lo = 0, hi = arr.length - 1) {
+  if (lo &gt;= hi) return arr;
+  const p = partition(arr, lo, hi);  // pivot стає на свою фінальну позицію p
+  quickSort(arr, lo, p - 1);         // ліворуч — усе менше за pivot
+  quickSort(arr, p + 1, hi);         // праворуч — усе більше або рівне
+  return arr;
+}
+
+function partition(arr, lo, hi) {
+  const r = lo + Math.floor(Math.random() * (hi - lo + 1)); // випадковий pivot
+  [arr[r], arr[hi]] = [arr[hi], arr[r]];                    // переносимо його в кінець
+  const pivot = arr[hi];
+  let i = lo;                                               // межа "менших за pivot"
+  for (let j = lo; j &lt; hi; j++) {
+    if (arr[j] &lt; pivot) {
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+      i++;
+    }
+  }
+  [arr[i], arr[hi]] = [arr[hi], arr[i]];                    // pivot — між двома частинами
+  return i;
+}
+
+quickSort([5, 2, 9, 1, 5, 6]); // [1, 2, 5, 5, 6, 9]
+
+// Звідки O(n log n): partition — це O(n) на кожному "рівні" рекурсії,
+// а при розбитті приблизно навпіл рівнів ≈ log2(n).
+// Звідки O(log n) пам'яті: глибина стека рекурсії = кількість рівнів.
+// Звідки O(n²): якщо pivot щоразу найменший/найбільший — рівнів стає n, а не log n.</code></pre>
+      </div>
       <div class="callout good">
         <div class="ic">✅</div>
         <div class="body"><b>Практична порада на щодень:</b> у реальному production-коді майже
@@ -841,10 +1222,19 @@ function merge(left, right) {
         викликати <code>.sort()</code> і не переізобретати колесо — саме та ознака, яку шукають
         у senior-кандидата більше, ніж вміння продекламувати псевдокод quicksort напам'ять.</div>
       </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">пастка вбудованого sort()</span></div>
+        <pre><code>[10, 9, 1, 100].sort();                  // [1, 10, 100, 9] — без компаратора порівнює як РЯДКИ!
+[10, 9, 1, 100].sort((a, b) =&gt; a - b);   // [1, 9, 10, 100]
+
+const users = [{ name: 'Olha', age: 30 }, { name: 'Andrii', age: 25 }];
+users.sort((a, b) =&gt; a.age - b.age);                         // мутує users на місці
+const byName = users.toSorted((a, b) =&gt; a.name.localeCompare(b.name)); // ES2023: нова копія</code></pre>
+      </div>
     </section>
 
     <section id="t6">
-      <div class="topic-head"><span class="tag gap">🟡</span><h2>Пошук: бінарний пошук</h2></div>
+      <div class="topic-head"><span class="tag gap">🟡</span><h2>Пошук: бінарний пошук і його варіанти</h2></div>
       <p>
         Класичний <code>O(log n)</code> пошук у відсортованому масиві: на кожному кроці
         порівнюємо середній елемент діапазону з ціллю і відкидаємо ту половину діапазону, де
@@ -878,6 +1268,152 @@ function merge(left, right) {
         дублюється?" — відповідь: замість негайного <code>return mid</code> при збігу,
         запам'ятати позицію і продовжити звужувати пошук у потрібний бік (ліворуч для першого
         входження, праворуч для останнього), поки діапазон не вичерпається.</div>
+      </div>
+      <p>
+        Як виглядає <code>O(log n)</code> крок за кроком — шукаємо <code>13</code> у масиві з 10
+        елементів. <code>log₂ 10 ≈ 3.3</code>, тобто не більше 4 порівнянь:
+      </p>
+      <div class="codecard">
+        <div class="bar"><span class="path">трасування binarySearch</span></div>
+        <pre><code>const arr = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19];
+binarySearch(arr, 13);
+
+// крок 1: low=0 high=9 → mid=4, arr[4]=9  &lt; 13 → low=5   (лишилось 5 елементів)
+// крок 2: low=5 high=9 → mid=7, arr[7]=15 &gt; 13 → high=6  (лишилось 2)
+// крок 3: low=5 high=6 → mid=5, arr[5]=11 &lt; 13 → low=6   (лишився 1)
+// крок 4: low=6 high=6 → mid=6, arr[6]=13 === 13 → return 6
+//
+// Лінійний пошук зробив би 7 порівнянь; на мільйоні елементів — до 1 000 000 проти ~20.</code></pre>
+      </div>
+
+      <p>Рекурсивна версія — для порівняння, і щоб побачити, як рекурсія змінює пам'ять:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">бінарний пошук — рекурсивна версія</span></div>
+        <pre><code>function binarySearchRec(arr, target, low = 0, high = arr.length - 1) {
+  if (low &gt; high) return -1;
+  const mid = Math.floor((low + high) / 2);
+  if (arr[mid] === target) return mid;
+  return arr[mid] &lt; target
+    ? binarySearchRec(arr, target, mid + 1, high)
+    : binarySearchRec(arr, target, low, mid - 1);
+}
+// TC — O(log n), але SC теж O(log n): кожен рівень — кадр на стеку викликів.
+// Ітеративна версія вище — SC O(1).</code></pre>
+      </div>
+
+      <h3>Перше / останнє входження: lowerBound і upperBound</h3>
+      <p>
+        Відповідь на "а якщо значення дублюються?" з кодом. Замість "знайти будь-який збіг"
+        шукаємо <b>межу</b>: перший індекс, де елемент ≥ target (<code>lowerBound</code>), і
+        перший, де він &gt; target (<code>upperBound</code>). Через напівінтервал
+        <code>[lo, hi)</code> не треба думати про <code>mid ± 1</code> у гілці збігу:
+      </p>
+      <div class="codecard">
+        <div class="bar"><span class="path">lowerBound / upperBound — O(log n) навіть з дублікатами</span></div>
+        <pre><code>function lowerBound(arr, target) {     // перший i, де arr[i] &gt;= target
+  let lo = 0, hi = arr.length;           // hi = length — "за межами" масиву
+  while (lo &lt; hi) {
+    const mid = lo + Math.floor((hi - lo) / 2);
+    if (arr[mid] &lt; target) lo = mid + 1; // відповідь точно правіше mid
+    else hi = mid;                        // mid може бути відповіддю — не відкидаємо його
+  }
+  return lo;
+}
+
+function upperBound(arr, target) {     // перший i, де arr[i] &gt; target
+  let lo = 0, hi = arr.length;
+  while (lo &lt; hi) {
+    const mid = lo + Math.floor((hi - lo) / 2);
+    if (arr[mid] &lt;= target) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+const nums = [1, 2, 2, 2, 3, 5];
+lowerBound(nums, 2);                        // 1 — перше входження
+upperBound(nums, 2) - 1;                    // 3 — останнє входження
+upperBound(nums, 2) - lowerBound(nums, 2);  // 3 — скільки разів зустрічається, за O(log n)
+lowerBound(nums, 4);                        // 5 — куди вставити 4, щоб масив лишився відсортованим</code></pre>
+      </div>
+
+      <h3>Пошук у зсунутому (rotated) відсортованому масиві</h3>
+      <p>
+        Популярне ускладнення: <code>[4, 5, 6, 7, 0, 1, 2]</code> — відсортований масив,
+        "прокручений" на кілька позицій. Ключове спостереження: при будь-якому <code>mid</code>
+        <b>хоча б одна</b> половина відсортована — перевіряємо, чи ціль у ній, і відкидаємо іншу.
+        Все ще <code>O(log n)</code>:
+      </p>
+      <div class="codecard">
+        <div class="bar"><span class="path">searchRotated — O(log n)</span></div>
+        <pre><code>function searchRotated(nums, target) {
+  let lo = 0, hi = nums.length - 1;
+  while (lo &lt;= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (nums[mid] === target) return mid;
+
+    if (nums[lo] &lt;= nums[mid]) {                        // ліва половина відсортована
+      if (nums[lo] &lt;= target &amp;&amp; target &lt; nums[mid]) hi = mid - 1;
+      else lo = mid + 1;
+    } else {                                           // права половина відсортована
+      if (nums[mid] &lt; target &amp;&amp; target &lt;= nums[hi]) lo = mid + 1;
+      else hi = mid - 1;
+    }
+  }
+  return -1;
+}
+
+searchRotated([4, 5, 6, 7, 0, 1, 2], 0); // 4
+searchRotated([4, 5, 6, 7, 0, 1, 2], 3); // -1</code></pre>
+      </div>
+
+      <h3>Бінарний пошук по відповіді</h3>
+      <p>
+        Найпотужніше застосування, яке часто не впізнають: шукаємо не елемент у масиві, а
+        <b>число-відповідь</b> у діапазоні можливих значень. Працює, коли є монотонна перевірка
+        "чи підходить значення <code>x</code>" — якщо підходить <code>x</code>, то підходить і
+        будь-яке більше. Тоді діапазон відповідей можна ділити навпіл:
+      </p>
+      <div class="codecard">
+        <div class="bar"><span class="path">бінарний пошук по відповіді: цілий корінь і мінімальна місткість</span></div>
+        <pre><code>// Цілий квадратний корінь без Math.sqrt — O(log x)
+function intSqrt(x) {
+  let lo = 0, hi = x, ans = 0;
+  while (lo &lt;= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (mid * mid &lt;= x) {
+      ans = mid;        // mid підходить — запам'ятали і пробуємо більше
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return ans;
+}
+intSqrt(80); // 8
+
+// Яка мінімальна місткість вантажівки, щоб перевезти всі посилки (в заданому порядку) за days днів?
+// Перевірка fits(cap) — O(n), бінарний пошук по cap — O(log(sum)) → разом O(n · log(sum))
+function shipWithinDays(weights, days) {
+  const fits = (cap) =&gt; {
+    let needDays = 1, load = 0;
+    for (const w of weights) {
+      if (load + w &gt; cap) { needDays++; load = 0; } // не влазить — наступний день
+      load += w;
+    }
+    return needDays &lt;= days;
+  };
+
+  let lo = Math.max(...weights);                   // менше — найважча посилка не влізе
+  let hi = weights.reduce((a, b) =&gt; a + b, 0);     // все за один день
+  while (lo &lt; hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (fits(mid)) hi = mid;                       // підходить — шукаємо ще меншу
+    else lo = mid + 1;
+  }
+  return lo;
+}
+shipWithinDays([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 5); // 15</code></pre>
       </div>
     </section>
 
@@ -1446,6 +1982,27 @@ original2.length;       // 1 — оригінал лишився недотор�
           без рекурсії взагалі, а отже без ризику переповнення стека з попереднього питання.
           Табуляція зазвичай трохи ефективніша за пам'яттю й повністю уникає ризику стека, зате
           мемоізація часто читається природніше, бо напряму повторює структуру задачі.</p>
+          <div class="codecard">
+            <div class="bar"><span class="path">Фібоначчі табуляцією: O(n) часу, O(n) → O(1) пам'яті</span></div>
+            <pre><code>function fibTab(n) {
+  if (n &lt;= 1) return n;
+  const dp = [0, 1];                      // базові випадки
+  for (let i = 2; i &lt;= n; i++) {
+    dp[i] = dp[i - 1] + dp[i - 2];        // кожне значення — з двох попередніх
+  }
+  return dp[n];
+}
+
+// Потрібні лише два останні значення — масив не потрібен, пам'ять O(1)
+function fibTwoVars(n) {
+  let a = 0, b = 1;
+  for (let i = 0; i &lt; n; i++) [a, b] = [b, a + b];
+  return a;
+}
+
+fibTab(50);     // 12586269025 — миттєво, без ризику переповнення стека
+fibTwoVars(50); // 12586269025</code></pre>
+          </div>
         </div>
       </details>
 
@@ -1459,6 +2016,21 @@ original2.length;       // 1 — оригінал лишився недотор�
           — тобто це буквально послідовність Фібоначчі в новому вбранні. Це і є суть DP-мислення:
           розпізнати, що задача зводиться до комбінації менших підзадач того самого типу, а
           не вигадувати рішення з нуля щоразу.</p>
+          <div class="codecard">
+            <div class="bar"><span class="path">climbStairs — O(n) часу, O(1) пам'яті</span></div>
+            <pre><code>function climbStairs(n) {
+  let prev = 1;   // способів дійти до сходинки i-2 (для i = 2 це сходинка 0)
+  let curr = 1;   // способів дійти до сходинки i-1 (сходинка 1 — один спосіб)
+  for (let i = 2; i &lt;= n; i++) {
+    [prev, curr] = [curr, prev + curr]; // ways(i) = ways(i-1) + ways(i-2)
+  }
+  return curr;
+}
+
+climbStairs(2); // 2  — (1+1), (2)
+climbStairs(3); // 3  — (1+1+1), (1+2), (2+1)
+climbStairs(5); // 8</code></pre>
+          </div>
         </div>
       </details>
     </section>

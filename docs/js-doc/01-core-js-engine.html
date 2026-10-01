@@ -312,6 +312,7 @@
     <div class="toc-title">Теми</div>
     <ol>
       <li><a href="#t1">1. Event loop та черги задач</a></li>
+      <li><a href="#t1-raf" style="padding-left:20px; font-size:12.5px;">↳ requestAnimationFrame</a></li>
       <li><a href="#t2">2. Async/await і помилки</a></li>
       <li><a href="#t3">3. Область видимості, hoisting, TDZ</a></li>
       <li><a href="#t4">4. this і контекст виклику</a></li>
@@ -419,7 +420,109 @@ console.log('6: sync');
         <figcaption>Event loop переносить задачу в Call Stack лише коли він порожній — і завжди спершу спорожняє <b>всю</b> чергу мікрозадач, і тільки потім бере <b>одну</b> макрозадачу.</figcaption>
       </figure>
 
-      <h3 style="font-size:16px; margin:26px 0 10px;">Практика: 10 задач на event loop</h3>
+      <h3 id="t1-raf" style="font-size:16px; margin:30px 0 10px; scroll-margin-top:80px;">requestAnimationFrame: окремий етап перед кадром</h3>
+      <p><code>requestAnimationFrame(cb)</code> — це не мікрозадача і не макрозадача. Браузер
+      викликає <code>cb</code> на окремому етапі циклу — <b>"update the rendering"</b>, прямо
+      перед тим, як перерахувати стилі й layout та намалювати кадр. Колбек отримує аргумент
+      <code>timestamp</code> (<code>DOMHighResTimeStamp</code>) — час початку поточного кадру,
+      однаковий для всіх rAF-колбеків цього кадру.</p>
+      <p><b>Для чого використовується:</b> анімації на JS (рух, прогрес, канвас, ігри),
+      плавний скрол/паралакс, "згрупувати" кілька змін DOM в один кадр, прочитати розміри
+      елемента рівно перед малюванням. Головна перевага над <code>setTimeout(fn, 16)</code> —
+      rAF синхронізований з частотою оновлення екрана, тому немає "рваних" кадрів, а в
+      неактивній вкладці він <b>повністю зупиняється</b> і не палить батарею.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">raf-animation.js</span></div>
+        <pre><code>const box = document.querySelector('.box');
+let start = null;
+
+function step(timestamp) {
+  if (start === null) start = timestamp;
+  const elapsed = timestamp - start;          // рахуємо від часу, а не від кількості кадрів
+  box.style.transform = `translateX(${Math.min(elapsed / 5, 300)}px)`;
+  if (elapsed &lt; 1500) requestAnimationFrame(step); // rAF — одноразовий, тому плануємо знову
+}
+
+const id = requestAnimationFrame(step);
+// cancelAnimationFrame(id) — скасувати, якщо колбек ще не спрацював</code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 640 210" role="img" aria-label="Одна ітерація event loop з рендерингом: спершу одна макрозадача, потім усі мікрозадачі, потім усі rAF-колбеки, потім перерахунок стилів і layout, потім paint. Весь кадр має вкластися приблизно в 16.6 мілісекунди при 60 герцах">
+          <defs>
+            <marker id="raf-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <g font-size="12">
+            <rect x="20" y="40" width="110" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="75" y="64" text-anchor="middle" font-weight="600" fill="currentColor">1 макрозадача</text>
+            <text x="75" y="81" text-anchor="middle" font-size="10.5" opacity="0.75" fill="currentColor">setTimeout, клік</text>
+
+            <rect x="142" y="40" width="110" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="197" y="64" text-anchor="middle" font-weight="600" fill="currentColor">ВСІ мікрозадачі</text>
+            <text x="197" y="81" text-anchor="middle" font-size="10.5" opacity="0.75" fill="currentColor">.then / await</text>
+
+            <rect x="264" y="40" width="110" height="56" rx="8" fill="none" stroke="var(--accent)" stroke-width="2"/>
+            <text x="319" y="64" text-anchor="middle" font-weight="600" fill="var(--accent)">rAF колбеки</text>
+            <text x="319" y="81" text-anchor="middle" font-size="10.5" fill="var(--accent)">усі, що були в черзі</text>
+
+            <rect x="386" y="40" width="110" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="441" y="64" text-anchor="middle" font-weight="600" fill="currentColor">Style + Layout</text>
+            <text x="441" y="81" text-anchor="middle" font-size="10.5" opacity="0.75" fill="currentColor">перерахунок</text>
+
+            <rect x="508" y="40" width="110" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="563" y="64" text-anchor="middle" font-weight="600" fill="currentColor">Paint</text>
+            <text x="563" y="81" text-anchor="middle" font-size="10.5" opacity="0.75" fill="currentColor">кадр на екрані</text>
+
+            <line x1="130" y1="68" x2="140" y2="68" stroke="currentColor" stroke-width="1.3" marker-end="url(#raf-arrow)"/>
+            <line x1="252" y1="68" x2="262" y2="68" stroke="currentColor" stroke-width="1.3" marker-end="url(#raf-arrow)"/>
+            <line x1="374" y1="68" x2="384" y2="68" stroke="currentColor" stroke-width="1.3" marker-end="url(#raf-arrow)"/>
+            <line x1="496" y1="68" x2="506" y2="68" stroke="currentColor" stroke-width="1.3" marker-end="url(#raf-arrow)"/>
+
+            <text x="319" y="26" text-anchor="middle" font-size="10.5" opacity="0.8" fill="currentColor">після кожного rAF-колбека — знову спорожнення мікрозадач</text>
+
+            <path d="M20,118 L20,128 L618,128 L618,118" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="319" y="148" text-anchor="middle" font-weight="600" fill="currentColor">≈ 16.6 мс на кадр при 60 Гц (8.3 мс при 120 Гц)</text>
+            <text x="319" y="168" text-anchor="middle" font-size="10.5" opacity="0.8" fill="currentColor">Етапи rAF → Paint — лише коли браузер вирішив малювати ("rendering opportunity"),</text>
+            <text x="319" y="184" text-anchor="middle" font-size="10.5" opacity="0.8" fill="currentColor">а не на кожній ітерації: між двома кадрами може пройти багато макрозадач</text>
+          </g>
+        </svg>
+        <figcaption>Повна ітерація з рендерингом: одна макрозадача → <b>всі</b> мікрозадачі → <b>всі</b> rAF-колбеки → стилі/layout → paint. Якщо щось до rAF триває довше за бюджет кадру — кадр просто пропускається.</figcaption>
+      </figure>
+
+      <p><b>Частота:</b> rAF викликається не частіше, ніж оновлюється екран — зазвичай 60 разів
+      на секунду (~16.6 мс), на 120/144 Гц моніторах частіше. Браузер може знизити частоту
+      (режим енергозбереження, крос-доменний iframe), а в прихованій вкладці чи згорнутому
+      вікні rAF не викликається <b>взагалі</b> (для порівняння, <code>setTimeout</code> у
+      фоновій вкладці лише тротлиться до ~1 разу на секунду). Тому анімацію завжди рахують
+      від <code>timestamp</code>, а не "+1px за кадр" — інакше на 120 Гц вона йде вдвічі швидше.</p>
+
+      <table>
+        <tr><th>Що блокує / затримує rAF</th><th>Чому</th><th>Наслідок</th></tr>
+        <tr><td>Довгий синхронний код (&gt; 16 мс)</td><td>Стек зайнятий — до етапу рендерингу цикл не доходить</td><td>Пропущені кадри, "jank"</td></tr>
+        <tr><td>Велика або нескінченна черга мікрозадач</td><td>Мікрозадачі спорожнюються <i>повністю</i> перед rAF, включно з новими, доданими по ходу</td><td>Кадр чекає; при нескінченному ланцюжку — вкладка зависає назавжди</td></tr>
+        <tr><td>Важкий код усередині самого rAF-колбека</td><td>Він сам є частиною бюджету кадру — paint іде лише після нього</td><td>Кожен кадр довший за 16 мс → FPS падає</td></tr>
+        <tr><td>Читання layout після запису (<code>offsetHeight</code> після зміни стилю)</td><td>Forced synchronous layout просто в колбеку (layout thrashing)</td><td>Дорогий перерахунок кілька разів за кадр</td></tr>
+        <tr><td>Прихована вкладка / згорнуте вікно</td><td>Браузер не малює — немає rendering opportunity</td><td>rAF на паузі до повернення на вкладку</td></tr>
+      </table>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Три пастки, які люблять на співбесіді:</b>
+        (1) Порядок <code>setTimeout(fn, 0)</code> vs <code>requestAnimationFrame</code>
+        <b>не гарантований</b> — залежить від того, коли настане наступний кадр; правильна
+        відповідь "залежить", а не "таймер завжди перший".
+        (2) Пропущені кадри <b>не накопичуються</b>: якщо головний потік був зайнятий 1 секунду,
+        rAF-колбек викличеться один раз, а не 60.
+        (3) rAF, запланований <i>усередині</i> rAF-колбека, виконається в <b>наступному</b>
+        кадрі — на відміну від мікрозадачі, доданої під час мікрозадачі, яка виконається в цьому ж
+        проході. Звідси трюк "подвійний rAF": <code>requestAnimationFrame(() =&gt; requestAnimationFrame(fn))</code>
+        — <code>fn</code> гарантовано запуститься після того, як попередній кадр намальовано.</div>
+      </div>
+
+      <h3 style="font-size:16px; margin:26px 0 10px;">Практика: 15 задач на event loop</h3>
       <p class="section-desc" style="margin-bottom:16px;">Класичні задачі для співбесіди — від простих до складніших. Спробуйте передбачити вивід
       <i>перед</i> тим, як розгорнути відповідь.</p>
 
@@ -710,6 +813,198 @@ console.log('6');</code></pre>
             пізніше. Далі синхронний <code>6</code>. Коли стек порожній: спершу вся черга
             мікрозадач по порядку (<code>4</code>, потім <code>5</code>), і лише тоді одна
             макрозадача (<code>2</code>).</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 11</span><span class="taskdiff easy">Легко</span><span class="tasktitle">rAF vs Promise vs sync</span></div>
+        <div class="codecard">
+          <div class="bar"><span class="path">event-loop-11.js</span></div>
+          <pre><code>console.log('1');
+
+requestAnimationFrame(() => console.log('2: rAF'));
+
+Promise.resolve().then(() => console.log('3: then'));
+
+console.log('4');</code></pre>
+        </div>
+        <details class="answer">
+          <summary></summary>
+          <div class="a-body">
+            <span class="out">1
+4
+3: then
+2: rAF</span>
+            <p>Синхронний код першим (<code>1</code>, <code>4</code>), потім уся черга мікрозадач
+            (<code>3</code>). rAF-колбек виконується лише на етапі рендерингу наступного кадру —
+            тобто завжди <b>після</b> поточних мікрозадач. Якби тут був ще й
+            <code>setTimeout(fn, 0)</code>, його місце відносно rAF було б <i>не гарантоване</i>:
+            якщо кадр "на підході" — першим буде rAF, якщо ні — таймер.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 12</span><span class="taskdiff hard">Складно</span><span class="tasktitle">1000 промісів і requestAnimationFrame</span></div>
+        <div class="codecard">
+          <div class="bar"><span class="path">event-loop-12.js</span></div>
+          <pre><code>requestAnimationFrame(() => console.log('rAF'));
+
+let done = 0;
+for (let i = 0; i &lt; 1000; i++) {
+  Promise.resolve().then(() => {
+    done++;
+    if (done === 1000) console.log('1000 промісів виконано');
+  });
+}
+
+// і ще ланцюжок: кожен then створює наступний
+let p = Promise.resolve();
+for (let i = 0; i &lt; 1000; i++) p = p.then(() => {});
+p.then(() => console.log('ланцюжок з 1000 then виконано'));
+
+console.log('sync end');</code></pre>
+        </div>
+        <details class="answer">
+          <summary></summary>
+          <div class="a-body">
+            <span class="out">sync end
+1000 промісів виконано
+ланцюжок з 1000 then виконано
+rAF</span>
+            <p><b>Чи викличеться rAF?</b> Так, але лише <b>після всіх</b> 2000+ мікрозадач. Event loop
+            не переходить до рендерингу, поки черга мікрозадач не стане порожньою — а це стосується
+            і мікрозадач, які додаються <i>по ходу</i> (кожен наступний <code>.then</code> ланцюжка
+            ставиться в чергу, коли виконано попередній, і все одно встигає до rAF). Ні 1000, ні
+            1 000 000 промісів не дадуть rAF "вклинитися посередині".</p>
+            <p><b>Що це означає на практиці:</b> поки проміси легкі, 2000 мікрозадач виконуються за
+            частки мілісекунди — кадр не страждає. Але якщо кожен <code>.then</code> робить ~1 мс
+            роботи, перший rAF настане через ~1 с: усю цю секунду сторінка не перемальовується,
+            анімації стоять, кліки не обробляються. І rAF після цього викличеться <b>один раз</b>, а
+            не 60 — пропущені кадри не "доганяються". <code>Promise.all</code> на 1000 промісів
+            поводиться так само: це не паралельність, а ті самі мікрозадачі в одному потоці.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 13</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Нескінченні мікрозадачі vs нескінченні таймери</span></div>
+        <div class="codecard">
+          <div class="bar"><span class="path">event-loop-13.js</span></div>
+          <pre><code>requestAnimationFrame(() => console.log('frame'));
+setTimeout(() => console.log('timeout'), 0);
+
+// Варіант А
+function spinMicro() { Promise.resolve().then(spinMicro); }
+spinMicro();
+
+// Варіант Б (замість А)
+// function spinMacro() { setTimeout(spinMacro, 0); }
+// spinMacro();</code></pre>
+        </div>
+        <details class="answer">
+          <summary></summary>
+          <div class="a-body">
+            <span class="out">Варіант А: нічого не виводиться, вкладка зависає
+Варіант Б: timeout, frame (порядок між ними не гарантований), сторінка живе</span>
+            <p><b>А:</b> кожна мікрозадача ставить наступну, тож черга мікрозадач ніколи не
+            спорожнюється. Event loop назавжди застряг на етапі мікрозадач — до макрозадач
+            (<code>timeout</code>) і до рендерингу (<code>frame</code>) він не доходить ніколи.
+            Це "голодування" (starvation) — так само поводиться нескінченний <code>while</code>.</p>
+            <p><b>Б:</b> кожен <code>setTimeout</code> — окрема макрозадача, а між макрозадачами
+            event loop щоразу перевіряє, чи не час малювати. Тому rAF спокійно викликається ~60
+            разів на секунду, хоча цикл таймерів нескінченний. Висновок: "віддати керування
+            браузеру" можна лише через макрозадачу, а не через <code>await</code> / <code>.then</code>.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 14</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">rAF усередині rAF і мікрозадачі</span></div>
+        <div class="codecard">
+          <div class="bar"><span class="path">event-loop-14.js</span></div>
+          <pre><code>requestAnimationFrame(() => {
+  console.log('A');
+  Promise.resolve().then(() => console.log('B'));
+  requestAnimationFrame(() => console.log('C'));
+});
+
+requestAnimationFrame(() => console.log('D'));</code></pre>
+        </div>
+        <details class="answer">
+          <summary></summary>
+          <div class="a-body">
+            <span class="out">A
+B
+D
+C</span>
+            <p>Обидва зовнішні колбеки (<code>A</code> і <code>D</code>) потрапили в список цього
+            кадру. Після <b>кожного</b> rAF-колбека браузер спорожнює чергу мікрозадач — тому
+            <code>B</code> встигає раніше за <code>D</code>. А <code>C</code> запланований уже
+            <i>під час</i> обробки rAF-колбеків: браузер бере "знімок" списку на початку етапу, тож
+            нові rAF ідуть у <b>наступний</b> кадр (~16 мс потому). Це і є гарантія, що
+            рекурсивна анімація з <code>requestAnimationFrame(step)</code> малює один крок за кадр,
+            а не крутиться нескінченно в одному кадрі.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 15</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Чому прогрес-бар не рухається</span></div>
+        <div class="codecard">
+          <div class="bar"><span class="path">event-loop-15.js</span></div>
+          <pre><code>const bar = document.querySelector('.progress');
+
+async function processAll(items) {
+  for (let i = 0; i &lt; items.length; i++) {
+    heavyWork(items[i]);                                 // ~2 мс на елемент
+    bar.style.width = `${((i + 1) / items.length) * 100}%`;
+    await Promise.resolve();                             // "віддаємо керування"?
+  }
+}
+
+requestAnimationFrame(function tick() {
+  console.log('frame');
+  requestAnimationFrame(tick);
+});
+
+processAll(new Array(1000).fill(0)); // 1000 × 2 мс ≈ 2 с</code></pre>
+        </div>
+        <details class="answer">
+          <summary></summary>
+          <div class="a-body">
+            <span class="out">~2 с тиші, бар стоїть на 0%
+frame                 ← перший кадр лише після всіх 1000 ітерацій, бар одразу 100%
+frame
+frame ...</span>
+            <p><code>await Promise.resolve()</code> лише ставить продовження в чергу
+            <b>мікрозадач</b> — а вона спорожнюється повністю перед рендерингом. Тож усі 1000
+            ітерацій — це один нерозривний шматок роботи для event loop: 1000 записів у
+            <code>style.width</code> зливаються в один кадр, і користувач бачить стрибок 0% → 100%.</p>
+            <p><b>Як виправити</b> — віддавати керування через <i>макрозадачу</i> і робити це
+            порціями, щоб кожна вкладалась у бюджет кадру:</p>
+            <div class="codecard">
+              <div class="bar"><span class="path">fix</span></div>
+              <pre><code>const yieldToBrowser = () =>
+  globalThis.scheduler?.yield?.() ?? new Promise((r) => setTimeout(r, 0));
+
+async function processAll(items) {
+  let deadline = performance.now() + 8;            // ~половина кадру на роботу
+  for (let i = 0; i &lt; items.length; i++) {
+    heavyWork(items[i]);
+    if (performance.now() &gt; deadline) {
+      bar.style.width = `${((i + 1) / items.length) * 100}%`;
+      await yieldToBrowser();                      // тут браузер встигне намалювати кадр
+      deadline = performance.now() + 8;
+    }
+  }
+}</code></pre>
+            </div>
+            <p>Порції, а не <code>setTimeout</code> на кожен елемент — бо вкладені таймери
+            браузер обмежує мінімум 4 мс (після 5 рівнів вкладеності), і 1000 окремих таймерів
+            розтягнули б роботу на 4+ секунди. Ще краще для справді важких обчислень — винести їх у
+            Web Worker, і тоді головний потік вільний для rAF весь час.</p>
           </div>
         </details>
       </div>
