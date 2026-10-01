@@ -1,0 +1,2133 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>0. Бекенд з нуля: гайд — AI Delivery Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono, .tree{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--accent); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:760px; margin:0;}
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0; counter-reset:tocnum;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout b, .callout strong{color:inherit;}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  details.qa{border:1px solid var(--border); border-radius:10px; background:var(--card); margin:10px 0;}
+  details.qa > summary{cursor:pointer; padding:12px 16px; font-weight:600; font-size:15px; list-style:none;}
+  details.qa > summary::-webkit-details-marker{display:none;}
+  details.qa > summary::before{content:"▸ "; color:var(--accent);}
+  details.qa[open] > summary::before{content:"▾ ";}
+  details.qa .a{padding:0 16px 14px; color:var(--fg); font-size:15px;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Гайд · крок за кроком</div>
+  <h1>Python-бекенд з нуля: гайд з обґрунтуванням кожного рішення</h1>
+  <p class="lead">
+    Покроково збираємо в новому репозиторії бекенд тієї самої архітектури, що й цей проєкт:
+    FastAPI, PostgreSQL, SQLAlchemy, JWT, multi-tenancy, тести, Docker, CI/CD і деплой. На кожному
+    вузлі вибору — альтернативи, чому обрано саме це, чесні мінуси і коли варто обрати інше.
+    Щоб не просто повторити, а вміти <b>захистити</b> таку архітектуру.
+  </p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="00-backend-from-scratch.html" class="active">0. Бекенд з нуля: гайд</a>
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-python-types.html">4. Типи</a>
+        <a href="05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="11-logging.html">11. Логування</a>
+        <a href="12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="13-design-patterns.html">13. Патерни</a>
+        <a href="14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="16-pydantic.html">16. Pydantic</a>
+        <a href="17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="20-redis.html">20. Redis</a>
+        <a href="21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="25-system-design.html">25. Системний дизайн</a>
+        <a href="26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+  </aside>
+
+    <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Підготовка</div>
+    <ol>
+      <li><a href="#s0">0. Як читати гайд</a></li>
+      <li><a href="#s1">1. Мова: Python 3.12</a></li>
+      <li><a href="#s2">2. Репо й залежності</a></li>
+    </ol>
+    <div class="toc-group">Каркас</div>
+    <ol>
+      <li><a href="#s3">3. FastAPI + Uvicorn</a></li>
+      <li><a href="#s4">4. Архітектура шарів</a></li>
+      <li><a href="#s5">5. Конфігурація</a></li>
+    </ol>
+    <div class="toc-group">Дані</div>
+    <ol>
+      <li><a href="#s6">6. PostgreSQL</a></li>
+      <li><a href="#s7">7. SQLAlchemy + asyncpg</a></li>
+      <li><a href="#s8">8. Міграції Alembic</a></li>
+      <li><a href="#s9">9. Pydantic-схеми</a></li>
+      <li><a href="#s10">10. Репозиторії</a></li>
+    </ol>
+    <div class="toc-group">Логіка й API</div>
+    <ol>
+      <li><a href="#s11">11. Сервіси + DI</a></li>
+      <li><a href="#s12">12. Роутери</a></li>
+    </ol>
+    <div class="toc-group">Безпека</div>
+    <ol>
+      <li><a href="#s13">13. Auth: JWT + bcrypt</a></li>
+      <li><a href="#s14">14. Multi-tenancy</a></li>
+      <li><a href="#s15">15. Обробка помилок</a></li>
+    </ol>
+    <div class="toc-group">Інтеграції</div>
+    <ol>
+      <li><a href="#s16">16. Зовнішні API і потоки</a></li>
+      <li><a href="#s17">17. Фонові задачі</a></li>
+      <li><a href="#s18">18. Rate limit і квоти</a></li>
+    </ol>
+    <div class="toc-group">Якість і деплой</div>
+    <ol>
+      <li><a href="#s19">19. Тестування</a></li>
+      <li><a href="#s20">20. ruff</a></li>
+      <li><a href="#s21">21. Docker</a></li>
+      <li><a href="#s22">22. CI/CD</a></li>
+      <li><a href="#s23">23. Хостинг Fly.io</a></li>
+      <li><a href="#s24">24. Логи й моніторинг</a></li>
+    </ol>
+    <div class="toc-group">Захист архітектури</div>
+    <ol>
+      <li><a href="#s25">25. Шпаргалка рішень</a></li>
+      <li><a href="#s26">26. Як захищати</a></li>
+      <li><a href="#s27">27. Самоперевірка</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s0">
+      <h2><span class="num">00</span> Як читати цей гайд</h2>
+      <p class="section-desc">Мета — не просто повторити команди, а вміти пояснити кожне рішення так, щоб його не можна було "розбити" на співбесіді чи архітектурному рев'ю.</p>
+      <p>
+        Ми покроково зберемо з нуля в <b>новому репозиторії</b> бекенд тієї самої архітектури, що й
+        <code>ai-delivery-planner-backend</code>: реєстрація й логін через JWT, організації
+        (multi-tenancy), CRUD доставок з геокодуванням, генерація маршрутів, тести, Docker, CI/CD
+        і деплой. Кожен крок має однакову структуру — щоб мозок звик до шаблону і запам'ятовував
+        не текст, а <i>логіку рішень</i>:
+      </p>
+      <div class="flow">
+        <div class="step">🛠 Що робимо</div><div class="arrow">→</div>
+        <div class="step">💻 Код / команди</div><div class="arrow">→</div>
+        <div class="step">🔀 Вузол вибору: альтернативи</div><div class="arrow">→</div>
+        <div class="step">⚖️ Плюси й мінуси нашого вибору</div><div class="arrow">→</div>
+        <div class="step">🧠 Одне речення, щоб запам'ятати</div>
+      </div>
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body"><b>Як реально запам'ятати, а не "прочитати й забути":</b> не читайте
+        гайд підряд. Робіть один крок → закрийте сторінку → поясніть уголос (або в нотатку), чому
+        обрано саме це і який головний мінус. Потім відкрийте блок 🧠 і звірте. У кінці є
+        <a href="#s25">шпаргалка всіх рішень</a> і <a href="#s27">самоперевірка</a> — проходьте
+        її через день і через тиждень (інтервальне повторення).</div>
+      </div>
+
+      <h3>Що будуємо — фінальна картина</h3>
+      <div class="tree"><span class="d">delivery-backend/</span>
+├── pyproject.toml            <span class="c"># залежності + налаштування ruff/pytest</span>
+├── .env.example              <span class="c"># перелік змінних оточення (без секретів)</span>
+├── alembic.ini               <span class="c"># конфіг міграцій</span>
+├── Dockerfile                <span class="c"># образ для продакшну</span>
+├── fly.toml                  <span class="c"># конфіг хостингу</span>
+├── .github/workflows/ci.yml  <span class="c"># тести → деплой</span>
+└── <span class="d">app/</span>
+    ├── main.py               <span class="c"># фабрика FastAPI-застосунку</span>
+    ├── <span class="d">core/</span>                 <span class="c"># конфіг, безпека, DI, помилки, ліміти</span>
+    ├── <span class="d">api/</span>                  <span class="c"># роутери: лише HTTP</span>
+    ├── <span class="d">schemas/</span>              <span class="c"># Pydantic-контракти запитів/відповідей</span>
+    ├── <span class="d">services/</span>             <span class="c"># бізнес-логіка + зовнішні клієнти</span>
+    ├── <span class="d">repositories/</span>         <span class="c"># доступ до БД (SQL)</span>
+    ├── <span class="d">db/</span>                   <span class="c"># models/, session.py, migrations/</span>
+    ├── <span class="d">workers/</span>              <span class="c"># Celery (фонові задачі)</span>
+    └── <span class="d">tests/</span>                <span class="c"># pytest</span></div>
+
+      <h3>Критерії, за якими ми обираємо все нижче</h3>
+      <p>Найсильніший аргумент на захисті архітектури — показати, що рішення виведені з
+      <b>вимог</b>, а не з "мені так подобається". Для цього проєкту вимоги такі:</p>
+      <table>
+        <tr><th>Вимога</th><th>Що з неї випливає</th></tr>
+        <tr><td>Багато I/O: БД, Google Geocoding, OpenAI, SMTP</td><td>Асинхронний стек (ASGI, async-драйвер БД)</td></tr>
+        <tr><td>Важкі обчислення: оптимізація маршрутів (VRP)</td><td>Python заради OR-Tools; винесення CPU-роботи з event loop</td></tr>
+        <tr><td>AI-фічі й імпорт Excel/CSV</td><td>Python-екосистема: OpenAI SDK, pandas, openpyxl</td></tr>
+        <tr><td>SaaS для кількох компаній</td><td>Multi-tenancy: кожен запит обмежений своєю організацією</td></tr>
+        <tr><td>Платні зовнішні API</td><td>Квоти на план + rate limiting, атомарні лічильники в БД</td></tr>
+        <tr><td>Одна людина / маленька команда, швидкий старт</td><td>Простий монолит, мінімум інфраструктури, PaaS-хостинг</td></tr>
+        <tr><td>Окремий фронтенд (SPA на Vercel)</td><td>Чистий JSON API, CORS, токени замість серверних сесій</td></tr>
+      </table>
+      <div class="remember"><b>🧠 Запам'ятай:</b> I/O-heavy + CPU-важкий солвер + AI-екосистема + SaaS для кількох компаній + маленька команда — з цих п'яти вимог виводиться весь стек.</div>
+    </section>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Мова: Python 3.12</h2>
+      <p class="section-desc">Найперше рішення — і найчастіше питання: "чому не Node/Go, ви ж фронтендер?"</p>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: мова бекенду</div>
+        <table>
+          <tr><th>Варіант</th><th>Сильні сторони</th><th>Слабкі сторони</th></tr>
+          <tr class="chosen"><td><b>Python 3.12</b> ✅</td><td>OR-Tools, OpenAI SDK, pandas — найкраща екосистема для AI/даних/оптимізації; швидка розробка; type hints</td><td>Повільніший за Go/Java у CPU-роботі; GIL обмежує потоки; динамічна типізація без суворої перевірки</td></tr>
+          <tr><td>Node.js / TypeScript</td><td>Одна мова з фронтендом; чудовий для I/O; спільні типи</td><td>OR-Tools для Node немає офіційно; слабша екосистема для даних (немає pandas-рівня)</td></tr>
+          <tr><td>Go</td><td>Швидкий, малий споживач пам'яті, простий деплой одним бінарником</td><td>Багатослівний; бідна AI/data-екосистема; повільніша розробка CRUD</td></tr>
+          <tr><td>Java/Kotlin (Spring)</td><td>Зрілість, продуктивність, OR-Tools має Java API</td><td>Важкий старт, багато церемоній, повільний цикл розробки для маленької команди</td></tr>
+        </table>
+        <p><b>Чому ми:</b> ядро продукту — оптимізація маршрутів (OR-Tools) і AI (OpenAI, парсинг
+        Excel). Усі три найкраще підтримуються саме в Python. CPU-слабкість не критична: важку
+        частину рахує C++ всередині OR-Tools, а не Python.</p>
+        <p><b>Чому 3.12:</b> швидший інтерпретатор (3.11+ дав ~25% приросту), сучасний синтаксис типів
+        (<code>list[str]</code>, <code>X | None</code>), <code>datetime.UTC</code>; усі наші залежності його підтримують.</p>
+        <p><b>Мінус, який варто визнати вголос:</b> якщо CRUD-навантаження виросте до десятків
+        тисяч RPS, Python потребуватиме більше інстансів, ніж Go. Але це проблема масштабу,
+        якої ще немає — і вона розв'язується горизонтально.</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> Python обраний не "бо простий", а бо OR-Tools + OpenAI + pandas — це серце продукту, а важкі обчислення все одно йдуть у C++.</div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Репозиторій, віртуальне оточення, залежності</h2>
+      <p class="section-desc">Каркас репозиторію і спосіб опису залежностей — фундамент для Docker і CI.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">термінал</span></div>
+        <pre><code>mkdir delivery-backend &amp;&amp; cd delivery-backend
+git init
+python3.12 -m venv .venv          # ізольоване оточення для проєкту
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+mkdir -p app/{api,core,db/models,repositories,schemas,services,tests}
+touch app/__init__.py              # app — це Python-пакет</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">pyproject.toml</span></div>
+        <pre><code>[project]
+name = "delivery-backend"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "sqlalchemy[asyncio]",
+    "asyncpg",
+    "alembic",
+    "pydantic[email]",
+    "pydantic-settings",
+    "python-jose[cryptography]",
+    "passlib[bcrypt]",
+    "bcrypt&lt;4.0",          # passlib ламається з новими bcrypt — див. крок 13
+    "httpx",
+    "python-multipart",       # FastAPI потребує для UploadFile / form-data
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio", "ruff==0.15.22", "aiosqlite"]   # ruff запінений — див. крок 20
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"         # async-тести без декоратора на кожному</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">термінал</span></div>
+        <pre><code>pip install -e ".[dev]"     # -e: зміни в коді видно без перевстановлення
+printf ".venv/\n__pycache__/\n.env\n*.pyc\n.pytest_cache/\n" > .gitignore</code></pre>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: менеджер залежностей</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>pyproject.toml + pip</b> ✅</td><td>Стандарт PEP 621, нічого не треба встановлювати; однаково працює локально, у Docker і в CI</td><td>Немає lock-файлу: версії "плавають", збірка через місяць може взяти нову мажорну версію</td></tr>
+          <tr><td>uv (Astral)</td><td>У 10–100× швидший за pip; lock-файл; керує й версіями Python</td><td>Ще один інструмент у команді; молодий (але швидко стає стандартом)</td></tr>
+          <tr><td>Poetry</td><td>Lock-файл, зручне керування групами залежностей, публікація пакетів</td><td>Повільний resolver; власний формат секцій (до v2); зайвий шар у Docker</td></tr>
+          <tr><td>requirements.txt</td><td>Найпростіше, всім зрозуміло</td><td>Немає метаданих проєкту; dev/prod окремими файлами; без pip-tools — ні lock, ні дерева</td></tr>
+        </table>
+        <p><b>Чому ми:</b> мінімум інструментів на старті — <code>pyproject.toml</code> є стандартом,
+        і з нього потім легко перейти на uv чи Poetry без переписування.</p>
+        <p><b>Чесний мінус:</b> відсутність lock-файлу — реальний ризик відтворюваності. Першим
+        покращенням був би <code>uv lock</code> (або <code>pip-compile</code>) і встановлення в
+        Docker/CI саме з lock-файлу.</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> pyproject — стандарт без зайвих інструментів; слабке місце — немає lock-файлу, і я знаю, що виправив би це через uv.</div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Веб-фреймворк і сервер: FastAPI + Uvicorn</h2>
+      <p class="section-desc">Перший робочий ендпоінт і найважливіше рішення стека.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/main.py</span></div>
+        <pre><code>from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import get_settings
+
+settings = get_settings()
+API_V1_PREFIX = "/api/v1"
+
+
+def create_app() -> FastAPI:
+    """Фабрика: збирає застосунок в одному місці (зручно для тестів)."""
+    app = FastAPI(title=settings.APP_NAME)
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.CORS_ORIGINS,   # лише наш фронтенд
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # роутери додамо на кроці 12
+    @app.get("/health")
+    async def health() -> dict:
+        return {"status": "ok"}             # для health check хостингу
+
+    return app
+
+
+app = create_app()</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">термінал</span></div>
+        <pre><code>uvicorn app.main:app --reload
+# http://localhost:8000/health  → {"status": "ok"}
+# http://localhost:8000/docs    → Swagger UI, згенерований автоматично</code></pre>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: веб-фреймворк</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>FastAPI</b> ✅</td><td>Async (ASGI) з коробки; валідація через Pydantic за type hints; автоматична OpenAPI/Swagger-документація; вбудований DI (<code>Depends</code>)</td><td>"Мікро": немає адмінки, ORM, міграцій, auth — все збираємо самі; легко випадково заблокувати event loop синхронним кодом</td></tr>
+          <tr><td>Django + DRF</td><td>"Батарейки": ORM, міграції, адмінка, auth, величезна спільнота</td><td>Історично синхронний (async частковий); важчий; ORM з active record; багато магії для простого JSON API</td></tr>
+          <tr><td>Flask</td><td>Простий, гнучкий, зрілий</td><td>Синхронний (WSGI); валідацію, документацію, DI — додавати плагінами</td></tr>
+          <tr><td>Litestar</td><td>Схожий на FastAPI, швидший, кращий DI і структура</td><td>Менша спільнота, менше готових відповідей і інтеграцій</td></tr>
+          <tr><td>Starlette / aiohttp</td><td>Мінімальний оверхед, повний контроль</td><td>Валідацію, схеми, документацію — писати вручну</td></tr>
+        </table>
+        <p><b>Чому ми:</b> наш API — це чистий JSON для SPA з великою кількістю I/O. FastAPI дає
+        async, валідацію і документацію "безкоштовно" через типи — а адмінка Django нам не
+        потрібна. Фронтендер отримує Swagger на <code>/docs</code> без жодного рядка документації.</p>
+        <p><b>Мінуси, які ми компенсуємо:</b> відсутні "батарейки" ми додаємо осмислено —
+        SQLAlchemy (ORM), Alembic (міграції), власний JWT-auth.</p>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: ASGI-сервер</div>
+        <table>
+          <tr><th>Варіант</th><th>Коли доречний</th></tr>
+          <tr class="chosen"><td><b>Uvicorn</b> ✅</td><td>Стандарт для FastAPI; <code>uvicorn[standard]</code> додає uvloop і httptools (швидше). Один процес на контейнер — масштабуємо кількістю машин</td></tr>
+          <tr><td>Gunicorn + UvicornWorker</td><td>Кілька процесів на одній машині з менеджером процесів (перезапуск упалих воркерів)</td></tr>
+          <tr><td>Hypercorn / Granian</td><td>HTTP/2-3 (Hypercorn) або максимальна швидкість на Rust (Granian)</td></tr>
+        </table>
+        <p class="muted">Чому один процес: наш rate limiter зберігає стан у пам'яті процесу (крок 18) —
+        кілька воркерів мали б різні лічильники. Це свідомий компроміс, і ми його документуємо.</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> FastAPI = async + Pydantic-валідація + OpenAPI + DI за рахунок type hints; мінус — немає батарейок, тому ORM, міграції й auth ми обираємо самі.</div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Архітектура: шари і правило залежностей</h2>
+      <p class="section-desc">Вирішуємо структуру до того, як з'явиться перший бізнес-код, — потім переробляти дорого.</p>
+      <div class="flow">
+        <div class="step">api/ — HTTP</div><div class="arrow">→</div>
+        <div class="step">services/ — логіка</div><div class="arrow">→</div>
+        <div class="step">repositories/ — SQL</div><div class="arrow">→</div>
+        <div class="step">db/models/ — таблиці</div>
+      </div>
+      <p>
+        <b>Правило залежностей:</b> кожен шар імпортує тільки шари нижче. Роутер не пише SQL,
+        репозиторій не знає про HTTP-коди, сервіс не знає про <code>Request</code>. Поперек усіх
+        шарів ідуть <code>schemas/</code> (контракти даних) і <code>core/</code> (конфіг, безпека, DI).
+      </p>
+      <table>
+        <tr><th>Шар</th><th>Відповідає за</th><th>Не має знати про</th></tr>
+        <tr><td><code>api/</code></td><td>Маршрут, статус-код, перетворення помилок у HTTP</td><td>SQL, деталі зовнішніх API</td></tr>
+        <tr><td><code>services/</code></td><td>Бізнес-правила, оркестрація кількох репозиторіїв і клієнтів</td><td>HTTP, <code>Request</code>, статус-коди</td></tr>
+        <tr><td><code>repositories/</code></td><td>Запити до БД, фільтрація за організацією</td><td>Бізнес-правила, HTTP</td></tr>
+        <tr><td><code>db/models/</code></td><td>Опис таблиць</td><td>Будь-що вище</td></tr>
+      </table>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: стиль архітектури</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>Шарувата (layered)</b> ✅</td><td>Зрозуміла всім; легко тестувати шари окремо; відомо, де шукати код</td><td>Одна фіча розкидана по 4–5 папках; ризик "анемічних" сервісів-прокладок</td></tr>
+          <tr><td>Плаский (все в main.py / кількох файлах)</td><td>Максимально швидко для прототипу</td><td>Через 2 тижні — "спагеті"; не тестується</td></tr>
+          <tr><td>Vertical slices (папка на фічу)</td><td>Уся фіча в одному місці; легко видалити/виділити</td><td>Спільний код (auth, tenancy) розмазується; потрібна дисципліна</td></tr>
+          <tr><td>Clean / Hexagonal</td><td>Повна незалежність домену від фреймворку і БД; інтерфейси (порти) для всього</td><td>Багато шаблонного коду й абстракцій — оверкіл для одного сервісу</td></tr>
+          <tr><td>Мікросервіси</td><td>Незалежний деплой і масштабування частин</td><td>Мережа, розподілені транзакції, DevOps-навантаження — вбивчо для маленької команди</td></tr>
+        </table>
+        <p><b>Чому ми:</b> для одного сервісу з однією БД і маленькою командою шари дають
+        достатньо структури без церемоній Clean Architecture. Всередині
+        <code>services/route_optimizer/</code> ми вже групуємо за фічею (builder, solver, mapper) —
+        підходи комбінуються.</p>
+        <p><b>Коли б змінив:</b> якщо команда виросте до кількох груп, що працюють над різними
+        доменами, — перейшов би до vertical slices / модульного моноліту, а не одразу до мікросервісів.</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> api → services → repositories → models, залежності лише вниз; це "модульний моноліт-лайт": достатньо структури, без оверхеду Clean Architecture і мікросервісів.</div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Конфігурація: pydantic-settings і .env</h2>
+      <p class="section-desc">Секрети й налаштування — лише зі змінних оточення, ніколи в коді (12-factor app).</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/config.py</span></div>
+        <pre><code>from functools import lru_cache
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Типізований конфіг: значення беруться з env / .env і валідуються."""
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    APP_NAME: str = "Delivery Backend"
+    ENVIRONMENT: str = "local"
+    DEBUG: bool = True                      # "false" з env → False (Pydantic сам приведе)
+
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/delivery"
+    REDIS_URL: str = "redis://localhost:6379/0"
+
+    JWT_SECRET: str = "change-me"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
+
+    OPENAI_API_KEY: str = ""
+    GOOGLE_MAPS_API_KEY: str = ""
+
+    CORS_ORIGINS: list[str] = ["http://localhost:3000"]   # з env — JSON-рядок
+
+
+@lru_cache
+def get_settings() -> Settings:
+    """Один екземпляр на процес; у тестах можна перевизначити."""
+    return Settings()</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">.env.example (комітимо) / .env (у .gitignore)</span></div>
+        <pre><code>DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/delivery
+JWT_SECRET=change-me
+OPENAI_API_KEY=
+GOOGLE_MAPS_API_KEY=</code></pre>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: конфігурація</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>pydantic-settings</b> ✅</td><td>Типи й валідація при старті (впаде одразу, а не посеред запиту); підтримка .env; автодоповнення в IDE</td><td>Ще одна залежність; складні вкладені типи з env пишуться як JSON</td></tr>
+          <tr><td><code>os.environ</code> вручну</td><td>Нуль залежностей</td><td>Усе — рядки; приведення типів і дефолти розкидані по коду</td></tr>
+          <tr><td>python-dotenv</td><td>Просто завантажує .env</td><td>Лише завантаження, без типів і валідації</td></tr>
+          <tr><td>Dynaconf / Hydra</td><td>Шари конфігів, профілі середовищ, YAML/TOML</td><td>Складніше, ніж потрібно сервісу з ~15 змінними</td></tr>
+        </table>
+        <p><b>Чому ми:</b> той самий Pydantic, що й для схем API, — одна модель мислення. Конфіг
+        перевіряється при старті: неправильний <code>DEBUG=yes-please</code> впаде з
+        зрозумілою помилкою.</p>
+        <p><b>Чесний мінус:</b> небезпечні дефолти (<code>JWT_SECRET="change-me"</code>) зручні локально,
+        але в продакшні їх варто забороняти валідатором (наприклад, падати, якщо
+        <code>ENVIRONMENT="production"</code> і секрет дефолтний).</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> конфіг — типізована Pydantic-модель з env, кешована через lru_cache; секрети ніколи не в коді, .env.example — документація змінних.</div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> База даних: PostgreSQL</h2>
+      <p class="section-desc">Піднімаємо локальну БД і фіксуємо, чому реляційна.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">термінал — локальний Postgres у Docker</span></div>
+        <pre><code>docker run -d --name delivery-db \
+  -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=delivery \
+  -p 5432:5432 -v delivery-pgdata:/var/lib/postgresql/data \
+  postgres:16</code></pre>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: база даних</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>PostgreSQL</b> ✅</td><td>ACID-транзакції; зв'язки й зовнішні ключі; атомарні <code>UPDATE ... WHERE</code> для квот; JSONB для гнучких полів; PostGIS для гео в майбутньому; є всюди як managed-сервіс</td><td>Треба думати про пул з'єднань і міграції схеми; горизонтальний шардінг складніший, ніж у NoSQL</td></tr>
+          <tr><td>MySQL / MariaDB</td><td>Зрілий, швидкий на простих читаннях</td><td>Слабші JSON, типи й розширення; менше "фішок" (немає PostGIS-рівня, RETURNING лише в MariaDB)</td></tr>
+          <tr><td>MongoDB</td><td>Гнучка схема, легко почати, горизонтальне масштабування</td><td>Наші дані реляційні (організація → користувачі → доставки → маршрути → зупинки); join-и й транзакції — не сильна сторона</td></tr>
+          <tr><td>SQLite</td><td>Файл, нуль адміністрування — ідеально для тестів</td><td>Один записувач; не для багатьох інстансів у продакшні</td></tr>
+        </table>
+        <p><b>Чому ми:</b> дані за природою реляційні, а бізнес-правила (квоти, ізоляція
+        орендарів) потребують транзакцій і атомарних оновлень. Postgres — дефолтний вибір, від
+        якого відходять лише з конкретної причини.</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> дані реляційні + потрібні транзакції й атомарні лічильники квот → Postgres; NoSQL тут дав би гнучкість, яка нам не потрібна, ціною join-ів і транзакцій, які потрібні.</div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> ORM і драйвер: SQLAlchemy 2.0 (async) + asyncpg</h2>
+      <p class="section-desc">Двигун, сесія на запит і перші моделі.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/db/session.py</span></div>
+        <pre><code>from collections.abc import AsyncGenerator
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+from app.core.config import get_settings
+
+settings = get_settings()
+
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    echo=settings.DEBUG,                       # логувати SQL лише локально
+    connect_args={"statement_cache_size": 0},  # сумісність з пулерами типу PgBouncer
+)
+
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,   # після commit об'єкт лишається читабельним без нового SELECT
+)
+
+
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    """Одна сесія на HTTP-запит; закривається автоматично."""
+    async with AsyncSessionLocal() as session:
+        yield session</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/db/models/base.py + organization.py + user.py</span></div>
+        <pre><code>import uuid
+from datetime import UTC, datetime
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+class Base(DeclarativeBase):
+    """Спільна база всіх моделей — з неї Alembic бере metadata."""
+
+
+class Organization(Base):
+    __tablename__ = "organizations"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    name: Mapped[str] = mapped_column(String(255))
+    routes_generated_count: Mapped[int] = mapped_column(default=0, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),   # Python-дефолт для ORM-вставок
+        server_default=func.now(),           # дефолт БД для сирого SQL
+    )
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    hashed_password: Mapped[str] = mapped_column(String(255))
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"))
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/db/models/delivery.py</span></div>
+        <pre><code># + імпорти uuid, datetime/UTC, DateTime, func і Base — як у попередньому файлі
+from enum import Enum
+
+from sqlalchemy import Enum as SAEnum, Float, ForeignKey, String
+from sqlalchemy.orm import Mapped, mapped_column
+
+
+class DeliveryPriority(str, Enum):
+    LOW = "low"
+    NORMAL = "normal"
+    HIGH = "high"
+
+
+class Delivery(Base):
+    __tablename__ = "deliveries"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"))
+    customer_name: Mapped[str] = mapped_column(String(255))
+    address: Mapped[str] = mapped_column(String(500))
+    priority: Mapped[DeliveryPriority] = mapped_column(
+        SAEnum(
+            DeliveryPriority,
+            native_enum=False,                                    # VARCHAR, а не Postgres ENUM
+            values_callable=lambda e: [m.value for m in e],       # зберігати "low", а не "LOW"
+        ),
+        default=DeliveryPriority.NORMAL,
+    )
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    status: Mapped[str] = mapped_column(String(50), default="pending_geocode")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
+    )</code></pre>
+      </div>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Реальний урок з цього проєкту:</b> без <code>values_callable</code>
+        SQLAlchemy зберігає в колонку <i>ім'я</i> члена enum (<code>"TRIAL"</code>), а
+        <code>server_default</code> і JSON-відповіді використовують <i>значення</i>
+        (<code>"trial"</code>). Змішані рядки в продакшн-БД дали 500-ті помилки на читанні. Правило:
+        завжди явно вирішуйте, що саме лежить у колонці enum.</div>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: ORM / доступ до БД</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>SQLAlchemy 2.0 async</b> ✅</td><td>Індустріальний стандарт; типізовані моделі (<code>Mapped[...]</code>); і ORM, і Core (SQL-конструктор) для складних запитів; працює з Alembic</td><td>Крута крива навчання (сесії, lazy loading, expire); в async lazy-loading зв'язків падає — треба явно <code>selectinload</code></td></tr>
+          <tr><td>SQLModel</td><td>Одна модель = таблиця + Pydantic-схема (від автора FastAPI)</td><td>Змішує шар БД і API-контракт; відстає від нових фіч SQLAlchemy</td></tr>
+          <tr><td>Tortoise ORM</td><td>Async з народження, Django-подібний API</td><td>Менша спільнота, свої міграції (Aerich), менше можливостей</td></tr>
+          <tr><td>Django ORM</td><td>Найзручніший API, міграції з коробки</td><td>Прив'язаний до Django</td></tr>
+          <tr><td>Сирий SQL (asyncpg / psycopg 3)</td><td>Максимальна швидкість і контроль</td><td>Мапінг рядків, міграції, захист від помилок — усе вручну</td></tr>
+        </table>
+        <table>
+          <tr><th>Драйвер</th><th>Коментар</th></tr>
+          <tr class="chosen"><td><b>asyncpg</b> ✅</td><td>Найшвидший async-драйвер Postgres, бінарний протокол</td></tr>
+          <tr><td>psycopg 3</td><td>Має і sync, і async режим; ближчий до DB-API; добра альтернатива</td></tr>
+        </table>
+        <p><b>Чому ми:</b> async-стек потребує async-драйвера; SQLAlchemy дає і зручні моделі, і
+        "низький рівень" (<code>update(...).where(...)</code>) для атомарних квот — без сирого SQL.</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> SQLAlchemy 2.0 async + asyncpg: стандарт індустрії, типізовані моделі й SQL-конструктор для атомарних оновлень; мінус — складність сесій і заборона lazy loading в async.</div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Міграції: Alembic</h2>
+      <p class="section-desc">Схема БД має версії так само, як код.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">термінал</span></div>
+        <pre><code>alembic init -t async app/db/migrations    # шаблон з async-двигуном</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/db/migrations/env.py — ключові зміни</span></div>
+        <pre><code>from app.core.config import get_settings
+from app.db.models import Base        # models/__init__.py імпортує ВСІ моделі
+
+config = context.config
+# URL беремо з налаштувань застосунку, а не з alembic.ini —
+# один і той самий код працює локально, в CI і в продакшні
+config.set_main_option("sqlalchemy.url", get_settings().DATABASE_URL)
+
+target_metadata = Base.metadata       # з цим працює --autogenerate</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">термінал — щоденний цикл</span></div>
+        <pre><code>alembic revision --autogenerate -m "create users and organizations"
+# ОБОВ'ЯЗКОВО відкрийте згенерований файл і перевірте його очима
+alembic upgrade head        # застосувати всі нові міграції
+alembic downgrade -1        # відкотити останню (перевіряйте, що downgrade працює)</code></pre>
+      </div>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Що autogenerate НЕ бачить або бачить погано:</b> перейменування
+        колонки (згенерує drop + add — <b>втрата даних</b>), зміну значень enum, серверні дефолти,
+        дані (backfill). Міграція — це код, який рев'юють, а не артефакт, який комітять наосліп.
+        Додаючи NOT NULL колонку до таблиці з даними — давайте <code>server_default</code>, інакше
+        міграція впаде на існуючих рядках.</div>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: міграції</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>Alembic</b> ✅</td><td>Рідний для SQLAlchemy; autogenerate з моделей; up/down; гілки міграцій</td><td>Autogenerate неідеальний; конфлікти heads при паралельних гілках</td></tr>
+          <tr><td><code>Base.metadata.create_all()</code></td><td>Одна строчка</td><td>Не змінює існуючі таблиці — лише створює; немає історії. Годиться тільки для тестів</td></tr>
+          <tr><td>Flyway / Liquibase / sqitch</td><td>Мовонезалежні, чистий SQL, популярні в enterprise</td><td>Немає autogenerate з Python-моделей; окремий інструмент</td></tr>
+          <tr><td>Django migrations</td><td>Найзручніші в індустрії</td><td>Лише з Django ORM</td></tr>
+        </table>
+        <p><b>Як запускаємо в продакшні:</b> <code>alembic upgrade head</code> як
+        <code>release_command</code> перед стартом нової версії (крок 23) — схема завжди
+        оновлюється до того, як новий код почне її використовувати.</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> Alembic + autogenerate з моделей, URL з settings; міграцію завжди читаю очима; у продакшні — автоматично перед релізом.</div>
+    </section>
+    <section id="s9">
+      <h2><span class="num">09</span> Схеми: Pydantic-контракти Create / Update / Read</h2>
+      <p class="section-desc">API ніколи не віддає і не приймає ORM-моделі напряму — тільки схеми.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/schemas/delivery.py</span></div>
+        <pre><code>import uuid
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
+
+from app.db.models.delivery import DeliveryPriority
+
+
+class DeliveryCreate(BaseModel):          # що клієнт МОЖЕ надіслати при створенні
+    customer_name: str
+    address: str
+    priority: DeliveryPriority = DeliveryPriority.NORMAL
+
+
+class DeliveryUpdate(BaseModel):          # усі поля необов'язкові — частковий апдейт
+    customer_name: str | None = None
+    address: str | None = None
+    priority: DeliveryPriority | None = None
+
+
+class DeliveryRead(BaseModel):            # що сервер ВІДДАЄ
+    id: uuid.UUID
+    customer_name: str
+    address: str
+    priority: DeliveryPriority
+    latitude: float | None = None
+    longitude: float | None = None
+    status: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)   # можна будувати з ORM-об'єкта
+
+
+# У сервісі для часткового оновлення:
+# data = payload.model_dump(exclude_unset=True)  → лише поля, які клієнт реально надіслав</code></pre>
+      </div>
+      <p><b>Навіщо три схеми замість однієї:</b> клієнт не повинен задавати <code>id</code>,
+      <code>organization_id</code>, <code>status</code> чи координати — їх визначає сервер. Окрема
+      <code>Read</code> гарантує, що <code>hashed_password</code> або внутрішні поля ніколи не
+      "протечуть" у відповідь, навіть якщо їх додадуть у модель.</p>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: валідація і серіалізація</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>Pydantic v2</b> ✅</td><td>Вбудований у FastAPI; ядро на Rust (швидке); схеми стають OpenAPI автоматично</td><td>Дублювання полів між моделлю БД і схемами</td></tr>
+          <tr><td>SQLModel</td><td>Без дублювання — одна модель</td><td>API-контракт жорстко зв'язаний зі схемою БД: змінив таблицю — змінив API</td></tr>
+          <tr><td>marshmallow</td><td>Зрілий, гнучкий</td><td>Не інтегрований з FastAPI; без type hints як джерела правди</td></tr>
+          <tr><td>msgspec / attrs+cattrs</td><td>Дуже швидкі</td><td>Немає інтеграції з FastAPI DI/OpenAPI</td></tr>
+        </table>
+        <p><b>Чому дублювання — це плюс:</b> модель БД і контракт API змінюються з різних
+        причин. Розділення дозволяє перейменувати колонку, не ламаючи фронтенд, і навпаки.</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> Create / Update / Read — три контракти, бо клієнт задає менше, ніж бачить; <code>from_attributes</code> будує відповідь з ORM, <code>exclude_unset</code> робить PATCH-семантику.</div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Репозиторії: доступ до БД + ізоляція орендарів</h2>
+      <p class="section-desc">Один generic-клас для CRUD і його "tenant-scoped" версія, яка фізично не дає забути фільтр за організацією.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/repositories/base.py</span></div>
+        <pre><code>from typing import Generic, TypeVar
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+ModelType = TypeVar("ModelType")
+
+
+class BaseRepository(Generic[ModelType]):
+    def __init__(self, session: AsyncSession, model: type[ModelType]) -> None:
+        self.session = session
+        self.model = model
+
+    async def get(self, id) -> ModelType | None:
+        return await self.session.get(self.model, id)
+
+    async def list(self) -> list[ModelType]:
+        stmt = select(self.model).order_by(self.model.created_at.desc())
+        return list((await self.session.execute(stmt)).scalars().all())
+
+    async def create(self, **kwargs) -> ModelType:
+        instance = self.model(**kwargs)
+        self.session.add(instance)
+        await self.session.commit()
+        await self.session.refresh(instance)
+        return instance
+
+    async def update(self, id, **kwargs) -> ModelType | None:
+        instance = await self.get(id)          # для tenant-версії — вже scoped get
+        if instance is None:
+            return None
+        for key, value in kwargs.items():
+            setattr(instance, key, value)
+        await self.session.commit()
+        await self.session.refresh(instance)
+        return instance
+
+    async def delete(self, id) -> bool:
+        instance = await self.get(id)
+        if instance is None:
+            return False
+        await self.session.delete(instance)
+        await self.session.commit()
+        return True
+
+
+class TenantScopedRepository(BaseRepository[ModelType]):
+    """organization_id задається ОДИН раз у конструкторі (з токена через DI) —
+    немає жодного методу, де можна забути відфільтрувати за організацією."""
+
+    def __init__(self, session: AsyncSession, model: type[ModelType], organization_id) -> None:
+        super().__init__(session, model)
+        self.organization_id = organization_id
+
+    async def get(self, id) -> ModelType | None:
+        stmt = select(self.model).where(
+            self.model.id == id, self.model.organization_id == self.organization_id
+        )
+        return (await self.session.execute(stmt)).scalar_one_or_none()
+
+    async def list(self) -> list[ModelType]:
+        stmt = (
+            select(self.model)
+            .where(self.model.organization_id == self.organization_id)
+            .order_by(self.model.created_at.desc())
+        )
+        return list((await self.session.execute(stmt)).scalars().all())
+
+    async def create(self, **kwargs) -> ModelType:
+        kwargs.pop("organization_id", None)    # клієнт не може "підсунути" чужу організацію
+        return await super().create(organization_id=self.organization_id, **kwargs)
+
+    async def update(self, id, **kwargs) -> ModelType | None:
+        kwargs.pop("organization_id", None)    # і не може перенести рядок в іншу
+        return await super().update(id, **kwargs)
+
+
+class DeliveryRepository(TenantScopedRepository[Delivery]):
+    def __init__(self, session: AsyncSession, organization_id) -> None:
+        super().__init__(session, Delivery, organization_id)</code></pre>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: як сервіси звертаються до БД</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>Repository pattern</b> ✅</td><td>SQL в одному місці; легко підмінити в тестах; tenant-фільтр вбудований структурно</td><td>Ще один шар; для простого CRUD здається "прокладкою"</td></tr>
+          <tr><td>Сесія напряму в сервісах/роутерах</td><td>Менше коду</td><td>SQL розмазаний по коду; фільтр <code>organization_id</code> легко забути в одному з 50 запитів → витік даних</td></tr>
+          <tr><td>Active Record (Django-стиль <code>Delivery.objects.filter</code>)</td><td>Дуже зручно</td><td>Модель знає про БД і бізнес; важче тестувати без БД</td></tr>
+          <tr><td>Repository + Unit of Work</td><td>Транзакція охоплює кілька репозиторіїв; commit в одному місці</td><td>Більше абстракцій</td></tr>
+        </table>
+        <p><b>Чесний мінус нашої реалізації:</b> <code>commit()</code> всередині кожного методу
+        репозиторію. Якщо сервісу треба атомарно створити маршрут + 20 зупинок + збільшити
+        лічильник — це кілька окремих транзакцій. Покращення: Unit of Work (сесія комітиться
+        один раз наприкінці запиту в залежності <code>get_db</code> або в сервісі).</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> TenantScopedRepository отримує organization_id один раз з DI — ізоляція структурна, а не "за домовленістю"; мінус — commit у кожному методі, тому для багатокрокових операцій потрібен Unit of Work.</div>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Сервіси і Dependency Injection через <code>Depends</code></h2>
+      <p class="section-desc">Бізнес-логіка в класах, а FastAPI сам збирає граф залежностей на кожен запит.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/services/deliveries/service.py</span></div>
+        <pre><code>class DeliveryService:
+    """Оркестрація: репозиторій + геокодер. Нічого не знає про HTTP."""
+
+    def __init__(self, repository: DeliveryRepository, geocoder: GoogleGeocodingClient) -> None:
+        self.repository = repository
+        self.geocoder = geocoder
+
+    async def create(self, payload: DeliveryCreate) -> Delivery:
+        fields = payload.model_dump()
+        coordinates = await self.geocoder.geocode(fields["address"])
+        if coordinates is not None:
+            fields["latitude"], fields["longitude"] = coordinates
+            fields["status"] = "geocoded"
+        else:
+            fields["status"] = "geocode_failed"     # не помилка — доставку можна виправити
+        return await self.repository.create(**fields)
+
+    async def list_all(self) -> list[Delivery]:
+        return await self.repository.list()</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/dependencies.py — "композиційний корінь"</span></div>
+        <pre><code>from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async for session in get_session():
+        yield session
+
+
+def get_delivery_repository(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),     # крок 13
+) -> DeliveryRepository:
+    return DeliveryRepository(db, current_user.organization_id)
+
+
+def get_delivery_service(
+    repo: DeliveryRepository = Depends(get_delivery_repository),
+) -> DeliveryService:
+    return DeliveryService(repo, GoogleGeocodingClient())
+
+# Граф на один запит: get_db → get_current_user → repository → service.
+# FastAPI кешує кожну залежність у межах запиту: get_db викликається ОДИН раз,
+# навіть якщо від нього залежать п'ять репозиторіїв — усі ділять одну сесію.</code></pre>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: DI</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>FastAPI <code>Depends</code></b> ✅</td><td>Вбудований; область життя = запит; <code>app.dependency_overrides</code> для тестів; async-підтримка</td><td>Працює лише в контексті HTTP-запиту (у Celery-задачі чи CLI — збирати вручну); файл залежностей розростається</td></tr>
+          <tr><td>dependency-injector</td><td>Повноцінний контейнер, singletons/factories, працює поза FastAPI</td><td>Складність і власний DSL</td></tr>
+          <tr><td>Глобальні об'єкти / модульні синглтони</td><td>Найпростіше</td><td>Неможливо підмінити в тестах без monkeypatch; прихований стан між запитами</td></tr>
+          <tr><td>Ручне створення в кожному роутері</td><td>Явно</td><td>Дублювання; легко забути tenant-scope</td></tr>
+        </table>
+        <p><b>Чому ми:</b> найсильніший аргумент — тестованість. У тестах ми підмінюємо
+        <code>get_db</code> на SQLite, <code>get_current_user</code> на тестового юзера, OpenAI-клієнт
+        на фейк — без жодного monkeypatch бізнес-коду (крок 19).</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> сервіс — чиста бізнес-логіка без HTTP; Depends будує граф get_db → user → repository → service на кожен запит і кешує його; головна перевага — dependency_overrides у тестах.</div>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Роутери: тонкий HTTP-шар і версіонування</h2>
+      <p class="section-desc">Роутер лише переводить HTTP ↔ виклик сервісу і результат ↔ статус-код.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/api/deliveries/router.py</span></div>
+        <pre><code>import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, Response
+
+router = APIRouter(tags=["deliveries"], dependencies=[Depends(get_current_user)])
+
+
+@router.post("/", response_model=DeliveryRead)
+async def create_delivery(
+    payload: DeliveryCreate,                               # тіло валідує Pydantic
+    service: DeliveryService = Depends(get_delivery_service),
+) -> DeliveryRead:
+    created = await service.create(payload)
+    return DeliveryRead.model_validate(created)
+
+
+@router.get("/{delivery_id}", response_model=DeliveryRead)
+async def get_delivery(
+    delivery_id: uuid.UUID,                                # невалідний UUID → 422 автоматично
+    service: DeliveryService = Depends(get_delivery_service),
+) -> DeliveryRead:
+    delivery = await service.get(delivery_id)
+    if delivery is None:                                   # чужа організація теж → 404
+        raise HTTPException(status_code=404, detail="Delivery not found")
+    return DeliveryRead.model_validate(delivery)
+
+
+@router.delete("/{delivery_id}", status_code=204)
+async def delete_delivery(
+    delivery_id: uuid.UUID,
+    service: DeliveryService = Depends(get_delivery_service),
+) -> Response:
+    if not await service.delete(delivery_id):
+        raise HTTPException(status_code=404, detail="Delivery not found")
+    return Response(status_code=204)</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/main.py — підключення</span></div>
+        <pre><code>app.include_router(auth_router, prefix=f"{API_V1_PREFIX}/auth")
+app.include_router(deliveries_router, prefix=f"{API_V1_PREFIX}/deliveries")</code></pre>
+      </div>
+      <p><b>Чому 404, а не 403, для чужої доставки:</b> 403 підтвердив би, що запис з таким id
+      <i>існує</i> — це вже витік інформації. Для клієнта "чуже" і "не існує" мають бути
+      невідрізненні.</p>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: стиль API і версіонування</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>REST + <code>/api/v1</code> в URL</b> ✅</td><td>Просто, видно в логах і браузері, кешується; Swagger з коробки</td><td>Overfetching/underfetching; нова версія — нові шляхи</td></tr>
+          <tr><td>Версія в заголовку (<code>Accept: ...;v=2</code>)</td><td>"Чисті" URL</td><td>Невидимо, важче дебажити й тестувати вручну</td></tr>
+          <tr><td>GraphQL (Strawberry)</td><td>Клієнт сам обирає поля; одна точка входу</td><td>N+1, складне кешування й авторизація полів; оверкіл для одного SPA</td></tr>
+          <tr><td>gRPC</td><td>Швидко, строгі контракти — для сервіс-до-сервісу</td><td>Браузер не говорить gRPC напряму</td></tr>
+        </table>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> роутер — тонкий: валідація (Pydantic), виклик сервісу, переклад у статус-код; REST з /api/v1 у URL; "чуже" = 404, щоб не розкривати існування запису.</div>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Аутентифікація: bcrypt + JWT access/refresh</h2>
+      <p class="section-desc">Реєстрація, підтвердження email, логін, оновлення токена і залежність <code>get_current_user</code>.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/security.py</span></div>
+        <pre><code>from datetime import UTC, datetime, timedelta
+
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+settings = get_settings()
+
+
+class InvalidTokenError(Exception):
+    """Наш власний тип — решта коду не залежить від бібліотеки JWT."""
+
+
+def hash_password(plain: str) -> str:
+    return pwd_context.hash(plain)                 # bcrypt: повільний навмисно + сіль
+
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return pwd_context.verify(plain, hashed)
+
+
+def _create_token(subject: str, token_type: str, expires: timedelta) -> str:
+    now = datetime.now(UTC)
+    claims = {"sub": subject, "type": token_type, "iat": now, "exp": now + expires}
+    return jwt.encode(claims, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+
+
+def create_access_token(user_id: str) -> str:
+    return _create_token(user_id, "access", timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
+
+
+def create_refresh_token(user_id: str) -> str:
+    return _create_token(user_id, "refresh", timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES))
+
+
+def decode_token(token: str) -> dict:
+    try:
+        return jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
+    except JWTError as exc:                        # підпис, формат, прострочення
+        raise InvalidTokenError(str(exc)) from exc</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/dependencies.py — хто робить запит</span></div>
+        <pre><code>oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")   # кнопка Authorize у Swagger
+
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    user_repo: UserRepository = Depends(get_user_repository),
+) -> User:
+    credentials_error = HTTPException(
+        status_code=401, detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        claims = decode_token(token)
+    except InvalidTokenError as exc:
+        raise credentials_error from exc
+    if claims.get("type") != "access":       # refresh-токен НЕ можна використати як access
+        raise credentials_error
+    user = await user_repo.get(uuid.UUID(claims["sub"]))
+    if user is None:                         # користувача видалили після видачі токена
+        raise credentials_error
+    return user</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/api/auth/router.py — потік</span></div>
+        <pre><code>@router.post("/register", status_code=201, dependencies=[Depends(register_rate_limiter)])
+async def register(payload: UserCreate, user_repo=..., org_repo=...):
+    if await user_repo.get_by_email(payload.email):
+        raise HTTPException(status_code=409, detail="A user with this email already exists")
+    org = await org_repo.create(name=f"{payload.email}'s Organization")  # 1 юзер = 1 організація
+    user = await user_repo.create(
+        email=payload.email,
+        hashed_password=hash_password(payload.password),
+        organization_id=org.id,
+        is_verified=False,
+    )
+    await send_verification_email(user.email, create_email_verification_token(str(user.id)))
+    return RegisterResponse(user_id=str(user.id), email=user.email)   # токенів ще НЕ даємо
+
+
+@router.post("/login", dependencies=[Depends(login_rate_limiter)], response_model=Token)
+async def login(payload: UserLogin, user_repo=...):
+    user = await user_repo.get_by_email(payload.email)
+    if user is None or not verify_password(payload.password, user.hashed_password):
+        # однакове повідомлення — не підказуємо, чи існує email
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
+    if not user.is_verified:
+        raise HTTPException(status_code=403, detail="Please verify your email before logging in")
+    return Token(access_token=create_access_token(str(user.id)),
+                 refresh_token=create_refresh_token(str(user.id)))
+
+# /verify-email — приймає токен type="email_verification", ставить is_verified=True, видає токени
+# /refresh      — приймає токен type="refresh", видає нову пару</code></pre>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: механізм автентифікації</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>JWT access (30 хв) + refresh (7 днів)</b> ✅</td><td>Stateless: перевірка без запиту в сховище сесій; зручно для SPA на іншому домені і для мобільних клієнтів</td><td>Неможливо миттєво відкликати виданий токен (logout = видалення на клієнті); де зберігати на фронті — компроміс XSS vs CSRF</td></tr>
+          <tr><td>Серверні сесії + HttpOnly cookie</td><td>Миттєвий logout/відкликання; токен недоступний JS (захист від XSS)</td><td>Потрібне сховище сесій (Redis/БД); CSRF-захист; складніше між доменами (SPA на Vercel ↔ API на Fly)</td></tr>
+          <tr><td>Зовнішній провайдер (Auth0, Clerk, Supabase Auth, Cognito)</td><td>MFA, соцлогіни, скидання пароля — готові; менше відповідальності за безпеку</td><td>Платно на масштабі; vendor lock-in; ще одна зовнішня залежність</td></tr>
+          <tr><td>fastapi-users</td><td>Готові ендпоінти реєстрації/логіну</td><td>Менше контролю; ще одна абстракція над моделями</td></tr>
+        </table>
+        <table>
+          <tr><th>Бібліотеки</th><th>Чесна оцінка</th></tr>
+          <tr><td><code>python-jose</code></td><td>Працює, але оновлюється рідко; актуальніша альтернатива — <b>PyJWT</b> (на неї перейшла документація FastAPI)</td></tr>
+          <tr><td><code>passlib[bcrypt]</code></td><td>Давно не підтримується і ламається з <code>bcrypt&gt;=4</code> — звідси пін <code>bcrypt&lt;4.0</code>. Альтернатива: <code>bcrypt</code> напряму або <b>argon2-cffi</b> (Argon2id — сучасна рекомендація OWASP)</td></tr>
+        </table>
+        <p><b>Чому JWT тут:</b> фронтенд — окремий SPA на іншому домені; stateless-токени не
+        потребують спільного сховища сесій і не прив'язують нас до cookie між доменами. Короткий
+        access-токен обмежує шкоду від крадіжки, а поле <code>type</code> не дає використати
+        refresh чи email-токен як access.</p>
+        <p><b>Як би посилив:</b> ротація refresh-токенів з чорним списком у Redis (тоді logout
+        реально відкликає сесію), перехід на PyJWT + Argon2.</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> bcrypt-хеш пароля, JWT access 30 хв + refresh 7 днів з полем type; stateless — плюс для SPA на іншому домені, мінус — немає миттєвого відкликання (виправляється ротацією refresh + Redis).</div>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Multi-tenancy: організації</h2>
+      <p class="section-desc">Кожна компанія бачить лише свої дані — і це гарантує структура коду, а не уважність розробника.</p>
+      <div class="flow">
+        <div class="step">JWT → user</div><div class="arrow">→</div>
+        <div class="step">user.organization_id</div><div class="arrow">→</div>
+        <div class="step">TenantScopedRepository(org_id)</div><div class="arrow">→</div>
+        <div class="step">кожен SELECT/INSERT із WHERE organization_id</div>
+      </div>
+      <p>Клієнт <b>ніколи</b> не передає <code>organization_id</code> — він береться лише з
+      автентифікованого користувача. Навіть якщо зловмисник додасть його в тіло запиту,
+      репозиторій його викине (<code>kwargs.pop</code>).</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/tests/test_multi_tenancy.py — тест, який доводить ізоляцію</span></div>
+        <pre><code>@pytest.fixture
+async def foreign_delivery(db_session, other_organization):
+    # "чужі" дані кладемо напряму репозиторієм іншої організації, минаючи HTTP
+    return await DeliveryRepository(db_session, other_organization.id).create(
+        customer_name="Foreign LLC", address="Lviv"
+    )
+
+
+def test_cannot_read_other_orgs_delivery(client, foreign_delivery):
+    # client автентифікований як test_user з ІНШОЇ організації
+    response = client.get(f"/api/v1/deliveries/{foreign_delivery.id}")
+    assert response.status_code == 404                  # не 403 — і точно не 200
+
+    ids = [d["id"] for d in client.get("/api/v1/deliveries/").json()]
+    assert str(foreign_delivery.id) not in ids          # і в списку його теж немає</code></pre>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: модель ізоляції орендарів</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>Спільна БД і таблиці + колонка <code>organization_id</code></b> ✅</td><td>Найдешевше і найпростіше; одна міграція для всіх; легко робити аналітику по всіх орендарях</td><td>Ізоляція лише на рівні застосунку — баг у запиті = витік; "галасливий сусід" навантажує всіх</td></tr>
+          <tr><td>+ Postgres Row-Level Security</td><td>Друга лінія захисту в самій БД: навіть забутий WHERE не поверне чужі рядки</td><td>Треба ставити <code>SET app.org_id</code> на кожне з'єднання; складніше дебажити й пулити</td></tr>
+          <tr><td>Схема на орендаря (schema-per-tenant)</td><td>Сильніша ізоляція; легко видалити/експортувати одного клієнта</td><td>Міграції × N схем; погано масштабується на тисячі орендарів</td></tr>
+          <tr><td>БД на орендаря</td><td>Максимальна ізоляція, окремі бекапи, вимоги enterprise/compliance</td><td>Дорого; складна оркестрація підключень і міграцій</td></tr>
+        </table>
+        <p><b>Чому ми:</b> SaaS для малих і середніх компаній — багато дрібних орендарів, однакова
+        схема. Спільні таблиці — стандарт для цього профілю; ризик витоку ми зменшуємо структурно
+        (TenantScopedRepository + DI) і тестами. Наступний крок посилення — RLS.</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> shared tables + organization_id, який береться лише з токена і вшитий у репозиторій; чуже = 404; наступна лінія захисту — Postgres RLS.</div>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Централізована обробка помилок</h2>
+      <p class="section-desc">Кожна відповідь з помилкою — однаковий JSON <code>{"detail": "текст"}</code>, і жодного traceback назовні.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/error_handlers.py</span></div>
+        <pre><code>logger = logging.getLogger("app.errors")
+
+
+def register_exception_handlers(app: FastAPI) -> None:
+    @app.exception_handler(RequestValidationError)
+    async def handle_validation(request: Request, exc: RequestValidationError) -> JSONResponse:
+        # Pydantic віддає список помилок по полях — склеюємо в один рядок для фронтенду
+        message = "; ".join(f"{'.'.join(map(str, e['loc'][1:]))}: {e['msg']}" for e in exc.errors())
+        return JSONResponse(status_code=422, content={"detail": message})
+
+    @app.exception_handler(QuotaExceededError)           # доменна помилка → 403
+    async def handle_quota(request: Request, exc: QuotaExceededError) -> JSONResponse:
+        return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+    @app.exception_handler(OpenAIError)                  # зовнішній сервіс впав → 503
+    async def handle_openai(request: Request, exc: OpenAIError) -> JSONResponse:
+        logger.error("OpenAI error on %s %s: %s", request.method, request.url.path, exc)
+        return JSONResponse(status_code=503, content={"detail": "AI service is temporarily unavailable."})
+
+    @app.exception_handler(Exception)                    # усе інше → 500 без деталей
+    async def handle_unexpected(request: Request, exc: Exception) -> JSONResponse:
+        logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+        return JSONResponse(status_code=500, content={"detail": "Something went wrong on our end."})
+
+# у create_app():  register_exception_handlers(app)</code></pre>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: формат помилок</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b><code>{"detail": str}</code> + глобальні handlers</b> ✅</td><td>Сумісно з дефолтним <code>HTTPException</code> FastAPI; фронтенд показує <code>detail</code> без парсингу</td><td>Немає машинного коду помилки — фронтенд не може надійно розрізнити "квота" vs "немає доступу" за текстом</td></tr>
+          <tr><td>RFC 9457 Problem Details (<code>application/problem+json</code>)</td><td>Стандарт: <code>type</code>, <code>title</code>, <code>status</code>, <code>detail</code></td><td>Більше полів; треба переписати всі HTTPException</td></tr>
+          <tr><td>try/except у кожному роутері</td><td>Явно</td><td>Дублювання; забутий випадок = plain-text 500 з traceback</td></tr>
+        </table>
+        <p><b>Як би покращив:</b> додав би поле <code>code</code> (<code>"quota_exceeded"</code>,
+        <code>"email_not_verified"</code>) — фронтенд реагує на код, а текст можна локалізувати.</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> глобальні exception handlers: валідація → 422 одним рядком, доменні помилки → свій код, зовнішні сервіси → 503, решта → 500 без деталей і з логом.</div>
+    </section>
+    <section id="s16">
+      <h2><span class="num">16</span> Зовнішні API і блокуючий код: httpx, OpenAI, <code>asyncio.to_thread</code></h2>
+      <p class="section-desc">Як ходити в мережу, не блокуючи event loop, і що робити з CPU-важкою роботою.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/services/geocoding/client.py</span></div>
+        <pre><code>import httpx
+
+GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
+
+
+class GoogleGeocodingClient:
+    def __init__(self, api_key: str | None = None, http_client: httpx.AsyncClient | None = None):
+        self.api_key = api_key if api_key is not None else get_settings().GOOGLE_MAPS_API_KEY
+        self._http_client = http_client                 # можна передати фейк у тестах
+
+    async def geocode(self, address: str) -> tuple[float, float] | None:
+        """None — очікуваний результат (немає ключа, адресу не знайдено, мережа впала),
+        а не виняток: доставку збережемо зі статусом geocode_failed."""
+        if not self.api_key:
+            return None
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:   # таймаут ОБОВ'ЯЗКОВИЙ
+                response = await client.get(GEOCODE_URL, params={"address": address, "key": self.api_key})
+        except httpx.HTTPError:
+            return None
+        data = response.json()
+        if data.get("status") != "OK":
+            return None
+        location = data["results"][0]["geometry"]["location"]
+        return float(location["lat"]), float(location["lng"])</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">CPU-важке і синхронне — у потік</span></div>
+        <pre><code>import asyncio
+
+
+class RouteOptimizerService:
+    async def optimize(self, payload: OptimizeRequest) -> OptimizeResult:
+        deliveries = await self.delivery_repository.get_many(payload.delivery_ids)  # async I/O
+        solver = RouteSolver(build_routing_problem(deliveries, ...))
+        # OR-Tools — синхронний C++, може рахувати секунди. Викликати його напряму
+        # в async-функції = зупинити ВЕСЬ сервер для всіх користувачів на цей час.
+        result = await asyncio.to_thread(_build_and_solve, solver)
+        ...
+
+# Те саме для smtplib (синхронний SMTP):
+await asyncio.to_thread(_send_via_gmail, to=email, subject=..., html=...)</code></pre>
+      </div>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Головна пастка async-бекенду:</b> один синхронний виклик
+        (<code>requests.get</code>, <code>time.sleep</code>, <code>smtplib</code>, важкий цикл)
+        всередині <code>async def</code> блокує event loop — усі інші запити чекають. Правило:
+        в async-коді — тільки async-бібліотеки, усе інше — через <code>to_thread</code> або в окремий воркер.</div>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: HTTP-клієнт</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>httpx</b> ✅</td><td>Sync і async з одним API (схожим на requests); HTTP/2; легко мокати (<code>MockTransport</code>)</td><td>Трохи повільніший за aiohttp під дуже великим навантаженням</td></tr>
+          <tr><td>requests</td><td>Найвідоміший</td><td>Лише синхронний — у async-коді блокує event loop</td></tr>
+          <tr><td>aiohttp</td><td>Дуже швидкий async-клієнт</td><td>Лише async; менш зручний API</td></tr>
+        </table>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: де виконувати CPU-важку роботу (солвер)</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b><code>asyncio.to_thread</code> у межах запиту</b> ✅</td><td>Найпростіше; клієнт одразу отримує результат; event loop вільний (OR-Tools відпускає GIL у C++-коді)</td><td>HTTP-запит висить, поки рахує солвер; при падінні процесу робота втрачається; обмежено потоками однієї машини</td></tr>
+          <tr><td>ProcessPoolExecutor</td><td>Обходить GIL для чисто-Python CPU-коду</td><td>Серіалізація даних між процесами; більше пам'яті</td></tr>
+          <tr><td>Celery / черга задач</td><td>Довгі задачі не тримають HTTP; ретраї; масштабування воркерів окремо</td><td>Redis + воркер-процес + polling/websocket для результату — більше інфраструктури</td></tr>
+        </table>
+        <p><b>Чому ми:</b> маршрути на десятки зупинок рахуються за секунди з лімітом часу
+        солвера — черга поки що не окупає свою складність. Коли задачі стануть довшими за ~30 с
+        або з'явиться пакетна генерація — переносимо в Celery (каркас уже є, крок 17).</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> I/O — async-бібліотеки з таймаутом (httpx, AsyncOpenAI, asyncpg); CPU і синхронні бібліотеки — asyncio.to_thread; збій зовнішнього API — очікуваний стан (None/статус), а не 500.</div>
+    </section>
+
+    <section id="s17">
+      <h2><span class="num">17</span> Фонові задачі: Celery + Redis (каркас)</h2>
+      <p class="section-desc">Підготовлене місце для довгих задач — без того, щоб тягнути складність раніше часу.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/workers/celery_app.py + tasks.py</span></div>
+        <pre><code>from celery import Celery
+
+celery_app = Celery("delivery", broker=settings.REDIS_URL, backend=settings.REDIS_URL)
+celery_app.autodiscover_tasks(["app.workers"])
+
+
+@celery_app.task(name="optimize_routes_task")
+def optimize_routes_task(route_request_id: str) -> None:
+    """Майбутнє: роутер ставить задачу і віддає 202 + id,
+    фронтенд опитує статус або слухає websocket."""
+    raise NotImplementedError
+
+# запуск воркера:  celery -A app.workers.celery_app worker --loglevel=info</code></pre>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: фонові задачі</div>
+        <table>
+          <tr><th>Варіант</th><th>Коли доречний</th><th>Мінуси</th></tr>
+          <tr><td>FastAPI <code>BackgroundTasks</code></td><td>Дрібниці після відповіді (лист, лог)</td><td>У тому ж процесі: перезапуск = втрата задачі; без ретраїв</td></tr>
+          <tr class="chosen"><td><b>Celery + Redis</b> ✅ (каркас)</td><td>Стандарт індустрії: ретраї, розклад (beat), маршрутизація черг</td><td>Важкий; синхронні задачі (async-код треба загортати); складний конфіг</td></tr>
+          <tr><td>RQ / Dramatiq</td><td>Простіші за Celery, Redis-черга</td><td>Менше можливостей і інтеграцій</td></tr>
+          <tr><td>arq / Taskiq</td><td>Async-нативні — природно для async-стека</td><td>Менша спільнота</td></tr>
+          <tr><td>Temporal</td><td>Довгі багатокрокові workflow з гарантіями</td><td>Окремий кластер; оверкіл для простих задач</td></tr>
+        </table>
+        <p><b>Чесно:</b> зараз задачі — заглушки, все працює в запиті. Обираючи заново для
+        async-стека, я б серйозно розглянув <b>arq</b> або <b>Taskiq</b>, бо Celery змушує
+        загортати async-сервіси в синхронні обгортки.</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> черга — не за замовчуванням, а коли задача довша за HTTP-таймаут або потребує ретраїв; каркас Celery готовий, але для async-стека arq/Taskiq природніші.</div>
+    </section>
+
+    <section id="s18">
+      <h2><span class="num">18</span> Захист від зловживань: rate limiting і атомарні квоти</h2>
+      <p class="section-desc">Платні Google/OpenAI API + безкоштовний trial = хтось обов'язково спробує це використати.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/rate_limiting.py — fixed window по IP</span></div>
+        <pre><code>import time
+from collections import defaultdict, deque
+from threading import Lock
+
+_WINDOWS: dict[str, deque] = defaultdict(deque)
+_LOCK = Lock()
+
+
+def rate_limit_by_ip(scope: str, max_requests: int, window_seconds: float):
+    """Фабрика FastAPI-залежності: не більше max_requests за window_seconds з однієї IP."""
+
+    def _dependency(request: Request) -> None:
+        key = f"{scope}:{request.client.host if request.client else 'unknown'}"
+        now = time.monotonic()
+        with _LOCK:
+            window = _WINDOWS[key]
+            while window and now - window[0] > window_seconds:
+                window.popleft()                       # викидаємо застарілі
+            if len(window) >= max_requests:
+                raise HTTPException(status_code=429, detail="Too many requests.")
+            window.append(now)
+
+    return _dependency
+
+
+register_rate_limiter = rate_limit_by_ip("register", max_requests=5, window_seconds=3600)
+login_rate_limiter = rate_limit_by_ip("login", max_requests=20, window_seconds=60)</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/repositories/organization_repository.py — квота без гонок</span></div>
+        <pre><code>async def try_consume_quota(self, organization_id, *, counter_column: str, limit: int | None) -> bool:
+    """ОДИН запит UPDATE ... WHERE лічильник + 1 &lt;= ліміт.
+    Не "прочитати → перевірити → записати": два паралельні запити
+    не зможуть обидва пройти останню одиницю квоти."""
+    column = getattr(Organization, counter_column)
+    stmt = update(Organization).where(Organization.id == organization_id)
+    if limit is not None:
+        stmt = stmt.where(column + 1 &lt;= limit)
+    stmt = stmt.values(**{counter_column: column + 1})
+    result = await self.session.execute(stmt)
+    await self.session.commit()
+    return result.rowcount > 0          # 0 рядків оновлено → квота вичерпана
+
+# Викликається ДО платного виклику Google/OpenAI — відхилений запит не коштує грошей.</code></pre>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: rate limiting</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>In-memory у процесі</b> ✅</td><td>Нуль інфраструктури, мікросекунди</td><td>Працює лише з <b>однією</b> машиною і одним процесом; скидається при рестарті</td></tr>
+          <tr><td>Redis-лічильник (або slowapi з Redis)</td><td>Спільний стан для всіх інстансів</td><td>Потрібен Redis; мережевий виклик на кожен запит</td></tr>
+          <tr><td>На рівні шлюзу (Cloudflare, nginx, API Gateway)</td><td>Відсікає трафік до застосунку; захищає й від DDoS</td><td>Не знає бізнес-контексту (план, організація)</td></tr>
+        </table>
+        <p><b>Ключовий аргумент:</b> два різні механізми для двох різних загроз. Rate limit по IP —
+        для неавтентифікованих ендпоінтів (масова реєстрація, перебір паролів). Квоти по
+        організації в БД — для платних операцій, і вони <b>атомарні</b> та переживають рестарт.
+        Обмеження in-memory ми знаємо і документуємо: Fly.io налаштований на 1 машину; при
+        масштабуванні — переносимо в Redis.</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> IP rate limit (in-memory, тому 1 інстанс) для register/login + атомарні квоти UPDATE…WHERE в Postgres для платних API, перевірені ДО виклику; масштабування → лічильники в Redis.</div>
+    </section>
+
+    <section id="s19">
+      <h2><span class="num">19</span> Тестування: pytest, SQLite in-memory, dependency overrides, фейки</h2>
+      <p class="section-desc">Інтеграційні тести ендпоінтів без мережі й без Postgres — секунди на весь набір.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/tests/conftest.py</span></div>
+        <pre><code>import pytest
+import pytest_asyncio
+from fastapi.testclient import TestClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
+
+engine = create_async_engine(
+    "sqlite+aiosqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,                 # одне з'єднання → одна in-memory БД на весь тест
+)
+TestSessionLocal = async_sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+
+
+@pytest_asyncio.fixture
+async def db_session():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)   # чиста схема на кожен тест
+    async with TestSessionLocal() as session:
+        yield session
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+
+@pytest_asyncio.fixture
+async def test_user(db_session) -> User:
+    org = await OrganizationRepository(db_session).create(name="Test Org")
+    return await UserRepository(db_session).create(
+        email="test@example.com", hashed_password=hash_password("pw-123456"), organization_id=org.id
+    )
+
+
+@pytest.fixture
+def client(db_session, test_user) -> TestClient:
+    async def _db():
+        yield db_session
+
+    async def _user():
+        return test_user
+
+    app.dependency_overrides[get_db] = _db                 # БД → SQLite
+    app.dependency_overrides[get_current_user] = _user     # без справжнього JWT
+    try:
+        yield TestClient(app)
+    finally:
+        app.dependency_overrides.clear()</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/tests/test_deliveries_api.py</span></div>
+        <pre><code>from unittest.mock import AsyncMock
+
+
+@pytest.fixture(autouse=True)
+def mock_geocode(monkeypatch):
+    monkeypatch.setattr(GoogleGeocodingClient, "geocode", AsyncMock(return_value=(50.45, 30.52)))
+
+
+def test_create_delivery_geocodes_address(client):
+    response = client.post("/api/v1/deliveries/", json={"customer_name": "John", "address": "Kyiv"})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "geocoded"
+    assert body["latitude"] == 50.45
+
+# OpenAI підмінюється так само: app.dependency_overrides[get_openai_client] = lambda: FakeOpenAIClient()
+# запуск:  pytest -q</code></pre>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: тестова БД</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>SQLite in-memory (aiosqlite)</b> ✅</td><td>Нуль інфраструктури; дуже швидко; CI без сервісів</td><td>Інший діалект: можуть пройти тести, що впадуть на Postgres (типи, enum, блокування, конкурентність, JSONB)</td></tr>
+          <tr><td>Postgres у Docker (testcontainers / сервіс у CI)</td><td>Тестуємо на тій самій БД, що в продакшні</td><td>Повільніший старт; потрібен Docker у CI</td></tr>
+          <tr><td>Транзакція з rollback на кожен тест (на Postgres)</td><td>Швидко + реалістично</td><td>Складніше налаштувати з кодом, що сам робить commit</td></tr>
+        </table>
+        <p><b>Чесний компроміс:</b> SQLite ловить 95% помилок бізнес-логіки за секунди. Але
+        атомарні квоти й конкурентність варто додатково тестувати на справжньому Postgres —
+        це перше, що я б додав у CI (service-контейнер <code>postgres:16</code>).</p>
+      </div>
+      <table>
+        <tr><th>Інструмент</th><th>Альтернатива</th><th>Чому наш</th></tr>
+        <tr><td><b>pytest</b></td><td>unittest</td><td>Фікстури, параметризація, plain <code>assert</code>, плагіни</td></tr>
+        <tr><td><b>pytest-asyncio</b> (<code>asyncio_mode="auto"</code>)</td><td>anyio plugin</td><td>Async-фікстури без декораторів на кожному тесті</td></tr>
+        <tr><td><b>TestClient</b></td><td>httpx.AsyncClient + ASGITransport</td><td>Синхронні тести, простіше читати; async-клієнт — коли тест сам має бути async</td></tr>
+        <tr><td><b>Фейковий клієнт OpenAI</b></td><td>respx/vcr.py записи</td><td>Детерміновано, без мережі й грошей; перевіряємо, що саме ми відправили</td></tr>
+      </table>
+      <div class="remember"><b>🧠 Запам'ятай:</b> тести ендпоінтів через TestClient + dependency_overrides (SQLite замість Postgres, фейковий користувач і OpenAI) — швидко й без мережі; ризик іншого діалекту закриваю Postgres-сервісом у CI.</div>
+    </section>
+
+    <section id="s20">
+      <h2><span class="num">20</span> Якість коду: ruff (+ типізація)</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">термінал</span></div>
+        <pre><code>ruff check .          # лінтер (замість flake8 + плагінів + isort)
+ruff check . --fix    # автовиправлення
+ruff format .         # форматер (замість black)</code></pre>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: лінтинг і форматування</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>ruff</b> ✅</td><td>Один інструмент замість 5; написаний на Rust — у 10–100× швидший; конфіг у pyproject</td><td>Не робить глибокої перевірки типів</td></tr>
+          <tr><td>flake8 + black + isort</td><td>Класика, багато плагінів</td><td>Три інструменти, три конфіги, повільно</td></tr>
+          <tr><td>pylint</td><td>Найглибший аналіз</td><td>Повільний, багато шуму</td></tr>
+        </table>
+        <p><b>Чого бракує (і це варто сказати самому):</b> статичної перевірки типів.
+        Наступний крок — <b>mypy</b> або <b>pyright</b> у CI: type hints уже є всюди (FastAPI їх
+        вимагає), тож вони почнуть ловити помилки "безкоштовно".</p>
+        <p class="muted">Ruff у dev-залежностях запінений на точну версію (<code>ruff==0.15.22</code>):
+        нові релізи додають правила, і без піна CI може "почервоніти" без жодної зміни в коді.</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> ruff = лінтер + форматер в одному і дуже швидкий; бракує mypy/pyright — додав би першим.</div>
+    </section>
+
+    <section id="s21">
+      <h2><span class="num">21</span> Docker-образ</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">Dockerfile</span></div>
+        <pre><code>FROM python:3.12-slim
+
+WORKDIR /code
+ENV PYTHONPATH=/code
+
+# 1. Спершу ЛИШЕ залежності — цей шар кешується, поки не зміниться pyproject.toml
+COPY pyproject.toml ./
+RUN pip install --no-cache-dir .
+
+# 2. Потім код — змінюється часто, але залежності вже в кеші
+COPY app/ ./app/
+COPY alembic.ini ./
+
+EXPOSE 8000
+# --proxy-headers: довіряти X-Forwarded-For від проксі хостингу (справжня IP для rate limit)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*"]</code></pre>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: базовий образ</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>python:3.12-slim</b> ✅</td><td>Debian (glibc) — готові wheels для ortools, pandas, asyncpg; ~50 МБ база</td><td>Більший за alpine/distroless</td></tr>
+          <tr><td>python:3.12-alpine</td><td>Найменший</td><td>musl замість glibc: багато бінарних wheels не підходять → компіляція, повільні збірки, дивні баги</td></tr>
+          <tr><td>distroless / chainguard</td><td>Мінімальна поверхня атаки</td><td>Немає shell для дебагу; складніше збирати</td></tr>
+          <tr><td>Buildpacks (без Dockerfile)</td><td>Нічого не писати</td><td>Менше контролю над шарами</td></tr>
+        </table>
+        <p><b>Що б покращив:</b> multi-stage збірка (компілятори лише в builder-стадії),
+        запуск від не-root користувача (<code>USER app</code>), <code>.dockerignore</code>,
+        встановлення з lock-файлу.</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> slim, бо glibc-wheels для ortools/pandas; залежності окремим шаром для кешу; покращення — multi-stage, non-root, lock-файл.</div>
+    </section>
+
+    <section id="s22">
+      <h2><span class="num">22</span> CI/CD: GitHub Actions</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">.github/workflows/ci.yml</span></div>
+        <pre><code>name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ".[dev]"
+      - run: ruff check .
+      - run: pytest
+
+  deploy:
+    needs: test                    # деплой ЛИШЕ якщо тести зелені
+    if: github.ref == 'refs/heads/main' &amp;&amp; github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only     # образ збирається на серверах Fly
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}</code></pre>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: CI/CD</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>GitHub Actions</b> ✅</td><td>Поруч із кодом; безкоштовні хвилини; маркетплейс готових actions</td><td>Прив'язка до GitHub; YAML швидко розростається</td></tr>
+          <tr><td>GitLab CI</td><td>Сильний вбудований CI/CD і реєстр</td><td>Якщо код не на GitLab — незручно</td></tr>
+          <tr><td>CircleCI / Buildkite</td><td>Швидкі раннери, гнучкість</td><td>Окремий сервіс і білінг</td></tr>
+          <tr><td>Автодеплой хостингу з гілки (без CI)</td><td>Найпростіше</td><td>Деплой навіть з червоними тестами</td></tr>
+        </table>
+        <p><b>Ключова ідея:</b> PR → тільки тести; push у <code>main</code> → тести → деплой.
+        <code>main</code> завжди = те, що в продакшні.</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> ruff + pytest на кожен PR, деплой лише з main і лише після зелених тестів; секрети — у GitHub Secrets.</div>
+    </section>
+
+    <section id="s23">
+      <h2><span class="num">23</span> Хостинг: Fly.io + міграції перед релізом</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">fly.toml</span></div>
+        <pre><code>app = "delivery-backend"
+primary_region = "fra"                      # ближче до користувачів (Європа)
+
+[deploy]
+  release_command = "alembic upgrade head"  # міграції в тимчасовій машині ДО перемикання трафіку
+
+[env]                                       # не-секретні змінні; секрети: fly secrets set KEY=...
+  ENVIRONMENT = "production"
+  DEBUG = "false"
+  CORS_ORIGINS = '["https://my-frontend.vercel.app"]'
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false                # не "засинати": in-memory стан і холодний старт
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/health"                        # нова версія отримає трафік лише після 200
+    interval = "15s"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">термінал — перший деплой</span></div>
+        <pre><code>fly launch --no-deploy                       # створити застосунок
+fly secrets set JWT_SECRET=$(openssl rand -hex 32) DATABASE_URL=... OPENAI_API_KEY=...
+fly deploy
+fly scale count 1                            # одна машина — через in-memory rate limiter</code></pre>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: хостинг</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>Fly.io</b> ✅</td><td>Деплой Docker-образу однією командою; release_command для міграцій; регіони; дешевий старт</td><td>Менше managed-сервісів, ніж у великих хмар; інколи нестабільність платформи</td></tr>
+          <tr><td>Render / Railway</td><td>Ще простіше, гарний UI, managed Postgres поруч</td><td>Дорожчають на масштабі; менше контролю над мережею</td></tr>
+          <tr><td>Heroku</td><td>Піонер PaaS, дуже простий</td><td>Дорогий; немає безкоштовного тарифу</td></tr>
+          <tr><td>AWS ECS Fargate / Cloud Run</td><td>Автомасштабування, екосистема хмари, enterprise-вимоги</td><td>IAM, VPC, балансувальники — значно більше налаштувань</td></tr>
+          <tr><td>Kubernetes</td><td>Повний контроль, стандарт великих компаній</td><td>Величезні операційні витрати для одного сервісу</td></tr>
+          <tr><td>VPS (Hetzner/DigitalOcean) + Docker</td><td>Найдешевше</td><td>Оновлення ОС, TLS, бекапи, моніторинг — усе самому</td></tr>
+        </table>
+        <p><b>Managed Postgres поруч:</b> Fly Postgres, Supabase, Neon, AWS RDS — головне,
+        щоб БД була в тому ж регіоні, що й застосунок (кожен запит до БД — мережевий round-trip).</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> PaaS (Fly.io), бо маленька команда: Docker-образ, міграції через release_command, health check на /health, секрети через fly secrets; 1 машина — свідоме обмеження через in-memory стан.</div>
+    </section>
+
+    <section id="s24">
+      <h2><span class="num">24</span> Логування і моніторинг</h2>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/core/logger.py</span></div>
+        <pre><code>import logging
+import sys
+
+
+def configure_logging(level: int = logging.INFO) -> None:
+    logging.basicConfig(
+        level=level,
+        stream=sys.stdout,          # 12-factor: логи в stdout, збирає платформа
+        format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    )
+
+
+logger = logging.getLogger("app.errors")
+logger.exception("Unhandled error on %s %s", method, path)   # з traceback у логах, не у відповіді</code></pre>
+      </div>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: логи й спостережуваність</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>stdlib logging → stdout</b> ✅</td><td>Нуль залежностей; бібліотеки (SQLAlchemy, uvicorn) пишуть у той самий механізм</td><td>Текстові рядки важко шукати й агрегувати; немає request id</td></tr>
+          <tr><td>structlog / python-json-logger</td><td>JSON-логи з контекстом (org_id, request_id) — легко фільтрувати в Grafana/Datadog</td><td>Налаштування</td></tr>
+          <tr><td>loguru</td><td>Найзручніший API</td><td>Інша модель, ніж stdlib — треба перехоплювати логи бібліотек</td></tr>
+          <tr><td>Sentry / OpenTelemetry</td><td>Помилки з контекстом, трейсинг повільних запитів</td><td>Зовнішній сервіс; обережно з персональними даними</td></tr>
+        </table>
+        <p class="muted">Детально про Sentry — у <a href="26-sentry-monitoring.html">туторіалі 26</a>.</p>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> логи в stdout через stdlib (12-factor), деталі помилок — у лог, не клієнту; наступні кроки — JSON-логи з request_id і Sentry.</div>
+    </section>
+    <section id="s25">
+      <h2><span class="num">25</span> Шпаргалка: усі рішення на одній сторінці</h2>
+      <p class="section-desc">Головний артефакт для повторення. Закрийте праву частину рукою й відтворіть її по пам'яті.</p>
+      <table>
+        <tr><th>Шар</th><th>Обрали</th><th>Головні альтернативи</th><th>Головний аргумент</th><th>Головний мінус → як закрити</th></tr>
+        <tr><td>Мова</td><td>Python 3.12</td><td>Node/TS, Go</td><td>OR-Tools + OpenAI + pandas</td><td>CPU-швидкість → важке в C++ / потоках</td></tr>
+        <tr><td>Залежності</td><td>pyproject + pip</td><td>uv, Poetry</td><td>Стандарт без інструментів</td><td>Немає lock → uv lock</td></tr>
+        <tr><td>Фреймворк</td><td>FastAPI</td><td>Django/DRF, Flask, Litestar</td><td>Async + Pydantic + OpenAPI + DI</td><td>Немає батарейок → обираємо ORM/міграції/auth самі</td></tr>
+        <tr><td>Сервер</td><td>Uvicorn (1 процес)</td><td>Gunicorn+workers, Granian</td><td>Простота, масштаб машинами</td><td>1 процес → in-memory стан не масштабується</td></tr>
+        <tr><td>Архітектура</td><td>Шари api/services/repositories</td><td>Vertical slices, Clean, мікросервіси</td><td>Достатньо структури без церемоній</td><td>Фіча в 5 папках → slices при рості команди</td></tr>
+        <tr><td>Конфіг</td><td>pydantic-settings</td><td>os.environ, dynaconf</td><td>Типи + валідація при старті</td><td>Небезпечні дефолти → валідатор для production</td></tr>
+        <tr><td>БД</td><td>PostgreSQL</td><td>MySQL, MongoDB</td><td>Реляційні дані, транзакції, атомарні UPDATE</td><td>Пули/міграції → Alembic, managed БД</td></tr>
+        <tr><td>ORM</td><td>SQLAlchemy 2.0 async + asyncpg</td><td>SQLModel, Tortoise, сирий SQL</td><td>Стандарт, ORM + Core</td><td>Складні сесії, без lazy load в async</td></tr>
+        <tr><td>Міграції</td><td>Alembic</td><td>create_all, Flyway</td><td>Autogenerate з моделей</td><td>Не бачить rename/enum → рев'ю міграцій</td></tr>
+        <tr><td>Схеми</td><td>Pydantic Create/Update/Read</td><td>SQLModel, marshmallow</td><td>API-контракт окремо від БД</td><td>Дублювання полів (свідоме)</td></tr>
+        <tr><td>Доступ до БД</td><td>Repository + TenantScoped</td><td>Сесія напряму, Active Record, UoW</td><td>Tenant-фільтр структурно</td><td>commit у кожному методі → Unit of Work</td></tr>
+        <tr><td>DI</td><td>FastAPI Depends</td><td>dependency-injector, глобали</td><td>dependency_overrides у тестах</td><td>Лише в HTTP-контексті</td></tr>
+        <tr><td>API</td><td>REST /api/v1</td><td>GraphQL, header-версії</td><td>Просто, Swagger, кеш</td><td>Over/underfetching</td></tr>
+        <tr><td>Auth</td><td>JWT access+refresh, bcrypt</td><td>Сесії+cookie, Auth0/Clerk</td><td>Stateless для SPA на іншому домені</td><td>Немає відкликання → ротація refresh + Redis</td></tr>
+        <tr><td>Tenancy</td><td>Shared tables + organization_id</td><td>RLS, schema/DB per tenant</td><td>Дешево, одна міграція</td><td>Ізоляція лише в коді → RLS</td></tr>
+        <tr><td>Помилки</td><td>Глобальні handlers, {"detail"}</td><td>RFC 9457, try/except</td><td>Однаковий JSON, без traceback</td><td>Немає коду помилки → поле code</td></tr>
+        <tr><td>HTTP-клієнт</td><td>httpx (async, timeout)</td><td>requests, aiohttp</td><td>Async + простий API</td><td>—</td></tr>
+        <tr><td>CPU-робота</td><td>asyncio.to_thread</td><td>ProcessPool, Celery</td><td>Найпростіше, loop вільний</td><td>Запит висить → черга при довгих задачах</td></tr>
+        <tr><td>Фон</td><td>Celery + Redis (каркас)</td><td>arq, Taskiq, RQ, BackgroundTasks</td><td>Стандарт, ретраї</td><td>Sync-задачі → arq/Taskiq для async</td></tr>
+        <tr><td>Анти-зловживання</td><td>IP rate limit in-memory + атомарні квоти в БД</td><td>Redis, Cloudflare</td><td>Дві загрози — два механізми</td><td>1 інстанс → Redis-лічильники</td></tr>
+        <tr><td>Тести</td><td>pytest + SQLite + overrides + фейки</td><td>Postgres testcontainers</td><td>Швидко, без мережі</td><td>Інший діалект → Postgres у CI</td></tr>
+        <tr><td>Якість</td><td>ruff</td><td>flake8+black+isort</td><td>Один швидкий інструмент</td><td>Немає типізації → mypy/pyright</td></tr>
+        <tr><td>Образ</td><td>python:3.12-slim</td><td>alpine, distroless</td><td>glibc-wheels для ortools</td><td>root, single-stage → multi-stage + USER</td></tr>
+        <tr><td>CI/CD</td><td>GitHub Actions: test → deploy</td><td>GitLab CI, автодеплой</td><td>Деплой лише після зелених тестів</td><td>—</td></tr>
+        <tr><td>Хостинг</td><td>Fly.io, release_command</td><td>Render, Cloud Run, k8s</td><td>Docker + міграції однією командою</td><td>Менше managed-сервісів</td></tr>
+        <tr><td>Логи</td><td>stdlib logging → stdout</td><td>structlog, loguru, Sentry</td><td>12-factor, нуль залежностей</td><td>Текст без request_id → JSON-логи</td></tr>
+      </table>
+    </section>
+
+    <section id="s26">
+      <h2><span class="num">26</span> Як захищати архітектуру</h2>
+      <p class="section-desc">Формула відповіді і найчастіші "атакувальні" питання.</p>
+
+      <h3>Формула відповіді на "чому X, а не Y?"</h3>
+      <div class="flow">
+        <div class="step">1. Вимога / контекст</div><div class="arrow">→</div>
+        <div class="step">2. Що розглядали</div><div class="arrow">→</div>
+        <div class="step">3. Чому X виграв саме тут</div><div class="arrow">→</div>
+        <div class="step">4. Чесний мінус X</div><div class="arrow">→</div>
+        <div class="step">5. Коли перейшов би на Y</div>
+      </div>
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Приклад:</b> "Фронтенд — окремий SPA на іншому домені (1), розглядали
+        серверні сесії з cookie і Auth0 (2). JWT обрали, бо stateless і не потребує спільного
+        сховища та cross-domain cookie (3). Мінус — не можна миттєво відкликати токен, тому access
+        живе лише 30 хвилин (4). Якщо з'явиться вимога 'вийти на всіх пристроях' — додам ротацію
+        refresh-токенів з чорним списком у Redis (5)." — Пункти 4 і 5 показують senior-рівень:
+        ви бачите обмеження раніше за співрозмовника.</div>
+      </div>
+
+      <h3>Елеватор-пітч (60 секунд)</h3>
+      <div class="card">
+        "Це модульний моноліт на <b>FastAPI</b> з шарами api → services → repositories над
+        <b>PostgreSQL</b> через async <b>SQLAlchemy</b>. Мультитенантність — спільні таблиці з
+        <code>organization_id</code>, який береться лише з <b>JWT</b> і вшитий у репозиторій, тож
+        запит до чужих даних структурно неможливий. Важка оптимізація маршрутів (<b>OR-Tools</b>) і
+        синхронні бібліотеки йдуть у потоки, щоб не блокувати event loop. Платні Google/OpenAI
+        API захищені атомарними квотами в БД і rate limiting. Тести — pytest з підміною
+        залежностей, деплой — Docker на <b>Fly.io</b> через GitHub Actions з міграціями перед
+        релізом. Свідомі обмеження: одна машина через in-memory rate limiter і немає lock-файлу —
+        обидва мають зрозумілий шлях виправлення."
+      </div>
+
+      <h3>Питання, якими "атакують" — і відповіді</h3>
+      <details class="qa"><summary>Чому не Django — там же все є?</summary>
+        <div class="a">Нам не потрібні адмінка й шаблони: це чистий JSON API для SPA з великою
+        кількістю I/O. FastAPI дає async, валідацію й OpenAPI з type hints. Ціна — збираємо
+        ORM/міграції/auth самі, але це 3 свідомі рішення, а не тисяча неявних. Якби потрібна
+        була внутрішня адмінка для операторів — Django був би сильним кандидатом.</div></details>
+      <details class="qa"><summary>Навіщо репозиторії, якщо SQLAlchemy — і так абстракція?</summary>
+        <div class="a">SQLAlchemy абстрагує <i>SQL-діалект</i>, а репозиторій — <i>правила доступу</i>.
+        Головне: <code>TenantScopedRepository</code> вшиває фільтр організації, тож у сервісі
+        неможливо забути <code>WHERE organization_id</code>. Плюс одне місце для запитів і легкі
+        підміни в тестах.</div></details>
+      <details class="qa"><summary>Що буде, якщо два запити одночасно витратять останню одиницю квоти?</summary>
+        <div class="a">Пройде лише один. Перевірка і інкремент — один <code>UPDATE ... SET x = x + 1
+        WHERE x + 1 &lt;= limit</code>; Postgres блокує рядок на час оновлення, другий запит побачить
+        уже нове значення й оновить 0 рядків. Read-modify-write у Python тут дав би гонку.</div></details>
+      <details class="qa"><summary>Чому in-memory rate limiter? Це ж не масштабується.</summary>
+        <div class="a">Так, і це задокументовано: Fly.io налаштований на одну машину й один процес.
+        Для поточного навантаження це нуль інфраструктури. Квоти на платні API — в БД, вони
+        масштабуються. Коли знадобиться друга машина — лічильники переїжджають у Redis (той, що
+        вже є для Celery), інтерфейс залежності не змінюється.</div></details>
+      <details class="qa"><summary>Чому тести на SQLite, а продакшн — Postgres?</summary>
+        <div class="a">Швидкість і нуль інфраструктури: весь набір проходить за секунди, CI без
+        сервісів. Ризик — різниця діалектів (enum, блокування, конкурентність). Тому
+        конкурентну логіку квот треба додатково тестувати на справжньому Postgres — це перше
+        покращення CI.</div></details>
+      <details class="qa"><summary>Як ви не блокуєте event loop солвером, який рахує секунди?</summary>
+        <div class="a"><code>asyncio.to_thread</code>: солвер виконується в пулі потоків, а
+        event loop обслуговує інші запити. OR-Tools — C++, він відпускає GIL під час пошуку,
+        тому потоки тут ефективні. Для довших задач — Celery-воркер і відповідь 202 + опитування статусу.</div></details>
+      <details class="qa"><summary>JWT вкрали — що робити?</summary>
+        <div class="a">Access живе 30 хвилин — шкода обмежена в часі. Поле <code>type</code> не дає
+        використати refresh як access. Для миттєвого відкликання — ротація refresh-токенів і
+        список відкликаних у Redis, або зміна <code>JWT_SECRET</code> як аварійний "вийти всім".</div></details>
+      <details class="qa"><summary>Як масштабувати, якщо навантаження зросте в 10 разів?</summary>
+        <div class="a">По порядку, від дешевого: (1) rate limiter → Redis, щоб дозволити кілька
+        машин; (2) <code>fly scale count N</code> — застосунок stateless; (3) пул з'єднань і
+        PgBouncer перед Postgres; (4) солвер → Celery-воркери, що масштабуються окремо; (5)
+        індекси за повільними запитами, read-репліки для дашбордів; (6) кеш у Redis для
+        геокодування однакових адрес. Мікросервіси — лише якщо різні частини справді
+        потребують різного масштабу.</div></details>
+      <details class="qa"><summary>Чому commit усередині репозиторію — це ж погано для транзакцій?</summary>
+        <div class="a">Чесно — це компроміс на користь простоти. Для однокрокових операцій
+        проблем немає. Для багатокрокових (маршрут + зупинки + лічильник) правильніше Unit of
+        Work: сесія комітиться один раз наприкінці операції, а при помилці — rollback усього.
+        Це наступний рефакторинг.</div></details>
+      <details class="qa"><summary>Чому 404, а не 403, для чужих даних?</summary>
+        <div class="a">403 підтверджує, що ресурс існує, — це витік інформації (можна перебирати
+        id). Для клієнта "чуже" і "не існує" мають бути невідрізненні.</div></details>
+    </section>
+
+    <section id="s27">
+      <h2><span class="num">27</span> Самоперевірка</h2>
+      <p class="section-desc">Відповідайте вголос, потім відкривайте. Повторіть завтра і через тиждень.</p>
+      <details class="qa"><summary>1. Назвіть 4 шари і що кожен НЕ має знати.</summary>
+        <div class="a">api (не знає SQL), services (не знає HTTP), repositories (не знає бізнес-правил і HTTP), db/models (нічого вище).</div></details>
+      <details class="qa"><summary>2. Звідки береться organization_id у запиті до БД?</summary>
+        <div class="a">Тільки з автентифікованого користувача (JWT → get_current_user → user.organization_id → конструктор репозиторію). Від клієнта — ніколи, і репозиторій викидає його з kwargs.</div></details>
+      <details class="qa"><summary>3. Чим access-токен відрізняється від refresh і як сервер їх розрізняє?</summary>
+        <div class="a">Час життя (30 хв vs 7 днів) і призначення; поле <code>type</code> у claims, яке перевіряє get_current_user та /refresh.</div></details>
+      <details class="qa"><summary>4. Навіщо <code>expire_on_commit=False</code>?</summary>
+        <div class="a">Щоб після commit атрибути об'єкта лишались доступними без нового запиту — в async SQLAlchemy неявний lazy-запит при доступі до атрибута впав би.</div></details>
+      <details class="qa"><summary>5. Що autogenerate в Alembic може зробити небезпечно?</summary>
+        <div class="a">Перейменування колонки згенерує drop + add (втрата даних); не бачить зміни значень enum і backfill даних. Тому міграції читаємо очима.</div></details>
+      <details class="qa"><summary>6. Чому квота перевіряється ДО виклику Google/OpenAI і як — атомарно?</summary>
+        <div class="a">Щоб відхилений запит не коштував грошей; одним UPDATE ... WHERE лічильник + 1 &lt;= ліміт, rowcount показує, чи пройшло.</div></details>
+      <details class="qa"><summary>7. Що станеться, якщо викликати <code>requests.get</code> в async-ендпоінті?</summary>
+        <div class="a">Заблокується event loop — увесь процес не обслуговує інші запити до кінця виклику. Потрібен httpx.AsyncClient або to_thread.</div></details>
+      <details class="qa"><summary>8. Як тести обходяться без Postgres, JWT і OpenAI?</summary>
+        <div class="a"><code>app.dependency_overrides</code>: get_db → SQLite in-memory сесія, get_current_user → тестовий юзер, get_openai_client → фейковий клієнт; геокодер — monkeypatch AsyncMock.</div></details>
+      <details class="qa"><summary>9. Чому в Dockerfile спершу копіюється pyproject.toml, а потім код?</summary>
+        <div class="a">Кеш шарів: встановлення залежностей перезбирається лише при зміні pyproject, а не при кожній зміні коду.</div></details>
+      <details class="qa"><summary>10. Що робить release_command і чому міграції саме там?</summary>
+        <div class="a">Запускає <code>alembic upgrade head</code> в окремій машині до перемикання трафіку; якщо міграція впаде — нова версія не стартує, стара продовжує працювати.</div></details>
+      <details class="qa"><summary>11. Чому застосунок обмежений однією машиною і що змінити, щоб зняти обмеження?</summary>
+        <div class="a">Rate limiter зберігає стан у пам'яті процесу; перенести лічильники в Redis.</div></details>
+      <details class="qa"><summary>12. Назвіть 5 покращень, які ви б зробили першими.</summary>
+        <div class="a">Lock-файл (uv); Postgres у CI для конкурентних тестів; mypy/pyright; Unit of Work замість commit у репозиторіях; ротація refresh-токенів; Redis rate limiter; RLS; non-root multi-stage Docker; поле code у помилках; JSON-логи з request_id.</div></details>
+      <div class="card">
+        Далі: <b><a href="01-architecture.html">Туторіал 1 — архітектура проєкту</a></b> — той самий
+        код, але розібраний "згори вниз" по реальних файлах репозиторію.
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Гайд побудований на реальному коді репозиторію <code>ai-delivery-planner-backend</code>; приклади
+  спрощені для покрокового відтворення в новому репозиторії, але повторюють ті самі рішення.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*|\/\/[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b|\bthis\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case|const|let|var|function|interface|type|export|extends|implements|new|void|enum|typeof|instanceof|static|public|private|readonly|null|undefined)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>
