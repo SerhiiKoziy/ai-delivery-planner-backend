@@ -1,0 +1,1512 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>17. Node.js у продакшні: логи, помилки, shutdown, Docker, моніторинг — Node.js Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🟢 Node.js Doc <span>· AI Delivery Planner</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Node.js Doc · Туторіал 17 з 20</div>
+  <h1>Node.js у продакшні: логи, помилки, graceful shutdown, Docker і observability</h1>
+  <p class="lead">Усе, що відрізняє «працює на ноутбуці» від «переживає деплой о 15:00 в п'ятницю»: структуровані логи з request id, стратегія помилок і <b>crash-only</b> підхід, правильний graceful shutdown, Docker-образ без пасток PID 1, проби Kubernetes, метрики, трейси, безпечні деплої з міграціями та алерти на SLO.</p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="07-fs-process-os.html">7. fs, process, os</a>
+        <a href="08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="09-http-networking.html">9. HTTP і мережа</a>
+        <a href="10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="12-databases-orm.html">12. БД і ORM</a>
+        <a href="13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="14-security.html">14. Безпека Node</a>
+        <a href="15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="16-testing.html">16. Тестування</a>
+        <a href="17-production-observability.html" class="active">17. Продакшн і моніторинг</a>
+        <a href="18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+  </aside>
+
+    <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Логування: console, pino, winston</a></li>
+      <li><a href="#s2">2. pino на практиці: request id, redaction, pipeline</a></li>
+      <li><a href="#s3">3. Стратегія помилок і crash-only</a></li>
+      <li><a href="#s4">4. Graceful shutdown</a></li>
+      <li><a href="#s5">5. Health checks: liveness, readiness, startup</a></li>
+      <li><a href="#s6">6. Docker-образ для Node</a></li>
+      <li><a href="#s7">7. PID 1, сигнали й npm start</a></li>
+      <li><a href="#s8">8. PM2 vs systemd vs Kubernetes</a></li>
+      <li><a href="#s9">9. Три стовпи observability і метрики</a></li>
+      <li><a href="#s10">10. Трейсинг, APM і Sentry</a></li>
+      <li><a href="#s11">11. Конфігурація і feature flags</a></li>
+      <li><a href="#s12">12. Zero-downtime деплої та міграції</a></li>
+      <li><a href="#s13">13. SLO, алерти і runbooks</a></li>
+      <li><a href="#s14">14. Каверзні питання співбесіди</a></li>
+      <li><a href="#s15">15. Шпаргалка</a></li>
+      <li><a href="#s16">16. Як запам'ятати</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+<section id="s1">
+  <h2><span class="num">01</span> Логування: console, pino, winston</h2>
+  <p class="section-desc">О третій ночі під час інциденту логи — єдине, що у вас є; вони мають бути машинно-читаними, пов'язаними між собою і дешевими для процесу.</p>
+
+  <h3>Чому не console.log</h3>
+  <ul>
+    <li><b>Неструктурований текст.</b> <code>console.log('user', id, 'failed')</code> не відфільтруєш у Loki/Elasticsearch за полем <code>userId</code>. Потрібен JSON: одна подія — один рядок з полями <code>level</code>, <code>time</code>, <code>msg</code>, <code>requestId</code>…</li>
+    <li><b>Немає рівнів</b> (лише log/warn/error) і немає способу вимкнути debug у проді без зміни коду.</li>
+    <li><b>Може блокувати.</b> Залежно від ОС і того, куди веде stdout (файл, TTY, pipe), запис буває синхронним. Масивне логування великих об'єктів (<code>console.log(req)</code>) з <code>util.inspect</code> — помітна частка CPU.</li>
+  </ul>
+
+  <div class="decision">
+    <div class="decision-title">🔀 Вузол вибору: логер</div>
+    <table><tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+      <tr class="chosen"><td><b>pino</b> ✅</td><td>Найшвидший: мінімум роботи в головному потоці, JSON за замовчуванням, transports у worker thread, вбудована redaction, child loggers; вбудований у Fastify, є pino-http і nestjs-pino</td><td>Форматування/маршрутизація — окремими transports; «красивий» вивід лише через pino-pretty</td></tr>
+      <tr><td>winston</td><td>Дуже гнучкі formats і transports (файли, HTTP, різні рівні в різні місця), популярний у legacy</td><td>Повільніший, більше алокацій на запис, легко налаштувати неструктурований текст</td></tr>
+      <tr><td>console + JSON.stringify</td><td>Нуль залежностей</td><td>Самописні рівні, redaction, контекст; ризик блокування</td></tr>
+      <tr><td>bunyan</td><td>Історично перший JSON-логер для Node</td><td>Фактично не розвивається</td></tr>
+    </table>
+    <p><b>Коли що:</b> новий сервіс → pino; існуючий проєкт на winston з налаштованою інфраструктурою → лишити, але перевірити, що вивід — JSON у stdout; скрипти й CLI → console.</p>
+  </div>
+
+  <h3>Рівні та що на них писати</h3>
+  <table>
+    <tr><th>Рівень</th><th>Коли</th><th>Приклад</th></tr>
+    <tr><td><code>fatal</code></td><td>Процес зараз впаде</td><td>uncaughtException, не вдалося підключитись до БД при старті</td></tr>
+    <tr><td><code>error</code></td><td>Запит/задача провалилась, потрібна увага</td><td>5xx, необроблена помилка в обробнику черги</td></tr>
+    <tr><td><code>warn</code></td><td>Аномалія, але система впоралась</td><td>Ретрай до upstream, deprecated API, наближення до ліміту</td></tr>
+    <tr><td><code>info</code></td><td>Бізнес-події та життєвий цикл</td><td>Старт/стоп, «order created», завершення запиту (access log)</td></tr>
+    <tr><td><code>debug</code>/<code>trace</code></td><td>Деталі для розробки, у проді вимкнено</td><td>SQL-запити, payload'и</td></tr>
+  </table>
+  <div class="callout info"><div class="ic">💡</div><div class="body">4xx від клієнта — зазвичай <code>info</code>/<code>warn</code>, а не <code>error</code>: невалідний запит — не ваш інцидент. Якщо кожен 404 — це error, алерт на «кількість error-логів» стане шумом.</div></div>
+</section>
+
+<section id="s2">
+  <h2><span class="num">02</span> pino на практиці: request id, redaction, pipeline</h2>
+  <p class="section-desc">Хороший лог-рядок відповідає на «який запит, який користувач, яка версія, яка помилка» — і ніколи не містить пароля чи токена.</p>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">src/logger.js</span></div>
+    <pre><code>import pino from 'pino';
+
+export const logger = pino({
+  level: process.env.LOG_LEVEL ?? 'info',
+  base: { service: 'orders-api', version: process.env.APP_VERSION, env: process.env.APP_ENV },
+  timestamp: pino.stdTimeFunctions.isoTime,
+  redact: {
+    paths: ['req.headers.authorization', 'req.headers.cookie', '*.password', '*.token', 'card.number'],
+    censor: '[REDACTED]',
+  },
+  // локально — гарний вивід; у проді — чистий JSON у stdout, без transport у процесі
+  transport: process.env.NODE_ENV === 'development' ? { target: 'pino-pretty' } : undefined,
+});
+
+// child logger: усі записи успадковують поля
+const jobLog = logger.child({ component: 'route-optimizer' });
+jobLog.info({ routeId: 42, stops: 18 }, 'optimization started');
+jobLog.error({ err }, 'optimization failed');   // ключ err → серіалізатор зі stack і cause</code></pre>
+  </div>
+  <ul>
+    <li><b>Сигнатура pino</b> — спершу об'єкт полів, потім повідомлення: <code>log.info({ userId }, 'msg')</code>. Навпаки (<code>log.info('msg', { userId })</code>) поля загубляться — типова помилка при міграції з winston.</li>
+    <li><b>Помилки логуйте під ключем <code>err</code></b> — стандартний серіалізатор додасть <code>type</code>, <code>message</code>, <code>stack</code> і ланцюжок <code>cause</code>.</li>
+    <li><b>Redaction</b> працює за шляхами; це страховка, а не дозвіл логувати цілі об'єкти. Краще взагалі не логувати тіла запитів, а вибирати поля явно. PII (email, телефон, адреса) — теж під GDPR.</li>
+    <li><b>pino-pretty — лише локально.</b> У проді він витрачає CPU на форматування, а збирач логів не зможе розпарсити кольоровий текст.</li>
+  </ul>
+
+  <h3>Request id через AsyncLocalStorage</h3>
+  <p>Як функція глибоко в коді дізнається requestId, щоб додати його в лог, не прокидаючи параметр через 10 шарів? <code>AsyncLocalStorage</code> (див. <a href="03-async-patterns.html">туторіал 3</a>) — контекст, що «йде» за асинхронним ланцюжком. Демонстрація без залежностей:</p>
+  <div class="codecard">
+    <div class="bar"><span class="path">als-logger.js — node als-logger.js</span></div>
+    <pre><code>import { AsyncLocalStorage } from 'node:async_hooks';
+import { randomUUID } from 'node:crypto';
+import { setTimeout as sleep } from 'node:timers/promises';
+
+const als = new AsyncLocalStorage();
+const REDACT = new Set(['password', 'authorization', 'token']);
+const redact = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, REDACT.has(k) ? '[REDACTED]' : v]));
+
+const logger = {
+  info(msg, fields = {}) {
+    const ctx = als.getStore() ?? {};
+    process.stdout.write(JSON.stringify({ level: 'info', msg, ...ctx, ...redact(fields) }) + '\n');
+  },
+};
+
+async function chargeCard(amount) {        // глибоко в коді — про requestId не знає
+  await sleep(Math.random() * 20);
+  logger.info('card charged', { amount, token: 'tok_live_123' });
+}
+
+async function handleRequest(userId, incomingId) {
+  const requestId = incomingId ?? randomUUID().slice(0, 8);
+  return als.run({ requestId, userId }, async () => {
+    logger.info('request start');
+    await chargeCard(100);
+    logger.info('request end');
+  });
+}
+
+await Promise.all([handleRequest('u1', 'req-aaa'), handleRequest('u2', 'req-bbb')]);</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">вивід (порядок між двома запитами випадковий — через Math.random)</span></div>
+    <pre><code>{"level":"info","msg":"request start","requestId":"req-aaa","userId":"u1"}
+{"level":"info","msg":"request start","requestId":"req-bbb","userId":"u2"}
+{"level":"info","msg":"card charged","requestId":"req-bbb","userId":"u2","amount":100,"token":"[REDACTED]"}
+{"level":"info","msg":"request end","requestId":"req-bbb","userId":"u2"}
+{"level":"info","msg":"card charged","requestId":"req-aaa","userId":"u1","amount":100,"token":"[REDACTED]"}
+{"level":"info","msg":"request end","requestId":"req-aaa","userId":"u1"}</code></pre>
+  </div>
+  <p>Записи двох паралельних запитів перемішані в часі, але кожен має свій <code>requestId</code> — у системі логів фільтр <code>requestId="req-aaa"</code> дасть повну історію одного запиту. У реальному коді: <code>pino-http</code>/Fastify генерують id (або беруть з заголовка <code>x-request-id</code> від балансувальника), а <code>nestjs-pino</code> чи власний middleware кладе child logger в ALS. Ще краще — використовувати <code>trace_id</code> з OpenTelemetry (розділ 10), тоді лог і трейс з'єднуються автоматично.</p>
+
+  <h3>Куди йдуть логи: pipeline</h3>
+  <figure class="diagram">
+    <svg viewBox="0 0 740 230" role="img" aria-label="Пайплайн логів: застосунок пише JSON-рядки в stdout; рантайм контейнера зберігає їх у файл на ноді; агент-збирач (Fluent Bit, Vector, OpenTelemetry Collector) читає, парсить, збагачує метаданими поду, фільтрує й буферизує; далі сховище (Loki, Elasticsearch, CloudWatch, Datadog); зверху UI для пошуку й алертів (Grafana, Kibana)">
+      <defs><marker id="n17d1-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <rect x="10" y="60" width="120" height="70" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+        <text x="70" y="86" text-anchor="middle" fill="currentColor" font-weight="700">Node app</text>
+        <text x="70" y="104" text-anchor="middle" fill="var(--fg-muted)" font-size="11">pino → JSON</text>
+        <text x="70" y="119" text-anchor="middle" fill="var(--fg-muted)" font-size="11">один рядок/подія</text>
+        <rect x="160" y="60" width="110" height="70" rx="10" fill="none" stroke="currentColor"/>
+        <text x="215" y="86" text-anchor="middle" fill="currentColor" font-weight="700">stdout</text>
+        <text x="215" y="104" text-anchor="middle" fill="var(--fg-muted)" font-size="11">runtime пише</text>
+        <text x="215" y="119" text-anchor="middle" fill="var(--fg-muted)" font-size="11">файл на ноді</text>
+        <rect x="300" y="60" width="150" height="70" rx="10" fill="var(--warn)" fill-opacity="0.12" stroke="var(--warn)"/>
+        <text x="375" y="84" text-anchor="middle" fill="var(--warn)" font-weight="700">collector</text>
+        <text x="375" y="102" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Fluent Bit / Vector / OTel</text>
+        <text x="375" y="117" text-anchor="middle" fill="var(--fg-muted)" font-size="11">parse, +pod labels, буфер</text>
+        <rect x="480" y="60" width="120" height="70" rx="10" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+        <text x="540" y="86" text-anchor="middle" fill="var(--info)" font-weight="700">storage</text>
+        <text x="540" y="104" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Loki / Elastic /</text>
+        <text x="540" y="119" text-anchor="middle" fill="var(--fg-muted)" font-size="11">CloudWatch</text>
+        <rect x="630" y="60" width="100" height="70" rx="10" fill="var(--good)" fill-opacity="0.12" stroke="var(--good)"/>
+        <text x="680" y="86" text-anchor="middle" fill="var(--good)" font-weight="700">UI</text>
+        <text x="680" y="104" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Grafana /</text>
+        <text x="680" y="119" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Kibana, алерти</text>
+        <path d="M130,95 L158,95" stroke="currentColor" stroke-width="1.3" marker-end="url(#n17d1-arrow)"/>
+        <path d="M270,95 L298,95" stroke="currentColor" stroke-width="1.3" marker-end="url(#n17d1-arrow)"/>
+        <path d="M450,95 L478,95" stroke="currentColor" stroke-width="1.3" marker-end="url(#n17d1-arrow)"/>
+        <path d="M600,95 L628,95" stroke="currentColor" stroke-width="1.3" marker-end="url(#n17d1-arrow)"/>
+        <text x="140" y="30" text-anchor="middle" fill="var(--good)" font-size="11">застосунок не знає,</text>
+        <text x="140" y="44" text-anchor="middle" fill="var(--good)" font-size="11">куди йдуть логи (12-factor)</text>
+        <text x="375" y="160" text-anchor="middle" fill="var(--fg-muted)" font-size="11">ретраї, backpressure, sampling debug-логів —</text>
+        <text x="375" y="175" text-anchor="middle" fill="var(--fg-muted)" font-size="11">поза процесом Node, не гальмують event loop</text>
+        <text x="370" y="212" text-anchor="middle" fill="var(--bad)" font-size="11">❌ анти-патерн: відправляти логи по HTTP прямо з процесу — при недоступності сховища губляться логи і пам'ять</text>
+      </g>
+    </svg>
+    <figcaption>Процес пише JSON у stdout і більше нічого не знає; доставку, буферизацію і ретраї бере на себе окремий агент.</figcaption>
+  </figure>
+
+  <div class="callout warn"><div class="ic">⚠️</div><div class="body"><b>Асинхронний запис і краш.</b> pino за замовчуванням буферизує запис (<code>pino.destination({ sync: false })</code> або transports у worker thread) — це швидко, але при різкому <code>process.exit()</code> останні рядки, включно з тим самим fatal-повідомленням про причину падіння, можуть не дійти. У краш-хендлері логувати fatal і викликати <code>logger.flush()</code> перед виходом (або мати окремий sync-логер для fatal).</div></div>
+</section>
+
+<section id="s3">
+  <h2><span class="num">03</span> Стратегія помилок і crash-only</h2>
+  <p class="section-desc">Найважливіше рішення — розрізняти помилки, які треба обробити, і помилки, після яких процесу більше не можна довіряти.</p>
+
+  <table>
+    <tr><th></th><th>Operational errors</th><th>Programmer errors</th></tr>
+    <tr><td><b>Що це</b></td><td>Очікувані збої середовища</td><td>Баги в коді</td></tr>
+    <tr><td><b>Приклади</b></td><td>Таймаут БД, ECONNREFUSED до upstream, невалідний ввід, 404, вичерпана квота</td><td><code>TypeError: Cannot read properties of undefined</code>, неправильний аргумент, порушений інваріант</td></tr>
+    <tr><td><b>Що робити</b></td><td>Обробити: ретрай, fallback, 4xx/503 клієнту, лог warn/error</td><td>Не «обробляти»: лог fatal, впасти, супервізор перезапустить; виправити код</td></tr>
+  </table>
+
+  <h3>Центральний error handler</h3>
+  <div class="codecard">
+    <div class="bar"><span class="path">src/errors.js + Express error middleware</span></div>
+    <pre><code>export class AppError extends Error {
+  constructor(message, { status = 500, code = 'INTERNAL', expose = false, cause } = {}) {
+    super(message, { cause });              // ES2022 cause — ланцюжок причин у логах
+    this.name = this.constructor.name;
+    Object.assign(this, { status, code, expose });
+  }
+}
+export class NotFoundError extends AppError {
+  constructor(what) { super(`${what} not found`, { status: 404, code: 'NOT_FOUND', expose: true }); }
+}
+
+// в обробниках — лише кидаємо; Express 5 сам ловить відхилені проміси async-хендлерів
+app.get('/orders/:id', async (req, res) => {
+  const order = await repo.findById(req.params.id);
+  if (!order) throw new NotFoundError('order');
+  res.json(order);
+});
+
+// одне місце, що вирішує: статус, лог, що показати клієнту
+app.use((err, req, res, next) => {
+  const status = err.status ?? 500;
+  (status >= 500 ? req.log.error : req.log.warn).call(req.log, { err }, 'request failed');
+  res.status(status).json({
+    error: err.expose ? err.code : 'INTERNAL',
+    message: err.expose ? err.message : 'Internal Server Error',   // стек і SQL ніколи не йдуть клієнту
+    requestId: req.id,
+  });
+});</code></pre>
+  </div>
+  <p class="muted">У Express 4 відхилений проміс async-хендлера не потрапляв у error middleware — потрібні були обгортки або <code>express-async-errors</code>. Fastify і Nest (exception filters) мають власні централізовані механізми — <a href="10-frameworks-comparison.html">туторіал 10</a>.</p>
+
+  <h3>uncaughtException і unhandledRejection</h3>
+  <div class="codecard">
+    <div class="bar"><span class="path">crash.js — node crash.js</span></div>
+    <pre><code>process.on('exit', (code) => console.log('exit code', code));
+Promise.reject(new Error('db connection lost'));
+setTimeout(() => console.log('never printed'), 100);</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">вивід (Node 24, стек скорочено)</span></div>
+    <pre><code>exit code 1
+file:///.../crash.js:2
+Promise.reject(new Error('db connection lost'));
+               ^
+
+Error: db connection lost
+
+Node.js v24.18.0</code></pre>
+  </div>
+  <p>Починаючи з Node 15, необроблений rejection за замовчуванням (<code>--unhandled-rejections=throw</code>) перетворюється на uncaught exception і валить процес з кодом 1. Це правильно. Чому <b>не можна</b> «просто логувати і жити далі» в <code>uncaughtException</code>:</p>
+  <ul>
+    <li>Виняток вилетів з середини якоїсь операції: транзакція не відкотилась, мьютекс/семафор не відпущено, з'єднання з пулу не повернуто, стан у пам'яті напівоновлений. Процес у <b>невідомому стані</b>.</li>
+    <li>Наступні запити до такого процесу можуть віддавати неправильні дані — це гірше, ніж падіння.</li>
+    <li>Тому підхід <b>crash-only</b>: зафіксувати (лог fatal, Sentry), спробувати швидко закрити сервер, вийти з ненульовим кодом — супервізор (Kubernetes, systemd, PM2) підніме чистий процес. Інші репліки за балансувальником тим часом обслуговують трафік.</li>
+  </ul>
+  <div class="codecard">
+    <div class="bar"><span class="path">src/crash-handlers.js</span></div>
+    <pre><code>import { logger } from './logger.js';
+
+function crash(kind) {
+  return (err) => {
+    logger.fatal({ err, kind }, 'process crashing');
+    // спробувати м'яко закрити (shutdown з розділу 4), але з жорстким таймаутом
+    shutdown('fatal').finally(() => process.exit(1));
+    setTimeout(() => process.exit(1), 3000).unref();
+  };
+}
+process.on('uncaughtException', crash('uncaughtException'));
+process.on('unhandledRejection', (reason) => { throw reason; });   // уніфікувати: → uncaughtException</code></pre>
+  </div>
+  <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають так</span> «Чому б не обгорнути все в <code>process.on('uncaughtException', log)</code> і не падати?» — Бо після невідомого винятку інваріанти процесу порушені (транзакції, локи, пули, кеші); продовження роботи ризикує тихо псувати дані. Правильно — зафіксувати, вийти з кодом 1 і покластися на супервізор і кілька реплік. Обробляти треба operational errors у місцях їх виникнення.</div></div>
+</section>
+
+<section id="s4">
+  <h2><span class="num">04</span> Graceful shutdown</h2>
+  <p class="section-desc">Кожен деплой, автоскейлінг і переїзд поду — це SIGTERM; без graceful shutdown кожен із них обриває запити користувачів.</p>
+
+  <figure class="diagram">
+    <svg viewBox="0 0 740 290" role="img" aria-label="Таймлайн graceful shutdown: SIGTERM, одразу readiness переходить у 503; протягом кількох секунд балансувальник видаляє под з endpoints, нові запити ще можуть приходити і обслуговуються; потім server.close припиняє приймати з'єднання і закриває idle keep-alive; in-flight запити дозавершуються; закриваються пули БД, черги, експорт телеметрії; process exit 0. Усе має вкластися в terminationGracePeriodSeconds, інакше SIGKILL">
+      <defs><marker id="n17d2-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <path d="M20,200 L720,200" stroke="currentColor" stroke-width="1.2" marker-end="url(#n17d2-arrow)"/>
+        <text x="720" y="220" text-anchor="end" fill="var(--fg-muted)" font-size="11">час</text>
+
+        <line x1="40" y1="40" x2="40" y2="200" stroke="var(--bad)" stroke-width="1.5"/>
+        <text x="40" y="32" text-anchor="middle" fill="var(--bad)" font-weight="700">SIGTERM</text>
+        <rect x="40" y="50" width="200" height="34" rx="6" fill="var(--warn)" fill-opacity="0.15" stroke="var(--warn)"/>
+        <text x="140" y="66" text-anchor="middle" fill="var(--warn)">① readiness = 503</text>
+        <text x="140" y="79" text-anchor="middle" fill="var(--fg-muted)" font-size="10">LB видаляє под з endpoints</text>
+        <rect x="40" y="92" width="200" height="26" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="140" y="110" text-anchor="middle" fill="currentColor" font-size="11">нові запити ще обслуговуються</text>
+
+        <line x1="240" y1="40" x2="240" y2="200" stroke="currentColor" stroke-dasharray="3,3"/>
+        <rect x="245" y="50" width="200" height="34" rx="6" fill="none" stroke="currentColor"/>
+        <text x="345" y="66" text-anchor="middle" fill="currentColor">② server.close()</text>
+        <text x="345" y="79" text-anchor="middle" fill="var(--fg-muted)" font-size="10">стоп нових + закрити idle keep-alive</text>
+        <rect x="245" y="92" width="200" height="26" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="345" y="110" text-anchor="middle" fill="currentColor" font-size="11">③ in-flight дозавершуються</text>
+
+        <line x1="445" y1="40" x2="445" y2="200" stroke="currentColor" stroke-dasharray="3,3"/>
+        <rect x="450" y="50" width="170" height="68" rx="6" fill="var(--info)" fill-opacity="0.12" stroke="var(--info)"/>
+        <text x="535" y="72" text-anchor="middle" fill="var(--info)">④ close DB pool,</text>
+        <text x="535" y="88" text-anchor="middle" fill="var(--info)">consumers черг,</text>
+        <text x="535" y="104" text-anchor="middle" fill="var(--info)">flush логів/трейсів</text>
+        <line x1="625" y1="40" x2="625" y2="200" stroke="var(--good)" stroke-width="1.5"/>
+        <text x="625" y="32" text-anchor="middle" fill="var(--good)" font-weight="700">exit 0</text>
+
+        <path d="M40,150 L695,150" stroke="var(--bad)" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#n17d2-arrow)"/>
+        <text x="370" y="142" text-anchor="middle" fill="var(--bad)" font-size="11">власний shutdown timeout (напр. 25 с) → process.exit(1)</text>
+        <line x1="700" y1="40" x2="700" y2="200" stroke="var(--bad)" stroke-width="2"/>
+        <text x="700" y="32" text-anchor="middle" fill="var(--bad)" font-weight="700">SIGKILL</text>
+        <text x="370" y="180" text-anchor="middle" fill="var(--fg-muted)" font-size="11">terminationGracePeriodSeconds (дефолт 30 с) — після нього kubelet вбиває без питань</text>
+        <text x="140" y="240" text-anchor="middle" fill="var(--fg-muted)" font-size="11">drain: ~5–10 с (або preStop sleep)</text>
+        <text x="345" y="240" text-anchor="middle" fill="var(--fg-muted)" font-size="11">≤ найдовший запит</text>
+        <text x="535" y="240" text-anchor="middle" fill="var(--fg-muted)" font-size="11">секунди</text>
+        <text x="370" y="270" text-anchor="middle" fill="var(--warn)" font-size="11">порядок важливий: спершу перестати отримувати трафік, потім закривати listener, і лише потім — БД</text>
+      </g>
+    </svg>
+    <figcaption>Graceful shutdown — це чотири фази в суворому порядку, загорнуті у власний таймаут, коротший за grace period оркестратора.</figcaption>
+  </figure>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">shutdown.js — node shutdown.js (повний робочий приклад)</span></div>
+    <pre><code>import http from 'node:http';
+import { setTimeout as sleep } from 'node:timers/promises';
+
+const log = (msg) => console.log(`[${(performance.now() / 1000).toFixed(2)}s] ${msg}`);
+const READINESS_DRAIN_MS = Number(process.env.READINESS_DRAIN_MS ?? 200);  // у проді ~5–10 с
+const SHUTDOWN_TIMEOUT_MS = 10_000;                                         // &lt; terminationGracePeriodSeconds
+const db = { async end() { await sleep(50); log('db pool closed'); } };     // імітація пулу БД
+
+let shuttingDown = false;
+function send(res, status, body) {
+  if (shuttingDown) res.setHeader('connection', 'close');   // після відповіді закрити keep-alive сокет
+  res.writeHead(status).end(body);
+}
+const server = http.createServer(async (req, res) => {
+  if (req.url === '/readyz') return send(res, shuttingDown ? 503 : 200, shuttingDown ? 'draining' : 'ok');
+  await sleep(300);                                          // "повільний" запит
+  send(res, 200, 'done');
+});
+
+async function shutdown(signal) {
+  if (shuttingDown) return;                                  // повторний сигнал ігноруємо
+  shuttingDown = true;                                       // 1. readiness → 503
+  log(`${signal} received, readiness=false`);
+  const force = setTimeout(() => {                           // страховка: не висіти вічно
+    log('shutdown timeout, force exit'); process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS);
+  force.unref();
+
+  await sleep(READINESS_DRAIN_MS);                           // 2. дати балансувальнику помітити 503
+  log('stop accepting new connections');
+  const closed = new Promise((r) => server.close(r));        // 3. закрити listener
+  server.closeIdleConnections();                             //    і простоюючі keep-alive сокети
+  await closed;                                              // 4. дочекатися in-flight запитів
+  log('http server closed');
+  await db.end();                                            // 5. закрити пули, черги, телеметрію
+  clearTimeout(force);
+  log('bye');                                                // 6. loop порожній → exit code 0
+}
+process.once('SIGTERM', () => shutdown('SIGTERM'));
+process.once('SIGINT', () => shutdown('SIGINT'));
+
+server.listen(0, async () => {
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const inflight = fetch(`${base}/slow`).then((r) => r.text()).then((t) => log(`in-flight finished: ${t}`));
+  await sleep(50);
+  process.kill(process.pid, 'SIGTERM');                      // імітуємо сигнал від Kubernetes
+  await sleep(10);
+  const r = await fetch(`${base}/readyz`);
+  log(`readyz during drain: ${r.status}`);
+  await inflight;
+});</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">вивід ($? = 0)</span></div>
+    <pre><code>[0.32s] SIGTERM received, readiness=false
+[0.35s] readyz during drain: 503
+[0.52s] stop accepting new connections
+[0.58s] http server closed
+[0.59s] in-flight finished: done
+[0.63s] db pool closed
+[0.63s] bye</code></pre>
+  </div>
+  <p>Запит, що прийшов до SIGTERM, успішно завершився; проба readiness під час drain віддала 503; ресурси закрито після HTTP; код виходу 0. («http server closed» і «in-flight finished» можуть мінятися місцями: другий рядок логує клієнт після читання тіла.)</p>
+
+  <div class="callout fun"><div class="ic">🎉</div><div class="body"><span class="tag">Цікавий факт</span> Перша версія цього прикладу мала дві помилки, і обидві типові. (1) Без паузи drain <code>server.close()</code> одразу закривав listener, і проба readiness отримувала не 503, а <code>ECONNREFUSED</code> — у Kubernetes це означає, що под ще в endpoints, а з'єднання вже відхиляються. (2) Без <code>connection: close</code> keep-alive сокет запиту, що завершився <i>після</i> <code>closeIdleConnections()</code>, лишався відкритим, і <code>server.close</code> чекав ще ~3 секунди, поки клієнт сам його закриє. На проді з тисячами keep-alive клієнтів це виливається в shutdown, що впирається в SIGKILL.</div></div>
+
+  <h3>Нюанси</h3>
+  <ul>
+    <li><b>Чому drain-пауза потрібна:</b> видалення поду з endpoints і оновлення iptables/балансувальника асинхронне до SIGTERM — кілька секунд трафік ще йде. Альтернатива паузі в коді — <code>preStop</code>-хук зі <code>sleep</code> у маніфесті (у новіших версіях Kubernetes є вбудована sleep-дія без потреби в shell в образі).</li>
+    <li><b>Keep-alive:</b> <code>server.closeIdleConnections()</code>, <code>connection: close</code> на відповідях під час shutdown, а як останній засіб по таймауту — <code>server.closeAllConnections()</code>. Fastify має опції <code>forceCloseConnections</code> і <code>return503OnClosing</code>; для Express є <code>http-terminator</code>; у Nest — <code>app.enableShutdownHooks()</code> і хуки <code>onApplicationShutdown</code>.</li>
+    <li><b>Черги і воркери:</b> перестати брати нові задачі (<code>worker.close()</code> у BullMQ чекає завершення поточних), не підтверджувати незавершені — брокер віддасть їх іншому воркеру (<a href="18-realtime-queues.html">туторіал 18</a>).</li>
+    <li><b>WebSocket:</b> надіслати close frame з кодом 1001 (going away), клієнт перепідключиться до іншого поду.</li>
+    <li><b>Не викликайте <code>process.exit()</code> одразу після close</b> — ви обірвете асинхронний flush логів і телеметрії. Краще дати loop спорожніти (exitCode = 0) і мати таймаут-страховку.</li>
+  </ul>
+</section>
+
+<section id="s5">
+  <h2><span class="num">05</span> Health checks: liveness, readiness, startup</h2>
+  <p class="section-desc">Три проби відповідають на три різні питання — і їх змішування є однією з найчастіших причин каскадних аварій.</p>
+
+  <table>
+    <tr><th>Проба</th><th>Питання</th><th>Наслідок провалу</th><th>Що перевіряти</th></tr>
+    <tr><td><b>Liveness</b></td><td>Процес живий чи безнадійно завис?</td><td>Kubelet <b>перезапускає</b> контейнер</td><td>Лише сам процес: event loop відповідає. <b>Не</b> БД, не зовнішні сервіси</td></tr>
+    <tr><td><b>Readiness</b></td><td>Чи можна зараз слати трафік?</td><td>Под прибирають з endpoints Service (без рестарту)</td><td>Ініціалізація завершена, не в shutdown, критичні залежності доступні (обережно), не перевантажений</td></tr>
+    <tr><td><b>Startup</b></td><td>Чи завершився повільний старт?</td><td>Поки не пройде — liveness/readiness не запускаються; провал після ліміту — рестарт</td><td>Прогрів кешів, міграції в процесі (краще не тут), завантаження моделей</td></tr>
+  </table>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">k8s/deployment.yaml (фрагмент)</span></div>
+    <pre><code>spec:
+  terminationGracePeriodSeconds: 30
+  containers:
+    - name: api
+      image: registry.example.com/orders-api:1.42.0
+      ports: [{ containerPort: 3000 }]
+      startupProbe:
+        httpGet: { path: /livez, port: 3000 }
+        periodSeconds: 2
+        failureThreshold: 30          # до 60 с на старт
+      livenessProbe:
+        httpGet: { path: /livez, port: 3000 }
+        periodSeconds: 10
+        timeoutSeconds: 2
+        failureThreshold: 3           # 30 с зависання → рестарт
+      readinessProbe:
+        httpGet: { path: /readyz, port: 3000 }
+        periodSeconds: 5
+        failureThreshold: 2
+      lifecycle:
+        preStop:
+          exec: { command: ["sleep", "5"] }   # або вбудована sleep-дія в новіших K8s
+      resources:
+        requests: { cpu: "500m", memory: "512Mi" }
+        limits:   { memory: "1Gi" }           # + --max-old-space-size≈768 (див. туторіал 15)</code></pre>
+  </div>
+
+  <div class="callout bad"><div class="ic">🛑</div><div class="body"><b>Каскадна аварія через liveness.</b> Якщо <code>/livez</code> перевіряє Postgres, то коротка недоступність БД змушує Kubernetes одночасно <i>перезапускати всі поди</i>. Вони стартують, разом б'ють у БД, що відновлюється, з холодними пулами — і добивають її. Liveness перевіряє лише «я сам не завис». Залежності — максимум у readiness, і то обережно: якщо БД недоступна для всіх, вивести з ротації всі поди — теж відмова; часто краще лишити ready і швидко віддавати 503 з fallback.</div></div>
+
+  <p>Event loop, заблокований на 30 секунд, не відповість на liveness — і це правильний привід для рестарту. Для readiness корисно враховувати навантаження: якщо event loop delay p99 вище порогу, тимчасово віддавати 503 (load shedding, див. <a href="15-performance-memory.html">туторіал 15</a>).</p>
+</section>
+
+<section id="s6">
+  <h2><span class="num">06</span> Docker-образ для Node</h2>
+  <p class="section-desc">Хороший образ — малий, відтворюваний, без dev-залежностей і компіляторів, запускається не від root і правильно отримує сигнали.</p>
+
+  <h3>Базовий образ</h3>
+  <div class="decision">
+    <div class="decision-title">🔀 Вузол вибору: base image</div>
+    <table><tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+      <tr class="chosen"><td><b>node:22-slim</b> (Debian) ✅</td><td>glibc — усі prebuilt нативні модулі (bcrypt, sharp, драйвери) працюють; є apt для діагностики; помірний розмір</td><td>Більший за alpine; є shell і пакетний менеджер (поверхня атаки)</td></tr>
+      <tr><td>node:22-alpine</td><td>Найменший</td><td><b>musl libc</b>: частина нативних аддонів не має musl-збірок і компілюється з вихідників (потрібні python/g++), відмінності DNS-резолвера та продуктивності malloc, офіційно «experimental» підтримка Node на musl</td></tr>
+      <tr><td>distroless nodejs</td><td>Без shell і пакетного менеджера — мінімальна поверхня атаки, мало CVE</td><td>Не зайдеш у контейнер дебажити (лише ephemeral debug containers), entrypoint уже <code>node</code></td></tr>
+      <tr><td>node:22 (повний)</td><td>Є все для збірки</td><td>Сотні МБ, компілятори в проді — лише для build-стадії</td></tr>
+    </table>
+    <p><b>Коли що:</b> за замовчуванням slim; жорсткі вимоги безпеки → distroless/Chainguard у runtime-стадії; alpine — лише якщо перевірили всі нативні залежності. Завжди фіксуйте major (<code>node:22-slim</code>, а краще digest), не <code>node:latest</code>.</p>
+  </div>
+
+  <figure class="diagram">
+    <svg viewBox="0 0 740 280" role="img" aria-label="Multi-stage Docker build: стадія deps копіює лише package.json і lockfile та виконує npm ci — шар кешується, поки не змінився lockfile; стадія build копіює вихідний код, збирає TypeScript і робить npm prune --omit=dev; стадія runtime на чистому slim-образі копіює лише dist і production node_modules, встановлює USER node, tini як init і CMD node dist/main.js; компілятори, devDependencies і вихідники в фінальний образ не потрапляють">
+      <defs><marker id="n17d3-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <rect x="10" y="30" width="210" height="170" rx="10" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+        <text x="115" y="52" text-anchor="middle" fill="var(--info)" font-weight="700">stage: deps</text>
+        <rect x="25" y="64" width="180" height="28" rx="5" fill="var(--bg-soft)" stroke="var(--fg-muted)"/>
+        <text x="115" y="83" text-anchor="middle" fill="currentColor" font-size="11">FROM node:22-slim</text>
+        <rect x="25" y="98" width="180" height="28" rx="5" fill="var(--bg-soft)" stroke="var(--fg-muted)"/>
+        <text x="115" y="117" text-anchor="middle" fill="currentColor" font-size="11">COPY package*.json</text>
+        <rect x="25" y="132" width="180" height="28" rx="5" fill="var(--good)" fill-opacity="0.15" stroke="var(--good)"/>
+        <text x="115" y="151" text-anchor="middle" fill="var(--good)" font-size="11">RUN npm ci (кеш шару)</text>
+        <text x="115" y="184" text-anchor="middle" fill="var(--fg-muted)" font-size="10">перебудовується лише при зміні lockfile</text>
+
+        <rect x="265" y="30" width="210" height="170" rx="10" fill="none" stroke="var(--warn)" stroke-width="1.3"/>
+        <text x="370" y="52" text-anchor="middle" fill="var(--warn)" font-weight="700">stage: build</text>
+        <rect x="280" y="64" width="180" height="28" rx="5" fill="var(--bg-soft)" stroke="var(--fg-muted)"/>
+        <text x="370" y="83" text-anchor="middle" fill="currentColor" font-size="11">FROM deps</text>
+        <rect x="280" y="98" width="180" height="28" rx="5" fill="var(--bg-soft)" stroke="var(--fg-muted)"/>
+        <text x="370" y="117" text-anchor="middle" fill="currentColor" font-size="11">COPY . . (src, tsconfig)</text>
+        <rect x="280" y="132" width="180" height="28" rx="5" fill="var(--bg-soft)" stroke="var(--fg-muted)"/>
+        <text x="370" y="151" text-anchor="middle" fill="currentColor" font-size="11">npm run build</text>
+        <rect x="280" y="166" width="180" height="28" rx="5" fill="var(--bg-soft)" stroke="var(--fg-muted)"/>
+        <text x="370" y="185" text-anchor="middle" fill="currentColor" font-size="11">npm prune --omit=dev</text>
+
+        <rect x="520" y="30" width="210" height="200" rx="10" fill="var(--good)" fill-opacity="0.08" stroke="var(--good)" stroke-width="1.5"/>
+        <text x="625" y="52" text-anchor="middle" fill="var(--good)" font-weight="700">stage: runtime (фінал)</text>
+        <rect x="535" y="64" width="180" height="26" rx="5" fill="var(--bg-soft)" stroke="var(--fg-muted)"/>
+        <text x="625" y="82" text-anchor="middle" fill="currentColor" font-size="11">FROM node:22-slim + tini</text>
+        <rect x="535" y="96" width="180" height="26" rx="5" fill="var(--bg-soft)" stroke="var(--fg-muted)"/>
+        <text x="625" y="114" text-anchor="middle" fill="currentColor" font-size="11">COPY --from=build dist</text>
+        <rect x="535" y="128" width="180" height="26" rx="5" fill="var(--bg-soft)" stroke="var(--fg-muted)"/>
+        <text x="625" y="146" text-anchor="middle" fill="currentColor" font-size="11">COPY prod node_modules</text>
+        <rect x="535" y="160" width="180" height="26" rx="5" fill="var(--bg-soft)" stroke="var(--fg-muted)"/>
+        <text x="625" y="178" text-anchor="middle" fill="currentColor" font-size="11">USER node</text>
+        <rect x="535" y="192" width="180" height="26" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="625" y="210" text-anchor="middle" fill="currentColor" font-size="11">CMD ["node","dist/main.js"]</text>
+
+        <path d="M220,115 L263,115" stroke="currentColor" stroke-width="1.3" marker-end="url(#n17d3-arrow)"/>
+        <path d="M475,115 L518,115" stroke="currentColor" stroke-width="1.3" marker-end="url(#n17d3-arrow)"/>
+        <text x="497" y="104" text-anchor="middle" fill="var(--fg-muted)" font-size="10">лише</text>
+        <text x="497" y="134" text-anchor="middle" fill="var(--fg-muted)" font-size="10">артефакти</text>
+        <text x="240" y="232" text-anchor="middle" fill="var(--bad)" font-size="11">не потрапляє у фінал: devDependencies, TS-вихідники, .git, кеш npm, компілятори</text>
+        <text x="370" y="262" text-anchor="middle" fill="var(--fg-muted)" font-size="11">порядок COPY: рідко змінюване (lockfile) вище, часто змінюване (код) нижче — щоб npm ci брався з кешу</text>
+      </g>
+    </svg>
+    <figcaption>Multi-stage відокремлює середовище збирання від середовища виконання: у фінальний образ потрапляють лише скомпільований код і production-залежності.</figcaption>
+  </figure>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">Dockerfile</span></div>
+    <pre><code># syntax=docker/dockerfile:1
+FROM node:22-slim AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci          # BuildKit-кеш завантажень між збірками
+
+FROM deps AS build
+COPY . .
+RUN npm run build &amp;&amp; npm prune --omit=dev
+
+FROM node:22-slim AS runtime
+ENV NODE_ENV=production
+WORKDIR /app
+RUN apt-get update &amp;&amp; apt-get install -y --no-install-recommends tini \
+ &amp;&amp; rm -rf /var/lib/apt/lists/*
+COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=build --chown=node:node /app/dist ./dist
+COPY --chown=node:node package.json ./
+USER node                                                # готовий користувач uid 1000 в офіційних образах
+EXPOSE 3000
+ENTRYPOINT ["/usr/bin/tini", "--"]                       # init як PID 1 (розділ 7)
+CMD ["node", "dist/main.js"]                             # exec form, без npm і без shell</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">.dockerignore</span></div>
+    <pre><code>node_modules
+dist
+.git
+.env*
+coverage
+*.log
+Dockerfile
+docker-compose*.yml
+test</code></pre>
+  </div>
+  <ul>
+    <li><b><code>.dockerignore</code></b> — не лише розмір контексту: без нього <code>COPY . .</code> занесе локальні <code>node_modules</code> (зібрані під macOS — зламані нативні модулі в Linux) і <code>.env</code> із секретами прямо в шар образу.</li>
+    <li><b><code>npm ci</code>, а не <code>npm install</code></b> — точно за lockfile, падає при розбіжності з package.json. <code>--omit=dev</code> (або <code>npm prune --omit=dev</code> після збірки) прибирає devDependencies.</li>
+    <li><b>Секрети</b> не в <code>ENV</code>/<code>ARG</code> (вони видно в <code>docker history</code>), а через <code>RUN --mount=type=secret</code> при збірці (приватний npm-токен) і через env/secret store в рантаймі.</li>
+    <li><b><code>NODE_ENV=production</code></b>: Express кешує шаблони й не віддає стектрейси, бібліотеки вимикають debug-перевірки, <code>npm ci</code> пропускає devDependencies. Але не використовуйте <code>NODE_ENV</code> для розрізнення staging/production — для цього окрема змінна (<code>APP_ENV</code>): staging теж має працювати з <code>NODE_ENV=production</code>.</li>
+    <li><b>Non-root</b> (<code>USER node</code>): якщо через RCE хтось виконає код, він не root у контейнері. Порт &gt;1024 не потребує привілеїв. Плюс у Kubernetes — <code>readOnlyRootFilesystem: true</code>, <code>runAsNonRoot: true</code>.</li>
+  </ul>
+</section>
+
+<section id="s7">
+  <h2><span class="num">07</span> PID 1, сигнали й npm start</h2>
+  <p class="section-desc">Найпідступніша Docker-пастка: контейнер «ігнорує» <code>docker stop</code> 10 секунд і вмирає від SIGKILL, обриваючи запити.</p>
+
+  <p>Процес з PID 1 у Linux — особливий: ядро <b>не застосовує до нього дефолтні обробники сигналів</b>. Звичайний процес без обробника SIGTERM завершується; PID 1 без обробника — просто ігнорує його. Друга роль PID 1 — збирати «зомбі» (завершені дочірні процеси, чий статус ніхто не прочитав).</p>
+
+  <table>
+    <tr><th>Як запущено</th><th>Хто PID 1</th><th>Що відбувається з SIGTERM</th></tr>
+    <tr><td><code>CMD node server.js</code> (shell form)</td><td><code>/bin/sh -c</code></td><td>shell зазвичай не пересилає сигнал дитині → Node не дізнається → SIGKILL через grace period</td></tr>
+    <tr><td><code>CMD ["npm", "start"]</code></td><td>npm</td><td>Зайвий посередник (часто ще й з <code>sh -c</code> всередині); пересилання сигналів і exit code історично ненадійні; плюс зайва пам'ять</td></tr>
+    <tr><td><code>CMD ["node", "server.js"]</code> без обробника</td><td>node</td><td>PID 1 без обробника → сигнал ігнорується</td></tr>
+    <tr><td><code>CMD ["node", "server.js"]</code> + <code>process.on('SIGTERM')</code></td><td>node</td><td>✅ працює; але зомбі не збираються, якщо ви спавните дочірні процеси</td></tr>
+    <tr class="chosen"><td><code>ENTRYPOINT ["tini","--"]</code> + exec-form CMD, або <code>docker run --init</code></td><td>tini</td><td>✅ tini пересилає сигнали Node і збирає зомбі; Node все одно має обробляти SIGTERM для graceful shutdown</td></tr>
+  </table>
+
+  <div class="callout warn"><div class="ic">⚠️</div><div class="body"><code>docker run --init</code> і <code>init: true</code> у docker-compose додають tini автоматично, але в <b>Kubernetes такого прапорця немає</b> — init треба вбудувати в образ (як у Dockerfile вище) або розраховувати на власні обробники сигналів у Node. Перевірка: <code>docker stop</code> має завершити контейнер за секунди, а не рівно за 10 (дефолтний таймаут Docker).</div></div>
+
+  <div class="callout info"><div class="ic">💡</div><div class="body"><b>Ctrl+C у <code>docker run -it</code></b> надсилає SIGINT — обробляйте і його, як у прикладі shutdown. А <code>SIGKILL</code> перехопити неможливо взагалі — тому всі критичні дані мають бути в зовнішніх системах (БД, черга) до того, як відповідь пішла клієнту.</div></div>
+</section>
+
+<section id="s8">
+  <h2><span class="num">08</span> PM2 vs systemd vs Kubernetes</h2>
+  <p class="section-desc">Хтось має перезапустити процес після падіння — питання лише в тому, на якому рівні це відбувається.</p>
+
+  <div class="decision">
+    <div class="decision-title">🔀 Вузол вибору: супервізор процесів</div>
+    <table><tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+      <tr><td><b>PM2</b></td><td>Простий на VPS: рестарт, cluster mode (N процесів на ядра), zero-downtime <code>pm2 reload</code>, ротація логів, <code>ecosystem.config.js</code></td><td>Ще один шар; у контейнері зайвий (дублює оркестратор, ховає падіння від K8s); cluster mode — in-memory стан не спільний</td></tr>
+      <tr><td><b>systemd</b></td><td>Вже є в Linux: <code>Restart=on-failure</code>, ліміти ресурсів (cgroups), journald, socket activation, залежності сервісів</td><td>Один сервер; деплой і масштабування вручну/Ansible</td></tr>
+      <tr class="chosen"><td><b>Kubernetes</b> (або ECS, Cloud Run, Fly.io) ✅</td><td>Рестарт, проби, rolling deploy, автоскейлінг, розподіл по нодах, service discovery</td><td>Складність платформи; треба правильно налаштувати проби, ресурси й shutdown</td></tr>
+    </table>
+    <p><b>Коли що:</b> один VPS → systemd (або PM2, якщо потрібен cluster і reload без контейнерів); контейнери → оркестратор, <b>один процес Node на контейнер</b>, масштабування репліками, а не cluster/PM2 всередині. Детальніше про cluster і масштабування — <a href="08-concurrency-scaling.html">туторіал 8</a>.</p>
+  </div>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">/etc/systemd/system/orders-api.service</span></div>
+    <pre><code>[Unit]
+Description=Orders API
+After=network-online.target
+
+[Service]
+User=orders
+WorkingDirectory=/srv/orders-api
+EnvironmentFile=/etc/orders-api/env
+ExecStart=/usr/bin/node --max-old-space-size=1536 dist/main.js
+Restart=on-failure
+RestartSec=2
+KillSignal=SIGTERM
+TimeoutStopSec=30          # аналог terminationGracePeriodSeconds
+MemoryMax=2G
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+  </div>
+</section>
+
+<section id="s9">
+  <h2><span class="num">09</span> Три стовпи observability і метрики</h2>
+  <p class="section-desc">Моніторинг відповідає «чи зламано?», observability — «чому?»; для цього потрібні три типи сигналів, пов'язані між собою.</p>
+
+  <figure class="diagram">
+    <svg viewBox="0 0 740 270" role="img" aria-label="Три стовпи observability: метрики — дешеві агрегати в часі, відповідають на питання чи зламано і наскільки, приклади RED, event loop lag, heap; трейси — шлях одного запиту через сервіси зі спанами і тривалостями, відповідають де саме повільно; логи — детальні події з контекстом, відповідають що саме сталося. Їх з'єднує спільний trace_id і exemplars: з графіка метрики переходиш у трейс, з трейсу — у логи цього запиту">
+      <defs><marker id="n17d4-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <rect x="20" y="20" width="210" height="160" rx="12" fill="var(--info)" fill-opacity="0.1" stroke="var(--info)" stroke-width="1.3"/>
+        <text x="125" y="46" text-anchor="middle" fill="var(--info)" font-weight="700">📈 Metrics</text>
+        <text x="125" y="70" text-anchor="middle" fill="currentColor">«Чи зламано? Наскільки?»</text>
+        <text x="125" y="96" text-anchor="middle" fill="var(--fg-muted)" font-size="11">числа в часі, агрегати</text>
+        <text x="125" y="113" text-anchor="middle" fill="var(--fg-muted)" font-size="11">RED, event loop lag, heap</text>
+        <text x="125" y="130" text-anchor="middle" fill="var(--fg-muted)" font-size="11">дешево, довго зберігаються</text>
+        <text x="125" y="160" text-anchor="middle" fill="var(--info)" font-size="11">Prometheus + Grafana</text>
+
+        <rect x="265" y="20" width="210" height="160" rx="12" fill="var(--warn)" fill-opacity="0.1" stroke="var(--warn)" stroke-width="1.3"/>
+        <text x="370" y="46" text-anchor="middle" fill="var(--warn)" font-weight="700">🧵 Traces</text>
+        <text x="370" y="70" text-anchor="middle" fill="currentColor">«Де саме повільно?»</text>
+        <rect x="285" y="84" width="170" height="12" rx="3" fill="var(--warn)" fill-opacity="0.35"/>
+        <rect x="300" y="100" width="70" height="12" rx="3" fill="var(--warn)" fill-opacity="0.25"/>
+        <rect x="375" y="100" width="65" height="12" rx="3" fill="var(--bad)" fill-opacity="0.35"/>
+        <rect x="380" y="116" width="50" height="12" rx="3" fill="var(--bad)" fill-opacity="0.25"/>
+        <text x="370" y="146" text-anchor="middle" fill="var(--fg-muted)" font-size="11">спани одного запиту між сервісами</text>
+        <text x="370" y="164" text-anchor="middle" fill="var(--warn)" font-size="11">OpenTelemetry → Tempo/Jaeger</text>
+
+        <rect x="510" y="20" width="210" height="160" rx="12" fill="var(--good)" fill-opacity="0.1" stroke="var(--good)" stroke-width="1.3"/>
+        <text x="615" y="46" text-anchor="middle" fill="var(--good)" font-weight="700">📜 Logs</text>
+        <text x="615" y="70" text-anchor="middle" fill="currentColor">«Що саме сталося?»</text>
+        <text x="615" y="96" text-anchor="middle" fill="var(--fg-muted)" font-size="11">дискретні події з контекстом</text>
+        <text x="615" y="113" text-anchor="middle" fill="var(--fg-muted)" font-size="11">помилка, payload-поля, стек</text>
+        <text x="615" y="130" text-anchor="middle" fill="var(--fg-muted)" font-size="11">дорогі при великому обсязі</text>
+        <text x="615" y="160" text-anchor="middle" fill="var(--good)" font-size="11">pino → Loki/Elastic</text>
+
+        <path d="M230,215 L263,215" stroke="currentColor" stroke-width="1.2" marker-end="url(#n17d4-arrow)"/>
+        <path d="M475,215 L508,215" stroke="currentColor" stroke-width="1.2" marker-end="url(#n17d4-arrow)"/>
+        <rect x="80" y="200" width="150" height="30" rx="6" fill="none" stroke="var(--fg-muted)"/>
+        <text x="155" y="220" text-anchor="middle" fill="currentColor" font-size="11">алерт: p99 росте</text>
+        <rect x="265" y="200" width="210" height="30" rx="6" fill="none" stroke="var(--fg-muted)"/>
+        <text x="370" y="220" text-anchor="middle" fill="currentColor" font-size="11">exemplar → трейс: повільний SQL</text>
+        <rect x="510" y="200" width="160" height="30" rx="6" fill="none" stroke="var(--fg-muted)"/>
+        <text x="590" y="220" text-anchor="middle" fill="currentColor" font-size="11">trace_id → логи запиту</text>
+        <text x="370" y="257" text-anchor="middle" fill="var(--accent)" font-size="11">клей між стовпами — спільні trace_id / requestId і однакові атрибути service, version, env</text>
+      </g>
+    </svg>
+    <figcaption>Метрики кажуть, що проблема є, трейси — де вона, логи — що саме сталося; цінність з'являється, коли між ними можна перейти за trace_id.</figcaption>
+  </figure>
+
+  <h3>Які метрики збирати</h3>
+  <ul>
+    <li><b>RED</b> (для сервісів, що обробляють запити): <b>R</b>ate — запитів/с, <b>E</b>rrors — частка 5xx, <b>D</b>uration — histogram latency (p50/p95/p99).</li>
+    <li><b>USE</b> (для ресурсів): <b>U</b>tilization, <b>S</b>aturation, <b>E</b>rrors — CPU, пам'ять, пул БД (зайняті з'єднання, черга очікування), libuv threadpool.</li>
+    <li><b>Node-специфічні:</b> event loop lag (p99), ELU, heap used/limit, GC pause duration, active handles, кількість відкритих сокетів (<a href="15-performance-memory.html">туторіал 15</a>).</li>
+    <li><b>Бізнес-метрики:</b> створені замовлення/хв, успішні оплати — часто перші показують інцидент, якого технічні метрики не бачать.</li>
+  </ul>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">src/metrics.js — prom-client</span></div>
+    <pre><code>import client from 'prom-client';
+
+client.collectDefaultMetrics({ labels: { service: 'orders-api' } });
+// дає: process_cpu_*, process_resident_memory_bytes, nodejs_heap_size_used_bytes,
+//      nodejs_eventloop_lag_p99_seconds, nodejs_gc_duration_seconds, nodejs_active_handles ...
+
+export const httpDuration = new client.Histogram({
+  name: 'http_server_request_duration_seconds',
+  help: 'HTTP request latency',
+  labelNames: ['method', 'route', 'status_code'],
+  buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+});
+
+export function metricsMiddleware(req, res, next) {
+  const end = httpDuration.startTimer({ method: req.method });
+  res.on('finish', () => {
+    // route — ШАБЛОН ('/orders/:id'), а не req.url ('/orders/8f3a...') — інакше вибух кардинальності
+    end({ route: req.route?.path ?? 'unmatched', status_code: res.statusCode });
+  });
+  next();
+}
+
+// окремий порт/шлях, недоступний ззовні
+app.get('/metrics', async (_req, res) => {
+  res.set('content-type', client.register.contentType).send(await client.register.metrics());
+});</code></pre>
+  </div>
+  <div class="callout bad"><div class="ic">🛑</div><div class="body"><b>Кардинальність.</b> Кожна унікальна комбінація значень лейблів — окремий time series у Prometheus. Лейбли <code>userId</code>, <code>orderId</code>, сирий URL, текст помилки створюють мільйони серій: падає Prometheus і роздувається пам'ять самого процесу (prom-client тримає всі серії в heap). Лейбли — лише з малої обмеженої множини значень.</div></div>
+  <p class="muted">Prometheus «тягне» (pull) метрики з кожного поду. З cluster mode чи PM2 кожен воркер має свій реєстр — потрібен <code>AggregatorRegistry</code>; в оркестраторі з одним процесом на контейнер цієї проблеми немає.</p>
+</section>
+
+<section id="s10">
+  <h2><span class="num">10</span> Трейсинг, APM і Sentry</h2>
+  <p class="section-desc">Розподілений трейс показує, що з 900 мс запиту 700 пішли на третій виклик до сервісу цін — без жодного рядка ручного коду.</p>
+
+  <h3>OpenTelemetry auto-instrumentation</h3>
+  <div class="codecard">
+    <div class="bar"><span class="path">src/instrumentation.mjs</span></div>
+    <pre><code>import { NodeSDK } from '@opentelemetry/sdk-node';
+import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
+
+const sdk = new NodeSDK({
+  serviceName: process.env.OTEL_SERVICE_NAME ?? 'orders-api',
+  traceExporter: new OTLPTraceExporter(),   // OTEL_EXPORTER_OTLP_ENDPOINT → collector
+  instrumentations: [getNodeAutoInstrumentations({
+    '@opentelemetry/instrumentation-fs': { enabled: false },   // занадто шумно
+  })],
+});
+sdk.start();
+process.once('SIGTERM', () => sdk.shutdown());   // flush спанів (або в загальному shutdown)</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">термінал — інструментацію треба завантажити ДО коду застосунку</span></div>
+    <pre><code>node --import ./src/instrumentation.mjs dist/main.js
+# або без власного файлу, лише через змінні оточення:
+OTEL_SERVICE_NAME=orders-api OTEL_TRACES_EXPORTER=otlp \
+  node --import @opentelemetry/auto-instrumentations-node/register dist/main.js</code></pre>
+  </div>
+  <ul>
+    <li><b>Чому <code>--import</code></b>: автоінструментація патчить модулі <code>http</code>, <code>pg</code>, <code>ioredis</code>, <code>express</code> при їхньому завантаженні. Якщо застосунок імпортував <code>pg</code> раніше, ніж стартував SDK, — спанів БД не буде. Для ESM патчинг працює через loader hooks, які реєструє саме <code>--import</code>.</li>
+    <li><b>Propagation</b>: SDK додає заголовок W3C <code>traceparent</code> у вихідні HTTP-запити і читає його з вхідних — так трейс «проходить» через сервіси. Контекст усередині процесу тримається на AsyncLocalStorage.</li>
+    <li><b>Логи + трейси</b>: інструментація pino додає <code>trace_id</code>/<code>span_id</code> у кожен рядок логу — у Grafana з трейсу один клік до логів.</li>
+    <li><b>Sampling</b>: 100% трейсів у високонавантаженому сервісі дорого. Head sampling (наприклад, 10% через <code>OTEL_TRACES_SAMPLER=parentbased_traceidratio</code>) або tail sampling у collector'і (зберігати всі помилки й повільні).</li>
+    <li>Власні спани для бізнес-операцій: <code>tracer.startActiveSpan('optimize-route', async (span) =&gt; { ...; span.end(); })</code>.</li>
+  </ul>
+
+  <h3>APM-вендори та Sentry</h3>
+  <p><b>APM</b> (Datadog, New Relic, Dynatrace, Elastic APM, Grafana Cloud) — готові агенти, що збирають трейси, метрики і профілі, з UI «з коробки». Більшість уже приймають OTLP, тож OpenTelemetry-інструментація дозволяє не прив'язуватися до вендора.</p>
+  <p><b>Sentry</b> спеціалізується на <b>помилках</b>: групування однакових винятків, стек з source maps (для TS/бандлів — завантаження source maps у CI обов'язкове), breadcrumbs, релізи («помилка з'явилась у версії 1.42»), алерти на нові типи помилок. Сучасний <code>@sentry/node</code> побудований на OpenTelemetry і так само ініціалізується до застосунку через <code>--import ./instrument.mjs</code>; для Express — <code>Sentry.setupExpressErrorHandler(app)</code> після роутів. Детальний розбір Sentry (на прикладі Python-бекенду, концепції ті самі) — <a href="../python-tutorials/26-sentry-monitoring.html">Python Doc, туторіал 26</a>.</p>
+  <div class="callout warn"><div class="ic">⚠️</div><div class="body">Sentry/APM <b>не замінюють</b> crash-only: вони мають перехопити uncaughtException, відправити подію (з невеликим таймаутом <code>Sentry.flush(2000)</code>) — і процес усе одно має впасти. Також налаштуйте <code>beforeSend</code>/scrubbing, щоб токени й PII не потрапляли в сторонній сервіс.</div></div>
+</section>
+
+<section id="s11">
+  <h2><span class="num">11</span> Конфігурація і feature flags</h2>
+  <p class="section-desc">Той самий образ має запускатися в dev, staging і prod — відрізняється лише оточення, а нову функціональність вмикають прапорцем, а не деплоєм.</p>
+
+  <h3>Конфігурація за 12-factor</h3>
+  <ul>
+    <li><b>Один артефакт, різні env.</b> Конфіг — змінні оточення (з Kubernetes ConfigMap/Secret, Vault, AWS Secrets Manager), а не <code>config.prod.json</code> в образі.</li>
+    <li><b>Валідація при старті.</b> Парсити <code>process.env</code> через zod/envalid у типізований об'єкт і <b>падати одразу</b> з зрозумілим повідомленням, якщо чогось бракує — краще, ніж <code>undefined</code> у URL БД о 2-й ночі (<a href="13-typescript-validation-config.html">туторіал 13</a>).</li>
+    <li><b>Локально</b> — <code>node --env-file=.env</code> (вбудовано в Node, без dotenv); <code>.env</code> у <code>.gitignore</code> і <code>.dockerignore</code>.</li>
+    <li><b>Секрети</b> не логувати (redaction), не класти в образ, ротувати; конфіг у логах на старті — лише несекретні поля.</li>
+  </ul>
+
+  <h3>Feature flags</h3>
+  <table>
+    <tr><th>Тип прапорця</th><th>Для чого</th><th>Час життя</th></tr>
+    <tr><td><b>Release toggle</b></td><td>Задеплоїти незавершену фічу вимкненою, вмикати поступово (1% → 10% → 100%)</td><td>Тижні; потім видалити з коду</td></tr>
+    <tr><td><b>Ops / kill switch</b></td><td>Швидко вимкнути важку функцію під час інциденту (рекомендації, експорт)</td><td>Довгоживучий</td></tr>
+    <tr><td><b>Experiment</b></td><td>A/B-тест</td><td>До завершення експерименту</td></tr>
+    <tr><td><b>Permission</b></td><td>Фіча лише для тарифу/тенанта</td><td>Довгоживучий (часто краще як частина моделі даних)</td></tr>
+  </table>
+  <p>Інструменти: LaunchDarkly, Unleash, GrowthBook, Flagsmith, ConfigCat; стандарт <b>OpenFeature</b> дає вендор-незалежний SDK. SDK зазвичай тримають правила в пам'яті і оновлюють їх у фоні (streaming/polling), тому перевірка прапорця — локальна і швидка, без мережевого виклику на кожен запит. Головний ризик — <b>flag debt</b>: сотні забутих прапорців і комбінаторний вибух гілок; кожен release-прапорець має мати власника і дату видалення.</p>
+  <div class="remember"><b>🧠 Запам'ятай:</b> deploy ≠ release — код виїжджає вимкненим, а користувачі отримують фічу прапорцем.</div>
+</section>
+
+<section id="s12">
+  <h2><span class="num">12</span> Zero-downtime деплої та міграції</h2>
+  <p class="section-desc">Під час будь-якого деплою деякий час одночасно працюють стара і нова версії — і код, і схема БД мають це витримувати.</p>
+
+  <div class="decision">
+    <div class="decision-title">🔀 Вузол вибору: стратегія деплою</div>
+    <table><tr><th>Стратегія</th><th>Плюси</th><th>Мінуси</th></tr>
+      <tr class="chosen"><td><b>Rolling</b> ✅</td><td>Дефолт у Kubernetes (<code>maxSurge</code>/<code>maxUnavailable</code>), без додаткових ресурсів, поступова заміна подів</td><td>Старі й нові версії співіснують хвилини; відкат — теж rolling</td></tr>
+      <tr><td><b>Blue/green</b></td><td>Нове оточення поруч, перемикання трафіку миттєво, миттєвий відкат</td><td>Подвійні ресурси на час деплою; БД спільна — міграції однаково мають бути сумісні</td></tr>
+      <tr><td><b>Canary</b></td><td>1–5% трафіку на нову версію, автоматичний аналіз метрик (Argo Rollouts, Flagger), обмежений радіус ураження</td><td>Потрібні добрі метрики і інструменти; складніше налаштувати</td></tr>
+    </table>
+    <p><b>Коли що:</b> більшість сервісів → rolling з правильними пробами й graceful shutdown; критичні платіжні шляхи → canary з автоматичним відкатом за error rate/p99; ризиковані інфраструктурні зміни → blue/green.</p>
+  </div>
+
+  <h3>Міграції БД: expand → migrate → contract</h3>
+  <p>Перейменувати колонку <code>address</code> на <code>street</code> одним кроком під час rolling deploy неможливо: старі поди ще читають <code>address</code>. Розбиваємо на кілька деплоїв, кожен сумісний з попередньою версією коду:</p>
+  <div class="flow">
+    <div class="step">1. Expand: додати <code>street</code> (nullable), без блокувань</div><div class="arrow">→</div>
+    <div class="step">2. Код пише в обидві колонки</div><div class="arrow">→</div>
+    <div class="step">3. Backfill батчами</div><div class="arrow">→</div>
+    <div class="step">4. Код читає <code>street</code></div><div class="arrow">→</div>
+    <div class="step">5. Contract: видалити <code>address</code> (окремий реліз)</div>
+  </div>
+  <ul>
+    <li><b>Міграції — окремим кроком</b> перед rollout (Kubernetes Job, крок CI/CD, init-контейнер з блокуванням), а не в <code>main.js</code> кожної репліки: 10 подів, що одночасно запускають міграцію, — гонки (більшість інструментів мають advisory lock, але на нього краще не покладатися як на дизайн).</li>
+    <li><b>Небезпечні DDL</b> у Postgres: <code>ADD COLUMN ... DEFAULT</code> з volatile-виразом, <code>ALTER TYPE</code>, створення індексу без <code>CONCURRENTLY</code>, <code>NOT NULL</code> на великій таблиці — довгі блокування. Ставте <code>lock_timeout</code> на міграції.</li>
+    <li><b>Відкат коду</b> має бути можливим без відкату схеми — тому кроки expand завжди обернено сумісні.</li>
+    <li><b>Черги й події</b> — той самий принцип: нові споживачі вміють читати старий формат повідомлень, нові поля опціональні.</li>
+  </ul>
+  <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають так</span> «Як перейменувати колонку без даунтайму?» — Expand/contract у кілька релізів: додати нову колонку, писати в обидві, backfill, перемкнути читання, видалити стару окремим релізом. Міграції — окремим кроком до rollout, кожен крок сумісний і з попередньою, і з наступною версією коду.</div></div>
+</section>
+
+<section id="s13">
+  <h2><span class="num">13</span> SLO, алерти і runbooks</h2>
+  <p class="section-desc">Алерт має будити людину лише тоді, коли користувачі страждають і людина може щось зробити — інакше алерти почнуть ігнорувати.</p>
+
+  <table>
+    <tr><th>Термін</th><th>Що це</th><th>Приклад</th></tr>
+    <tr><td><b>SLI</b></td><td>Виміряний показник якості з погляду користувача</td><td>Частка запитів <code>POST /orders</code> з відповіддю не-5xx швидше за 500 мс</td></tr>
+    <tr><td><b>SLO</b></td><td>Цільове значення SLI за період</td><td>99.5% за 30 днів</td></tr>
+    <tr><td><b>Error budget</b></td><td>Допустима «погана» частка: 100% − SLO</td><td>0.5% ≈ 3.6 год поганої роботи на місяць</td></tr>
+    <tr><td><b>SLA</b></td><td>Юридична обіцянка клієнтам з компенсацією; завжди м'якша за SLO</td><td>99% або повернення коштів</td></tr>
+  </table>
+
+  <h3>Як алертити</h3>
+  <ul>
+    <li><b>На симптоми, а не причини.</b> «Error rate POST /orders вище SLO» — будить. «CPU 85%» — ні, це дашборд або тікет: високий CPU без впливу на користувачів не інцидент.</li>
+    <li><b>Burn rate.</b> Алерт, коли error budget витрачається занадто швидко: наприклад, у 14 разів швидше норми і за останню годину, і за останні 5 хвилин (multi-window) — швидко ловить реальні аварії і не реагує на поодинокі сплески.</li>
+    <li><b>Node-специфічні попереджувальні сигнали</b> (тікет/Slack, не пейджер): heap стабільно росте між major GC, event loop lag p99 &gt; 100 мс, рестарти подів (OOMKilled, exit 137), вичерпання пулу БД.</li>
+    <li><b>Кожен алерт має runbook</b> — посилання прямо в алерті.</li>
+  </ul>
+
+  <div class="card">
+    <p><b>Шаблон runbook «OrdersAPI high error rate»</b></p>
+    <ol>
+      <li><b>Вплив:</b> що бачать користувачі, які ендпоінти.</li>
+      <li><b>Дашборди:</b> RED по маршрутах, event loop lag, heap, пул БД; посилання на трейси з помилками й Sentry issue.</li>
+      <li><b>Чи був деплой/зміна прапорця за останню годину?</b> → відкат (<code>kubectl rollout undo</code>) або вимкнення прапорця — першим кроком, розслідування потім.</li>
+      <li><b>Залежності:</b> статус БД, Redis, зовнішніх API; чи не спрацював circuit breaker.</li>
+      <li><b>Пом'якшення:</b> масштабувати репліки, увімкнути kill switch важкої функції, rate limit.</li>
+      <li><b>Ескалація:</b> кого кликати, якщо за 15 хвилин не зрозуміло.</li>
+      <li><b>Після:</b> blameless postmortem, задачі на запобігання.</li>
+    </ol>
+  </div>
+  <div class="remember"><b>🧠 Запам'ятай:</b> алерт = симптом для користувача + burn rate + runbook; усе інше — дашборди й тікети.</div>
+</section>
+
+<section id="s14">
+  <h2><span class="num">14</span> Каверзні питання співбесіди</h2>
+  <p class="section-desc">Питання з реальних продакшн-інцидентів.</p>
+
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Чому pino швидший за winston і console.log?</summary>
+    <div class="a">Мінімальна робота в головному потоці: швидка серіалізація в JSON-рядок без форматування, буферизований асинхронний запис, а форматування/відправку виконують transports у <b>worker thread</b> або зовнішній процес (pino-pretty, агент). winston робить більше алокацій і форматування в основному потоці; <code>console.log</code> використовує <code>util.inspect</code> і може писати синхронно.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>Чому <code>process.on('uncaughtException', (e) =&gt; logger.error(e))</code> без виходу — погана ідея?</summary>
+    <div class="a">Після невідомого винятку стан процесу непередбачуваний: незакриті транзакції, не відпущені локи, не повернуті з'єднання пулу, напівоновлені кеші. Процес продовжує обслуговувати запити з потенційно зіпсованим станом. Правильно — лог fatal + flush, спроба швидкого graceful shutdown з таймаутом, <code>exit(1)</code>, рестарт супервізором.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Опишіть правильну послідовність graceful shutdown.</summary>
+    <div class="a">SIGTERM → readiness=503 → пауза drain (або preStop sleep), поки балансувальник прибирає под → <code>server.close()</code> + <code>closeIdleConnections()</code> + <code>connection: close</code> на відповідях → дочекатися in-flight → закрити consumers черг, пули БД, Redis, flush логів/трейсів → вихід з кодом 0. Усе під власним таймаутом, коротшим за <code>terminationGracePeriodSeconds</code>; по таймауту — <code>closeAllConnections()</code> і <code>exit(1)</code>.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>Контейнер завжди зупиняється рівно за 10 секунд після <code>docker stop</code>. Чому?</summary>
+    <div class="a">SIGTERM не доходить до Node або не обробляється: shell-form <code>CMD</code> (PID 1 — <code>sh</code>, не пересилає), <code>npm start</code> як посередник, або Node як PID 1 без обробника SIGTERM (ядро не застосовує дефолтний обробник до PID 1). Через 10 с Docker шле SIGKILL. Рішення: exec-form <code>CMD ["node", ...]</code>, tini/<code>--init</code>, обробник SIGTERM.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>Що не так з liveness-пробою, яка перевіряє з'єднання з БД?</summary>
+    <div class="a">При збої БД усі поди одночасно провалять liveness і Kubernetes їх перезапустить — каскад: холодні старти, шторм підключень до БД, що відновлюється. Liveness перевіряє лише «процес не завис» (event loop відповідає). Залежності — максимум у readiness і обережно.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Чим liveness, readiness і startup проби відрізняються за наслідками?</summary>
+    <div class="a">Liveness провалено → <b>рестарт</b> контейнера. Readiness провалено → под <b>прибирають з балансування</b> без рестарту. Startup — поки не пройде, інші проби не запускаються (захист повільних стартів від передчасного liveness-рестарту).</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>Чому <code>node:alpine</code> може зламати застосунок, який працює на <code>node:slim</code>?</summary>
+    <div class="a">Alpine використовує <b>musl</b> замість glibc. Prebuilt бінарники нативних модулів часто зібрані під glibc — на musl вони або відсутні (потрібна компіляція з python/g++ в образі), або падають. Плюс відмінності DNS-резолвера (наприклад, обробка search-доменів), інша поведінка malloc під навантаженням. Офіційні збірки Node для musl мають статус experimental.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Навіщо multi-stage build і правильний порядок COPY?</summary>
+    <div class="a">Multi-stage: у фінальний образ потрапляють лише <code>dist</code> і production <code>node_modules</code>, без компіляторів, devDependencies, вихідників і кешів — менший розмір і менше CVE. Порядок: спершу <code>package*.json</code> + <code>npm ci</code>, потім код — шар із залежностями кешується, поки не змінився lockfile, і збірка після зміни коду займає секунди.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>Чому лейбл <code>route</code> у метриці latency має бути шаблоном, а не <code>req.url</code>?</summary>
+    <div class="a">Кожне унікальне значення лейбла — новий time series. <code>/orders/8f3a…</code> з UUID дає мільйони серій: пам'ять процесу (prom-client тримає серії в heap) і Prometheus вибухають. Шаблон <code>/orders/:id</code> дає одну серію на маршрут.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>OpenTelemetry увімкнено, але спанів для Postgres немає. Чому?</summary>
+    <div class="a">SDK стартував <b>після</b> того, як застосунок імпортував <code>pg</code> — монкі-патч не встиг. Інструментацію треба завантажувати першою: <code>node --import ./instrumentation.mjs app.js</code>; для ESM це ще й реєструє loader hooks, без яких патчинг ESM-модулів не працює.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Як перейменувати колонку без даунтайму при rolling deploy?</summary>
+    <div class="a">Expand/contract: додати нову колонку → код пише в обидві → backfill батчами → код читає нову → окремим релізом видалити стару. Міграції — окремим кроком до rollout; кожен крок сумісний зі старою і новою версіями коду, щоб відкат коду не вимагав відкату схеми.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Чим NODE_ENV відрізняється від APP_ENV і навіщо обидва?</summary>
+    <div class="a"><code>NODE_ENV=production</code> — сигнал бібліотекам (Express кешує шаблони й ховає стеки, npm пропускає devDependencies). Він має бути <code>production</code> і на staging, щоб тестувати ту саму поведінку. Розрізнення оточень (staging/prod, URL-и, прапорці) — окремою змінною <code>APP_ENV</code> і конфігом.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>Чи варто запускати PM2 cluster mode всередині Kubernetes-поду?</summary>
+    <div class="a">Зазвичай ні. Оркестратор уже дає рестарт і масштабування; PM2 ховає падіння воркерів від Kubernetes (под «здоровий», хоча воркери крешаться), ускладнює ліміти пам'яті (кілька heap в одному cgroup), метрики (окремий реєстр на воркер) і сигнали. Один процес на контейнер, масштабування репліками.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>На що ставити пейджинговий алерт, а на що — ні?</summary>
+    <div class="a">Пейджер — на симптоми для користувачів відносно SLO: error rate і latency ключових ендпоінтів через burn rate error budget (multi-window). Не пейджер — CPU, пам'ять, окремі рестарти, ріст heap: це дашборди й тікети. Кожен алерт — з runbook і власником.</div>
+  </details>
+</section>
+
+<section id="s15">
+  <h2><span class="num">15</span> Шпаргалка</h2>
+  <p class="section-desc">Продакшн-чекліст Node-сервісу.</p>
+  <div class="cheat"><table>
+    <tr><th>Тема</th><th>Робити</th><th>Не робити</th></tr>
+    <tr><td>Логи</td><td>pino, JSON у stdout, рівні, <code>child({ requestId })</code>, redact, <code>err</code>-ключ</td><td>pino-pretty у проді, <code>console.log(req)</code>, логи по HTTP з процесу, токени в логах</td></tr>
+    <tr><td>Помилки</td><td>Класи AppError зі status/code, центральний handler, <code>cause</code></td><td>Стеки й SQL у відповіді клієнту, ковтати винятки</td></tr>
+    <tr><td>Креш</td><td>uncaughtException → fatal + flush → exit(1); unhandledRejection → throw</td><td>Лог і «жити далі»</td></tr>
+    <tr><td>Shutdown</td><td>SIGTERM/SIGINT → readiness 503 → drain → <code>server.close()</code> + idle → in-flight → ресурси → exit; таймаут</td><td><code>process.exit()</code> одразу; таймаут довший за grace period</td></tr>
+    <tr><td>Проби</td><td>liveness — лише процес; readiness — готовність/shutdown; startup — повільний старт</td><td>БД у liveness</td></tr>
+    <tr><td>Docker</td><td>slim/distroless, multi-stage, <code>npm ci</code> + <code>--omit=dev</code>, <code>.dockerignore</code>, <code>USER node</code>, tini, exec-form CMD</td><td><code>npm start</code>, shell-form CMD, <code>node:latest</code>, секрети в ENV/ARG, alpine без перевірки addons</td></tr>
+    <tr><td>Пам'ять</td><td><code>--max-old-space-size</code> ≈ 75% limit, <code>--heapsnapshot-near-heap-limit</code></td><td>Heap = ліміт контейнера</td></tr>
+    <tr><td>Метрики</td><td><code>collectDefaultMetrics</code>, RED histogram, route-шаблон, event loop lag</td><td>Лейбли з userId/URL</td></tr>
+    <tr><td>Трейси</td><td>OTel через <code>--import</code>, traceparent, trace_id у логах, sampling</td><td>SDK після імпорту бібліотек</td></tr>
+    <tr><td>Конфіг</td><td>env + валідація на старті, <code>--env-file</code> локально, APP_ENV окремо від NODE_ENV</td><td>Різні образи під оточення</td></tr>
+    <tr><td>Деплой</td><td>rolling/canary, expand→contract міграції окремим кроком</td><td>Ламаючі DDL разом з кодом, міграції в кожній репліці</td></tr>
+    <tr><td>Алерти</td><td>SLO + burn rate + runbook</td><td>Пейджер на CPU 80%</td></tr>
+  </table></div>
+</section>
+
+<section id="s16">
+  <h2><span class="num">16</span> Як запам'ятати</h2>
+  <p class="section-desc">Дев'ять образів продакшн-готовності.</p>
+  <div class="flashgrid">
+    <div class="flashcard">
+      <div class="fc-num">1</div>
+      <div class="term">Structured logging</div>
+      <div class="def">Одна подія — один JSON-рядок з полями, які можна фільтрувати.</div>
+      <div class="mnemo"><b>Асоціація:</b> бортовий журнал літака з графами, а не щоденник з думками.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">2</div>
+      <div class="term">Request id / ALS</div>
+      <div class="def">Контекст, що супроводжує запит крізь усі await і додається в кожен лог.</div>
+      <div class="mnemo"><b>Асоціація:</b> бирка на валізі в аеропорту — де б вона не їхала, відомо, чия вона.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">3</div>
+      <div class="term">Crash-only</div>
+      <div class="def">Після невідомої помилки — впасти й перезапуститись, а не лагодити стан на ходу.</div>
+      <div class="mnemo"><b>Асоціація:</b> якщо в каструлю з супом впала муха — варять новий, а не виловлюють.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">4</div>
+      <div class="term">Graceful shutdown</div>
+      <div class="def">503 → drain → close listener → in-flight → ресурси → exit, під таймаутом.</div>
+      <div class="mnemo"><b>Асоціація:</b> ресторан перед закриттям: табличка «зачинено», доїдають ті, хто сидить, потім миють кухню.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">5</div>
+      <div class="term">Liveness vs readiness</div>
+      <div class="def">Liveness провал — рестарт; readiness провал — прибрати з балансування.</div>
+      <div class="mnemo"><b>Асоціація:</b> пульс (живий?) проти «готовий прийняти пацієнта?» у лікаря.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">6</div>
+      <div class="term">PID 1</div>
+      <div class="def">Не отримує дефолтних обробників сигналів і має збирати зомбі — тому tini і exec-form CMD.</div>
+      <div class="mnemo"><b>Асоціація:</b> директор, якому не передають дзвінки, поки не призначить секретаря (tini).</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">7</div>
+      <div class="term">Multi-stage build</div>
+      <div class="def">Збирати в одному образі, запускати в іншому — лише артефакти.</div>
+      <div class="mnemo"><b>Асоціація:</b> меблі збирають у цеху, а в квартиру везуть готову шафу без верстатів.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">8</div>
+      <div class="term">Metrics / traces / logs</div>
+      <div class="def">Чи зламано / де саме / що сталося — зв'язані через trace_id.</div>
+      <div class="mnemo"><b>Асоціація:</b> спідометр, GPS-трек поїздки і відеореєстратор.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">9</div>
+      <div class="term">Expand / contract</div>
+      <div class="def">Змінювати схему кроками, кожен сумісний зі старим і новим кодом.</div>
+      <div class="mnemo"><b>Асоціація:</b> будують новий міст поруч зі старим, переводять рух, і лише потім розбирають старий.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">10</div>
+      <div class="term">Error budget</div>
+      <div class="def">100% − SLO: скільки «поганого» можна витратити на ризик і деплої.</div>
+      <div class="mnemo"><b>Асоціація:</b> ліміт на картці — поки є залишок, можна ризикувати, вичерпав — заморожуй релізи.</div>
+    </div>
+  </div>
+</section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Node.js Doc · частина серії туторіалів AI Delivery Planner. Приклади коду перевірені на Node.js 24.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

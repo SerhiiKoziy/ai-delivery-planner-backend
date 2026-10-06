@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>15. Продуктивність і пам'ять: V8, GC, профілювання — Node.js Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🟢 Node.js Doc <span>· AI Delivery Planner</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Node.js Doc · Туторіал 15 з 20</div>
+  <h1>Продуктивність і пам'ять у Node.js: V8 heap, GC, витоки, профілювання й JIT</h1>
+  <p class="lead">Як V8 розкладає об'єкти по поколіннях і коли збирач сміття зупиняє ваш сервер; чому <b>RSS ≠ heap</b>; як знайти витік через heap snapshot, прочитати flame graph і не обдурити себе мікробенчмарком. Наприкінці — практичні оптимізації та правильне навантажувальне тестування.</p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="07-fs-process-os.html">7. fs, process, os</a>
+        <a href="08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="09-http-networking.html">9. HTTP і мережа</a>
+        <a href="10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="12-databases-orm.html">12. БД і ORM</a>
+        <a href="13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="14-security.html">14. Безпека Node</a>
+        <a href="15-performance-memory.html" class="active">15. Продуктивність і пам'ять</a>
+        <a href="16-testing.html">16. Тестування</a>
+        <a href="17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+  </aside>
+
+    <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Пам'ять процесу: RSS, heap, external</a></li>
+      <li><a href="#s2">2. Будова V8 heap</a></li>
+      <li><a href="#s3">3. Scavenge vs Mark-Sweep-Compact</a></li>
+      <li><a href="#s4">4. Orinoco і stop-the-world паузи</a></li>
+      <li><a href="#s5">5. Ліміти heap і контейнери</a></li>
+      <li><a href="#s6">6. Типові витоки пам'яті</a></li>
+      <li><a href="#s7">7. Heap snapshots: пошук витоку</a></li>
+      <li><a href="#s8">8. CPU-профілювання і flame graphs</a></li>
+      <li><a href="#s9">9. JIT: hidden classes, inline caches, deopt</a></li>
+      <li><a href="#s10">10. Event loop delay і ELU</a></li>
+      <li><a href="#s11">11. Performance APIs</a></li>
+      <li><a href="#s12">12. Практичні оптимізації</a></li>
+      <li><a href="#s13">13. Навантажувальне тестування</a></li>
+      <li><a href="#s14">14. Каверзні питання співбесіди</a></li>
+      <li><a href="#s15">15. Шпаргалка</a></li>
+      <li><a href="#s16">16. Як запам'ятати</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+<section id="s1">
+  <h2><span class="num">01</span> Пам'ять процесу: RSS, heap, external</h2>
+  <p class="section-desc">Перш ніж шукати витік, треба розуміти, яку саме пам'ять ви бачите на графіку — «Node їсть 2 ГБ» може взагалі не стосуватися JS-heap.</p>
+
+  <p>Node-процес — це не лише V8 heap. У ньому живуть: машинний код самого Node і V8, стек потоків, пул потоків libuv, нативні буфери (<code>Buffer</code>, <code>ArrayBuffer</code>), пам'ять нативних аддонів (наприклад, драйвера БД, <code>sharp</code>), TLS-контексти OpenSSL, і лише частина — це об'єкти JavaScript, якими керує збирач сміття. <code>process.memoryUsage()</code> показує п'ять чисел:</p>
+
+  <table>
+    <tr><th>Поле</th><th>Що це</th><th>Хто керує</th></tr>
+    <tr><td><code>rss</code></td><td>Resident Set Size — скільки фізичної RAM зараз займає процес (усе разом)</td><td>ОС</td></tr>
+    <tr><td><code>heapTotal</code></td><td>Скільки пам'яті V8 зарезервував під JS-heap</td><td>V8</td></tr>
+    <tr><td><code>heapUsed</code></td><td>Скільки з цього реально зайнято живими (і ще не зібраними) об'єктами</td><td>V8 GC</td></tr>
+    <tr><td><code>external</code></td><td>Пам'ять C++-об'єктів, прив'язаних до JS-об'єктів (включно з backing store буферів)</td><td>V8 + Node</td></tr>
+    <tr><td><code>arrayBuffers</code></td><td>Підмножина <code>external</code>: усі <code>ArrayBuffer</code>/<code>Buffer</code></td><td>Node</td></tr>
+  </table>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">mem.js — node mem.js</span></div>
+    <pre><code>const fmt = (n) => (n / 1024 / 1024).toFixed(1) + ' MB';
+function show(label) {
+  const m = process.memoryUsage();
+  console.log(label.padEnd(16),
+    'rss', fmt(m.rss), '| heapUsed', fmt(m.heapUsed),
+    '| external', fmt(m.external), '| arrayBuffers', fmt(m.arrayBuffers));
+}
+show('start');
+const objs = Array.from({ length: 1e6 }, (_, i) => ({ i }));
+show('1M objects');
+const buf = Buffer.alloc(200 * 1024 * 1024);
+show('Buffer 200MB');
+buf.fill(1);
+show('after fill(1)');</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">вивід (Node 24, macOS; числа будуть трохи іншими)</span></div>
+    <pre><code>start            rss 33.5 MB | heapUsed 4.5 MB | external 1.5 MB | arrayBuffers 0.1 MB
+1M objects       rss 104.9 MB | heapUsed 42.2 MB | external 1.7 MB | arrayBuffers 0.1 MB
+Buffer 200MB     rss 105.1 MB | heapUsed 42.2 MB | external 201.7 MB | arrayBuffers 200.1 MB
+after fill(1)    rss 305.2 MB | heapUsed 42.2 MB | external 201.7 MB | arrayBuffers 200.1 MB</code></pre>
+  </div>
+
+  <p>Три уроки з цього виводу:</p>
+  <ul>
+    <li><b>Буфери не в heap.</b> 200 МБ <code>Buffer</code> не змінили <code>heapUsed</code> взагалі — вони в <code>external</code>/<code>arrayBuffers</code>. Тому <code>--max-old-space-size</code> не обмежує буфери, а heap snapshot покаже лише маленький JS-обгортковий об'єкт.</li>
+    <li><b>RSS — це торкнуті сторінки.</b> Одразу після <code>Buffer.alloc</code> RSS майже не виріс: ОС видає нульові сторінки ліниво. Лише після <code>fill(1)</code> пам'ять фізично зайнята. Тому RSS «стрибає» не тоді, коли ви алокуєте, а тоді, коли пишете.</li>
+    <li><b>RSS рідко падає назад.</b> Після GC V8 може тримати звільнені сторінки, а аллокатор (malloc) не завжди повертає пам'ять ОС. Плато RSS після піку — нормально; <i>постійне зростання</i> heapUsed після кожного major GC — ні.</li>
+  </ul>
+
+  <div class="callout warn"><div class="ic">⚠️</div><div class="body"><b>Діагностична розвилка.</b> Росте <code>heapUsed</code> → витік JS-об'єктів, шукайте heap snapshot'ом. Росте <code>arrayBuffers</code>/<code>external</code> → тримаєте буфери (стріми без backpressure, кеш картинок). Росте лише <code>rss</code>, а heap і external стабільні → нативний аддон, фрагментація malloc або занадто багато потоків. На Linux з glibc іноді допомагає <code>MALLOC_ARENA_MAX=2</code> або jemalloc.</div></div>
+
+  <div class="remember"><b>🧠 Запам'ятай:</b> RSS = heap + буфери + нативне + код; heap snapshot бачить лише JS-heap.</div>
+</section>
+
+<section id="s2">
+  <h2><span class="num">02</span> Будова V8 heap</h2>
+  <p class="section-desc">Heap поділено на простори з різними стратегіями збирання — це пояснює, чому одні об'єкти «дешеві», а інші коштують дорогих пауз.</p>
+
+  <p>V8 спирається на <b>generational hypothesis</b> (гіпотезу поколінь): більшість об'єктів помирає молодими. Тимчасові масиви в <code>map()</code>, об'єкти запиту, проміжні рядки — живуть мілісекунди. Тому heap поділено на «молоде» і «старе» покоління з різними алгоритмами.</p>
+
+  <table>
+    <tr><th>Простір</th><th>Що там</th><th>Як збирається</th></tr>
+    <tr><td><b>New space</b> (young generation)</td><td>Нові дрібні об'єкти. Поділений на дві <b>semi-spaces</b>: from-space і to-space. Розмір — одиниці-десятки МБ, налаштовується <code>--max-semi-space-size</code></td><td>Scavenge (minor GC), часто й швидко</td></tr>
+    <tr><td><b>Old space</b></td><td>Об'єкти, що пережили два scavenge (promotion). Основна частина heap</td><td>Mark-Sweep-Compact (major GC), рідше й дорожче</td></tr>
+    <tr><td><b>Large object space</b></td><td>Об'єкти, більші за ліміт звичайної сторінки; кожен — у власному mmap-регіоні, ніколи не переміщується</td><td>Разом з major GC (є й young-варіант для свіжих великих об'єктів)</td></tr>
+    <tr><td><b>Code space</b></td><td>Скомпільований JIT машинний код</td><td>Major GC</td></tr>
+    <tr><td>Read-only / trusted / shared</td><td>Незмінні вбудовані об'єкти, службові структури V8</td><td>Практично не збираються</td></tr>
+  </table>
+
+  <figure class="diagram">
+    <svg viewBox="0 0 740 300" role="img" aria-label="Схема V8 heap: нові об'єкти алокуються у from-space молодого покоління; при scavenge живі копіюються у to-space, а ті, що пережили вже другий scavenge, просуваються в old space; великі об'єкти одразу йдуть у large object space, JIT-код — у code space">
+      <defs><marker id="n15d1-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <text x="20" y="22" font-weight="700" fill="var(--accent)">Young generation (new space)</text>
+        <rect x="20" y="34" width="300" height="130" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+        <rect x="36" y="56" width="125" height="90" rx="8" fill="none" stroke="currentColor" stroke-width="1.2"/>
+        <text x="98" y="80" text-anchor="middle" fill="currentColor" font-weight="700">from-space</text>
+        <text x="98" y="100" text-anchor="middle" fill="var(--fg-muted)">тут алокуються</text>
+        <text x="98" y="116" text-anchor="middle" fill="var(--fg-muted)">нові об'єкти</text>
+        <text x="98" y="134" text-anchor="middle" fill="var(--fg-muted)">(bump pointer)</text>
+        <rect x="180" y="56" width="125" height="90" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="4,3"/>
+        <text x="242" y="80" text-anchor="middle" fill="currentColor" font-weight="700">to-space</text>
+        <text x="242" y="100" text-anchor="middle" fill="var(--fg-muted)">сюди копіюються</text>
+        <text x="242" y="116" text-anchor="middle" fill="var(--fg-muted)">живі при scavenge</text>
+        <text x="242" y="134" text-anchor="middle" fill="var(--fg-muted)">потім ролі міняються</text>
+        <path d="M161,70 L178,70" stroke="var(--good)" stroke-width="1.5" fill="none" marker-end="url(#n15d1-arrow)"/>
+
+        <text x="420" y="22" font-weight="700" fill="var(--warn)">Old generation</text>
+        <rect x="420" y="34" width="300" height="130" rx="10" fill="none" stroke="var(--warn)" stroke-width="1.3"/>
+        <text x="570" y="70" text-anchor="middle" fill="currentColor" font-weight="700">old space</text>
+        <text x="570" y="92" text-anchor="middle" fill="var(--fg-muted)">довгоживучі: кеші, модулі,</text>
+        <text x="570" y="108" text-anchor="middle" fill="var(--fg-muted)">пули з'єднань, конфіг</text>
+        <text x="570" y="136" text-anchor="middle" fill="var(--warn)">Mark-Sweep-Compact</text>
+
+        <path d="M305,140 C360,140 370,110 418,110" stroke="var(--warn)" stroke-width="1.5" fill="none" marker-end="url(#n15d1-arrow)"/>
+        <text x="368" y="146" text-anchor="middle" fill="var(--warn)" font-size="11">promotion:</text>
+        <text x="368" y="160" text-anchor="middle" fill="var(--warn)" font-size="11">пережив 2-й</text>
+        <text x="368" y="174" text-anchor="middle" fill="var(--warn)" font-size="11">scavenge</text>
+
+        <rect x="20" y="200" width="220" height="70" rx="10" fill="none" stroke="currentColor" stroke-width="1.2"/>
+        <text x="130" y="228" text-anchor="middle" fill="currentColor" font-weight="700">large object space</text>
+        <text x="130" y="248" text-anchor="middle" fill="var(--fg-muted)">великі масиви/рядки,</text>
+        <text x="130" y="262" text-anchor="middle" fill="var(--fg-muted)">не переміщуються</text>
+
+        <rect x="260" y="200" width="220" height="70" rx="10" fill="none" stroke="currentColor" stroke-width="1.2"/>
+        <text x="370" y="228" text-anchor="middle" fill="currentColor" font-weight="700">code space</text>
+        <text x="370" y="248" text-anchor="middle" fill="var(--fg-muted)">машинний код від</text>
+        <text x="370" y="262" text-anchor="middle" fill="var(--fg-muted)">Sparkplug/Maglev/TurboFan</text>
+
+        <rect x="500" y="200" width="220" height="70" rx="10" fill="var(--bg-soft)" stroke="var(--fg-muted)" stroke-width="1.2" stroke-dasharray="4,3"/>
+        <text x="610" y="228" text-anchor="middle" fill="currentColor" font-weight="700">поза heap: external</text>
+        <text x="610" y="248" text-anchor="middle" fill="var(--fg-muted)">Buffer / ArrayBuffer</text>
+        <text x="610" y="262" text-anchor="middle" fill="var(--fg-muted)">backing store (malloc)</text>
+      </g>
+    </svg>
+    <figcaption>Новий об'єкт народжується у from-space; кожен scavenge або вбиває його, або копіює — а після другого виживання переселяє в old space, де його збиратиме дорожчий major GC.</figcaption>
+  </figure>
+
+  <p>Подивитися реальні простори можна прямо з коду:</p>
+  <div class="codecard">
+    <div class="bar"><span class="path">limit.js — node limit.js</span></div>
+    <pre><code>const v8 = require('node:v8');
+const mb = (n) => Math.round(n / 1024 / 1024);
+const h = v8.getHeapStatistics();
+console.log('heap_size_limit:', mb(h.heap_size_limit), 'MB');
+for (const s of v8.getHeapSpaceStatistics())
+  console.log(s.space_name.padEnd(22), mb(s.space_size), 'MB');</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">вивід (скорочено; машина з великим обсягом RAM)</span></div>
+    <pre><code>heap_size_limit: 4288 MB
+read_only_space        0 MB
+new_space              1 MB
+old_space              3 MB
+code_space             0 MB
+trusted_space          2 MB
+new_large_object_space 0 MB
+large_object_space     0 MB
+...</code></pre>
+  </div>
+  <p class="muted">Набір просторів змінюється між версіями V8 (trusted/shared-простори з'явилися відносно нещодавно) — не завчайте список, завчайте ідею «молоде / старе / великі / код».</p>
+</section>
+
+<section id="s3">
+  <h2><span class="num">03</span> Scavenge vs Mark-Sweep-Compact</h2>
+  <p class="section-desc">Два зовсім різні алгоритми під дві різні популяції об'єктів — і саме тому алокувати тимчасові об'єкти дешево, а тримати мільйони довгоживучих — дорого.</p>
+
+  <h3>Minor GC: Scavenge (алгоритм Чейні)</h3>
+  <p>Scavenge — <b>копіюючий</b> збирач. Він стартує від коренів (стек, глобальні об'єкти, хендли) плюс <b>remembered set</b> — записаних write barrier'ом посилань «старий об'єкт → молодий». Кожен досяжний молодий об'єкт копіюється в to-space (або в old space, якщо вже переживав scavenge), на старому місці лишається forwarding-адреса. Після цього from-space повністю вважається вільним — мертві об'єкти навіть не відвідуються.</p>
+  <ul>
+    <li><b>Вартість пропорційна кількості живих</b>, а не мертвих об'єктів. Мільйон тимчасових об'єктів, що вже померли, — майже безкоштовні.</li>
+    <li>Паузи — зазвичай одиниці мілісекунд, але часті (тригер — заповнення new space, «allocation failure» у логах).</li>
+    <li>Алокація — це просто зсув вказівника (bump pointer), тому <code>{}</code> у JS дешевший за <code>malloc</code>.</li>
+  </ul>
+
+  <h3>Major GC: Mark-Sweep-Compact</h3>
+  <ol>
+    <li><b>Mark</b> — обхід графа від коренів, позначення всіх досяжних об'єктів (трикольорова розмітка: білий / сірий / чорний).</li>
+    <li><b>Sweep</b> — непозначені ділянки додаються до free-lists, куди потім алокуються нові об'єкти.</li>
+    <li><b>Compact</b> — для сильно фрагментованих сторінок живі об'єкти переносяться ближче один до одного, звільняючи цілі сторінки.</li>
+  </ol>
+  <p>Вартість пропорційна <b>розміру живого heap</b>: 2 ГБ кешу в пам'яті означає, що кожен major GC обходить 2 ГБ об'єктів. Це головна причина, чому «тримати все в пам'яті процесу» погано масштабується — і чому великі кеші краще винести в Redis.</p>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">термінал — node --trace-gc app.js</span></div>
+    <pre><code>[49082:0x7f7b0020a000]  72 ms: Scavenge 4.7 (5.7) -> 4.0 (6.7) MB, pooled: 0 MB, 1.29 / 0.00 ms  (average mu = 1.000, current mu = 1.000) allocation failure;
+[49082:0x7f7b0020a000]  77 ms: Scavenge 5.0 (7.0) -> 4.5 (9.0) MB, pooled: 0 MB, 2.28 / 0.00 ms  ...
+[49003:0x7fe1be10a000] 1072 ms: Mark-Compact 147.7 (212.5) -> 99.7 (228.5) MB, 111.13 / 0.00 ms  ... allocation failure; scavenge might not succeed</code></pre>
+  </div>
+  <p>Читається так: тип GC, heap до → після (у дужках — зарезервовано), тривалість паузи. <b>mu</b> (mutator utilization) — частка часу, коли працював ваш код, а не GC. <code>mu</code> нижче ~0.9 на довгому відрізку — сигнал, що процес «задихається» в GC.</p>
+
+  <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають так</span> «Чому scavenge швидкий, а mark-compact повільний?» — Scavenge обходить лише живі молоді об'єкти і копіює їх, мертві не чіпає взагалі; mark-compact мусить розмітити весь живий old-heap, підмести і частково ущільнити його. Тому оптимізація під GC — це «менше довгоживучих об'єктів», а не «менше алокацій взагалі».</div></div>
+
+  <div class="callout fun"><div class="ic">🎉</div><div class="body"><span class="tag">Цікавий факт</span> Найгірший для GC патерн — об'єкти «середнього віку»: живуть рівно стільки, щоб пережити два scavenge і потрапити в old space, а там одразу помирають. Класичний приклад — повільні запити, чий контекст тримається секундами. Вони платять і копіювання, і major GC.</div></div>
+</section>
+
+<section id="s4">
+  <h2><span class="num">04</span> Orinoco і stop-the-world паузи</h2>
+  <p class="section-desc">Event loop однопотоковий, тож кожна мілісекунда паузи GC — це мілісекунда, коли сервер не відповідає нікому.</p>
+
+  <p><b>Stop-the-world</b> — момент, коли головний потік JS зупинено і працює GC. Проєкт V8 <b>Orinoco</b> роками зменшував ці паузи трьома техніками:</p>
+  <table>
+    <tr><th>Техніка</th><th>Ідея</th><th>Де застосовується</th></tr>
+    <tr><td><b>Parallel</b></td><td>Пауза є, але роботу GC ділять кілька helper-потоків — пауза коротша</td><td>Scavenge, compaction</td></tr>
+    <tr><td><b>Incremental</b></td><td>Велику роботу розбито на маленькі кроки, що чергуються з JS</td><td>Marking</td></tr>
+    <tr><td><b>Concurrent</b></td><td>GC працює у фонових потоках <i>одночасно</i> з JS, без паузи</td><td>Marking, sweeping</td></tr>
+  </table>
+  <p>Ціна concurrent-підходу — <b>write barrier</b>: кожен запис посилання в об'єкт трохи дорожчий, щоб фоновий маркер не пропустив щойно створене посилання. Плюс V8 використовує <b>idle time</b>: коли event loop простоює, частину GC-роботи можна виконати «безкоштовно».</p>
+
+  <figure class="diagram">
+    <svg viewBox="0 0 740 280" role="img" aria-label="Порівняння таймлайнів: без Orinoco головний потік має одну довгу паузу mark-compact; з Orinoco головний потік має короткі паузи scavenge і фіналізації, а маркування й sweeping виконують фонові потоки паралельно з JavaScript">
+      <defs><marker id="n15d2-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <text x="20" y="22" font-weight="700" fill="var(--bad)">Наївний stop-the-world</text>
+        <text x="20" y="56" fill="var(--fg-muted)">main</text>
+        <rect x="70" y="40" width="160" height="24" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="150" y="57" text-anchor="middle" fill="currentColor">JS</text>
+        <rect x="230" y="40" width="220" height="24" rx="4" fill="var(--bad)" fill-opacity="0.18" stroke="var(--bad)"/>
+        <text x="340" y="57" text-anchor="middle" fill="var(--bad)">mark + sweep + compact</text>
+        <rect x="450" y="40" width="270" height="24" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="585" y="57" text-anchor="middle" fill="currentColor">JS</text>
+        <path d="M230,76 L450,76" stroke="var(--bad)" stroke-width="1.2" marker-start="url(#n15d2-arrow)" marker-end="url(#n15d2-arrow)"/>
+        <text x="340" y="94" text-anchor="middle" fill="var(--bad)" font-size="11">довга пауза: запити чекають</text>
+
+        <text x="20" y="132" font-weight="700" fill="var(--good)">Orinoco (сучасний V8)</text>
+        <text x="20" y="166" fill="var(--fg-muted)">main</text>
+        <rect x="70" y="150" width="90" height="24" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="115" y="167" text-anchor="middle" fill="currentColor">JS</text>
+        <rect x="160" y="150" width="14" height="24" rx="2" fill="var(--warn)" fill-opacity="0.3" stroke="var(--warn)"/>
+        <rect x="174" y="150" width="200" height="24" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="274" y="167" text-anchor="middle" fill="currentColor">JS (+ incremental кроки)</text>
+        <rect x="374" y="150" width="26" height="24" rx="2" fill="var(--bad)" fill-opacity="0.25" stroke="var(--bad)"/>
+        <rect x="400" y="150" width="320" height="24" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="560" y="167" text-anchor="middle" fill="currentColor">JS</text>
+        <text x="167" y="146" text-anchor="middle" fill="var(--warn)" font-size="10">scavenge</text>
+        <text x="387" y="146" text-anchor="middle" fill="var(--bad)" font-size="10">finalize</text>
+
+        <text x="20" y="206" fill="var(--fg-muted)">helper</text>
+        <rect x="160" y="190" width="14" height="24" rx="2" fill="none" stroke="var(--warn)" stroke-dasharray="3,2"/>
+        <rect x="190" y="190" width="184" height="24" rx="4" fill="var(--good)" fill-opacity="0.15" stroke="var(--good)"/>
+        <text x="282" y="207" text-anchor="middle" fill="var(--good)">concurrent marking</text>
+        <rect x="400" y="190" width="160" height="24" rx="4" fill="var(--good)" fill-opacity="0.15" stroke="var(--good)"/>
+        <text x="480" y="207" text-anchor="middle" fill="var(--good)">concurrent sweeping</text>
+
+        <path d="M70,246 L720,246" stroke="currentColor" stroke-width="1" marker-end="url(#n15d2-arrow)"/>
+        <text x="720" y="266" text-anchor="end" fill="var(--fg-muted)" font-size="11">час</text>
+        <text x="70" y="266" fill="var(--fg-muted)" font-size="11">паузи main-потоку = лише вузькі червоні/жовті смужки</text>
+      </g>
+    </svg>
+    <figcaption>Orinoco не прибирає паузи повністю — він переносить більшість роботи у фонові потоки, залишаючи на головному лише короткі синхронні фази.</figcaption>
+  </figure>
+
+  <div class="callout info"><div class="ic">💡</div><div class="body">Через helper-потоки GC Node-процес використовує більше одного ядра навіть «однопотоковим» кодом. Якщо в контейнері ліміт CPU 0.5 ядра, фоновий GC конкурує з вашим JS — паузи стають довшими, ніж на ноутбуці. Ще одна причина не давати Node-контейнерам менше 1 vCPU.</div></div>
+
+  <h3>Як побачити паузи у проді</h3>
+  <ul>
+    <li><code>--trace-gc</code> — дешевий, можна тимчасово увімкнути в продакшні.</li>
+    <li><code>PerformanceObserver</code> з <code>entryTypes: ['gc']</code> — отримувати кожну GC-подію в коді й відправляти метрику (prom-client робить це за вас, див. <a href="17-production-observability.html">туторіал 17</a>).</li>
+    <li>Event loop delay p99 (розділ 10) — паузи GC прямо в ньому видно.</li>
+  </ul>
+</section>
+
+<section id="s5">
+  <h2><span class="num">05</span> Ліміти heap і контейнери</h2>
+  <p class="section-desc">Неправильний ліміт heap — найчастіша причина таємничих «OOMKilled» у Kubernetes без жодного JS-стектрейсу.</p>
+
+  <p>Old space має верхню межу. Коли live-heap до неї доростає, V8 спершу відчайдушно робить major GC один за одним (latency падає в прірву), а потім падає з <code>FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory</code>.</p>
+
+  <h3>Дефолти</h3>
+  <ul>
+    <li>Дефолтний ліміт обчислюється евристично від доступної пам'яті системи, з верхньою межею близько 4 ГБ на 64-бітних системах (на машині вище — <code>4288 MB</code>).</li>
+    <li>Новіші версії Node враховують cgroup-ліміт контейнера при обчисленні дефолту, але евристика не знає про інші процеси й про пам'ять поза heap. Покладатися на неї в проді не варто.</li>
+    <li><code>process.constrainedMemory()</code> повертає ліміт cgroup (якщо є) — зручно для логування при старті.</li>
+  </ul>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">термінал</span></div>
+    <pre><code># явно задати ліміт old space (у МБ)
+node --max-old-space-size=512 server.js
+
+# те саме через змінну оточення — зручно в Docker/K8s
+NODE_OPTIONS="--max-old-space-size=1536" node server.js
+
+# перевірка: heap_size_limit включає ще й young generation та службові простори
+node --max-old-space-size=512 limit.js   # heap_size_limit: 704 MB</code></pre>
+  </div>
+
+  <figure class="diagram">
+    <svg viewBox="0 0 740 150" role="img" aria-label="Бюджет пам'яті контейнера на 2 гігабайти: близько 1.5 гігабайта на old space, решта на young generation, буфери, нативну пам'ять, код і стеки потоків; якщо old space встановити рівним ліміту контейнера, ядро вб'є процес OOM killer'ом">
+      <g font-size="12">
+        <text x="20" y="20" font-weight="700" fill="currentColor">Контейнер: memory limit = 2 GiB</text>
+        <rect x="20" y="34" width="700" height="40" rx="6" fill="none" stroke="currentColor" stroke-width="1.3"/>
+        <rect x="20" y="34" width="520" height="40" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="280" y="59" text-anchor="middle" fill="currentColor">--max-old-space-size ≈ 1536 (~75%)</text>
+        <rect x="540" y="34" width="60" height="40" fill="var(--warn)" fill-opacity="0.15" stroke="var(--warn)"/>
+        <text x="570" y="59" text-anchor="middle" fill="var(--warn)" font-size="11">young</text>
+        <rect x="600" y="34" width="120" height="40" rx="6" fill="var(--bg-soft)" stroke="var(--fg-muted)"/>
+        <text x="660" y="59" text-anchor="middle" fill="var(--fg-muted)" font-size="11">buffers+native</text>
+        <text x="20" y="100" fill="var(--good)">✅ heap OOM → JS-помилка з heapsnapshot-near-heap-limit, видно в логах</text>
+        <text x="20" y="124" fill="var(--bad)">❌ old space = 2048 → ядро вбиває процес (OOMKilled, exit 137) без стектрейсу</text>
+      </g>
+    </svg>
+    <figcaption>Ліміт heap має бути помітно меншим за ліміт контейнера: решту з'їдають буфери, нативна пам'ять і young generation.</figcaption>
+  </figure>
+
+  <div class="callout good"><div class="ic">✅</div><div class="body"><b>Практичне правило:</b> <code>--max-old-space-size</code> ≈ 70–80% від memory limit контейнера, якщо застосунок не працює з великими буферами; якщо працює (файли, зображення, стріми) — менше, 50–60%. Додайте <code>--heapsnapshot-near-heap-limit=1</code>, щоб при наближенні до ліміту автоматично зберегти snapshot для розслідування.</div></div>
+
+  <div class="callout warn"><div class="ic">⚠️</div><div class="body">Більший heap — не безкоштовний. Ліміт 8 ГБ і живих 6 ГБ означає major GC, що обходить 6 ГБ. Для latency-чутливих API краще кілька процесів по 1–2 ГБ (cluster/поди, див. <a href="08-concurrency-scaling.html">туторіал 8</a>), ніж один гігант.</div></div>
+</section>
+
+<section id="s6">
+  <h2><span class="num">06</span> Типові витоки пам'яті</h2>
+  <p class="section-desc">У мові з GC «витік» — це не забута free(), а забуте посилання: щось досяжне з кореня тримає те, що вам уже не потрібно.</p>
+
+  <p>GC звільняє лише <b>недосяжне</b>. Тому кожен витік у Node — це ланцюжок посилань від GC root (глобальна змінна, модульна область видимості, активний таймер, живий сокет) до великого об'єкта. Шість класичних джерел:</p>
+
+  <h3>1. Кеш без меж</h3>
+  <div class="codecard">
+    <div class="bar"><span class="path">lru.js — node lru.js</span></div>
+    <pre><code>class LRU {
+  constructor(max) { this.max = max; this.map = new Map(); }
+  get(k) {
+    if (!this.map.has(k)) return undefined;
+    const v = this.map.get(k);
+    this.map.delete(k); this.map.set(k, v);   // перенести в кінець = "нещодавно використаний"
+    return v;
+  }
+  set(k, v) {
+    this.map.delete(k);
+    this.map.set(k, v);
+    if (this.map.size > this.max) this.map.delete(this.map.keys().next().value); // найстаріший
+  }
+}
+const unbounded = new Map();
+const lru = new LRU(1000);
+for (let i = 0; i &lt; 100_000; i++) {
+  const key = 'user:' + i;              // унікальні ключі = необмежена кардинальність
+  unbounded.set(key, { payload: 'x'.repeat(100) });
+  lru.set(key, { payload: 'x'.repeat(100) });
+}
+lru.get('user:99000');
+console.log('unbounded size:', unbounded.size);
+console.log('lru size:', lru.map.size, '| oldest key:', lru.map.keys().next().value);</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">вивід</span></div>
+    <pre><code>unbounded size: 100000
+lru size: 1000 | oldest key: user:99001</code></pre>
+  </div>
+  <p><code>Map</code> зберігає порядок вставки, тому найпростіший LRU — «видали й встав заново». У проді беріть <code>lru-cache</code> (ліміт за кількістю <i>і</i> за розміром, TTL). Особливо підступні кеші з ключем від user input: <code>memoize(fn)</code> по URL, мапа «userId → дані» без TTL.</p>
+
+  <h3>2. Event listeners, які ніхто не знімає</h3>
+  <div class="codecard">
+    <div class="bar"><span class="path">leak.js — node --expose-gc leak.js</span></div>
+    <pre><code>const { EventEmitter } = require('node:events');
+const { setImmediate: tick } = require('node:timers/promises');
+const bus = new EventEmitter();
+const mb = () => (process.memoryUsage().arrayBuffers / 1048576).toFixed(0) + ' MB';
+async function fullGC() { global.gc(); await tick(); global.gc(); await tick(); }
+
+function handleRequest(id) {
+  const big = Buffer.alloc(1024 * 1024, id);       // 1 MB "контекст запиту"
+  bus.on('config-changed', () => big.length);      // listener ніколи не знімається
+}
+
+(async () => {
+  for (let i = 0; i &lt; 50; i++) handleRequest(i);
+  await fullGC();
+  console.log('listeners:', bus.listenerCount('config-changed'), '| arrayBuffers:', mb());
+  bus.removeAllListeners('config-changed');
+  await fullGC();
+  console.log('after removeAllListeners:', mb());
+})();</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">вивід</span></div>
+    <pre><code>(node:48247) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 config-changed listeners added to [EventEmitter]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+listeners: 50 | arrayBuffers: 50 MB
+after removeAllListeners: 0 MB</code></pre>
+  </div>
+  <p>Навіть після примусового GC 50 МБ живі: кожен listener — замикання, що тримає свій <code>big</code>. <code>MaxListenersExceededWarning</code> — не косметика, а детектор саме цього бага. Не глушіть його через <code>setMaxListeners(0)</code>; знімайте listener (<code>off</code>, <code>once</code>, або <code>{ signal }</code> в <code>events.on</code>/<code>addEventListener</code>).</p>
+
+  <figure class="diagram">
+    <svg viewBox="0 0 740 200" role="img" aria-label="Ланцюжок утримання: GC root (модульна змінна bus) посилається на EventEmitter, той на масив listeners, масив на функцію-замикання, замикання на свій Context, контекст на Buffer 1 МБ; розірвати можна в місці listeners через off або AbortSignal">
+      <defs><marker id="n15d3-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <rect x="10" y="50" width="100" height="50" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+        <text x="60" y="72" text-anchor="middle" fill="currentColor" font-weight="700">GC root</text>
+        <text x="60" y="89" text-anchor="middle" fill="var(--fg-muted)" font-size="11">module scope</text>
+        <rect x="135" y="50" width="105" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.2"/>
+        <text x="187" y="72" text-anchor="middle" fill="currentColor">bus</text>
+        <text x="187" y="89" text-anchor="middle" fill="var(--fg-muted)" font-size="11">EventEmitter</text>
+        <rect x="265" y="50" width="110" height="50" rx="8" fill="none" stroke="var(--warn)" stroke-width="1.5"/>
+        <text x="320" y="72" text-anchor="middle" fill="var(--warn)">_events</text>
+        <text x="320" y="89" text-anchor="middle" fill="var(--warn)" font-size="11">[50 listeners]</text>
+        <rect x="400" y="50" width="100" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.2"/>
+        <text x="450" y="72" text-anchor="middle" fill="currentColor">() => …</text>
+        <text x="450" y="89" text-anchor="middle" fill="var(--fg-muted)" font-size="11">closure</text>
+        <rect x="525" y="50" width="90" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.2"/>
+        <text x="570" y="72" text-anchor="middle" fill="currentColor">Context</text>
+        <text x="570" y="89" text-anchor="middle" fill="var(--fg-muted)" font-size="11">{ big }</text>
+        <rect x="640" y="50" width="90" height="50" rx="8" fill="var(--bad)" fill-opacity="0.15" stroke="var(--bad)" stroke-width="1.5"/>
+        <text x="685" y="72" text-anchor="middle" fill="var(--bad)" font-weight="700">Buffer</text>
+        <text x="685" y="89" text-anchor="middle" fill="var(--bad)" font-size="11">1 MB × 50</text>
+        <path d="M110,75 L133,75" stroke="currentColor" stroke-width="1.3" marker-end="url(#n15d3-arrow)"/>
+        <path d="M240,75 L263,75" stroke="currentColor" stroke-width="1.3" marker-end="url(#n15d3-arrow)"/>
+        <path d="M375,75 L398,75" stroke="currentColor" stroke-width="1.3" marker-end="url(#n15d3-arrow)"/>
+        <path d="M500,75 L523,75" stroke="currentColor" stroke-width="1.3" marker-end="url(#n15d3-arrow)"/>
+        <path d="M615,75 L638,75" stroke="currentColor" stroke-width="1.3" marker-end="url(#n15d3-arrow)"/>
+        <path d="M320,110 L320,140" stroke="var(--good)" stroke-width="1.3" marker-end="url(#n15d3-arrow)"/>
+        <text x="320" y="160" text-anchor="middle" fill="var(--good)">✂ розрізати тут: off() / once / AbortSignal</text>
+        <text x="370" y="30" text-anchor="middle" fill="var(--fg-muted)" font-size="11">саме цей шлях показує панель «Retainers» у heap snapshot</text>
+        <text x="370" y="190" text-anchor="middle" fill="var(--fg-muted)" font-size="11">retained size кожного вузла зліва включає все, що праворуч</text>
+      </g>
+    </svg>
+    <figcaption>Витік — це шлях від кореня до великого об'єкта; достатньо розірвати одне посилання в ланцюжку, і весь хвіст стане сміттям.</figcaption>
+  </figure>
+
+  <h3>3. Замикання, що тримають більше, ніж здається</h3>
+  <p>V8 створює один <b>Context</b> на функцію для всіх змінних, захоплених <i>будь-яким</i> вкладеним замиканням. Якщо одне внутрішнє замикання використовує <code>hugeArray</code>, а інше (довгоживуче, наприклад у <code>setInterval</code>) — лише <code>id</code>, обидва ділять контекст, і <code>hugeArray</code> живе, поки живе інтервал. Рішення — не захоплювати великі об'єкти в функціях, що створюють довгоживучі колбеки; витягувати потрібні поля в локальні змінні заздалегідь.</p>
+
+  <h3>4. Таймери та інтервали</h3>
+  <p>Активний <code>setInterval</code> — GC root: його колбек і все, що той захоплює, живуть вічно, поки не викличете <code>clearInterval</code>. Типовий баг — інтервал, створений на кожне WebSocket-з'єднання, який не очищається на <code>close</code>. <code>timer.unref()</code> лише дозволяє процесу завершитися, але <b>не</b> звільняє пам'ять.</p>
+
+  <h3>5. AsyncLocalStorage, що тримає зайве</h3>
+  <p><code>AsyncLocalStorage</code> (див. <a href="03-async-patterns.html">туторіал 3</a>) пропагує store в усі async-ресурси, створені всередині <code>run()</code>. Якщо покласти в store цілий <code>req</code> з тілом, а всередині запиту хтось створить довгоживучий ресурс — інтервал, кешований проміс, пул-з'єднання — він «захопить» store і тримає тіло запиту. Правила: класти в store мінімум (requestId, userId, logger), ніколи не використовувати <code>enterWith()</code> без потреби, не створювати глобальні ресурси всередині запитного контексту.</p>
+
+  <h3>6. Проміси, які ніколи не завершуються</h3>
+  <div class="codecard">
+    <div class="bar"><span class="path">promises.js — node promises.js</span></div>
+    <pre><code>// "Висячі" проміси: кожен тримає свій замикання-контекст, поки не завершиться
+const pending = new Set();
+function callUpstreamWithoutTimeout() {
+  const ctx = { body: Buffer.alloc(64 * 1024) };
+  const p = new Promise(() => {});              // upstream ніколи не відповідає
+  pending.add(p);
+  return p.then(() => ctx.body.length);
+}
+for (let i = 0; i &lt; 2000; i++) callUpstreamWithoutTimeout();
+console.log('pending:', pending.size, '| arrayBuffers ≈', (process.memoryUsage().arrayBuffers / 1048576).toFixed(0), 'MB');</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">вивід</span></div>
+    <pre><code>pending: 2000 | arrayBuffers ≈ 125 MB</code></pre>
+  </div>
+  <p>Сам незавершений проміс не є коренем — але якщо він досяжний (з черги, з сокета, з Set як тут), то й увесь ланцюжок <code>.then</code> з контекстами живий. У реальному житті це HTTP-виклик без таймауту до «завислого» сервісу. Рішення — таймаут на <b>кожен</b> зовнішній виклик:</p>
+  <div class="codecard">
+    <div class="bar"><span class="path">timeout.js — node timeout.js</span></div>
+    <pre><code>const keepAlive = setInterval(() => {}, 1000);   // імітує живий сервер
+async function callUpstream(url, { signal }) {
+  return fetch(url, { signal });                  // fetch поважає AbortSignal
+}
+callUpstream('http://10.255.255.1/', { signal: AbortSignal.timeout(300) })
+  .catch((e) => console.log(e.name, '-', e.message))
+  .finally(() => clearInterval(keepAlive));</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">вивід</span></div>
+    <pre><code>TimeoutError - The operation was aborted due to timeout</code></pre>
+  </div>
+  <p class="muted">Нюанс: таймер <code>AbortSignal.timeout()</code> — unref'нутий; без «живого» сервера (тут імітованого інтервалом) процес просто завершився б, не дочекавшись помилки.</p>
+
+  <div class="remember"><b>🧠 Запам'ятай:</b> кожен витік — це шлях від кореня: кеш без меж, listener без off, інтервал без clear, проміс без таймауту.</div>
+</section>
+
+<section id="s7">
+  <h2><span class="num">07</span> Heap snapshots: пошук витоку</h2>
+  <p class="section-desc">Heap snapshot — фотографія всіх живих JS-об'єктів із посиланнями між ними; порівняння двох знімків — найнадійніший спосіб знайти витік.</p>
+
+  <h3>Як отримати знімок</h3>
+  <table>
+    <tr><th>Спосіб</th><th>Коли</th></tr>
+    <tr><td><code>node --inspect server.js</code> → <code>chrome://inspect</code> → вкладка Memory → «Take heap snapshot»</td><td>Локально, інтерактивно. Також Allocation timeline / sampling</td></tr>
+    <tr><td><code>v8.writeHeapSnapshot()</code></td><td>З коду, наприклад за адмін-ендпоінтом. Повертає ім'я файлу <code>Heap.&lt;дата&gt;.&lt;pid&gt;….heapsnapshot</code></td></tr>
+    <tr><td><code>--heapsnapshot-signal=SIGUSR2</code></td><td>Зняти знімок у живому процесі через <code>kill -USR2 &lt;pid&gt;</code></td></tr>
+    <tr><td><code>--heapsnapshot-near-heap-limit=N</code></td><td>Автоматично, до N знімків при наближенні до ліміту — ловить OOM «на гарячому»</td></tr>
+  </table>
+
+  <div class="callout bad"><div class="ic">🛑</div><div class="body"><b>Знімок у проді дорогий.</b> Він синхронно зупиняє event loop на секунди (для великих heap — десятки секунд), а процесу потрібно приблизно ще стільки ж пам'яті, скільки займає heap. Знімайте на одному поді, виведеному з балансування (readiness = false), і з запасом по memory limit — інакше сам знімок викличе OOMKill.</div></div>
+
+  <h3>Метод трьох знімків</h3>
+  <div class="flow">
+    <div class="step">Прогріти (JIT, кеші)</div><div class="arrow">→</div>
+    <div class="step">Snapshot 1</div><div class="arrow">→</div>
+    <div class="step">N запитів підозрілого сценарію</div><div class="arrow">→</div>
+    <div class="step">Snapshot 2</div><div class="arrow">→</div>
+    <div class="step">Ще N запитів</div><div class="arrow">→</div>
+    <div class="step">Snapshot 3</div>
+  </div>
+  <p>У DevTools оберіть Snapshot 3, режим <b>Comparison</b> відносно Snapshot 1 (або «Objects allocated between 1 and 2» у Summary). Об'єкти, що з'явилися між 1 і 2 і досі живі в 3 — кандидати. DevTools перед знімком сам запускає GC, тож сміття там не буде.</p>
+
+  <h3>Як читати</h3>
+  <ul>
+    <li><b>Shallow size</b> — розмір самого об'єкта. <b>Retained size</b> — скільки звільниться, якщо його прибрати (він і все, що тримається лише через нього). Сортуйте за retained.</li>
+    <li><b>Constructor</b> групи: <code>(closure)</code>, <code>(string)</code>, <code>(array)</code>, <code>system / Context</code>, ваші класи. Великий приріст <code>Context</code> → замикання; приріст <code>IncomingMessage</code>/<code>Socket</code> → утримані запити.</li>
+    <li>Панель <b>Retainers</b> — шлях до кореня (як на діаграмі вище). Читайте знизу вгору, поки не впізнаєте свій код: <code>listeners in EventEmitter</code>, <code>cache in Map</code>…</li>
+    <li>Давайте класам імена (<code>class RequestContext</code>), а не анонімні об'єкти — у знімку їх набагато легше знайти.</li>
+  </ul>
+
+  <div class="callout info"><div class="ic">💡</div><div class="body">Якщо зростає <code>arrayBuffers</code>, а не heap — знімок покаже лише маленькі JS-обгортки <code>Buffer</code>/<code>Uint8Array</code>. Шукайте, хто їх тримає (retainers), а не їхній розмір: backing store у знімку майже не враховано.</div></div>
+</section>
+
+<section id="s8">
+  <h2><span class="num">08</span> CPU-профілювання і flame graphs</h2>
+  <p class="section-desc">«Повільно» без профілю — це здогадка; flame graph за хвилину показує, яка саме функція з'їдає CPU.</p>
+
+  <h3>Інструменти</h3>
+  <div class="codecard">
+    <div class="bar"><span class="path">термінал</span></div>
+    <pre><code># 1. Вбудований семплюючий профайлер V8 → файл .cpuprofile (відкривається в DevTools / speedscope)
+node --cpu-prof --cpu-prof-dir=./prof server.js
+#    ... подати навантаження, зупинити процес (Ctrl+C / SIGINT) — профіль запишеться при виході
+
+# 2. Інтерактивно: DevTools → Performance / Profiler
+node --inspect server.js
+
+# 3. Старий формат V8 tick-профайлера (без DevTools)
+node --prof server.js &amp;&amp; node --prof-process isolate-*.log > profile.txt
+
+# 4. 0x — одна команда, готовий інтерактивний flame graph у HTML
+npx 0x -- node server.js
+
+# 5. clinic.js — набір "лікарів"
+npx clinic doctor -- node server.js      # загальний діагноз: CPU / GC / I/O / event loop
+npx clinic flame -- node server.js       # flame graph (на базі 0x)
+npx clinic bubbleprof -- node server.js  # візуалізація асинхронних затримок між операціями</code></pre>
+  </div>
+  <p class="muted">clinic.js розвивається повільно, і частина інструментів може нестабільно працювати на найновіших версіях Node; <code>--cpu-prof</code> і DevTools завжди доступні як базовий варіант.</p>
+
+  <h3>Анатомія flame graph</h3>
+  <figure class="diagram">
+    <svg viewBox="0 0 740 290" role="img" aria-label="Flame graph: вісь Y — глибина стеку, знизу корінь, вгорі функції, що виконувались; ширина прямокутника — частка семплів, тобто часу CPU, а не порядок у часі; широке плато вгорі (JSON.stringify) — гаряча точка; вузька висока вежа — глибокий, але дешевий стек">
+      <defs><marker id="n15d4-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="11">
+        <rect x="60" y="220" width="600" height="24" fill="var(--bg-soft)" stroke="currentColor"/>
+        <text x="360" y="236" text-anchor="middle" fill="currentColor">(root)</text>
+        <rect x="60" y="194" width="440" height="24" fill="var(--accent-soft)" stroke="currentColor"/>
+        <text x="280" y="210" text-anchor="middle" fill="currentColor">handleRequest</text>
+        <rect x="500" y="194" width="160" height="24" fill="var(--bg-soft)" stroke="currentColor"/>
+        <text x="580" y="210" text-anchor="middle" fill="currentColor">(garbage collector)</text>
+        <rect x="60" y="168" width="120" height="24" fill="var(--accent-soft)" stroke="currentColor"/>
+        <text x="120" y="184" text-anchor="middle" fill="currentColor">loadUser</text>
+        <rect x="180" y="168" width="320" height="24" fill="var(--accent-soft)" stroke="currentColor"/>
+        <text x="340" y="184" text-anchor="middle" fill="currentColor">serializeResponse</text>
+        <rect x="60" y="142" width="40" height="24" fill="var(--accent-soft)" stroke="currentColor"/>
+        <rect x="60" y="116" width="40" height="24" fill="var(--accent-soft)" stroke="currentColor"/>
+        <rect x="60" y="90" width="40" height="24" fill="var(--accent-soft)" stroke="currentColor"/>
+        <rect x="60" y="64" width="40" height="24" fill="var(--accent-soft)" stroke="currentColor"/>
+        <rect x="180" y="142" width="280" height="24" fill="var(--bad)" fill-opacity="0.25" stroke="var(--bad)" stroke-width="1.5"/>
+        <text x="320" y="158" text-anchor="middle" fill="var(--bad)" font-weight="700">JSON.stringify — широке плато</text>
+        <rect x="460" y="142" width="40" height="24" fill="var(--accent-soft)" stroke="currentColor"/>
+
+        <path d="M30,240 L30,70" stroke="currentColor" stroke-width="1" marker-end="url(#n15d4-arrow)"/>
+        <text x="24" y="60" fill="var(--fg-muted)">глибина стеку</text>
+        <path d="M60,266 L660,266" stroke="currentColor" stroke-width="1" marker-start="url(#n15d4-arrow)" marker-end="url(#n15d4-arrow)"/>
+        <text x="360" y="284" text-anchor="middle" fill="var(--fg-muted)">ширина = частка семплів (час на CPU), НЕ хронологія; сусіди відсортовані за назвою</text>
+
+        <path d="M100,76 L150,50" stroke="var(--fg-muted)" stroke-width="1" marker-end="url(#n15d4-arrow)"/>
+        <text x="155" y="46" fill="var(--fg-muted)">вузька вежа: глибоко, але дешево — ігноруйте</text>
+        <path d="M430,142 L560,110" stroke="var(--bad)" stroke-width="1" marker-end="url(#n15d4-arrow)"/>
+        <text x="565" y="100" fill="var(--bad)">self time: верх плато</text>
+        <text x="565" y="114" fill="var(--bad)">нікого не викликає —</text>
+        <text x="565" y="128" fill="var(--bad)">тут і горить CPU</text>
+      </g>
+    </svg>
+    <figcaption>Шукайте широкі прямокутники вгорі стеку (велике self time) — це функції, що самі витрачають CPU; ширина внизу лише показує, хто їх викликав.</figcaption>
+  </figure>
+
+  <ul>
+    <li><b>Self time vs total time.</b> <code>handleRequest</code> широкий, бо він предок усього; гаряча точка — <code>JSON.stringify</code>, у якого над ним нічого немає.</li>
+    <li><b>(garbage collector)</b> широкий → проблема в алокаціях/живому heap, а не в алгоритмі (див. розділи 3–5).</li>
+    <li><b>(idle)/(program)</b> домінує, а latency висока → ви чекаєте I/O (БД, мережа), а не CPU. Flame graph тут не допоможе; потрібні трейси (<a href="17-production-observability.html">туторіал 17</a>) або bubbleprof.</li>
+    <li>Анонімні функції в профілі — <code>(anonymous)</code>. Іменуйте колбеки, щоб їх розрізняти.</li>
+  </ul>
+
+  <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають так</span> «Що означає ширина прямокутника у flame graph і чи важливий порядок зліва направо?» — Ширина = скільки семплів стек містив цю функцію (пропорційно часу CPU); порядок зліва направо зазвичай алфавітний, а не часовий. Хронологію показує інший вигляд — flame <i>chart</i> у DevTools Performance.</div></div>
+</section>
+
+<section id="s9">
+  <h2><span class="num">09</span> JIT: hidden classes, inline caches, deopt</h2>
+  <p class="section-desc">V8 швидкий тоді, коли ваш код передбачуваний: однакові форми об'єктів і стабільні типи дають машинний код майже як у C++.</p>
+
+  <h3>Конвеєр компіляції</h3>
+  <div class="flow">
+    <div class="step">Parser → AST</div><div class="arrow">→</div>
+    <div class="step">Ignition (байткод-інтерпретатор, збирає type feedback)</div><div class="arrow">→</div>
+    <div class="step">Sparkplug (baseline, швидко)</div><div class="arrow">→</div>
+    <div class="step">Maglev (середній оптимізуючий)</div><div class="arrow">→</div>
+    <div class="step">TurboFan (максимальна оптимізація)</div>
+  </div>
+  <p>Гарячі функції піднімаються вгору по рівнях. Оптимізуючі компілятори роблять <b>спекуляції</b> на основі зібраного feedback («тут завжди приходить об'єкт форми X з числом у полі <code>x</code>») і вставляють перевірки. Якщо спекуляція порушується — <b>deoptimization</b>: машинний код викидається, виконання повертається в інтерпретатор, а потім, можливо, повторна оптимізація.</p>
+
+  <h3>Hidden classes (Maps / shapes)</h3>
+  <p>Кожен об'єкт має приховану «форму» (у V8 — Map): набір властивостей, їх порядок і зміщення в пам'яті. Об'єкти, створені однаково, ділять одну форму, і доступ до <code>o.x</code> — це просто читання за відомим зміщенням.</p>
+  <div class="codecard">
+    <div class="bar"><span class="path">shapes.js — node --allow-natives-syntax shapes.js</span></div>
+    <pre><code>function P(x, y) { this.x = x; this.y = y; }
+const a = new P(1, 2), b = new P(3, 4);
+console.log('a~b', %HaveSameMap(a, b));
+const c = new P(5, 6); c.z = 7;
+console.log('a~c (added z)', %HaveSameMap(a, c));
+const d = { y: 1, x: 2 }, e = { x: 1, y: 2 };
+console.log('{y,x}~{x,y}', %HaveSameMap(d, e));
+const f = new P(1, 2); delete f.x;
+console.log('a~f (delete)', %HaveSameMap(a, f), 'dictionary mode:', !%HasFastProperties(f));</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">вивід</span></div>
+    <pre><code>a~b true
+a~c (added z) false
+{y,x}~{x,y} false
+a~f (delete) false dictionary mode: true</code></pre>
+  </div>
+  <p><code>%</code>-функції — внутрішні V8-«natives», лише для експериментів (ніколи в проді). Висновки: додавання властивості після створення і <b>інший порядок ініціалізації</b> дають іншу форму; <code>delete</code> взагалі переводить об'єкт у повільний <b>dictionary mode</b> (хеш-таблиця замість зміщень). Замість <code>delete obj.x</code> у гарячому коді — <code>obj.x = undefined</code> або створення нового об'єкта без поля.</p>
+
+  <h3>Inline caches: mono → poly → megamorphic</h3>
+  <p>Кожне місце доступу до властивості (call site) має <b>inline cache</b>, що запам'ятовує бачені форми: 1 форма — <b>monomorphic</b> (найшвидше), 2–4 — <b>polymorphic</b>, більше — <b>megamorphic</b> (кеш здається, доступ через глобальний повільний пошук).</p>
+  <div class="codecard">
+    <div class="bar"><span class="path">ic.js — for n in 1 4 16; do node ic.js $n; done</span></div>
+    <pre><code>function getX(o) { return o.x; }               // одна call-site, різні shapes
+function makeShapes(n) {                        // n різних "форм" з властивістю x
+  return Array.from({ length: n }, (_, k) => {
+    const o = {}; o['p' + k] = 0; o.x = 1; return o;
+  });
+}
+function bench(label, shapes) {
+  const objs = Array.from({ length: 1e6 }, (_, i) => shapes[i % shapes.length]);
+  let s = 0;
+  for (let r = 0; r &lt; 3; r++) for (const o of objs) s += getX(o);   // прогрів
+  const t = performance.now();
+  for (let r = 0; r &lt; 20; r++) for (const o of objs) s += getX(o);
+  console.log(label.padEnd(20), (performance.now() - t).toFixed(0), 'ms');
+}
+const which = process.argv[2];
+bench(which + ' shapes', makeShapes(Number(which)));</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">вивід на одній машині (кожен варіант — окремий процес)</span></div>
+    <pre><code>1 shapes             64 ms
+4 shapes             89 ms
+16 shapes            301 ms</code></pre>
+  </div>
+
+  <div class="callout warn"><div class="ic">⚠️</div><div class="body"><b>Застереження щодо мікробенчмарків.</b> Цифри вище — ілюстрація тенденції, а не закон. Мікробенчмарки брешуть через: (1) прогрів JIT і on-stack replacement; (2) dead-code elimination — якщо результат не використовується, TurboFan може викинути цикл (тому тут <code>s</code> накопичується); (3) спільний feedback — запуск кількох варіантів в одному процесі «забруднює» IC, тому кожен варіант у своєму процесі; (4) шум ОС, турбо-частоти CPU. Використовуйте <code>tinybench</code>/<code>mitata</code>, кілька прогонів і, головне, міряйте <i>реальний</i> ендпоінт під навантаженням — megamorphic-доступ рідко буває вузьким місцем API, що чекає на БД.</div></div>
+
+  <h3>Що провокує deopt</h3>
+  <ul>
+    <li>Зміна форми в гарячій функції (різний порядок полів, умовне додавання полів, <code>delete</code>).</li>
+    <li>Зміна типу значення: поле було Smi (мале ціле), стало double, потім рядком; масив з чисел отримав рядок або «дірку» (<code>arr[1000] = 1</code> на порожньому масиві → holey elements).</li>
+    <li>Читання за межами масиву, <code>arguments</code> у sloppy mode з переприсвоєнням параметрів, <code>eval</code>/<code>with</code>.</li>
+    <li>Діагностика: <code>node --trace-opt --trace-deopt app.js | grep -i deopt</code> — покаже функцію та причину (наприклад, «wrong map», «not a Smi»).</li>
+  </ul>
+  <p class="muted">Колишні «правила» на кшталт «try/catch вбиває оптимізацію» з часів Crankshaft більше не актуальні для TurboFan — на співбесіді варто це зазначити.</p>
+
+  <div class="remember"><b>🧠 Запам'ятай:</b> однакові конструктори, однаковий порядок полів, стабільні типи, без delete — і JIT зробить решту.</div>
+</section>
+
+<section id="s10">
+  <h2><span class="num">10</span> Event loop delay і ELU</h2>
+  <p class="section-desc">Головна метрика здоров'я Node-сервера — не CPU%, а наскільки затримується event loop: саме це додається до latency кожного запиту.</p>
+
+  <p>Дві вбудовані метрики з <code>node:perf_hooks</code>:</p>
+  <ul>
+    <li><b>Event loop delay</b> (<code>monitorEventLoopDelay</code>) — histogram запізнень таймера: на скільки пізніше за план спрацював колбек. Блокуючий код, довгий GC, синхронний JSON — усе видно тут. Значення в наносекундах.</li>
+    <li><b>ELU — event loop utilization</b> (<code>performance.eventLoopUtilization()</code>) — частка часу, коли loop був зайнятий (не чекав у poll). 0 = простоює, 1 = насичений. Краще за CPU% для автоскейлінгу: CPU% включає GC-потоки та пул libuv.</li>
+  </ul>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">eld.js — node eld.js</span></div>
+    <pre><code>const { monitorEventLoopDelay, performance } = require('node:perf_hooks');
+const h = monitorEventLoopDelay({ resolution: 10 });
+h.enable();
+const elu1 = performance.eventLoopUtilization();
+
+function blockFor(ms) { const end = Date.now() + ms; while (Date.now() &lt; end) {} }
+const t = setInterval(() => blockFor(80), 200);   // кожні 200 мс — 80 мс синхронної роботи
+
+setTimeout(() => {
+  clearInterval(t);
+  h.disable();
+  const elu = performance.eventLoopUtilization(elu1);
+  const ms = (ns) => (ns / 1e6).toFixed(0) + 'ms';
+  console.log('p50', ms(h.percentile(50)), '| p99', ms(h.percentile(99)), '| max', ms(h.max));
+  console.log('ELU', elu.utilization.toFixed(2));
+}, 2000);</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">вивід (два запуски; значення трохи плавають)</span></div>
+    <pre><code>p50 10ms | p99 87ms | max 91ms
+ELU 0.37</code></pre>
+  </div>
+  <p>Як читати: p50 ≈ 10 мс — це сама роздільна здатність (<code>resolution: 10</code>), тобто «майже без затримки» — значення включають інтервал семплювання. p99 ≈ 87 мс відповідає 80-мс блокуванням. ELU ≈ 0.37 близько до 80/200 = 0.4: loop зайнятий ~40% часу. Для кожного запиту, що потрапив під блокування, latency виросте до +80 мс.</p>
+
+  <table>
+    <tr><th>Симптом</th><th>Ймовірна причина</th></tr>
+    <tr><td>Високий ELU (&gt;0.8) і висока затримка loop</td><td>CPU-bound код на головному потоці → оптимізувати / worker threads / більше інстансів</td></tr>
+    <tr><td>Низький ELU, але висока latency запитів</td><td>Чекаєте зовнішнє I/O або вичерпаний пул (БД, libuv threadpool для fs/dns/crypto)</td></tr>
+    <tr><td>Періодичні піки затримки</td><td>Major GC (дивіться <code>--trace-gc</code>), cron-задачі в процесі, великий <code>JSON.parse</code></td></tr>
+  </table>
+
+  <div class="callout good"><div class="ic">✅</div><div class="body">Пакети на кшталт <code>@fastify/under-pressure</code> використовують саме ці метрики для <b>load shedding</b>: якщо event loop delay або ELU перевищує поріг, сервер віддає 503 швидко, замість того щоб приймати запити, які однаково не встигне обробити.</div></div>
+</section>
+
+<section id="s11">
+  <h2><span class="num">11</span> Performance APIs</h2>
+  <p class="section-desc">Ті самі User Timing API, що в браузері, — вбудовані в Node для точних вимірів без сторонніх бібліотек.</p>
+
+  <ul>
+    <li><code>performance.now()</code> — монотонний час з високою точністю (мс із дробовою частиною) від старту процесу. На відміну від <code>Date.now()</code>, не стрибає при корекції системного годинника (NTP). Для наносекунд — <code>process.hrtime.bigint()</code>.</li>
+    <li><code>performance.mark(name)</code> / <code>performance.measure(name, start, end)</code> — іменовані точки й інтервали.</li>
+    <li><code>PerformanceObserver</code> — підписка на записи: <code>measure</code>, <code>mark</code>, <code>gc</code>, <code>function</code> (через <code>performance.timerify</code>), <code>http</code>, <code>dns</code>, <code>net</code>.</li>
+    <li><code>performance.timerify(fn)</code> — обгортка, що автоматично вимірює кожен виклик.</li>
+  </ul>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">perf.js — node perf.js</span></div>
+    <pre><code>const { performance, PerformanceObserver } = require('node:perf_hooks');
+const obs = new PerformanceObserver((list) => {
+  for (const e of list.getEntries())
+    console.log(`${e.entryType}: ${e.name} ${e.duration.toFixed(0)}ms`);
+});
+obs.observe({ entryTypes: ['measure'] });
+
+performance.mark('parse-start');
+const data = JSON.parse(JSON.stringify(Array.from({ length: 3e5 }, (_, i) => ({ id: i, name: 'item' + i }))));
+performance.mark('parse-end');
+performance.measure('json roundtrip', 'parse-start', 'parse-end');
+console.log('items:', data.length);</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">вивід (тривалість залежить від машини)</span></div>
+    <pre><code>items: 300000
+measure: json roundtrip 803ms</code></pre>
+  </div>
+  <p>Зверніть увагу на порядок: колбек observer'а викликається <b>асинхронно</b> (записи буферизуються), тому <code>items:</code> друкується першим. І друге — сотні мілісекунд синхронного JSON на 300 тис. маленьких об'єктів: усі інші запити в цей час чекають.</p>
+
+  <div class="callout warn"><div class="ic">⚠️</div><div class="body">Записи <code>mark</code>/<code>measure</code> накопичуються в глобальному буфері. Якщо ставити унікальні марки на кожен запит і не викликати <code>performance.clearMarks()</code>/<code>clearMeasures()</code>, отримаєте ще один витік пам'яті. Для метрик продакшну краще histogram у prom-client або OpenTelemetry spans.</div></div>
+</section>
+
+<section id="s12">
+  <h2><span class="num">12</span> Практичні оптимізації</h2>
+  <p class="section-desc">90% виграшу в реальних Node-сервісах — не в мікрооптимізаціях JIT, а в кількох архітектурних звичках.</p>
+
+  <h3>1. Жодних sync API в гарячому шляху</h3>
+  <p><code>fs.readFileSync</code>, <code>crypto.pbkdf2Sync</code>, <code>zlib.gzipSync</code>, <code>child_process.execSync</code> блокують loop для <i>всіх</i> запитів. Sync допустимо лише при старті (читання конфігу). Знайти їх допомагає <code>node --trace-sync-io</code> — друкує попередження на кожен sync I/O після першого тіку.</p>
+
+  <h3>2. Стрімінг замість буферизації</h3>
+  <p>Віддавати великий файл чи CSV-експорт через <code>pipeline(source, transform, res)</code> (див. <a href="06-events-streams-buffers.html">туторіал 6</a>) — пам'ять O(chunk), а не O(файл), і backpressure захищає від повільних клієнтів. Те саме для читання великих результатів з БД — курсори/стріми.</p>
+
+  <h3>3. Вартість JSON</h3>
+  <ul>
+    <li><code>JSON.parse</code>/<code>JSON.stringify</code> — синхронні та O(розмір). Ліміт на розмір тіла запиту (наприклад, 1 МБ) — і захист, і перформанс.</li>
+    <li><b>fast-json-stringify</b> компілює серіалізатор зі JSON Schema: знає поля заздалегідь, не перевіряє типи в рантаймі — зазвичай у кілька разів швидше за <code>JSON.stringify</code> для об'єктів відомої форми, і заодно не випускає зайві поля (захист від витоку даних). Fastify використовує його автоматично для response schema.</li>
+    <li>Для гігантських JSON — стрімінговий парсер (<code>stream-json</code>) або винос у worker.</li>
+  </ul>
+
+  <h3>4. Кешування — на правильному рівні</h3>
+  <div class="decision">
+    <div class="decision-title">🔀 Вузол вибору: де кешувати</div>
+    <table><tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+      <tr><td><b>In-process LRU</b> (<code>lru-cache</code>)</td><td>Наносекунди, без мережі</td><td>Окремий кеш на кожен інстанс, інвалідація складна, роздуває heap і major GC</td></tr>
+      <tr class="chosen"><td><b>Redis</b> ✅</td><td>Спільний для всіх інстансів, TTL, переживає деплой</td><td>Мережевий hop (~0.2–1 мс), серіалізація, ще одна залежність</td></tr>
+      <tr><td>Дворівневий (LRU + Redis)</td><td>Гарячі ключі локально, решта спільно</td><td>Складність інвалідації (pub/sub для скидання L1)</td></tr>
+      <tr><td>HTTP-кеш / CDN</td><td>Знімає навантаження ще до Node</td><td>Лише для публічних/кешованих відповідей</td></tr>
+    </table>
+    <p><b>Коли що:</b> маленький довідник, що рідко змінюється → LRU у процесі; дані користувачів і сесії → Redis; публічні GET → CDN з <code>Cache-Control</code>. Захищайтеся від cache stampede (одночасні промахи) через single-flight — зберігати в кеші сам проміс.</p>
+  </div>
+
+  <h3>5. Повторне використання з'єднань</h3>
+  <p>TCP+TLS handshake до сервісу — це кілька RTT. Вбудований <code>fetch</code> (undici) тримає keep-alive пул за замовчуванням; для класичного <code>http</code> потрібен <code>new http.Agent({ keepAlive: true })</code> (у новіших версіях глобальний агент вже має keepAlive). Для БД — пул з'єднань з розумним розміром (див. <a href="12-databases-orm.html">туторіал 12</a>), а не з'єднання на запит.</p>
+
+  <h3>6. CPU-важке — в worker threads</h3>
+  <p>Ресайз зображень, генерація PDF, bcrypt з високим cost, важкі обчислення маршрутів — у пул <code>worker_threads</code> (Piscina) або окремий сервіс/черга. Деталі — <a href="08-concurrency-scaling.html">туторіал 8</a>.</p>
+
+  <h3>7. Інші дрібниці з великим ефектом</h3>
+  <ul>
+    <li><code>NODE_ENV=production</code> — Express і багато бібліотек вимикають debug-режими та кешують шаблони.</li>
+    <li>Логер: pino замість <code>console.log</code> у гарячому шляху (<a href="17-production-observability.html">туторіал 17</a>).</li>
+    <li>Стиснення (gzip/brotli) — краще на reverse proxy/CDN, ніж у Node.</li>
+    <li>Паралелити незалежні await'и (<code>Promise.all</code>) замість послідовних — найдешевша оптимізація latency.</li>
+  </ul>
+
+  <div class="remember"><b>🧠 Запам'ятай:</b> не блокуй loop, стрімь великі дані, кешуй у Redis, тримай з'єднання, CPU — у workers.</div>
+</section>
+
+<section id="s13">
+  <h2><span class="num">13</span> Навантажувальне тестування</h2>
+  <p class="section-desc">Бенчмарк, проведений неправильно, гірший за відсутність бенчмарку — він дає впевненість у хибних числах.</p>
+
+  <div class="decision">
+    <div class="decision-title">🔀 Вузол вибору: інструмент навантаження</div>
+    <table><tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+      <tr><td><b>autocannon</b></td><td>На Node, дуже швидкий, ідеальний для «скільки RPS дає цей ендпоінт», є програмний API</td><td>Прості сценарії, closed-model (фіксована кількість з'єднань)</td></tr>
+      <tr class="chosen"><td><b>k6</b> ✅</td><td>Сценарії на JS (рантайм на Go), stages/ramp-up, thresholds для CI, open-model (arrival rate)</td><td>Не Node-рантайм: npm-пакети не всі працюють</td></tr>
+      <tr><td>wrk / wrk2</td><td>Мінімальний оверхед; wrk2 коректно враховує coordinated omission</td><td>Сценарії на Lua</td></tr>
+      <tr><td>Artillery</td><td>YAML/JS сценарії, HTTP + WebSocket</td><td>Важчий за autocannon</td></tr>
+    </table>
+    <p><b>Коли що:</b> швидко порівняти дві реалізації ендпоінта → autocannon; реалістичний сценарій користувача з SLO-порогами в CI → k6.</p>
+  </div>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">термінал — autocannon</span></div>
+    <pre><code># 100 з'єднань, 30 секунд, pipelining 1
+npx autocannon -c 100 -d 30 http://localhost:3000/api/orders
+# у звіті дивіться Latency p97.5/p99 і Req/Sec, а не Avg</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">load.js — k6 run load.js</span></div>
+    <pre><code>import http from 'k6/http';
+import { check } from 'k6';
+
+export const options = {
+  scenarios: {
+    steady: {
+      executor: 'constant-arrival-rate',   // open model: 200 запитів/с незалежно від відповіді
+      rate: 200, timeUnit: '1s', duration: '2m',
+      preAllocatedVUs: 50, maxVUs: 300,
+    },
+  },
+  thresholds: {
+    http_req_duration: ['p(99)&lt;300'],   // CI впаде, якщо p99 ≥ 300 мс
+    http_req_failed: ['rate&lt;0.01'],
+  },
+};
+
+export default function () {
+  const res = http.get('http://localhost:3000/api/orders?limit=20');
+  check(res, { 'status 200': (r) => r.status === 200 });
+}</code></pre>
+  </div>
+
+  <h3>Як бенчмаркати правильно</h3>
+  <ol>
+    <li><b>Окремі машини</b> для генератора навантаження і сервера — інакше вони конкурують за CPU, і ви міряєте autocannon.</li>
+    <li><b>Прогрів</b> 30–60 с: JIT, пули з'єднань, кеші. Перші секунди не враховувати.</li>
+    <li><b>Prod-подібне оточення:</b> <code>NODE_ENV=production</code>, ті самі ліміти CPU/RAM контейнера, реалістичні дані в БД (на порожній таблиці всі запити швидкі).</li>
+    <li><b>Перцентилі, не середнє.</b> p99 і p99.9 — те, що відчувають користувачі під навантаженням; середнє ховає хвости.</li>
+    <li><b>Coordinated omission:</b> у closed-model (N з'єднань) повільна відповідь затримує й наступний запит, і генератор «не помічає» черги. Open-model (<code>constant-arrival-rate</code>, wrk2) показує чесну latency.</li>
+    <li><b>Знайдіть точку насичення:</b> піднімайте rate ступенями, поки p99 не почне різко рости — це ваша реальна ємність на інстанс, від неї рахують автоскейлінг.</li>
+    <li><b>Одна зміна за раз</b>, кілька прогонів, порівняння з базовою лінією. Паралельно знімайте ELU, event loop delay, heap і CPU — щоб знати, <i>що</i> саме насичується.</li>
+  </ol>
+
+  <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають так</span> «Ендпоінт тримає 5000 RPS на ноутбуці, а в проді 800 — чому?» — Ліміт CPU в контейнері (і GC-потоки конкурують за нього), реальна мережа до БД, реальні обсяги даних, TLS, логування в проді, generator на тій самій машині при локальному тесті, середнє замість p99, відсутність прогріву.</div></div>
+</section>
+
+<section id="s14">
+  <h2><span class="num">14</span> Каверзні питання співбесіди</h2>
+  <p class="section-desc">Питання, на яких відрізняють «читав статтю» від «розслідував інцидент».</p>
+
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Що таке generational hypothesis і як вона впливає на будову V8 heap?</summary>
+    <div class="a">Більшість об'єктів помирає молодими. Тому heap поділено на <b>new space</b> (дві semi-spaces, швидкий копіюючий Scavenge, вартість ∝ живим) і <b>old space</b> (Mark-Sweep-Compact, вартість ∝ розміру живого heap). Об'єкт, що пережив два scavenge, просувається в old space.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>Ви виставили --max-old-space-size=2048 у контейнері з лімітом 2 ГБ. Що піде не так?</summary>
+    <div class="a">Heap-ліміт стосується лише old space. Young generation, буфери (<code>external</code>), нативна пам'ять, код і стеки — понад нього. Процес перевищить cgroup-ліміт раніше, ніж V8 дійде до свого, і ядро вб'є його <b>OOMKilled (exit 137)</b> без JS-стектрейсу. Ставте ~70–80% ліміту контейнера (менше, якщо багато буферів).</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>RSS процесу росте, а heapUsed стабільний. Де витік?</summary>
+    <div class="a">Не в JS-об'єктах, тож heap snapshot мало допоможе. Перевірте <code>external</code>/<code>arrayBuffers</code> (утримані буфери, стріми без backpressure), нативні аддони, кількість потоків; на glibc — фрагментацію malloc (<code>MALLOC_ARENA_MAX</code>, jemalloc). Також RSS може просто не повертатися ОС після піку — це плато, а не витік.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Назвіть 5 типових причин витоків пам'яті в Node.</summary>
+    <div class="a">Необмежені кеші/мапи з ключем від user input; event listeners без <code>off</code> (сигнал — <code>MaxListenersExceededWarning</code>); <code>setInterval</code> без <code>clearInterval</code>; замикання, що захоплюють великі об'єкти через спільний Context; проміси без таймауту до завислих сервісів; великі об'єкти в <code>AsyncLocalStorage</code> store; глобальні масиви «для дебагу».</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Як знайти витік за допомогою heap snapshots?</summary>
+    <div class="a">Метод трьох знімків: прогрів → snapshot 1 → навантаження сценарієм → snapshot 2 → ще навантаження → snapshot 3. Comparison-режим, сортування за <b>retained size</b>, дивитися конструктори з постійним приростом, потім панель <b>Retainers</b> — шлях до GC root, поки не впізнаєте свій код. У проді — <code>--heapsnapshot-signal</code> або <code>--heapsnapshot-near-heap-limit</code>, на виведеному з балансування поді.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>Чому знімати heap snapshot у проді небезпечно?</summary>
+    <div class="a">Знімок <b>синхронний</b>: loop зупинений на секунди/десятки секунд — health checks падають, запити таймаутять. І він потребує додаткової пам'яті порядку розміру heap — може сам спричинити OOMKill. Тому — readiness=false, запас по пам'яті, один под.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Що таке hidden classes і inline caches?</summary>
+    <div class="a">Hidden class (Map/shape) — опис форми об'єкта: які поля, у якому порядку, за якими зміщеннями. Inline cache на кожному call site запам'ятовує бачені форми: monomorphic (1) → швидкий прямий доступ, polymorphic (2–4), megamorphic (&gt;4) → повільний generic-пошук. Однаковий порядок ініціалізації полів і відсутність <code>delete</code> тримають код мономорфним.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>Чому <code>delete obj.prop</code> може сповільнити код, а <code>obj.prop = undefined</code> — ні?</summary>
+    <div class="a"><code>delete</code> змінює форму і часто переводить об'єкт у <b>dictionary mode</b> (властивості в хеш-таблиці), що ламає inline caches і може спричинити deopt гарячої функції. Присвоєння <code>undefined</code> зберігає форму. Але для Map-подібних даних краще одразу брати <code>Map</code>.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Чим event loop delay відрізняється від ELU і що використовувати для алертів/автоскейлінгу?</summary>
+    <div class="a">Event loop delay — наскільки пізно спрацьовують колбеки (прямо додається до latency; ловить блокування й GC-паузи). ELU — частка часу, коли loop зайнятий (міра насичення). Для алертів — p99 event loop delay; для автоскейлінгу — ELU, бо CPU% включає GC-потоки й threadpool і погано відображає насичення головного потоку.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>Flame graph: найширший прямокутник — handleRequest. Це він повільний?</summary>
+    <div class="a">Не обов'язково — нижні прямокутники широкі, бо вони предки всього стеку (total time). Гаряча точка — широкий прямокутник з великим <b>self time</b> вгорі «плато». Порядок зліва направо — алфавітний, не хронологічний. Якщо домінує <code>(garbage collector)</code> — проблема в алокаціях, якщо <code>(idle)</code> — ви чекаєте I/O.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>Чому мікробенчмарк показав, що варіант A у 10 разів швидший, а в проді різниці немає?</summary>
+    <div class="a">Dead-code elimination (результат не використано — цикл викинуто), відсутність прогріву/OSR, спільний IC feedback між варіантами в одному процесі, нерепрезентативні дані (мономорфні в тесті, поліморфні в проді), і головне — ендпоінт обмежений I/O, а не цим кодом. Міряйте end-to-end під навантаженням.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Що таке coordinated omission?</summary>
+    <div class="a">Помилка closed-model генераторів: коли сервер гальмує, генератор із фіксованою кількістю з'єднань чекає відповідь і не надсилає нові запити — затримки, які відчули б реальні користувачі (що приходять незалежно), не потрапляють у статистику. Рішення — open-model (k6 <code>constant-arrival-rate</code>, wrk2).</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>Чи звільняє <code>timer.unref()</code> пам'ять, яку тримає колбек інтервалу?</summary>
+    <div class="a">Ні. <code>unref()</code> лише каже event loop не тримати процес живим заради цього таймера. Сам таймер активний, його колбек і захоплені змінні досяжні. Звільняє тільки <code>clearInterval</code>/<code>clearTimeout</code>.</div>
+  </details>
+</section>
+
+<section id="s15">
+  <h2><span class="num">15</span> Шпаргалка</h2>
+  <p class="section-desc">Прапорці, API і пороги на одній сторінці.</p>
+  <div class="cheat"><table>
+    <tr><th>Задача</th><th>Інструмент / прапорець</th></tr>
+    <tr><td>Подивитися пам'ять</td><td><code>process.memoryUsage()</code>, <code>v8.getHeapStatistics()</code>, <code>v8.getHeapSpaceStatistics()</code></td></tr>
+    <tr><td>Ліміт heap</td><td><code>--max-old-space-size=MB</code> (~75% ліміту контейнера), <code>NODE_OPTIONS</code></td></tr>
+    <tr><td>Розмір young gen</td><td><code>--max-semi-space-size=MB</code> (більше → рідше scavenge і менше передчасного promotion, але довші паузи scavenge)</td></tr>
+    <tr><td>Лог GC</td><td><code>--trace-gc</code>; у коді — <code>PerformanceObserver({ entryTypes: ['gc'] })</code></td></tr>
+    <tr><td>Heap snapshot</td><td><code>--inspect</code> + DevTools, <code>v8.writeHeapSnapshot()</code>, <code>--heapsnapshot-signal=SIGUSR2</code>, <code>--heapsnapshot-near-heap-limit=1</code></td></tr>
+    <tr><td>CPU-профіль</td><td><code>--cpu-prof</code>, <code>--prof</code> + <code>--prof-process</code>, <code>0x</code>, <code>clinic flame/doctor/bubbleprof</code></td></tr>
+    <tr><td>JIT-діагностика</td><td><code>--trace-opt --trace-deopt</code>; експерименти — <code>--allow-natives-syntax</code></td></tr>
+    <tr><td>Sync I/O в гарячому шляху</td><td><code>--trace-sync-io</code></td></tr>
+    <tr><td>Здоров'я loop</td><td><code>monitorEventLoopDelay()</code> (p99), <code>performance.eventLoopUtilization()</code></td></tr>
+    <tr><td>Точний час</td><td><code>performance.now()</code>, <code>process.hrtime.bigint()</code>, mark/measure + clear*</td></tr>
+    <tr><td>Таймаут зовнішніх викликів</td><td><code>fetch(url, { signal: AbortSignal.timeout(ms) })</code></td></tr>
+    <tr><td>Кеш</td><td><code>lru-cache</code> (max + ttl), Redis для спільного</td></tr>
+    <tr><td>Швидка серіалізація</td><td><code>fast-json-stringify</code> / Fastify response schema</td></tr>
+    <tr><td>Навантаження</td><td><code>autocannon -c 100 -d 30</code>, k6 <code>constant-arrival-rate</code> + thresholds</td></tr>
+  </table></div>
+</section>
+
+<section id="s16">
+  <h2><span class="num">16</span> Як запам'ятати</h2>
+  <p class="section-desc">Вісім образів, які тримають весь туторіал.</p>
+  <div class="flashgrid">
+    <div class="flashcard">
+      <div class="fc-num">1</div>
+      <div class="term">Generational hypothesis</div>
+      <div class="def">Більшість об'єктів помирає молодими, тому молоде покоління збирають часто й дешево.</div>
+      <div class="mnemo"><b>Асоціація:</b> одноразові стаканчики в кав'ярні — їх викидають щогодини, а меблі переставляють раз на рік.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">2</div>
+      <div class="term">Scavenge</div>
+      <div class="def">Копіює живих із from-space у to-space, мертвих не торкається; вартість ∝ живим.</div>
+      <div class="mnemo"><b>Асоціація:</b> переїзд — забираєш лише потрібні речі, а стару квартиру здаєш разом з усім мотлохом.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">3</div>
+      <div class="term">Mark-Sweep-Compact</div>
+      <div class="def">Розмітити досяжне в old space, підмести решту, ущільнити фрагментовані сторінки.</div>
+      <div class="mnemo"><b>Асоціація:</b> генеральне прибирання складу — обійти кожну полицю, тому довго.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">4</div>
+      <div class="term">RSS ≠ heap</div>
+      <div class="def">RSS включає буфери, нативну пам'ять і код; heap snapshot бачить лише JS-об'єкти.</div>
+      <div class="mnemo"><b>Асоціація:</b> вага валізи — це не лише одяг, а й сама валіза, взуття і пакунки збоку.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">5</div>
+      <div class="term">Retained size</div>
+      <div class="def">Скільки пам'яті звільниться, якщо прибрати цей об'єкт разом з усім, що тримається лише через нього.</div>
+      <div class="mnemo"><b>Асоціація:</b> перерізати нитку повітряної в'язки — відлітають усі кульки, прив'язані тільки до неї.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">6</div>
+      <div class="term">Hidden class / IC</div>
+      <div class="def">Форма об'єкта + кеш на call site; одна форма — monomorphic і швидко, багато — megamorphic і повільно.</div>
+      <div class="mnemo"><b>Асоціація:</b> касир, що бачить лише один вид купюр, рахує наосліп; мішок різних валют — перевіряє кожну.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">7</div>
+      <div class="term">Deopt</div>
+      <div class="def">Спекуляція оптимізатора порушилась — машинний код викинуто, назад в інтерпретатор.</div>
+      <div class="mnemo"><b>Асоціація:</b> навігатор будував маршрут по автобану, а його перекрили — їдеш селами, поки не перерахує.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">8</div>
+      <div class="term">Event loop delay / ELU</div>
+      <div class="def">Delay — наскільки запізнюються колбеки; ELU — яку частку часу loop зайнятий.</div>
+      <div class="mnemo"><b>Асоціація:</b> черга до єдиного бариста: delay — скільки чекаєш, ELU — скільки часу він не відпочиває.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">9</div>
+      <div class="term">Flame graph</div>
+      <div class="def">Ширина — час на CPU, висота — глибина стеку; гаряче — широке плато вгорі.</div>
+      <div class="mnemo"><b>Асоціація:</b> міська панорама: дивишся не на найвищі вежі, а на найширші дахи.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">10</div>
+      <div class="term">Coordinated omission</div>
+      <div class="def">Closed-model генератор чекає повільні відповіді й не бачить черги — latency занижено.</div>
+      <div class="mnemo"><b>Асоціація:</b> ревізор, що заходить у магазин лише коли черга порожня, і звітує «черг немає».</div>
+    </div>
+  </div>
+</section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Node.js Doc · частина серії туторіалів AI Delivery Planner. Приклади коду перевірені на Node.js 24.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

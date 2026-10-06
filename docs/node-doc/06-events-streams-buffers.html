@@ -1,0 +1,1725 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>6. EventEmitter, Streams і Buffer — Node.js Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🟢 Node.js Doc <span>· AI Delivery Planner</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Node.js Doc · Туторіал 6 з 20</div>
+  <h1>EventEmitter, Buffer і Streams: три кити I/O у Node.js</h1>
+  <p class="lead">Майже все I/O в Node — HTTP-запити, файли, сокети, <code>process.stdin</code> — побудоване з трьох деталей: <b>EventEmitter</b> (хто кому повідомляє), <b>Buffer</b> (як виглядають байти) і <b>Streams</b> (як прокачати гігабайти через 64 KB пам'яті). Розберемо механіку, backpressure, пастки з помилками і робочі рецепти.</p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="06-events-streams-buffers.html" class="active">6. Events, Streams, Buffer</a>
+        <a href="07-fs-process-os.html">7. fs, process, os</a>
+        <a href="08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="09-http-networking.html">9. HTTP і мережа</a>
+        <a href="10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="12-databases-orm.html">12. БД і ORM</a>
+        <a href="13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="14-security.html">14. Безпека Node</a>
+        <a href="15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="16-testing.html">16. Тестування</a>
+        <a href="17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+  </aside>
+
+    <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Як три кити пов'язані</a></li>
+      <li><a href="#s2">2. EventEmitter: синхронний emit</a></li>
+      <li><a href="#s3">3. EventEmitter: error, once, витоки</a></li>
+      <li><a href="#s4">4. Buffer: байти й кодування</a></li>
+      <li><a href="#s5">5. Buffer: пам'ять, pool, subarray</a></li>
+      <li><a href="#s6">6. Streams: навіщо і 4 типи</a></li>
+      <li><a href="#s7">7. Readable: flowing vs paused</a></li>
+      <li><a href="#s8">8. Writable і backpressure</a></li>
+      <li><a href="#s9">9. pipe() vs pipeline()</a></li>
+      <li><a href="#s10">10. Власний Transform і objectMode</a></li>
+      <li><a href="#s11">11. Web Streams vs Node streams</a></li>
+      <li><a href="#s12">12. Практичні рецепти</a></li>
+      <li><a href="#s13">13. Каверзні питання співбесіди</a></li>
+      <li><a href="#s14">14. Шпаргалка</a></li>
+      <li><a href="#s15">15. Як запам'ятати</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Як три кити пов'язані</h2>
+      <p class="section-desc">Це не три окремі API, а одна конструкція: stream — це EventEmitter, який передає Buffer-и.</p>
+
+      <p>Коли ви пишете <code>http.createServer((req, res) =&gt; ...)</code>, у вас в руках одразу всі три
+      концепції: <code>req</code> — це <b>Readable stream</b>, який є нащадком <b>EventEmitter</b>
+      (події <code>'data'</code>, <code>'end'</code>, <code>'error'</code>), а шматки тіла запиту, що
+      приходять у <code>'data'</code>, — це <b>Buffer</b>. Те саме з <code>fs.createReadStream</code>,
+      <code>net.Socket</code>, <code>process.stdin</code>, <code>zlib.createGzip()</code>, дочірніми процесами.</p>
+
+      <table>
+        <tr><th>Деталь</th><th>Відповідає на питання</th><th>Де живе</th></tr>
+        <tr><td><b>EventEmitter</b></td><td>"Як повідомити підписників, що щось сталося?"</td><td><code>node:events</code>, база для streams, server, process, child_process</td></tr>
+        <tr><td><b>Buffer</b></td><td>"Як представити сирі байти, що прийшли з сокета/диска?"</td><td>глобальний, <code>node:buffer</code>; підклас <code>Uint8Array</code></td></tr>
+        <tr><td><b>Stream</b></td><td>"Як обробити дані, які не влазять у пам'ять або ще не прийшли повністю?"</td><td><code>node:stream</code>, <code>node:stream/promises</code></td></tr>
+      </table>
+
+      <div class="flow">
+        <div class="step">libuv читає 64 KB з сокета</div><div class="arrow">→</div>
+        <div class="step">Node загортає байти в Buffer</div><div class="arrow">→</div>
+        <div class="step">Readable кладе його в свій буфер</div><div class="arrow">→</div>
+        <div class="step">EventEmitter: emit('data', chunk)</div><div class="arrow">→</div>
+        <div class="step">ваш код</div>
+      </div>
+
+      <p>Тому розуміння цих трьох речей окупається скрізь: у HTTP (<a href="09-http-networking.html">туторіал 9</a>),
+      роботі з файлами й процесами (<a href="07-fs-process-os.html">туторіал 7</a>), черговості колбеків
+      (<a href="02-event-loop-deep-dive.html">туторіал 2</a>) і пошуку витоків пам'яті
+      (<a href="15-performance-memory.html">туторіал 15</a>).</p>
+
+      <div class="remember"><b>🧠 Запам'ятай:</b> Stream = EventEmitter + внутрішній буфер Buffer-ів + протокол "не дай мені більше, ніж я встигаю".</div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> EventEmitter: синхронний emit</h2>
+      <p class="section-desc">Найпоширеніша хибна уява про Node: "події асинхронні". Ні — emit() викликає слухачів прямо зараз, по черзі.</p>
+
+      <p><code>EventEmitter</code> — це просто об'єкт зі словником <code>{ ім'я_події: [слухач1, слухач2, ...] }</code>.
+      <code>on()</code> додає функцію в масив, <code>emit()</code> <b>синхронно</b> проходить масив і викликає кожну
+      функцію в порядку реєстрації. Ніякої черги, ніякого event loop. Асинхронність з'являється лише тоді,
+      коли <i>хтось інший</i> (libuv, таймер) викликає <code>emit()</code> пізніше.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">ee-sync.js</span></div>
+        <pre><code>const { EventEmitter } = require('node:events');
+const bus = new EventEmitter();
+
+bus.on('order', (id) =&gt; console.log('listener A', id));
+bus.on('order', (id) =&gt; console.log('listener B', id));
+
+console.log('before emit');
+const had = bus.emit('order', 42);   // повертає true, якщо слухачі були
+console.log('after emit, had listeners:', had);
+console.log('emit without listeners:', bus.emit('nobody'));
+
+// before emit
+// listener A 42
+// listener B 42
+// after emit, had listeners: true
+// emit without listeners: false</code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 270" role="img" aria-label="Виклик emit('order') синхронно проходить масив слухачів: спершу listener A, потім listener B, і тільки після цього повертає керування коду, що стоїть після emit. Все відбувається в одному стеку викликів без участі event loop.">
+          <defs><marker id="n06d1-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="20" y="20" width="220" height="110" rx="8" fill="var(--bg-soft)" stroke="currentColor" stroke-width="1.2"/>
+            <text x="130" y="42" text-anchor="middle" fill="currentColor" font-weight="bold">bus._events</text>
+            <text x="36" y="70" fill="currentColor">'order' → [ A, B ]</text>
+            <text x="36" y="94" fill="currentColor">'error' → [ onErr ]</text>
+            <text x="36" y="118" fill="var(--fg-muted)">'nobody' → (немає)</text>
+
+            <text x="300" y="30" fill="var(--fg-muted)">Один стек викликів (час іде вниз)</text>
+            <rect x="300" y="42" width="400" height="28" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="500" y="61" text-anchor="middle" fill="currentColor">console.log('before emit')</text>
+            <rect x="300" y="80" width="400" height="28" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="500" y="99" text-anchor="middle" fill="var(--accent)">bus.emit('order', 42) — входимо</text>
+            <rect x="340" y="116" width="360" height="28" rx="6" fill="none" stroke="var(--good)" stroke-width="1.2"/>
+            <text x="520" y="135" text-anchor="middle" fill="var(--good)">listener A(42) — виконується до кінця</text>
+            <rect x="340" y="152" width="360" height="28" rx="6" fill="none" stroke="var(--good)" stroke-width="1.2"/>
+            <text x="520" y="171" text-anchor="middle" fill="var(--good)">listener B(42) — виконується до кінця</text>
+            <rect x="300" y="188" width="400" height="28" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="500" y="207" text-anchor="middle" fill="var(--accent)">emit повертає true</text>
+            <rect x="300" y="224" width="400" height="28" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="500" y="243" text-anchor="middle" fill="currentColor">console.log('after emit')</text>
+
+            <path d="M240,75 C270,75 280,94 298,94" fill="none" stroke="currentColor" stroke-width="1.2" marker-end="url(#n06d1-arrow)"/>
+            <text x="30" y="170" fill="var(--warn)">Жодної черги між emit</text>
+            <text x="30" y="188" fill="var(--warn)">і слухачами: повільний</text>
+            <text x="30" y="206" fill="var(--warn)">слухач блокує і emit,</text>
+            <text x="30" y="224" fill="var(--warn)">і весь event loop.</text>
+          </g>
+        </svg>
+        <figcaption>emit() — це звичайний цикл по масиву функцій у поточному стеку; код після emit чекає, поки відпрацюють усі слухачі.</figcaption>
+      </figure>
+
+      <h3>Наслідки синхронності</h3>
+      <ul>
+        <li><b>Важкий слухач блокує</b> того, хто емітить. Якщо в обробнику <code>'data'</code> ви робите 200 мс
+        CPU-роботи — весь процес стоїть 200 мс.</li>
+        <li><b>Виняток у слухачі</b> вилітає з <code>emit()</code> у код, що емітив, і наступні слухачі вже не
+        викликаються.</li>
+        <li><b>Вкладені emit</b> виконуються "всередині" поточного слухача — порядок як у звичайних викликах функцій.</li>
+        <li>Якщо треба дати шанс решті коду ініціалізуватися (наприклад, emit у конструкторі, коли підписників
+        ще немає), класичний прийом — <code>process.nextTick(() =&gt; this.emit('ready'))</code>. Так роблять і
+        вбудовані модулі.</li>
+      </ul>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 1</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Вкладений emit</span></div>
+        <div class="codecard"><div class="bar"><span class="path">task-1.js</span></div><pre><code>const { EventEmitter } = require('node:events');
+const e = new EventEmitter();
+e.on('tick', () =&gt; { console.log('A start'); e.emit('nested'); console.log('A end'); });
+e.on('nested', () =&gt; console.log('nested handler'));
+e.on('tick', () =&gt; console.log('B'));
+e.emit('tick');</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">A start
+nested handler
+A end
+B</span><p>Слухач A викликає <code>emit('nested')</code> — це звичайний синхронний виклик, тож
+        <code>nested handler</code> друкується посеред A. Лише коли A завершиться, emit('tick') перейде до B.
+        Жодних черг — чистий стек викликів.</p></div></details>
+      </div>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">Порівняйте з DOM:
+      <code>element.dispatchEvent()</code> у браузері теж синхронний, а от "асинхронні" події (клік, відповідь
+      fetch) просто <i>ініціюються</i> з event loop. Механіка браузерного event loop —
+      у <a href="../js-doc/01-core-js-engine.html">JS Doc, туторіал 1</a>; тут різниця лише в тому, хто викликає emit.</div></div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> EventEmitter: error, once, витоки</h2>
+      <p class="section-desc">Подія 'error' — особлива і вбиває процес; а забуті слухачі — найчастіший витік пам'яті в Node.</p>
+
+      <h3>'error' без слухача = throw</h3>
+      <p>Якщо ви емітите <code>'error'</code>, а слухача немає — EventEmitter <b>кидає</b> цю помилку. На
+      верхньому рівні це <code>uncaughtException</code> і падіння процесу з кодом 1. Це навмисно: помилка не
+      повинна тихо зникнути. Тому <b>кожен stream, сокет, клієнт БД, який ви створюєте, має отримати
+      <code>.on('error', ...)</code></b> (або бути всередині <code>pipeline()</code>, який підпишеться сам).</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">ee-error.js</span></div>
+        <pre><code>const { EventEmitter } = require('node:events');
+const e = new EventEmitter();
+setTimeout(() =&gt; console.log('never printed'), 100);
+e.emit('error', new Error('db connection lost'));
+
+// node:events:487
+//       throw er; // Unhandled 'error' event
+// Error: db connection lost
+//     at Object.&lt;anonymous&gt; (ee-error.js:4:17) ...
+// $ echo $?  → 1</code></pre>
+      </div>
+
+      <p>Якщо емітити не <code>Error</code>, а рядок — отримаєте <code>Error: Unhandled error. ('just a string')</code>.
+      З обробником усе спокійно: <code>e.on('error', (err) =&gt; log(err))</code>. Є також символ
+      <code>events.errorMonitor</code> — слухач на нього отримує помилку <i>до</i> звичайних і не вважається
+      обробником (для метрик/логування, процес все одно впаде, якщо справжнього обробника немає).</p>
+
+      <h3>once, prependListener, off</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">ee-order.js</span></div>
+        <pre><code>const e = new EventEmitter();
+e.on('x', () =&gt; console.log('on'));
+e.prependListener('x', () =&gt; console.log('prepend'));  // на початок масиву
+e.once('x', () =&gt; console.log('once'));               // знімається перед викликом
+e.emit('x'); console.log('---'); e.emit('x');
+console.log('count:', e.listenerCount('x'));
+
+const h = () =&gt; console.log('h');
+e.on('y', h);
+e.off('y', h);                        // = removeListener; потрібна ТА САМА функція
+console.log('y emitted?', e.emit('y'));
+
+// prepend
+// on
+// once
+// ---
+// prepend
+// on
+// count: 2
+// y emitted? false</code></pre>
+      </div>
+      <p class="muted">Пастка: <code>e.off('y', () =&gt; ...)</code> з новою стрілочною функцією нічого не зніме —
+      порівняння за посиланням. Зберігайте посилання на обробник. Є ще <code>removeAllListeners(name)</code>,
+      але не викликайте його на чужих емітерах (сокетах, streams) — зламаєте внутрішніх слухачів Node.</p>
+
+      <h3>Витоки слухачів і MaxListenersExceededWarning</h3>
+      <p>Типовий витік: на кожен HTTP-запит ви робите <code>db.on('reconnect', handler)</code> на
+      <b>довгоживучому</b> об'єкті й ніколи не знімаєте. Масив слухачів росте, замикання тримають
+      <code>req</code>/<code>res</code> — пам'ять тече. Node має простий детектор: більше
+      <code>defaultMaxListeners</code> (10) слухачів однієї події на одному емітері — warning.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">ee-leak.js</span></div>
+        <pre><code>const e = new EventEmitter();
+for (let i = 0; i &lt; 11; i++) e.on('data', () =&gt; {});
+// (node:48081) MaxListenersExceededWarning: Possible EventEmitter memory leak detected.
+// 11 data listeners added to [EventEmitter]. MaxListeners is 10.
+// Use emitter.setMaxListeners() to increase limit</code></pre>
+      </div>
+      <ul>
+        <li>Це <b>лише warning</b>, слухачі додаються. Запустіть з <code>--trace-warnings</code>, щоб побачити стек, де додано 11-й.</li>
+        <li><code>e.setMaxListeners(n)</code> — коли багато слухачів легітимно (наприклад, 50 підписників на шину).
+        <code>0</code> = без ліміту — цим ви вимикаєте детектор, робіть свідомо.</li>
+        <li>Сучасний патерн прибирання — <b>AbortSignal</b>: <code>e.on('x', fn, { signal })</code> не підтримується
+        класичним EE, але <code>events.on(e, 'x', { signal })</code>, <code>events.once(e, 'x', { signal })</code> і
+        <code>EventTarget.addEventListener('x', fn, { signal })</code> підтримують. Один <code>ac.abort()</code> знімає все.</li>
+      </ul>
+
+      <h3>Async-слухачі і captureRejections</h3>
+      <p>EventEmitter не знає про Promise: якщо слухач — <code>async</code> функція і він кидає, ви отримаєте
+      <b>unhandled rejection</b> (з Node 15 — падіння процесу), а не подію <code>'error'</code>. Опція
+      <code>captureRejections: true</code> ловить відхилені проміси слухачів і перенаправляє їх в <code>'error'</code>:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">ee-capture.js</span></div>
+        <pre><code>const e = new EventEmitter({ captureRejections: true });
+e.on('job', async () =&gt; { throw new Error('async fail'); });
+e.on('error', (err) =&gt; console.log('error event got:', err.message));
+e.emit('job');
+// error event got: async fail</code></pre>
+      </div>
+      <p>Глобально: <code>EventEmitter.captureRejections = true</code>. Важливо: <code>emit()</code> все одно
+      <b>не чекає</b> на проміси слухачів — <code>emit</code> повертається одразу.</p>
+
+      <h3>Мости до async/await: events.once і events.on</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">ee-await.js</span></div>
+        <pre><code>const { EventEmitter, once, on } = require('node:events');
+
+const e = new EventEmitter();
+setTimeout(() =&gt; e.emit('ready', 1, 2), 10);
+const args = await once(e, 'ready');      // [1, 2]; reject, якщо раніше прийде 'error'
+
+// async-ітератор по всіх подіях (обережно: нескінченний, поки не abort/break)
+for await (const [msg] of on(socketLike, 'message', { signal })) handle(msg);
+
+// EventTarget — веб-стандарт, вбудований у Node глобально
+const et = new EventTarget();
+et.addEventListener('ping', (ev) =&gt; console.log(ev.type, ev instanceof Event)); // ping true
+et.dispatchEvent(new Event('ping'));</code></pre>
+      </div>
+
+      <table>
+        <tr><th></th><th>EventEmitter</th><th>EventTarget (Node)</th></tr>
+        <tr><td>Аргументи</td><td>довільні: <code>emit('x', a, b)</code></td><td>один об'єкт <code>Event</code></td></tr>
+        <tr><td>'error'</td><td>особлива, throw без слухача</td><td>немає особливої поведінки; виняток у слухачі → <code>uncaughtException</code> на nextTick</td></tr>
+        <tr><td>Дублікати</td><td>той самий fn можна додати двічі</td><td>той самий fn додається один раз</td></tr>
+        <tr><td>Де зустрінете</td><td>streams, http, process, більшість npm</td><td><code>AbortSignal</code>, <code>MessagePort</code> у воркерах, <code>BroadcastChannel</code>, WebSocket-клієнт</td></tr>
+      </table>
+
+      <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають так</span>
+      "Ваш сервіс після кількох годин роботи пише MaxListenersExceededWarning і RSS росте. Що робите?" —
+      <code>--trace-warnings</code>, щоб знайти місце <code>on()</code>; перевірити, що слухачі на довгоживучих
+      об'єктах знімаються (<code>off</code>, <code>once</code>, AbortSignal); <b>не</b> "лікувати"
+      <code>setMaxListeners(0)</code>; підтвердити heap snapshot-ом (<a href="15-performance-memory.html">туторіал 15</a>).</div></div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Buffer: байти й кодування</h2>
+      <p class="section-desc">Рядок — це текст, Buffer — це байти. Плутанина між ними дає зламані емодзі, неправильні Content-Length і криві підписи.</p>
+
+      <p>JavaScript-рядок — послідовність UTF-16 code units. Але мережа, диск, криптографія працюють із
+      <b>байтами</b>. <code>Buffer</code> — масив байтів фіксованої довжини (кожен елемент 0–255), який живе
+      поза V8 heap. Перетворення "рядок ↔ байти" завжди йде через <b>кодування</b>.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">buffer-encodings.js</span></div>
+        <pre><code>const s = 'Привіт 👋';
+console.log('length:', s.length,                 // 9  — UTF-16 code units (емодзі = 2)
+            'byteLength:', Buffer.byteLength(s),   // 17 — байти в UTF-8 (кирилиця 2, емодзі 4)
+            '[...s].length:', [...s].length);      // 8  — code points (символи, як бачить людина*)
+
+console.log(Buffer.from(s));
+// &lt;Buffer d0 9f d1 80 d0 b8 d0 b2 d1 96 d1 82 20 f0 9f 91 8b&gt;
+
+Buffer.from('Hi!').toString('hex');        // '486921'
+Buffer.from('Hi?&gt;').toString('base64');     // 'SGk/Pg=='
+Buffer.from('Hi?&gt;').toString('base64url');  // 'SGk_Pg'   (без + / =, безпечно для URL/JWT)
+Buffer.from('SGk/Pg==', 'base64').toString(); // 'Hi?&gt;'
+
+// різати байти посеред символу — отримаєте U+FFFD
+Buffer.from(s).subarray(0, 3).toString();  // 'П�'</code></pre>
+      </div>
+      <p class="muted">* Для складених емодзі (сім'я, прапори, тон шкіри) навіть code points ≠ "символ на екрані";
+      для цього є <code>Intl.Segmenter</code> з <code>granularity: 'grapheme'</code>.</p>
+
+      <table>
+        <tr><th>Кодування</th><th>Що це</th><th>Типове застосування</th></tr>
+        <tr><td><code>utf8</code> (default)</td><td>1–4 байти на code point</td><td>текст, JSON, HTTP-тіла</td></tr>
+        <tr><td><code>hex</code></td><td>2 символи на байт</td><td>хеші, ідентифікатори, дебаг</td></tr>
+        <tr><td><code>base64</code></td><td>4 символи на 3 байти (+33%)</td><td>бінарне в JSON/email, data: URI</td></tr>
+        <tr><td><code>base64url</code></td><td>base64 з <code>-_</code> і без padding</td><td>JWT, токени в URL</td></tr>
+        <tr><td><code>latin1</code>/<code>binary</code></td><td>1 байт = 1 символ 0–255</td><td>легасі-протоколи</td></tr>
+        <tr><td><code>utf16le</code>/<code>ucs2</code></td><td>2 (або 4) байти</td><td>Windows API, деякі формати</td></tr>
+        <tr><td><code>ascii</code></td><td>7 біт</td><td>майже ніколи не потрібне явно</td></tr>
+      </table>
+
+      <div class="callout bad"><div class="ic">🐛</div><div class="body"><b>Класичний баг:</b>
+      <code>res.setHeader('Content-Length', body.length)</code> для рядка з кирилицею. <code>.length</code>
+      рахує UTF-16 одиниці, а клієнт отримає більше байтів — відповідь обріжеться або з'єднання зависне.
+      Правильно: <code>Buffer.byteLength(body)</code>. Друга версія того ж бага —
+      <code>chunk.toString()</code> у кожному <code>'data'</code>: багатобайтовий символ, розрізаний між
+      двома chunk-ами, перетвориться на <code>�</code>. Лікується <code>stream.setEncoding('utf8')</code> або
+      <code>StringDecoder</code> (вони тримають "хвіст" незавершеного символу).</div></div>
+
+      <div class="callout info"><div class="ic">💡</div><div class="body">Порівнювати секрети (HMAC-підписи,
+      токени) треба через <code>crypto.timingSafeEqual(bufA, bufB)</code>, а не <code>===</code> — інакше timing
+      attack. Обидва аргументи мають бути Buffer однакової довжини
+      (<a href="14-security.html">туторіал 14</a>).</div></div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Buffer: пам'ять, pool, subarray</h2>
+      <p class="section-desc">Buffer — це вид (view) на шматок ArrayBuffer. Звідси і швидкість, і найпідступніші баги зі спільною пам'яттю.</p>
+
+      <h3>Buffer = Uint8Array + методи</h3>
+      <p>З Node 4+ <code>Buffer</code> — підклас <code>Uint8Array</code>. Тобто кожен Buffer — це
+      <b>вікно</b> (<code>byteOffset</code>, <code>length</code>) на якийсь <code>ArrayBuffer</code>
+      (<code>buf.buffer</code>). Будь-яке API, що приймає <code>Uint8Array</code> (Web Crypto, fetch, TextDecoder),
+      прийме і Buffer. Пам'ять ArrayBuffer-ів рахується як <code>external</code>/<code>arrayBuffers</code> у
+      <code>process.memoryUsage()</code>, а не в <code>heapUsed</code>.</p>
+
+      <h3>alloc vs allocUnsafe і pool</h3>
+      <table>
+        <tr><th>Метод</th><th>Що робить</th><th>Коли</th></tr>
+        <tr><td><code>Buffer.alloc(n)</code></td><td>виділяє і <b>заповнює нулями</b></td><td>за замовчуванням</td></tr>
+        <tr><td><code>Buffer.allocUnsafe(n)</code></td><td>не обнуляє; для малих n бере шматок зі спільного <b>pool</b></td><td>гарячий шлях, якщо ви одразу перезапишете ВСІ байти</td></tr>
+        <tr><td><code>Buffer.allocUnsafeSlow(n)</code></td><td>не обнуляє і не бере з pool</td><td>довгоживучий маленький буфер (щоб не тримати весь pool)</td></tr>
+        <tr><td><code>Buffer.from(...)</code></td><td>копіює рядок/масив/ArrayBuffer (для ArrayBuffer — <b>без копії</b>, вид на нього)</td><td>конвертація</td></tr>
+      </table>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">buffer-pool.js</span></div>
+        <pre><code>const small = Buffer.allocUnsafe(10);
+console.log(small.buffer.byteLength, small.byteOffset); // 65536 48  ← шматок спільного pool
+console.log(Buffer.alloc(10).buffer.byteLength);        // 10        ← власний ArrayBuffer
+console.log(Buffer.from('abc').buffer.byteLength);      // 65536     ← from(string) теж з pool
+console.log(Buffer.poolSize);                           // 65536 на Node 24 (історично було 8 KiB)</code></pre>
+      </div>
+      <p>Pool існує заради швидкості: дрібні виділення не ходять у системний аллокатор щоразу. Ціна:
+      (1) <code>allocUnsafe</code> може містити <b>старі дані</b> іншої частини програми — якщо віддати такий
+      буфер клієнту, не перезаписавши, отримаєте витік секретів (історичний CVE-клас, через це deprecated
+      <code>new Buffer(n)</code>); (2) <code>buf.buffer</code> — це весь pool, тож <code>new Uint8Array(buf.buffer)</code>
+      без <code>byteOffset</code>/<code>length</code> побачить чужі байти.</p>
+
+      <h3>subarray ділить пам'ять, Buffer.from — копіює</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">buffer-share.js</span></div>
+        <pre><code>const orig = Buffer.from('hello');
+const view = orig.subarray(0, 2);               // вид на ТІ САМІ байти
+const copy = Buffer.from(orig.subarray(0, 2));  // справжня копія
+view[0] = 0x4a;                                 // 'J'
+console.log(orig.toString(), view.toString(), copy.toString());
+// Jello Je he
+
+// Увага: Buffer.prototype.slice теж НЕ копіює (і deprecated на користь subarray),
+// а Uint8Array.prototype.slice — копіює. Однакова назва, різна семантика!
+const u = new Uint8Array([1, 2, 3]);
+u.slice(0, 2)[0] = 9; console.log(u[0]);        // 1</code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 220" role="img" aria-label="Один ArrayBuffer pool розміром 64 KB. Buffer orig є вікном на байти 48-53, subarray view — вікно на перші два з них, тобто спільна пам'ять. Buffer.from копіює байти в окрему ділянку пам'яті, тому зміни у view видно в orig, але не в copy.">
+          <defs><marker id="n06d5-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="20" y="28" fill="var(--fg-muted)">ArrayBuffer (pool, 64 KB) — живе поза V8 heap</text>
+            <rect x="20" y="40" width="680" height="40" rx="6" fill="var(--bg-soft)" stroke="currentColor" stroke-width="1.2"/>
+            <rect x="200" y="40" width="200" height="40" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="300" y="65" text-anchor="middle" fill="var(--accent)">J e l l o</text>
+            <text x="110" y="65" text-anchor="middle" fill="var(--fg-muted)">чужі дані</text>
+            <text x="550" y="65" text-anchor="middle" fill="var(--fg-muted)">чужі дані / вільно</text>
+
+            <rect x="200" y="120" width="200" height="30" rx="6" fill="none" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="300" y="140" text-anchor="middle" fill="var(--accent)">orig (offset, len 5)</text>
+            <rect x="200" y="170" width="80" height="30" rx="6" fill="none" stroke="var(--warn)" stroke-width="1.2"/>
+            <text x="240" y="190" text-anchor="middle" fill="var(--warn)">view</text>
+            <line x1="300" y1="120" x2="300" y2="82" stroke="var(--accent)" stroke-width="1.2" marker-end="url(#n06d5-arrow)"/>
+            <line x1="240" y1="170" x2="215" y2="82" stroke="var(--warn)" stroke-width="1.2" marker-end="url(#n06d5-arrow)"/>
+
+            <rect x="500" y="120" width="190" height="80" rx="8" fill="none" stroke="var(--good)" stroke-width="1.2"/>
+            <text x="595" y="142" text-anchor="middle" fill="var(--good)">copy = Buffer.from(view)</text>
+            <rect x="545" y="155" width="100" height="30" rx="4" fill="var(--bg-soft)" stroke="var(--good)" stroke-width="1"/>
+            <text x="595" y="175" text-anchor="middle" fill="var(--good)">h e</text>
+            <text x="420" y="190" text-anchor="middle" fill="var(--fg-muted)">окрема пам'ять</text>
+          </g>
+        </svg>
+        <figcaption>Buffer — лише вікно (offset + length) на ArrayBuffer: subarray/slice дають нове вікно на ту саму пам'ять, Buffer.from — нову пам'ять.</figcaption>
+      </figure>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body"><b>Витік через subarray:</b> ви
+      читаєте файл на 50 MB, берете з нього 20-байтовий <code>subarray</code> як ключ і кладете в кеш — і
+      тримаєте всі 50 MB, бо вид не дає звільнити батьківський ArrayBuffer. Для довгого зберігання —
+      <code>Buffer.from(sub)</code> (копія).</div></div>
+
+      <h3>Ціна конкатенації</h3>
+      <p><code>Buffer</code> має фіксовану довжину, тож "дописати" не можна — <code>Buffer.concat</code> щоразу
+      виділяє новий буфер і копіює все. Конкатенація в циклі — O(n²):</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">buffer-concat.js</span></div>
+        <pre><code>const N = 5000, chunk = Buffer.alloc(100, 1);
+
+let acc = Buffer.alloc(0);
+for (let i = 0; i &lt; N; i++) acc = Buffer.concat([acc, chunk]); // ~683 ms на моїй машині
+
+const parts = [];
+for (let i = 0; i &lt; N; i++) parts.push(chunk);
+const once = Buffer.concat(parts);                                  // ~0.7 ms
+
+// (при N = 20 000 перший варіант — вже ~15 секунд: квадратичне зростання)</code></pre>
+      </div>
+      <div class="remember"><b>🧠 Запам'ятай:</b> збирайте chunk-и в масив і робіть один <code>Buffer.concat(parts, totalLength)</code> наприкінці — а краще взагалі не збирайте, а стрімте далі.</div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Streams: навіщо і 4 типи</h2>
+      <p class="section-desc">Стріми роблять споживання пам'яті сталим, незалежно від розміру даних, і дають обробку "по мірі надходження".</p>
+
+      <p>Два способи прочитати файл на 89 MB (реальний вимір на Node 24, <code>process.memoryUsage().arrayBuffers</code>):</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">memory-compare.js</span></div>
+        <pre><code>// 1) все в пам'ять
+const data = fs.readFileSync('big.csv');
+// readFile: arrayBuffers = 89.3 MB | file = 89.1 MB      ← росте разом із файлом
+
+// 2) стрім chunk-ами по 64 KB
+fs.createReadStream('big.csv').on('data', (c) =&gt; { bytes += c.length; /* ... */ });
+// stream:   peak arrayBuffers = 28.6 MB | read = 89.1 MB  ← обмежено GC, не розміром файлу</code></pre>
+      </div>
+      <p>Чесна примітка: пік у стрім-варіанті не дорівнює 64 KB, бо прочитані chunk-и звільняються збирачем
+      сміття не миттєво. Але це значення <b>не росте</b> з розміром файлу: на 10 GB файлі
+      <code>readFile</code> просто впаде (Buffer має ліміт ~4 GB, а рядок — ~512 MB–1 GB залежно від версії V8),
+      а стрім пройде. Крім пам'яті, стрім дає <b>time-to-first-byte</b>: обробка починається з першого chunk-а,
+      а не після завантаження всього.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 300" role="img" aria-label="Чотири типи стрімів. Readable — джерело, з якого дані тільки читають, наприклад fs.createReadStream або http request на сервері. Writable — приймач, наприклад fs.createWriteStream або http response. Duplex має незалежні readable і writable сторони, наприклад TCP socket. Transform — Duplex, де вихід обчислюється з входу, наприклад gzip.">
+          <defs><marker id="n06d2-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="20" y="20" width="330" height="120" rx="10" fill="none" stroke="var(--good)" stroke-width="1.3"/>
+            <text x="35" y="42" fill="var(--good)" font-weight="bold">Readable — джерело</text>
+            <rect x="40" y="58" width="120" height="40" rx="6" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="100" y="83" text-anchor="middle" fill="currentColor">буфер</text>
+            <line x1="160" y1="78" x2="230" y2="78" stroke="currentColor" stroke-width="1.3" marker-end="url(#n06d2-arrow)"/>
+            <text x="290" y="83" text-anchor="middle" fill="currentColor">read / 'data'</text>
+            <text x="35" y="125" fill="var(--fg-muted)">fs.createReadStream, http req, stdin</text>
+
+            <rect x="390" y="20" width="330" height="120" rx="10" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="405" y="42" fill="var(--info)" font-weight="bold">Writable — приймач</text>
+            <text x="445" y="83" text-anchor="middle" fill="currentColor">write()</text>
+            <line x1="480" y1="78" x2="550" y2="78" stroke="currentColor" stroke-width="1.3" marker-end="url(#n06d2-arrow)"/>
+            <rect x="555" y="58" width="120" height="40" rx="6" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="615" y="83" text-anchor="middle" fill="currentColor">буфер → диск</text>
+            <text x="405" y="125" fill="var(--fg-muted)">fs.createWriteStream, http res, stdout</text>
+
+            <rect x="20" y="160" width="330" height="125" rx="10" fill="none" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="35" y="182" fill="var(--accent)" font-weight="bold">Duplex — два незалежні канали</text>
+            <text x="70" y="212" fill="currentColor">write →</text>
+            <rect x="130" y="198" width="110" height="22" rx="4" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="185" y="214" text-anchor="middle" fill="currentColor">у мережу</text>
+            <rect x="130" y="230" width="110" height="22" rx="4" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="185" y="246" text-anchor="middle" fill="currentColor">з мережі</text>
+            <text x="250" y="246" fill="currentColor">→ read</text>
+            <text x="35" y="274" fill="var(--fg-muted)">net.Socket, TLS socket, WebSocket</text>
+
+            <rect x="390" y="160" width="330" height="125" rx="10" fill="none" stroke="var(--fun)" stroke-width="1.3"/>
+            <text x="405" y="182" fill="var(--fun)" font-weight="bold">Transform — вихід = f(вхід)</text>
+            <text x="420" y="227" fill="currentColor">write →</text>
+            <rect x="480" y="205" width="140" height="34" rx="6" fill="var(--accent-soft)" stroke="var(--fun)"/>
+            <text x="550" y="227" text-anchor="middle" fill="currentColor">_transform(chunk)</text>
+            <text x="630" y="227" fill="currentColor">→ read</text>
+            <text x="405" y="274" fill="var(--fg-muted)">zlib.createGzip, crypto.Cipher, CSV-парсер</text>
+          </g>
+        </svg>
+        <figcaption>Duplex — це два незалежні потоки в одному об'єкті (сокет), Transform — Duplex, у якого вихід виводиться з входу (gzip).</figcaption>
+      </figure>
+
+      <table>
+        <tr><th>Тип</th><th>Реалізуєте</th><th>Ключові події / методи</th></tr>
+        <tr><td>Readable</td><td><code>_read(size)</code> → <code>this.push(chunk)</code>, <code>push(null)</code> = кінець</td><td><code>'data'</code>, <code>'end'</code>, <code>'readable'</code>, <code>read()</code>, <code>pause/resume</code></td></tr>
+        <tr><td>Writable</td><td><code>_write(chunk, enc, cb)</code>, опц. <code>_writev</code>, <code>_final</code></td><td><code>write()</code> → bool, <code>'drain'</code>, <code>end()</code>, <code>'finish'</code></td></tr>
+        <tr><td>Duplex</td><td>обидва: <code>_read</code> + <code>_write</code></td><td>усе вище</td></tr>
+        <tr><td>Transform</td><td><code>_transform(chunk, enc, cb)</code>, опц. <code>_flush(cb)</code></td><td>як Duplex; <code>PassThrough</code> — тривіальний Transform</td></tr>
+      </table>
+      <p>Усі стріми мають <code>'error'</code> і <code>'close'</code>, і всі вони — EventEmitter (тому правило з s3
+      діє: стрім без обробника помилки = потенційне падіння процесу).</p>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Readable: flowing vs paused</h2>
+      <p class="section-desc">Readable має два режими споживання; змішування стилів — джерело "втрачених" даних.</p>
+
+      <p>Кожен Readable стартує в стані <code>readableFlowing === null</code> (ніхто не споживає), і дані просто
+      накопичуються у внутрішньому буфері до <code>highWaterMark</code>, після чого читання з джерела
+      призупиняється.</p>
+      <ul>
+        <li><b>Flowing</b> — дані "течуть" самі через події <code>'data'</code>. Вмикається:
+        <code>on('data')</code>, <code>resume()</code>, <code>pipe()</code>.</li>
+        <li><b>Paused</b> — ви самі тягнете <code>stream.read()</code> на подію <code>'readable'</code>.
+        Вмикається: <code>pause()</code> або підписка на <code>'readable'</code> (вона має пріоритет над 'data').</li>
+      </ul>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 2</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Коли приходить 'data'?</span></div>
+        <div class="codecard"><div class="bar"><span class="path">task-2.js</span></div><pre><code>const { Readable } = require('node:stream');
+const r = new Readable({ read() {} });
+r.push('a'); r.push('b');
+console.log('readableFlowing:', r.readableFlowing);
+r.on('data', (c) =&gt; console.log('data', c.toString()));
+console.log('after on(data):', r.readableFlowing);
+r.pause(); console.log('after pause:', r.readableFlowing);
+r.push('c');
+setTimeout(() =&gt; { console.log('resume'); r.resume(); r.push(null); }, 10);
+r.on('end', () =&gt; console.log('end'));</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">readableFlowing: null
+after on(data): true
+after pause: false
+resume
+data a
+data b
+data c
+end</span><p><code>on('data')</code> перемикає стрім у flowing, але сам потік даних стартує
+        <b>асинхронно</b> (на <code>process.nextTick</code>). Ми встигаємо викликати <code>pause()</code> синхронно —
+        тож жоден chunk не прийшов, вони лежать у буфері. Лише після <code>resume()</code> буфер вивантажується,
+        а <code>push(null)</code> дає <code>'end'</code>. Звідси правило: між <code>on('data')</code> і першою
+        подією у вас є "синхронне вікно", щоб навісити решту слухачів.</p></div></details>
+      </div>
+
+      <h3>Найкращий спосіб споживання — async iteration</h3>
+      <p>Readable реалізує <code>Symbol.asyncIterator</code>. <code>for await</code> сам керує backpressure (бере
+      наступний chunk, лише коли тіло циклу завершилось), прокидає помилки як винятки і знищує стрім при
+      <code>break</code>/<code>throw</code>:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">async-iter.js</span></div>
+        <pre><code>const { Readable, finished } = require('node:stream');
+
+async function* gen() { for (let i = 1; i &lt;= 3; i++) yield `row-${i}\n`; }
+for await (const chunk of Readable.from(gen())) process.stdout.write('got ' + chunk);
+// got row-1  got row-2  got row-3
+
+const r2 = Readable.from(['a', 'b', 'c']);
+finished(r2, (err) =&gt; console.log('finished r2, err =', err?.code));
+for await (const c of r2) { console.log('first:', c); break; }   // break → destroy()
+console.log('r2.destroyed =', r2.destroyed);
+// first: a
+// r2.destroyed = true
+// finished r2, err = ABORT_ERR    ← стрім не дочитали, finished повідомляє про це</code></pre>
+      </div>
+
+      <ul>
+        <li><code>Readable.from(iterable | asyncIterable)</code> — найпростіший спосіб зробити стрім з масиву,
+        генератора, результатів курсора БД. За замовчуванням <b>objectMode: true</b>; рядки не розбиваються на символи.</li>
+        <li>Генератор, що бере дані з повільного джерела, автоматично отримує backpressure: <code>yield</code> не
+        буде викликано повторно, поки споживач не готовий.</li>
+        <li>Readable також має "функціональні" helpers: <code>r.map(fn, { concurrency })</code>, <code>filter</code>,
+        <code>take</code>, <code>toArray()</code>, <code>reduce</code> (експериментальні в частині версій — перевіряйте
+        документацію своєї версії перед продакшеном).</li>
+      </ul>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">Не змішуйте <code>on('data')</code>,
+      <code>pipe()</code> і <code>for await</code> на одному стрімі — кожен з них споживає дані, і chunk-и
+      розподіляться між ними непередбачувано. Обирайте один стиль на стрім.</div></div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Writable і backpressure</h2>
+      <p class="section-desc">Backpressure — механізм, що не дає швидкому виробнику завалити пам'ять повільним споживачем. Це головне питання про streams на співбесіді.</p>
+
+      <p>Кожен стрім має <b><code>highWaterMark</code></b> — поріг (не жорсткий ліміт!) внутрішнього буфера: у
+      байтах для звичайних стрімів (з Node 22 за замовчуванням <b>64 KiB</b>, раніше було 16 KiB; у
+      <code>fs.createReadStream</code> — теж 64 KiB) або в кількості об'єктів для objectMode (16).</p>
+      <ul>
+        <li><code>writable.write(chunk)</code> кладе chunk у буфер і повертає <b><code>false</code></b>, коли
+        <code>writableLength &gt;= highWaterMark</code>. Дані <b>все одно прийняті</b> — <code>false</code> означає
+        "будь ласка, зупинись".</li>
+        <li>Коли буфер повністю спорожніє, Writable емітить <b><code>'drain'</code></b> — сигнал продовжувати.</li>
+        <li>Якщо ігнорувати <code>false</code> і писати далі — Node не впаде і не відкине дані: буфер просто
+        росте в RAM без межі. Це і є витік пам'яті "через стріми".</li>
+      </ul>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">backpressure.js</span></div>
+        <pre><code>const { Writable } = require('node:stream');
+const slow = new Writable({
+  highWaterMark: 4,                                   // 4 байти — щоб побачити ефект
+  write(chunk, enc, cb) { setTimeout(cb, 10); },      // повільний споживач (диск/мережа)
+});
+
+let i = 0;
+function produce() {
+  while (i &lt; 6) {
+    const ok = slow.write(`c${i}`);
+    console.log(`write c${i} -&gt; ${ok}, writableLength=${slow.writableLength}`);
+    i++;
+    if (!ok) {                                        // буфер повний — чекаємо
+      console.log('  pause, wait for drain');
+      slow.once('drain', () =&gt; { console.log('  drain!'); produce(); });
+      return;
+    }
+  }
+  slow.end(() =&gt; console.log('finished'));
+}
+produce();</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">output</span></div>
+        <pre><code>write c0 -&gt; true, writableLength=2
+write c1 -&gt; false, writableLength=4
+  pause, wait for drain
+  drain!
+write c2 -&gt; true, writableLength=2
+write c3 -&gt; false, writableLength=4
+  pause, wait for drain
+  drain!
+write c4 -&gt; true, writableLength=2
+write c5 -&gt; false, writableLength=4
+  pause, wait for drain
+  drain!
+finished</code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 280" role="img" aria-label="Backpressure: швидкий Readable передає chunk-и через write у внутрішній буфер Writable. Коли рівень буфера досягає highWaterMark, write повертає false і виробник ставиться на паузу. Повільний споживач, наприклад диск, вичерпує буфер, після чого Writable емітить drain і виробник продовжує.">
+          <defs><marker id="n06d3-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="20" y="80" width="150" height="70" rx="8" fill="none" stroke="var(--good)" stroke-width="1.3"/>
+            <text x="95" y="108" text-anchor="middle" fill="var(--good)" font-weight="bold">Виробник</text>
+            <text x="95" y="128" text-anchor="middle" fill="currentColor">швидкий (файл, БД)</text>
+
+            <line x1="170" y1="105" x2="285" y2="105" stroke="currentColor" stroke-width="1.3" marker-end="url(#n06d3-arrow)"/>
+            <text x="228" y="96" text-anchor="middle" fill="currentColor">write(chunk)</text>
+
+            <text x="400" y="44" text-anchor="middle" fill="var(--fg-muted)">Внутрішній буфер Writable</text>
+            <rect x="290" y="50" width="220" height="150" rx="6" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <rect x="291" y="130" width="218" height="69" fill="var(--accent-soft)"/>
+            <rect x="291" y="100" width="218" height="30" fill="var(--accent-soft)" opacity="0.6"/>
+            <line x1="285" y1="100" x2="515" y2="100" stroke="var(--bad)" stroke-width="1.5" stroke-dasharray="6,4"/>
+            <text x="400" y="93" text-anchor="middle" fill="var(--bad)">highWaterMark</text>
+            <text x="400" y="170" text-anchor="middle" fill="var(--accent)">chunk-и в черзі</text>
+
+            <line x1="510" y1="165" x2="585" y2="165" stroke="currentColor" stroke-width="1.3" marker-end="url(#n06d3-arrow)"/>
+            <text x="548" y="157" text-anchor="middle" fill="currentColor">_write</text>
+            <rect x="590" y="130" width="130" height="70" rx="8" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="655" y="158" text-anchor="middle" fill="var(--info)" font-weight="bold">Споживач</text>
+            <text x="655" y="178" text-anchor="middle" fill="currentColor">повільний (диск)</text>
+
+            <path d="M300,215 C230,250 120,240 95,155" fill="none" stroke="var(--bad)" stroke-width="1.3" marker-end="url(#n06d3-arrow)"/>
+            <text x="235" y="262" text-anchor="middle" fill="var(--bad)">рівень ≥ HWM → write() = false → пауза</text>
+            <polyline points="655,128 655,22 95,22 95,76" fill="none" stroke="var(--good)" stroke-width="1.3" stroke-dasharray="5,4" marker-end="url(#n06d3-arrow)"/>
+            <text x="560" y="15" text-anchor="middle" fill="var(--good)">буфер порожній → 'drain' → продовжуй</text>
+          </g>
+        </svg>
+        <figcaption>write() повертає false, коли буфер досягнув highWaterMark; виробник зупиняється до 'drain' — так пам'ять залишається обмеженою.</figcaption>
+      </figure>
+
+      <p>Писати цей цикл з <code>drain</code> руками в прикладному коді майже ніколи не потрібно —
+      <code>pipe()</code>, <code>pipeline()</code> і <code>for await</code> роблять його за вас. Але треба розуміти,
+      бо саме його ламають самописні обгортки на зразок <code>source.on('data', c =&gt; dest.write(c))</code>
+      (ігнорує <code>false</code> → необмежений буфер).</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">await-drain.mjs</span></div>
+        <pre><code>import { once } from 'node:events';
+// ручний запис з повагою до backpressure — компактний async-варіант
+for (const row of hugeArray) {
+  if (!out.write(JSON.stringify(row) + '\n')) await once(out, 'drain');
+}
+out.end();</code></pre>
+      </div>
+
+      <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають так</span>
+      "Що станеться, якщо ігнорувати повернення <code>write()</code>?" — дані не втратяться і помилки не буде; вони
+      накопичуватимуться у <code>writableLength</code> у пам'яті процесу, поки не скінчиться RAM (OOM). highWaterMark —
+      поріг для сигналу, а не ліміт.</div></div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> pipe() vs pipeline()</h2>
+      <p class="section-desc">pipe() передає дані, але не помилки; pipeline() передає і те, й інше та прибирає за собою.</p>
+
+      <p><code>a.pipe(b)</code> з'являвся ще в Node 0.x і робить одну річ добре — backpressure. Але:</p>
+      <ul>
+        <li>помилка в <code>a</code> <b>не</b> передається в <code>b</code> і не закриває його — треба
+        <code>.on('error')</code> на КОЖНОМУ стрімі ланцюжка;</li>
+        <li>при помилці стріми не знищуються → відкриті файлові дескриптори, сокети, що висять;</li>
+        <li>немає єдиного місця "весь ланцюжок завершився (успішно чи ні)".</li>
+      </ul>
+      <p><code>stream.pipeline(...streams, callback)</code> (і промісна версія з <code>node:stream/promises</code>)
+      вирішує все це: підписується на помилки кожного стріму, при першій — викликає <code>destroy(err)</code> на всіх,
+      і один раз викликає колбек (резолвить/реджектить проміс).</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">pipe-vs-pipeline.js</span></div>
+        <pre><code>const { Readable, Transform, PassThrough, pipeline } = require('node:stream');
+const make = () =&gt; ({
+  src: new Readable({ read() {} }),
+  bad: new Transform({ transform(c, e, cb) { cb(new Error('transform failed')); } }),
+  dst: new PassThrough(),
+});
+
+{ // 1) pipe()
+  const { src, bad, dst } = make();
+  bad.on('error', (e) =&gt; {
+    console.log('[pipe] bad error:', e.message);
+    setImmediate(() =&gt; console.log('[pipe] src destroyed?', src.destroyed, '| dst destroyed?', dst.destroyed));
+  });
+  src.pipe(bad).pipe(dst);
+  src.push('x');
+}
+setTimeout(() =&gt; { // 2) pipeline()
+  const { src, bad, dst } = make();
+  pipeline(src, bad, dst, (err) =&gt; {
+    console.log('[pipeline] callback:', err &amp;&amp; err.message);
+    console.log('[pipeline] src destroyed?', src.destroyed, '| dst destroyed?', dst.destroyed);
+  });
+  src.push('x');
+}, 50);
+
+// [pipe] bad error: transform failed
+// [pipe] src destroyed? false | dst destroyed? false      ← джерело й приймач "висять"
+// [pipeline] callback: transform failed
+// [pipeline] src destroyed? true | dst destroyed? true    ← прибрано все</code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 250" role="img" aria-label="Ланцюжок pipeline: createReadStream, потім gzip, потім createWriteStream. Дані йдуть зліва направо. Коли gzip падає з помилкою, pipeline викликає destroy на всіх трьох стрімах, закриваючи файлові дескриптори, і один раз викликає callback або reject промісу з цією помилкою.">
+          <defs><marker id="n06d4-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="20" y="40" width="160" height="50" rx="8" fill="none" stroke="var(--good)" stroke-width="1.3"/>
+            <text x="100" y="70" text-anchor="middle" fill="currentColor">createReadStream</text>
+            <rect x="290" y="40" width="160" height="50" rx="8" fill="none" stroke="var(--bad)" stroke-width="1.8"/>
+            <text x="370" y="62" text-anchor="middle" fill="currentColor">createGzip()</text>
+            <text x="370" y="80" text-anchor="middle" fill="var(--bad)">💥 'error'</text>
+            <rect x="560" y="40" width="160" height="50" rx="8" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="640" y="70" text-anchor="middle" fill="currentColor">createWriteStream</text>
+            <line x1="180" y1="65" x2="285" y2="65" stroke="currentColor" stroke-width="1.3" marker-end="url(#n06d4-arrow)"/>
+            <line x1="450" y1="65" x2="555" y2="65" stroke="currentColor" stroke-width="1.3" marker-end="url(#n06d4-arrow)"/>
+            <text x="233" y="56" text-anchor="middle" fill="var(--fg-muted)">дані</text>
+            <text x="503" y="56" text-anchor="middle" fill="var(--fg-muted)">дані</text>
+
+            <rect x="200" y="140" width="340" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="370" y="165" text-anchor="middle" fill="var(--accent)">pipeline: перша помилка → destroy(err) усім</text>
+            <line x1="370" y1="92" x2="370" y2="137" stroke="var(--bad)" stroke-width="1.3" marker-end="url(#n06d4-arrow)"/>
+            <path d="M260,140 C200,120 120,120 100,94" fill="none" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#n06d4-arrow)"/>
+            <path d="M480,140 C540,120 620,120 640,94" fill="none" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#n06d4-arrow)"/>
+            <text x="110" y="155" text-anchor="middle" fill="var(--accent)">destroy → close fd</text>
+            <text x="630" y="155" text-anchor="middle" fill="var(--accent)">destroy → close fd</text>
+
+            <line x1="370" y1="180" x2="370" y2="207" stroke="currentColor" stroke-width="1.3" marker-end="url(#n06d4-arrow)"/>
+            <text x="370" y="228" text-anchor="middle" fill="currentColor">callback(err) / await → reject(err) — рівно один раз</text>
+          </g>
+        </svg>
+        <figcaption>pipeline() перетворює "N стрімів з N обробниками помилок" на одну операцію з одним результатом і гарантованим прибиранням ресурсів.</figcaption>
+      </figure>
+
+      <h3>stream/promises: сучасний стиль</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">pipeline-promises.mjs</span></div>
+        <pre><code>import { pipeline } from 'node:stream/promises';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { createGzip } from 'node:zlib';
+
+const ac = new AbortController();
+setTimeout(() =&gt; ac.abort(), 5_000);              // таймаут на всю операцію
+
+await pipeline(
+  createReadStream('big.csv'),
+  async function* (source) {                       // генератор як Transform!
+    for await (const chunk of source) yield chunk.toString().replaceAll(';', ',');
+  },
+  createGzip(),
+  createWriteStream('big.csv.gz'),
+  { signal: ac.signal },                           // abort → destroy усіх, reject AbortError
+);</code></pre>
+      </div>
+
+      <h3>finished() і семантика destroy</h3>
+      <ul>
+        <li><code>stream.finished(s, cb)</code> / <code>finished</code> з <code>stream/promises</code> — надійно
+        дочекатися, що стрім завершився, помилився або був передчасно закритий (<code>'end'</code>/<code>'finish'</code>
+        можуть ніколи не настати, якщо стрім знищили — тоді <code>finished</code> поверне помилку
+        <code>ERR_STREAM_PREMATURE_CLOSE</code> чи <code>AbortError</code>).</li>
+        <li><code>s.destroy(err?)</code> — негайно звільнити ресурси; буфер відкидається; далі <code>'error'</code> (якщо
+        передали err) і <code>'close'</code>. Після destroy <code>write()</code> дає <code>ERR_STREAM_DESTROYED</code>.</li>
+        <li><code>s.end()</code> — "граційно": дописати буфер, викликати <code>_final</code>, потім <code>'finish'</code>.</li>
+        <li>Стріми за замовчуванням <code>autoDestroy: true</code> — після end/finish або помилки destroy викликається сам.</li>
+      </ul>
+
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: як з'єднати стріми</div>
+        <table><tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>pipeline з stream/promises</b> ✅</td><td>помилки, cleanup, AbortSignal, генератори як transform, await</td><td>трохи багатослівніше за pipe</td></tr>
+          <tr><td><code>for await</code> + ручний write з drain</td><td>повний контроль, логіка поруч</td><td>легко забути backpressure / помилки приймача</td></tr>
+          <tr><td><code>a.pipe(b).pipe(c)</code></td><td>коротко; ок для <code>process.stdout</code></td><td>помилки не прокидаються, ресурси течуть</td></tr>
+          <tr><td><code>on('data')</code> + <code>write()</code></td><td>—</td><td>ігнорує backpressure, антипатерн</td></tr></table>
+        <p><b>Коли що:</b> у продакшен-коді за замовчуванням — <code>await pipeline(...)</code>. <code>pipe()</code> лишіть для
+        швидких скриптів і CLI.</p>
+      </div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Власний Transform і objectMode</h2>
+      <p class="section-desc">Найкорисніший тип для прикладного коду: парсери, конвертери, фільтри, що працюють на будь-якому обсязі.</p>
+
+      <p>Головна складність Transform — <b>межі chunk-ів не збігаються з межами ваших записів</b>. Рядок CSV
+      легко розріжеться між двома chunk-ами по 64 KB. Тому парсер тримає "хвіст" (<code>tail</code>) незавершеного
+      запису і дописує його в <code>_flush</code>.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">csv-transform.js</span></div>
+        <pre><code>const { Transform, Readable, Writable } = require('node:stream');
+const { pipeline } = require('node:stream/promises');
+
+class LineSplitter extends Transform {
+  constructor() { super({ readableObjectMode: true }); this.tail = ''; } // вхід — байти, вихід — рядки
+  _transform(chunk, enc, cb) {
+    const lines = (this.tail + chunk.toString('utf8')).split('\n');
+    this.tail = lines.pop();            // останній шматок може бути неповним
+    for (const l of lines) if (l) this.push(l);
+    cb();                               // готовий до наступного chunk-а
+  }
+  _flush(cb) { if (this.tail) this.push(this.tail); cb(); }   // кінець входу
+}
+
+const toRecord = new Transform({
+  objectMode: true,
+  transform(line, enc, cb) {
+    const [name, qty] = line.split(',');
+    cb(null, { name: name.toUpperCase(), qty: Number(qty) });  // cb(null, x) = push(x) + cb()
+  },
+});
+
+const sink = new Writable({ objectMode: true, write(rec, enc, cb) { console.log(rec); cb(); } });
+
+// chunk-и навмисно розрізають рядки посередині
+const src = Readable.from(['apple,3\nban', 'ana,5\ncher', 'ry,7']);
+pipeline(src, new LineSplitter(), toRecord, sink).then(() =&gt; console.log('done'));
+
+// { name: 'APPLE', qty: 3 }
+// { name: 'BANANA', qty: 5 }
+// { name: 'CHERRY', qty: 7 }
+// done</code></pre>
+      </div>
+
+      <p class="muted">Для продакшену: <code>chunk.toString()</code> у LineSplitter теж може розрізати UTF-8
+      символ на межі chunk-а. Виправлення — <code>StringDecoder</code> з <code>node:string_decoder</code> у
+      <code>_transform</code> (<code>this.decoder.write(chunk)</code>) або просто <code>readline</code> (s12).</p>
+
+      <h3>Правила, які легко порушити</h3>
+      <ul>
+        <li><b>Завжди викликайте <code>cb</code></b> рівно один раз — інакше стрім зависне (не викликали) або впаде з
+        <code>ERR_MULTIPLE_CALLBACK</code>.</li>
+        <li>Помилку передавайте через <code>cb(err)</code>, не <code>throw</code> з асинхронного коду.</li>
+        <li><code>this.push()</code> можна викликати 0..N разів на один вхідний chunk (фільтр / розгортання).</li>
+        <li><code>objectMode: true</code> — chunk-ом може бути будь-яке JS-значення, крім <code>null</code> (це маркер кінця);
+        <code>highWaterMark</code> рахується в штуках (16). Окремо: <code>readableObjectMode</code> /
+        <code>writableObjectMode</code> для "байти на вхід, об'єкти на вихід".</li>
+        <li>Async-логіка всередині <code>_transform</code> (запит у БД на кожен рядок) автоматично дає backpressure:
+        поки ви не викликали <code>cb</code>, наступний chunk не прийде. Але й паралелізму нуль — для нього є
+        <code>readable.map(fn, { concurrency: 8 })</code>.</li>
+      </ul>
+
+      <div class="callout good"><div class="ic">✅</div><div class="body">Часто класу взагалі не треба: у
+      <code>pipeline()</code> можна передати <b>async generator function</b> <code>async function* (source) { for await (const c of source) yield f(c); }</code>
+      — це Transform без бойлерплейту, з backpressure і прокиданням помилок.</div></div>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Web Streams vs Node streams</h2>
+      <p class="section-desc">У Node живуть дві системи стрімів: історичні Node streams і стандартні WHATWG Web Streams (fetch, Blob, CompressionStream).</p>
+
+      <table>
+        <tr><th></th><th>Node streams (<code>node:stream</code>)</th><th>Web Streams (<code>ReadableStream</code> глобально)</th></tr>
+        <tr><td>Походження</td><td>Node 0.x, EventEmitter-based</td><td>WHATWG стандарт, як у браузері / Deno / Bun / Workers</td></tr>
+        <tr><td>Типи</td><td>Readable, Writable, Duplex, Transform</td><td>ReadableStream, WritableStream, TransformStream</td></tr>
+        <tr><td>Backpressure</td><td><code>write()</code> → false + 'drain'</td><td><code>desiredSize</code>, <code>await writer.ready</code>, проміси</td></tr>
+        <tr><td>Споживання</td><td>events, pipe, for await</td><td><code>getReader()</code>, <code>pipeTo</code>/<code>pipeThrough</code>, for await</td></tr>
+        <tr><td>Де віддається</td><td>fs, http, net, zlib, child_process</td><td><code>fetch()</code> body, <code>Blob.stream()</code>, <code>CompressionStream</code></td></tr>
+        <tr><td>Швидкодія в Node</td><td>оптимізовані, нативні шляхи</td><td>зазвичай повільніші через проміси на кожен chunk</td></tr>
+      </table>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">web-bridge.mjs</span></div>
+        <pre><code>import { Readable, Writable } from 'node:stream';
+import { createWriteStream } from 'node:fs';
+import { pipeline } from 'node:stream/promises';
+
+const webR = Readable.toWeb(Readable.from(['x', 'y']));      // Node → Web
+console.log(webR instanceof ReadableStream);                  // true
+for await (const c of webR) console.log('web chunk:', c);     // x, y
+
+const back = Readable.fromWeb(new Blob(['from blob']).stream()); // Web → Node
+for await (const c of back) console.log(Buffer.from(c).toString()); // from blob
+
+// найчастіший реальний кейс: завантажити файл через fetch прямо на диск
+const res = await fetch('https://example.com/big.zip');
+await pipeline(Readable.fromWeb(res.body), createWriteStream('big.zip'));
+// (pipeline у свіжих версіях приймає і Web streams напряму)</code></pre>
+      </div>
+      <p>Є і <code>Writable.toWeb/fromWeb</code>, <code>Duplex.toWeb/fromWeb</code>. Правило: всередині Node-сервісу
+      працюйте з Node streams; Web Streams — на межах з fetch і коли пишете код, що має однаково працювати в Node,
+      Deno, Bun і edge-рантаймах (<a href="19-runtimes-serverless.html">туторіал 19</a>).</p>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Практичні рецепти</h2>
+      <p class="section-desc">Чотири задачі, які реально трапляються в бекенді, — і в кожній ключ у pipeline + backpressure.</p>
+
+      <h3>1. Мультигігабайтний файл рядок за рядком</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">read-lines.js</span></div>
+        <pre><code>const fs = require('node:fs');
+const readline = require('node:readline');
+
+const rl = readline.createInterface({
+  input: fs.createReadStream('big.csv'),   // 3 000 000 рядків, 89 MB
+  crlfDelay: Infinity,                     // \r\n рахувати одним розривом
+});
+let lines = 0, sum = 0;
+for await (const line of rl) { lines++; sum += Number(line.split(',')[2]); }
+console.log({ lines, sum, rssMB: Math.round(process.memoryUsage().rss / 2 ** 20) });
+// { lines: 3000000, sum: 143999352, rssMB: 74 }    ← RSS не залежить від розміру файлу</code></pre>
+      </div>
+      <p class="muted"><code>readline</code> сам розбирається з межами chunk-ів і UTF-8. Якщо в тілі циклу ви
+      робите <code>await</code> (запис у БД), читання призупиняється — backpressure "безкоштовно".</p>
+
+      <h3>2. gzip на льоту</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">gzip.mjs</span></div>
+        <pre><code>import { createReadStream, createWriteStream, statSync } from 'node:fs';
+import { createGzip } from 'node:zlib';
+import { pipeline } from 'node:stream/promises';
+
+await pipeline(createReadStream('big.csv'), createGzip(), createWriteStream('big.csv.gz'));
+console.log('gz bytes:', statSync('big.csv.gz').size, 'of', statSync('big.csv').size);
+// gz bytes: 19160304 of 93468500</code></pre>
+      </div>
+
+      <h3>3 і 4. Upload прямо на диск і відповідь через Transform</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">http-streams.mjs</span></div>
+        <pre><code>import http from 'node:http';
+import { createWriteStream, createReadStream } from 'node:fs';
+import { pipeline } from 'node:stream/promises';
+import { Transform } from 'node:stream';
+import { createGzip } from 'node:zlib';
+
+const server = http.createServer(async (req, res) =&gt; {
+  try {
+    if (req.method === 'PUT' &amp;&amp; req.url === '/upload') {
+      // req — Readable: тіло пишеться на диск chunk-ами, не накопичується в RAM
+      await pipeline(req, createWriteStream('./upload.bin'));
+      res.writeHead(201).end('stored\n');
+    } else if (req.url === '/report') {
+      const upper = new Transform({ transform(c, _e, cb) { cb(null, c.toString().toUpperCase()); } });
+      res.writeHead(200, { 'content-type': 'text/plain', 'content-encoding': 'gzip' });
+      // res — Writable: повільний клієнт → backpressure аж до читання файлу
+      await pipeline(createReadStream('./small.txt'), upper, createGzip(), res);
+    } else res.writeHead(404).end();
+  } catch (err) {
+    // клієнт обірвав з'єднання / диск переповнений: pipeline вже все закрив
+    console.error('stream failed:', err.code ?? err.message);
+    if (!res.headersSent) res.writeHead(500).end(); else res.destroy(err);
+  }
+});
+
+// перевірка: fetch PUT 1 000 000 байт → "201 stored", файл 1000000 байт;
+// GET /report → 200 "HELLO STREAM\nLINE TWO\n" (fetch сам розпакував gzip)</code></pre>
+      </div>
+      <ul>
+        <li>У реальному upload додайте <b>ліміт розміру</b> (Transform, що рахує байти і кидає помилку при перевищенні) і
+        пишіть у тимчасовий файл з подальшим <code>rename</code> (атомарність — <a href="07-fs-process-os.html">туторіал 7</a>).</li>
+        <li>Multipart-форми парсять стрімінгово бібліотеки на кшталт <code>busboy</code>; S3-аплоад — <code>@aws-sdk/lib-storage</code>
+        <code>Upload</code>, який теж приймає стрім.</li>
+        <li>Коли клієнт обриває з'єднання, <code>res</code> знищується → pipeline реджектиться з <code>ERR_STREAM_PREMATURE_CLOSE</code>
+        і закриває файл — без цього в старих <code>pipe()</code>-реалізаціях текли дескриптори.</li>
+      </ul>
+
+      <div class="callout fun"><div class="ic">🎉</div><div class="body"><span class="tag">Цікавий факт</span>
+      Знамениту ідею "стрімів як Unix pipes" для Node популяризував <i>stream-handbook</i> Джеймса Халлідея (substack)
+      — звідти і <code>a.pipe(b).pipe(c)</code>, і назва <code>through</code> для простих transform-ів. А
+      <code>pipeline</code> з'явився в ядрі лише в Node 10 — з модуля <code>pump</code> Матіаса Буса, який
+      роками латав саме проблему "pipe не прокидає помилки".</div></div>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Каверзні питання співбесіди</h2>
+      <p class="section-desc">Питання, на яких відсіюють тих, хто знає streams лише за "fs.createReadStream().pipe(res)".</p>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>EventEmitter асинхронний?</summary>
+        <div class="a"><b>Ні.</b> <code>emit()</code> синхронно викликає слухачів у порядку реєстрації й повертає
+        <code>true/false</code>. Асинхронними є <i>джерела</i> подій (libuv, таймери). Наслідок: важкий слухач блокує
+        того, хто емітить, і весь event loop.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Що буде, якщо async-слухач кине виняток?</summary>
+        <div class="a">EventEmitter не дивиться на повернений Promise → <b>unhandled rejection</b> (падіння процесу за
+        замовчуванням з Node 15), а не <code>'error'</code>. Рішення: <code>captureRejections: true</code> або try/catch у
+        слухачі. І <code>emit</code> не чекає завершення async-слухачів.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чому процес падає від одного emit('error')?</summary>
+        <div class="a">Подія <code>'error'</code> особлива: без жодного слухача EventEmitter робить <code>throw</code>. Тому
+        кожен стрім/сокет/клієнт потребує обробника помилок або має бути частиною <code>pipeline()</code>.
+        <code>errorMonitor</code> — для спостереження, не для обробки.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що таке backpressure і як вона реалізована в Node?</summary>
+        <div class="a">Механізм узгодження швидкостей виробника і споживача. <code>write()</code> повертає <code>false</code>, коли
+        внутрішній буфер досяг <code>highWaterMark</code>; виробник має чекати <code>'drain'</code>. На Readable-стороні —
+        якщо ніхто не читає, буфер заповнюється до HWM і <code>_read</code> перестає викликатися. <code>pipe</code>,
+        <code>pipeline</code>, <code>for await</code> роблять це автоматично.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>highWaterMark — це максимальний розмір буфера?</summary>
+        <div class="a"><b>Ні</b>, це поріг сигналу. Якщо ігнорувати <code>false</code>, буфер росте необмежено. Також один
+        chunk може бути більшим за HWM — він буде прийнятий цілком.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>pipe() vs pipeline()?</summary>
+        <div class="a"><code>pipe</code> дає backpressure, але не прокидає помилки й не знищує інші стріми при помилці → витік
+        fd/сокетів. <code>pipeline</code> підписується на помилки всіх, знищує всіх при першій, викликає один callback / проміс,
+        підтримує AbortSignal і генератори як transform.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>buf.slice() копіює дані?</summary>
+        <div class="a">Для <code>Buffer</code> — <b>ні</b> (вид на ту саму пам'ять, як <code>subarray</code>; slice deprecated). Для
+        <code>Uint8Array</code> — так, копіює. Копія — <code>Buffer.from(buf)</code>. Наслідок: маленький subarray великого
+        буфера тримає весь великий буфер у пам'яті.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чим небезпечний Buffer.allocUnsafe?</summary>
+        <div class="a">Не обнуляє пам'ять і для малих розмірів бере шматок зі спільного pool → може містити старі дані (токени,
+        паролі). Якщо віддати не повністю перезаписаний буфер назовні — витік. До того ж <code>buf.buffer</code> вказує на
+        весь pool.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чому 'Привіт'.length ≠ Buffer.byteLength('Привіт')?</summary>
+        <div class="a"><code>.length</code> — UTF-16 code units (6), <code>byteLength</code> — байти в UTF-8 (12, кирилиця по 2).
+        Емодзі: length 2, байтів 4. Для <code>Content-Length</code> потрібен саме <code>byteLength</code>.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому chunk.toString() у кожному 'data' може ламати текст?</summary>
+        <div class="a">Межа chunk-а може пройти посеред багатобайтового UTF-8 символу → обидві половини декодуються в
+        <code>U+FFFD</code>. Рішення: <code>setEncoding('utf8')</code>, <code>StringDecoder</code>, <code>readline</code> або
+        накопичити байти й декодувати разом.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Duplex vs Transform?</summary>
+        <div class="a">Duplex — дві <b>незалежні</b> сторони (сокет: що пишете — йде в мережу, що читаєте — прийшло з мережі).
+        Transform — Duplex, де вихід обчислюється з входу (<code>_transform</code>), напр. gzip, шифрування, парсер.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Що станеться з файловим стрімом при break у for await?</summary>
+        <div class="a">Ітератор викличе <code>destroy()</code> — стрім закриється, fd звільниться. <code>finished()</code> отримає
+        помилку передчасного закриття (на Node 24 — <code>ABORT_ERR</code>). Якщо треба продовжити читання пізніше — не використовуйте
+        <code>for await</code> з break, або <code>Readable.prototype.iterator({ destroyOnReturn: false })</code>.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Як обробити 10 GB лог-файл, щоб порахувати помилки?</summary>
+        <div class="a"><code>readline.createInterface({ input: fs.createReadStream(path), crlfDelay: Infinity })</code> +
+        <code>for await</code>. Пам'ять стала, обробка почнеться одразу. Для CPU-важкого парсингу — розбити на діапазони байтів
+        і обробляти у <code>worker_threads</code> (<a href="08-concurrency-scaling.html">туторіал 8</a>).</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Web Streams чи Node streams у новому коді?</summary>
+        <div class="a">Всередині Node-сервісу — Node streams (швидші, вся екосистема fs/http/zlib). Web Streams — на межах з
+        <code>fetch</code> і в коді, що має бути переносним між рантаймами. Міст — <code>Readable.toWeb/fromWeb</code>.</div>
+      </details>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Шпаргалка</h2>
+      <p class="section-desc">Усе ключове на одному екрані.</p>
+      <div class="cheat"><table>
+        <tr><th>Задача</th><th>Як</th></tr>
+        <tr><td>Підписатися один раз / await події</td><td><code>e.once('x', fn)</code> / <code>await events.once(e, 'x')</code></td></tr>
+        <tr><td>Слухач першим</td><td><code>e.prependListener('x', fn)</code></td></tr>
+        <tr><td>Зняти слухача</td><td><code>e.off('x', sameFnRef)</code></td></tr>
+        <tr><td>Знайти витік слухачів</td><td><code>node --trace-warnings</code>, <code>e.listenerCount('x')</code></td></tr>
+        <tr><td>Async-слухачі → 'error'</td><td><code>new EventEmitter({ captureRejections: true })</code></td></tr>
+        <tr><td>Розмір рядка в байтах</td><td><code>Buffer.byteLength(str, 'utf8')</code></td></tr>
+        <tr><td>Кодування</td><td><code>buf.toString('hex' | 'base64' | 'base64url')</code>, <code>Buffer.from(s, enc)</code></td></tr>
+        <tr><td>Копія vs вид</td><td><code>Buffer.from(buf)</code> копіює; <code>buf.subarray()</code> ділить пам'ять</td></tr>
+        <tr><td>Склеїти chunk-и</td><td>масив + один <code>Buffer.concat(parts)</code></td></tr>
+        <tr><td>Стрім з масиву/генератора</td><td><code>Readable.from(iterable)</code> (objectMode)</td></tr>
+        <tr><td>Спожити стрім</td><td><code>for await (const chunk of readable)</code></td></tr>
+        <tr><td>З'єднати стріми</td><td><code>await pipeline(a, transform, b, { signal })</code> з <code>node:stream/promises</code></td></tr>
+        <tr><td>Ручний запис з backpressure</td><td><code>if (!w.write(c)) await once(w, 'drain')</code></td></tr>
+        <tr><td>Дочекатися кінця стріму</td><td><code>await finished(stream)</code></td></tr>
+        <tr><td>Рядки великого файлу</td><td><code>readline.createInterface({ input, crlfDelay: Infinity })</code></td></tr>
+        <tr><td>Web ↔ Node</td><td><code>Readable.fromWeb(res.body)</code>, <code>Readable.toWeb(nodeStream)</code></td></tr>
+        <tr><td>Default highWaterMark</td><td>64 KiB (байти, Node 22+) / 16 (objectMode)</td></tr>
+      </table></div>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Як запам'ятати</h2>
+      <p class="section-desc">Асоціації, які спливуть у голові на співбесіді.</p>
+      <div class="flashgrid">
+        <div class="flashcard">
+          <div class="fc-num">1</div>
+          <div class="term">emit()</div>
+          <div class="def">Синхронно викликає всіх слухачів по черзі і лише потім повертається.</div>
+          <div class="mnemo"><b>Асоціація:</b> староста, що особисто обходить кожного в списку — поки не обійде всіх, далі не йде.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">2</div>
+          <div class="term">'error' без слухача</div>
+          <div class="def">EventEmitter кидає помилку → процес падає.</div>
+          <div class="mnemo"><b>Асоціація:</b> пожежна сигналізація, не підключена до пульта, — вмикає спринклери по всій будівлі.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">3</div>
+          <div class="term">MaxListenersExceeded</div>
+          <div class="def">Попередження про &gt;10 слухачів однієї події — типова ознака витоку.</div>
+          <div class="mnemo"><b>Асоціація:</b> одинадцять людей у ліфті на десятьох — ліфт поїде, але дзвоник пищить не дарма.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">4</div>
+          <div class="term">Buffer</div>
+          <div class="def">Uint8Array-вікно на ArrayBuffer поза V8 heap; байти, не текст.</div>
+          <div class="mnemo"><b>Асоціація:</b> рамка, прикладена до довгої фотоплівки: рамок багато, плівка одна.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">5</div>
+          <div class="term">subarray vs from</div>
+          <div class="def">subarray ділить пам'ять, Buffer.from копіює.</div>
+          <div class="mnemo"><b>Асоціація:</b> посилання на Google Doc (бачиш зміни) vs завантажений PDF (знімок).</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">6</div>
+          <div class="term">highWaterMark</div>
+          <div class="def">Поріг буфера, після якого write() каже "стоп" (false).</div>
+          <div class="mnemo"><b>Асоціація:</b> позначка рівня на дамбі — вода може піднятися вище, але шлюзи вже треба закривати.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">7</div>
+          <div class="term">'drain'</div>
+          <div class="def">Буфер Writable спорожнів — можна писати далі.</div>
+          <div class="mnemo"><b>Асоціація:</b> касир кличе "наступний!" — тоді й підходиш.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">8</div>
+          <div class="term">pipeline()</div>
+          <div class="def">З'єднує стріми, прокидає помилку і знищує всіх при першій.</div>
+          <div class="mnemo"><b>Асоціація:</b> конвеєр з аварійною кнопкою: зупиняє всю лінію, а не одну стрічку.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">9</div>
+          <div class="term">Transform + tail</div>
+          <div class="def">Межі chunk-ів ≠ межі записів; зберігай незавершений хвіст до наступного chunk-а.</div>
+          <div class="mnemo"><b>Асоціація:</b> читаєш книгу посторінково — речення, що перейшло на наступну сторінку, тримаєш у голові.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">10</div>
+          <div class="term">Duplex vs Transform</div>
+          <div class="def">Duplex — дві незалежні труби; Transform — одна труба з фільтром.</div>
+          <div class="mnemo"><b>Асоціація:</b> телефон (говориш і слухаєш незалежно) vs перекладач (що чує — те й видає, перекладене).</div>
+        </div>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Node.js Doc · частина серії туторіалів AI Delivery Planner. Приклади коду перевірені на Node.js 24.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

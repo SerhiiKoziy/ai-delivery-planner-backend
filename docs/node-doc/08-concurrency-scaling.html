@@ -1,0 +1,1446 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8. worker_threads, cluster і масштабування — Node.js Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🟢 Node.js Doc <span>· AI Delivery Planner</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Node.js Doc · Туторіал 8 з 20</div>
+  <h1>worker_threads, cluster і масштабування: як Node використовує більше одного ядра</h1>
+  <p class="lead">Один потік JavaScript прекрасно чекає на тисячі I/O-операцій, але одна важка функція зупиняє все. Розберемо, <b>коли потрібні worker_threads, коли cluster, а коли — просто ще один pod за load balancer-ом</b>, як працюють SharedArrayBuffer і Atomics, і чому shared state мусить жити в Redis.</p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="07-fs-process-os.html">7. fs, process, os</a>
+        <a href="08-concurrency-scaling.html" class="active">8. Workers, cluster, масштаб</a>
+        <a href="09-http-networking.html">9. HTTP і мережа</a>
+        <a href="10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="12-databases-orm.html">12. БД і ORM</a>
+        <a href="13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="14-security.html">14. Безпека Node</a>
+        <a href="15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="16-testing.html">16. Тестування</a>
+        <a href="17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+  </aside>
+
+    <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Concurrency vs parallelism</a></li>
+      <li><a href="#s2">2. CPU-bound: демо блокування</a></li>
+      <li><a href="#s3">3. worker_threads: основи</a></li>
+      <li><a href="#s4">4. Модель пам'яті і передача даних</a></li>
+      <li><a href="#s5">5. SharedArrayBuffer і Atomics</a></li>
+      <li><a href="#s6">6. Життєвий цикл, помилки, resourceLimits</a></li>
+      <li><a href="#s7">7. Пул воркерів і piscina</a></li>
+      <li><a href="#s8">8. UV_THREADPOOL_SIZE ≠ worker_threads</a></li>
+      <li><a href="#s9">9. cluster</a></li>
+      <li><a href="#s10">10. PM2</a></li>
+      <li><a href="#s11">11. Горизонтальне масштабування</a></li>
+      <li><a href="#s12">12. Куди подіти CPU-роботу</a></li>
+      <li><a href="#s13">13. Каверзні питання співбесіди</a></li>
+      <li><a href="#s14">14. Шпаргалка</a></li>
+      <li><a href="#s15">15. Як запам'ятати</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Concurrency vs parallelism</h2>
+      <p class="section-desc">Node з коробки дає concurrency (багато задач у процесі), але не parallelism (кілька задач в один момент на різних ядрах) для вашого JS.</p>
+
+      <table>
+        <tr><th></th><th>Concurrency</th><th>Parallelism</th></tr>
+        <tr><td>Визначення</td><td>багато задач <b>перебувають у процесі</b> виконання, чергуючись</td><td>кілька задач <b>виконуються одночасно</b> на різних ядрах</td></tr>
+        <tr><td>Аналогія</td><td>один кухар, який поставив 10 каструль і перемикається між ними</td><td>п'ять кухарів, кожен зі своєю каструлею</td></tr>
+        <tr><td>У Node</td><td>event loop + неблокуюче I/O: 10 000 відкритих з'єднань в одному потоці</td><td>worker_threads, cluster/кілька процесів, libuv threadpool, нативні аддони</td></tr>
+        <tr><td>Допомагає для</td><td>I/O-bound: БД, HTTP-виклики, файли</td><td>CPU-bound: хешування, стиснення, парсинг, ML-інференс, рендер зображень</td></tr>
+      </table>
+
+      <p>Ваш JavaScript у звичайному Node-процесі виконується в <b>одному потоці</b> — main thread з одним V8 isolate.
+      Сам процес при цьому має ще потоки: libuv threadpool (fs, dns.lookup, crypto, zlib), потоки V8 для GC і JIT-компіляції.
+      Тому <code>top</code> може показати Node на 130% CPU, а ваш код усе одно не паралельний. Як event loop чергує задачі —
+      <a href="02-event-loop-deep-dive.html">туторіал 2</a>; асинхронні патерни (<code>Promise.all</code> — це concurrency, не
+      parallelism!) — <a href="03-async-patterns.html">туторіал 3</a>.</p>
+
+      <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають так</span>
+      "Чи робить <code>Promise.all([hash(a), hash(b)])</code> обчислення паралельними?" — Якщо <code>hash</code> — чистий JS, ні: обидва виконаються
+      послідовно на main thread, Promise.all лише чекає. Паралельно буде, лише якщо робота йде поза JS-потоком — в libuv
+      (<code>crypto.pbkdf2</code>), у воркері або в іншому процесі/сервісі.</div></div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> CPU-bound: демо блокування</h2>
+      <p class="section-desc">Одна синхронна функція на 1 секунду = одна секунда, коли сервер не відповідає НІКОМУ, включно з health-check.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">block.js</span></div>
+        <pre><code>const http = require('node:http');
+const fib = (n) =&gt; (n &lt; 2 ? n : fib(n - 1) + fib(n - 2));
+
+const server = http.createServer((req, res) =&gt; {
+  if (req.url === '/fib') return res.end(String(fib(40)));   // ~1.2 с чистого CPU
+  res.end('pong');
+}).listen(0, async () =&gt; {
+  const base = `http://localhost:${server.address().port}`;
+  const t0 = performance.now();
+  const slow = fetch(base + '/fib').then(() =&gt;
+    console.log(`/fib  done at ${Math.round(performance.now() - t0)} ms`));
+  await new Promise((r) =&gt; setTimeout(r, 20));
+  const t1 = performance.now();
+  await fetch(base + '/ping');                                   // найлегший запит
+  console.log(`/ping done at ${Math.round(performance.now() - t0)} ms (waited ${Math.round(performance.now() - t1)} ms)`);
+  await slow; server.close();
+});
+
+// /fib  done at 1273 ms
+// /ping done at 1274 ms (waited 1209 ms)    ← "pong" чекав, поки порахується fib</code></pre>
+      </div>
+      <p>Реальні продакшен-аналоги <code>fib(40)</code>: <code>JSON.parse</code> на 50 MB тілі, <code>bcrypt</code>/<code>argon2</code> в JS-реалізації,
+      <b>катастрофічний backtracking у RegExp</b> (ReDoS), sort на мільйоні елементів, генерація PDF/Excel, ресайз зображень на чистому JS,
+      шаблонізація великої сторінки. Діагностика — event loop lag (<code>perf_hooks.monitorEventLoopDelay</code>), CPU-профіль
+      (<a href="15-performance-memory.html">туторіал 15</a>).</p>
+
+      <h3>Перші ліки — без потоків</h3>
+      <ul>
+        <li><b>Зробити менше роботи</b>: кеш, пагінація, стрімінговий парсер замість <code>JSON.parse</code> гіганта, правильний алгоритм.</li>
+        <li><b>Нативні/асинхронні версії</b>: <code>crypto.scrypt</code> замість JS-хешування (йде в libuv threadpool), <code>sharp</code> (libvips у своїх потоках)
+        замість JS-ресайзу, <code>zlib</code> async-API.</li>
+        <li><b>Розбити на шматки</b> з <code>setImmediate</code> між ними — loop "дихає", але загальний час той самий і код складніший. Компроміс для
+        рідкісних задач на 50–200 мс.</li>
+        <li>Якщо після цього CPU-робота лишається — потрібен справжній паралелізм: далі.</li>
+      </ul>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> worker_threads: основи</h2>
+      <p class="section-desc">Worker — це окремий потік ОС з власним V8 isolate, власним event loop і власною пам'яттю JS, але в тому ж процесі.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">fib-worker.js</span></div>
+        <pre><code>const { Worker, isMainThread, parentPort, workerData } = require('node:worker_threads');
+const fib = (n) =&gt; (n &lt; 2 ? n : fib(n - 1) + fib(n - 2));
+
+if (!isMainThread) {
+  // --- код воркера ---
+  parentPort.postMessage(fib(workerData.n));
+} else {
+  // --- код main thread ---
+  const N = 38, JOBS = 4;
+  const runInWorker = (n) =&gt; new Promise((resolve, reject) =&gt; {
+    const w = new Worker(__filename, { workerData: { n } });  // workerData клонується
+    w.once('message', resolve);
+    w.once('error', reject);                                   // виняток у воркері
+  });
+
+  let t = performance.now();
+  for (let i = 0; i &lt; JOBS; i++) fib(N);
+  console.log(`main thread, ${JOBS} x fib(${N}) sequential: ${Math.round(performance.now() - t)} ms`);
+
+  t = performance.now();
+  const ticks = []; const iv = setInterval(() =&gt; ticks.push(1), 10);   // чи живий main loop?
+  await Promise.all(Array.from({ length: JOBS }, () =&gt; runInWorker(N)));
+  clearInterval(iv);
+  console.log(`${JOBS} workers in parallel: ${Math.round(performance.now() - t)} ms (main loop ticked ${ticks.length}x meanwhile)`);
+
+  t = performance.now();
+  await runInWorker(1);
+  console.log(`worker startup overhead (fib(1)): ${Math.round(performance.now() - t)} ms`);
+}</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">output (8 фізичних ядер)</span></div>
+        <pre><code>main thread, 4 x fib(38) sequential: 1816 ms
+4 workers in parallel:            584 ms (main loop ticked 56x meanwhile)
+worker startup overhead (fib(1)):     28 ms</code></pre>
+      </div>
+      <p class="muted">(Для стислості верхньорівневий <code>await</code> показано в CJS-фрагменті; у реальному файлі він загорнутий в async IIFE.)</p>
+      <p>Три висновки з цифр: (1) прискорення ~3.1× на 4 воркерах — майже лінійне для чистого CPU; (2) main loop <b>продовжував
+      працювати</b> (56 тіків таймера) — сервер відповідав би на запити; (3) старт воркера — <b>десятки мілісекунд</b> і кілька MB пам'яті
+      (новий isolate, завантаження модулів), тому створювати воркер на кожен запит — антипатерн; потрібен пул (s7).</p>
+
+      <h3>API, які треба знати</h3>
+      <table>
+        <tr><th>API</th><th>Що робить</th></tr>
+        <tr><td><code>new Worker(file | URL, { workerData, eval, env, argv, resourceLimits, transferList })</code></td><td>старт потоку; <code>file</code> — шлях або <code>new URL('./w.js', import.meta.url)</code></td></tr>
+        <tr><td><code>isMainThread</code>, <code>threadId</code></td><td>де я виконуюсь</td></tr>
+        <tr><td><code>parentPort.postMessage(v)</code> / <code>worker.postMessage(v)</code></td><td>повідомлення в обидва боки (structured clone)</td></tr>
+        <tr><td><code>new MessageChannel()</code> → <code>{ port1, port2 }</code></td><td>окремий канал; порт можна передати в іншого воркера через transferList — воркери говорять напряму</td></tr>
+        <tr><td><code>BroadcastChannel</code></td><td>pub/sub між усіма потоками процесу</td></tr>
+        <tr><td><code>worker.terminate()</code></td><td>зупинити (повертає проміс з exit code)</td></tr>
+        <tr><td><code>worker.unref()</code></td><td>не тримати процес живим через цей воркер</td></tr>
+        <tr><td><code>receiveMessageOnPort(port)</code></td><td>синхронно забрати повідомлення (рідко, разом з Atomics)</td></tr>
+      </table>
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">У воркері <b>немає</b> <code>process.chdir()</code>,
+      а <code>process.exit()</code> завершує лише воркер. <code>process.env</code> — копія (за замовчуванням), сигнали обробляє лише main thread.
+      Нативні аддони мають бути "context-aware", щоб завантажитися у воркері.</div></div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Модель пам'яті і передача даних</h2>
+      <p class="section-desc">Воркери не діляться JS-об'єктами. Дані або копіюються, або переносяться, або живуть у явно спільному буфері.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 330" role="img" aria-label="Один процес Node з двома потоками: main thread і worker. Кожен має власний V8 isolate з окремим heap, event loop і GC; об'єкти одного не видно іншому. Між ними є три способи обміну: postMessage зі structured clone, коли дані копіюються; transferList, коли ArrayBuffer переноситься і у відправника стає довжиною нуль; SharedArrayBuffer, коли обидва бачать одну й ту саму пам'ять і синхронізуються через Atomics.">
+          <defs><marker id="n08d1-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="10" width="720" height="310" rx="12" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="5,4"/>
+            <text x="24" y="30" fill="var(--fg-muted)">Один ОС-процес (спільні: PID, fd, libuv threadpool, нативна пам'ять)</text>
+
+            <rect x="30" y="45" width="220" height="150" rx="10" fill="var(--bg-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="140" y="68" text-anchor="middle" fill="var(--accent)" font-weight="bold">Main thread</text>
+            <text x="140" y="90" text-anchor="middle" fill="currentColor">V8 isolate #1</text>
+            <text x="140" y="110" text-anchor="middle" fill="currentColor">власний heap + GC</text>
+            <text x="140" y="130" text-anchor="middle" fill="currentColor">власний event loop</text>
+            <text x="140" y="160" text-anchor="middle" fill="var(--fg-muted)">{ user } — не видно воркеру</text>
+
+            <rect x="490" y="45" width="220" height="150" rx="10" fill="var(--bg-soft)" stroke="var(--info)" stroke-width="1.4"/>
+            <text x="600" y="68" text-anchor="middle" fill="var(--info)" font-weight="bold">Worker thread</text>
+            <text x="600" y="90" text-anchor="middle" fill="currentColor">V8 isolate #2</text>
+            <text x="600" y="110" text-anchor="middle" fill="currentColor">власний heap + GC</text>
+            <text x="600" y="130" text-anchor="middle" fill="currentColor">власний event loop</text>
+            <text x="600" y="160" text-anchor="middle" fill="var(--fg-muted)">модулі завантажені заново</text>
+
+            <line x1="252" y1="75" x2="486" y2="75" stroke="currentColor" stroke-width="1.3" marker-end="url(#n08d1-arrow)"/>
+            <text x="370" y="68" text-anchor="middle" fill="currentColor">1. postMessage(obj) — КОПІЯ</text>
+            <text x="370" y="92" text-anchor="middle" fill="var(--fg-muted)">structured clone, O(розміру)</text>
+
+            <line x1="252" y1="125" x2="486" y2="125" stroke="var(--good)" stroke-width="1.3" marker-end="url(#n08d1-arrow)"/>
+            <text x="370" y="118" text-anchor="middle" fill="var(--good)">2. transferList — ПЕРЕНОС</text>
+            <text x="370" y="142" text-anchor="middle" fill="var(--fg-muted)">у відправника byteLength = 0</text>
+
+            <rect x="250" y="225" width="240" height="70" rx="10" fill="var(--accent-soft)" stroke="var(--warn)" stroke-width="1.5"/>
+            <text x="370" y="250" text-anchor="middle" fill="var(--warn)" font-weight="bold">3. SharedArrayBuffer</text>
+            <text x="370" y="270" text-anchor="middle" fill="currentColor">одна пам'ять для обох</text>
+            <text x="370" y="287" text-anchor="middle" fill="var(--fg-muted)">синхронізація — Atomics</text>
+            <line x1="140" y1="197" x2="248" y2="255" stroke="var(--warn)" stroke-width="1.3" marker-end="url(#n08d1-arrow)"/>
+            <line x1="600" y1="197" x2="492" y2="255" stroke="var(--warn)" stroke-width="1.3" marker-end="url(#n08d1-arrow)"/>
+            <text x="90" y="250" fill="var(--warn)">Int32Array view</text>
+            <text x="555" y="250" fill="var(--warn)">Int32Array view</text>
+          </g>
+        </svg>
+        <figcaption>Ізоляти не діляться об'єктами: або копія (дорого для великих даних), або перенос буфера (майже безкоштовно), або явно спільна пам'ять (швидко, але потрібні Atomics).</figcaption>
+      </figure>
+
+      <h3>Structured clone: що копіюється і скільки коштує</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">clone-cost.js</span></div>
+        <pre><code>const { MessageChannel } = require('node:worker_threads');
+const { port1 } = new MessageChannel();
+
+const rows = Array.from({ length: 200_000 }, (_, i) =&gt; ({ id: i, name: 'user' + i, tags: ['a', 'b'] }));
+let t = performance.now();
+port1.postMessage(rows);
+console.log('postMessage 200k objects:', Math.round(performance.now() - t), 'ms');  // ~115 ms БЛОКУЄ відправника
+
+try { port1.postMessage({ fn: () =&gt; 1 }); } catch (e) { console.log(e.name, '-', e.message); }
+// DataCloneError - () =&gt; 1 could not be cloned.
+
+class User { constructor() { this.n = 1; } hi() {} }
+const c = structuredClone(new User());
+console.log(c, c instanceof User);       // { n: 1 } false   ← прототип і методи втрачено</code></pre>
+      </div>
+      <ul>
+        <li>Клонуються: примітиви, plain objects, масиви, <code>Date</code>, <code>RegExp</code>, <code>Map</code>, <code>Set</code>, <code>BigInt</code>,
+        typed arrays, <code>Error</code>, циклічні посилання. <b>Не</b> клонуються: функції, класові прототипи (лишаються лише поля), DOM-подібні
+        хендли, Symbol-ключі, геттери (обчислюються в значення).</li>
+        <li>Серіалізація відбувається <b>синхронно на потоці відправника</b> — віддати воркеру 100 MB JSON-подібних даних означає заблокувати main
+        thread на сотні мс, тобто втратити те, заради чого воркер створювали.</li>
+        <li>Тому воркеру краще передавати <b>посилання на дані</b> (шлях до файлу, id у БД, діапазон рядків), а не самі дані.</li>
+      </ul>
+
+      <h3>transferList: перенос замість копії</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">transfer.js</span></div>
+        <pre><code>const big = new ArrayBuffer(100 * 1024 * 1024);
+port1.postMessage(big);                      // клон
+// clone   : 133.0 ms; sender still has 104857600
+
+const big2 = new ArrayBuffer(100 * 1024 * 1024);
+port1.postMessage(big2, [big2]);             // перенос власності
+// transfer: 0.0 ms; sender now has 0       ← буфер "detached" у відправника</code></pre>
+      </div>
+      <p>Переносити можна <code>ArrayBuffer</code>, <code>MessagePort</code>, <code>FileHandle</code>, Web Streams. Пастка: Buffer-и з <b>пулу</b>
+      (<code>Buffer.from('...')</code>, малі <code>allocUnsafe</code> — див. <a href="06-events-streams-buffers.html">туторіал 6</a>) ділять один
+      ArrayBuffer — перенос "відірвав" би чужі дані, тому Node позначає pool як непереносний:
+      <code>postMessage(b, [b.buffer])</code> для <code>Buffer.from('hello')</code> кидає <code>DataCloneError: Cannot transfer object of unsupported type</code>
+      (перевірено), а для <code>Buffer.alloc(10)</code> — переносить. Для переносу виділяйте <code>Buffer.alloc</code> / окремий ArrayBuffer.</p>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> SharedArrayBuffer і Atomics</h2>
+      <p class="section-desc">Справжня спільна пам'ять між потоками — і разом з нею всі класичні проблеми: гонки, видимість, дедлоки.</p>
+
+      <p><code>SharedArrayBuffer</code> (SAB), переданий у <code>workerData</code> або <code>postMessage</code>, <b>не копіюється</b>: усі потоки
+      бачать ті самі байти. Працювати з ним можна лише через typed arrays (<code>Int32Array</code>, <code>Float64Array</code>...) — ніяких
+      об'єктів. І тут JavaScript уперше отримує data races.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">race.js</span></div>
+        <pre><code>const { Worker, isMainThread, workerData } = require('node:worker_threads');
+const ITER = 1_000_000, THREADS = 4;
+
+if (!isMainThread) {
+  const arr = new Int32Array(workerData.sab);
+  for (let i = 0; i &lt; ITER; i++) {
+    if (workerData.atomic) Atomics.add(arr, 0, 1);   // атомарний read-modify-write
+    else arr[0]++;                                   // read → +1 → write: можна перебити посередині
+  }
+} else {
+  const run = (atomic) =&gt; new Promise((resolve) =&gt; {
+    const sab = new SharedArrayBuffer(4);
+    let done = 0;
+    for (let t = 0; t &lt; THREADS; t++)
+      new Worker(__filename, { workerData: { sab, atomic } }).on('exit', () =&gt; {
+        if (++done === THREADS) resolve(new Int32Array(sab)[0]);
+      });
+  });
+  console.log('expected        :', ITER * THREADS);
+  console.log('plain arr[0]++  :', await run(false));
+  console.log('Atomics.add     :', await run(true));
+}
+
+// expected        : 4000000
+// plain arr[0]++  : 1139542     ← 70% інкрементів загубилися (число різне щоразу)
+// Atomics.add     : 4000000</code></pre>
+      </div>
+
+      <table>
+        <tr><th>Atomics</th><th>Призначення</th></tr>
+        <tr><td><code>load</code>, <code>store</code></td><td>читання/запис з гарантією видимості для інших потоків</td></tr>
+        <tr><td><code>add</code>, <code>sub</code>, <code>and</code>, <code>or</code>, <code>xor</code>, <code>exchange</code></td><td>атомарні RMW-операції (лічильники, прапорці)</td></tr>
+        <tr><td><code>compareExchange(arr, i, expected, value)</code></td><td>CAS — основа для lock-free структур і м'ютексів</td></tr>
+        <tr><td><code>wait(arr, i, value, timeout)</code></td><td><b>блокуюче</b> очікування, поки <code>arr[i] === value</code>; повертає <code>'ok'</code> / <code>'not-equal'</code> / <code>'timed-out'</code></td></tr>
+        <tr><td><code>notify(arr, i, count)</code></td><td>розбудити N потоків, що чекають на цій комірці</td></tr>
+        <tr><td><code>waitAsync</code></td><td>неблокуючий варіант, повертає проміс — придатний для main thread</td></tr>
+      </table>
+
+      <h3>Atomics.wait / notify</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">wait-notify.js</span></div>
+        <pre><code>// worker:
+const flag = new Int32Array(workerData.sab);
+const r = Atomics.wait(flag, 0, 0, 5000);        // потік СПИТЬ, поки flag[0] === 0 (макс. 5 с)
+parentPort.postMessage(`worker woke up: ${r}, flag=${flag[0]}`);
+
+// main:
+setTimeout(() =&gt; {
+  Atomics.store(flag, 0, 1);
+  console.log('main: notified', Atomics.notify(flag, 0), 'waiter(s)');
+}, 300);
+
+// main: notified 1 waiter(s)
+// worker woke up: ok after ~300 ms, flag=1</code></pre>
+      </div>
+
+      <div class="callout bad"><div class="ic">🧊</div><div class="body"><b>Дедлоки і заморожений main thread.</b>
+      На відміну від браузера, Node <b>дозволяє</b> <code>Atomics.wait</code> на main thread — і це майже завжди помилка: поки main спить,
+      event loop стоїть, жодні запити, таймери і <b>навіть повідомлення від воркерів</b> не обробляються. Класичний дедлок — два потоки чекають
+      один одного:
+      <pre><code>// worker: Atomics.wait(flags, 1, 0, 1000)   — чекає, поки main поставить flags[1]
+// main:   Atomics.wait(flags, 0, 0, 1000)   — чекає, поки worker поставить flags[0]
+// worker: wait -&gt; timed-out                  ← лише таймаут розірвав цикл
+// main:   wait -&gt; ok after ~1000 ms          ← (без таймаутів — вічне зависання)</code></pre>
+      Правила: на main thread — лише <code>Atomics.waitAsync</code> або повідомлення; завжди таймаут; однаковий порядок захоплення
+      "замків"; і загалом — віддавайте перевагу message passing, SAB лишайте для гарячих числових буферів (аудіо, зображення, лічильники
+      прогресу, ring buffer-и).</div></div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Життєвий цикл, помилки, resourceLimits</h2>
+      <p class="section-desc">Воркер може впасти, вийти за пам'ять або зависнути — і main thread має це пережити.</p>
+
+      <ul>
+        <li><code>'online'</code> — почав виконувати код; <code>'message'</code>; <code>'error'</code> — неперехоплений виняток у воркері (воркер після
+        цього завершується); <code>'exit'</code> (code) — завжди останнє. Без слухача <code>'error'</code> помилка воркера стане помилкою
+        процесу.</li>
+        <li><code>'messageerror'</code> — повідомлення не вдалося десеріалізувати.</li>
+        <li>Зависання (нескінченний цикл) не дає ні error, ні exit — потрібен <b>таймаут на задачу</b> + <code>worker.terminate()</code>.
+        terminate перериває навіть синхронний цикл.</li>
+      </ul>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">limits.js</span></div>
+        <pre><code>const { Worker } = require('node:worker_threads');
+const w = new Worker(`const a = []; while (true) a.push(new Array(1e5).fill(1));`, {
+  eval: true,
+  resourceLimits: { maxOldGenerationSizeMb: 32 },   // також maxYoungGenerationSizeMb, codeRangeSizeMb, stackSizeMb
+});
+w.on('error', (e) =&gt; console.log('worker error:', e.code, '-', e.message));
+w.on('exit', (c) =&gt; console.log('worker exit code:', c, '| main thread alive:', true));
+
+// worker error: ERR_WORKER_OUT_OF_MEMORY - Worker terminated due to reaching memory limit: JS heap out of memory
+// worker exit code: 1 | main thread alive: true</code></pre>
+      </div>
+      <p><code>resourceLimits</code> обмежують лише JS heap воркера — Buffer-и та нативна пам'ять у ліміт не входять. Це не ізоляція безпеки: воркер
+      у тому ж процесі може читати файли, змінювати спільні глобальні ресурси процесу, а segfault в нативному аддоні вб'є весь процес. Для
+      недовіреного коду — окремий процес/контейнер.</p>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Пул воркерів і piscina</h2>
+      <p class="section-desc">Створювати воркер на кожну задачу — дорого; тримайте фіксовану кількість і подавайте їм задачі з черги.</p>
+
+      <p>Ідея пулу: N воркерів (≈ кількість ядер мінус одне для main thread) стартують один раз, задачі стоять у черзі, вільний воркер бере
+      наступну. Ручна реалізація — ~80 рядків (черга, мапа задача → resolve, перезапуск впалих, таймаути, abort). На практиці використовують
+      <b>piscina</b> (підтримується людьми з Node core):</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">pool.mjs</span></div>
+        <pre><code>// worker-task.mjs
+export default function resize({ path, width }) {
+  return heavyCpuResize(path, width);     // може бути async; повернене значення = результат задачі
+}
+
+// server.mjs
+import Piscina from 'piscina';
+import { availableParallelism } from 'node:os';
+
+const pool = new Piscina({
+  filename: new URL('./worker-task.mjs', import.meta.url).href,
+  maxThreads: Math.max(1, availableParallelism() - 1),
+  maxQueue: 1000,                          // backpressure: повна черга → помилка, а не OOM
+  idleTimeout: 30_000,
+});
+
+app.post('/thumbnail', async (req, res) =&gt; {
+  const ac = new AbortController();
+  req.on('close', () =&gt; ac.abort());       // клієнт пішов — задача не потрібна
+  const out = await pool.run({ path: req.body.path, width: 320 }, { signal: ac.signal });
+  res.json(out);
+});</code></pre>
+      </div>
+      <p class="muted">Альтернативи: <code>workerpool</code>, <code>tinypool</code> (використовує Vitest), <code>threads.js</code>.</p>
+
+      <h3>Коли воркери допомагають, а коли шкодять</h3>
+      <table>
+        <tr><th>✅ Допомагають</th><th>❌ Шкодять або марні</th></tr>
+        <tr><td>Чистий CPU на 10+ мс на задачу: хешування, стиснення, парсинг великих файлів, генерація звітів, підрахунки</td><td>I/O-задачі: запити до БД чи HTTP — main thread і так їх не блокує; воркер лише додасть накладних витрат</td></tr>
+        <tr><td>Вхід/вихід малі (id, шлях, числа) або переносяться (ArrayBuffer)</td><td>Треба передати сотні MB об'єктів — clone з'їсть виграш</td></tr>
+        <tr><td>Пул фіксованого розміру ≤ кількості ядер</td><td>Воркер на кожен запит (десятки мс старту, MB пам'яті)</td></tr>
+        <tr><td>Ізолювати важку задачу, щоб health-check відповідав</td><td>Задачі по 0.1 мс — накладні витрати postMessage більші за саму роботу</td></tr>
+        <tr><td>Один інстанс з кількома ядрами (VM, великий pod)</td><td>Pod з лімітом 1 CPU: паралелізму фізично немає, лише перемикання контексту</td></tr>
+      </table>
+      <div class="remember"><b>🧠 Запам'ятай:</b> воркер — для CPU, не для I/O; пул, а не воркер на запит; передавайте посилання на дані, а не дані.</div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> UV_THREADPOOL_SIZE ≠ worker_threads</h2>
+      <p class="section-desc">Два різних "пули потоків" у Node, які часто плутають на співбесідах.</p>
+
+      <table>
+        <tr><th></th><th>libuv threadpool</th><th>worker_threads</th></tr>
+        <tr><td>Що виконує</td><td><b>C/C++ код</b> Node: fs, <code>dns.lookup</code>, <code>crypto.pbkdf2/scrypt/randomBytes</code>, async zlib</td><td><b>ваш JavaScript</b></td></tr>
+        <tr><td>Розмір</td><td>4 за замовчуванням; <code>UV_THREADPOOL_SIZE</code> (до 1024), задається до першого використання пулу</td><td>скільки створите</td></tr>
+        <tr><td>Керування</td><td>неявне: виклик API → задача в черзі пулу</td><td>явне: <code>new Worker</code>, postMessage</td></tr>
+        <tr><td>Окремий V8?</td><td>ні, JS там не виконується</td><td>так, isolate на воркер</td></tr>
+        <tr><td>Не використовується для</td><td>мережі (TCP/HTTP йдуть через epoll/kqueue на main thread)</td><td>—</td></tr>
+      </table>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">pool.js — 8 pbkdf2 одночасно</span></div>
+        <pre><code>const crypto = require('node:crypto');
+const t0 = performance.now();
+for (let i = 1; i &lt;= 8; i++)
+  crypto.pbkdf2('secret', 'salt', 300_000, 64, 'sha512', () =&gt;
+    console.log(`hash ${i} done at ${Math.round(performance.now() - t0)} ms`));
+
+// --- default (4)                         --- UV_THREADPOOL_SIZE=8
+// hash 3 done at 185 ms                   hash 8 done at ~200..450 ms
+// hash 1 done at 186 ms                   ...усі 8 майже одночасно
+// hash 2 done at 186 ms                   (на 8 фізичних ядрах; цифри шумні
+// hash 4 done at 187 ms                    між прогонами на ноутбуці)
+// hash 7 done at 391 ms   ← друга "хвиля": чекали вільний потік
+// hash 6 done at 393 ms
+// hash 5 done at 396 ms
+// hash 8 done at 398 ms</code></pre>
+      </div>
+      <p>Чесний висновок з виміру: збільшення пулу прибирає "хвилі" (немає черги), але <b>не робить CPU-роботу швидшою</b>, якщо ядер не
+      вистачає — у кількох прогонах <code>UV_THREADPOOL_SIZE=8</code> загалом був навіть не швидшим. Збільшувати пул має сенс, коли він
+      забитий <b>очікуванням</b> (повільний мережевий диск, NFS, багато <code>dns.lookup</code>), або коли є вільні ядра. Задається через env
+      до старту (<code>UV_THREADPOOL_SIZE=16 node app.js</code>), бо пул створюється ліниво при першому використанні.</p>
+
+      <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають так</span>
+      "Сервіс логіну під навантаженням має p99 у секунди, CPU не 100%. Чому?" — Можливий кандидат: bcrypt/scrypt + fs + <code>dns.lookup</code>
+      ділять 4 потоки libuv, задачі стоять у черзі пулу. Ліки: більший <code>UV_THREADPOOL_SIZE</code>, кешування DNS або <code>dns.resolve</code>
+      (не через пул), винести хешування в окремий пул/сервіс.</div></div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> cluster</h2>
+      <p class="section-desc">Кілька Node-процесів слухають один порт: primary приймає з'єднання і роздає їх воркерам.</p>
+
+      <p><code>cluster</code> побудований на <code>child_process.fork</code> (<a href="07-fs-process-os.html">туторіал 7</a>): primary запускає N
+      копій того ж скрипта з IPC-каналом. Коли воркер викликає <code>server.listen(3000)</code>, він насправді просить primary: primary
+      тримає справжній listening-сокет і передає прийняті з'єднання воркерам через IPC (на Linux/macOS — <b>round-robin</b> за замовчуванням;
+      на Windows — сокет ділиться, і розподіл робить ОС).</p>
+
+      <h3>Спершу — child_process.fork з IPC як "воркер-процес"</h3>
+      <p>До появи worker_threads (стабільні з Node 12) CPU-роботу виносили в окремі Node-процеси через <code>fork</code>, і цей
+      патерн досі корисний, коли потрібна <b>повна ізоляція</b>: падіння нативного аддона, витік пам'яті чи <code>process.exit()</code> у
+      дочірньому процесі не зачеплять батька, а пам'ять дитини ОС звільнить цілком після її завершення.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">fork-pool.js</span></div>
+        <pre><code>const { fork } = require('node:child_process');
+
+const child = fork('./heavy-task.js', { serialization: 'advanced' }); // structured clone: Map, Set, BigInt, Buffer
+const pending = new Map();
+let seq = 0;
+child.on('message', ({ id, result, error }) =&gt; {
+  const p = pending.get(id); pending.delete(id);
+  error ? p.reject(new Error(error)) : p.resolve(result);
+});
+child.on('exit', (code) =&gt; {                      // дитина впала — відхилити все, що чекало
+  for (const p of pending.values()) p.reject(new Error(`child exited ${code}`));
+  pending.clear();                                // ...і перезапустити (з backoff)
+});
+const run = (payload) =&gt; new Promise((resolve, reject) =&gt; {
+  const id = ++seq; pending.set(id, { resolve, reject });
+  child.send({ id, payload });
+});
+
+// heavy-task.js
+process.on('message', ({ id, payload }) =&gt; {
+  try { process.send({ id, result: compute(payload) }); }
+  catch (e) { process.send({ id, error: e.message }); }
+});</code></pre>
+      </div>
+      <p>Порівняно з воркером: старт повільніший (новий процес, ~30–50 MB RSS), повідомлення йдуть через pipe з серіалізацією, немає
+      SharedArrayBuffer і transfer. Порівняно з cluster: fork — це "виконай задачу", cluster — "обслуговуй той самий порт".</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 300" role="img" aria-label="Топологія cluster. Клієнти відкривають TCP-з'єднання на порт 3000. Primary-процес тримає listening socket і по черзі round-robin передає прийняті з'єднання трьом воркер-процесам через IPC. Кожен воркер — окремий процес з власною пам'яттю і своїм event loop. Primary стежить за подією exit і перезапускає впалого воркера. Стан, як-от сесії в пам'яті, у кожного воркера свій.">
+          <defs><marker id="n08d2-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="20" y="110" width="110" height="80" rx="10" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="75" y="145" text-anchor="middle" fill="currentColor">Клієнти</text>
+            <text x="75" y="163" text-anchor="middle" fill="var(--fg-muted)">TCP :3000</text>
+            <line x1="130" y1="150" x2="206" y2="150" stroke="currentColor" stroke-width="1.3" marker-end="url(#n08d2-arrow)"/>
+
+            <rect x="210" y="95" width="190" height="110" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+            <text x="305" y="120" text-anchor="middle" fill="var(--accent)" font-weight="bold">Primary</text>
+            <text x="305" y="142" text-anchor="middle" fill="currentColor">listening socket</text>
+            <text x="305" y="162" text-anchor="middle" fill="currentColor">accept → round-robin</text>
+            <text x="305" y="182" text-anchor="middle" fill="var(--fg-muted)">on('exit') → fork()</text>
+
+            <rect x="520" y="25" width="200" height="66" rx="10" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="620" y="50" text-anchor="middle" fill="var(--info)">Worker 1 (процес)</text>
+            <text x="620" y="70" text-anchor="middle" fill="var(--fg-muted)">свій heap, свій loop</text>
+            <rect x="520" y="117" width="200" height="66" rx="10" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="620" y="142" text-anchor="middle" fill="var(--info)">Worker 2 (процес)</text>
+            <text x="620" y="162" text-anchor="middle" fill="var(--fg-muted)">сесії в пам'яті — свої!</text>
+            <rect x="520" y="209" width="200" height="66" rx="10" fill="none" stroke="var(--bad)" stroke-width="1.3" stroke-dasharray="5,3"/>
+            <text x="620" y="234" text-anchor="middle" fill="var(--bad)">Worker 3 💥 впав</text>
+            <text x="620" y="254" text-anchor="middle" fill="var(--fg-muted)">primary форкає новий</text>
+
+            <line x1="400" y1="125" x2="516" y2="60" stroke="currentColor" stroke-width="1.2" marker-end="url(#n08d2-arrow)"/>
+            <line x1="400" y1="150" x2="516" y2="150" stroke="currentColor" stroke-width="1.2" marker-end="url(#n08d2-arrow)"/>
+            <line x1="400" y1="175" x2="516" y2="240" stroke="currentColor" stroke-width="1.2" marker-end="url(#n08d2-arrow)"/>
+            <text x="412" y="138" fill="var(--fg-muted)">IPC: fd з'єднання</text>
+            <text x="300" y="250" text-anchor="middle" fill="var(--warn)">балансуються З'ЄДНАННЯ,</text>
+            <text x="300" y="268" text-anchor="middle" fill="var(--warn)">а не окремі запити</text>
+          </g>
+        </svg>
+        <figcaption>Primary розподіляє TCP-з'єднання між процесами-воркерами і перезапускає впалих; кожен воркер — окремий процес з власним станом.</figcaption>
+      </figure>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">cluster.js</span></div>
+        <pre><code>const cluster = require('node:cluster');
+const http = require('node:http');
+const PORT = 3456, WORKERS = 3;
+
+if (cluster.isPrimary) {
+  console.log(`primary ${process.pid}, schedulingPolicy RR? ${cluster.schedulingPolicy === cluster.SCHED_RR}`);
+  for (let i = 0; i &lt; WORKERS; i++) cluster.fork();
+  cluster.on('exit', (worker, code) =&gt; {
+    console.log(`worker ${worker.id} died (code ${code}); restarting`);
+    cluster.fork();                        // у проді — з backoff, щоб не крутити crash loop
+  });
+  // ... після 'listening' від усіх: 9 запитів двома способами (див. вивід)
+} else {
+  http.createServer((req, res) =&gt; {
+    if (req.url === '/crash') process.exit(1);
+    res.end(String(cluster.worker.id));
+  }).listen(PORT);                         // "listen" делегується primary
+}</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">output</span></div>
+        <pre><code>primary 56950, schedulingPolicy RR? true
+new connection per request : { '1': 3, '2': 3, '3': 3 }   ← ідеальний round-robin
+one keep-alive connection  : { '3': 9 }                   ← одне з'єднання = один воркер
+worker 2 died (code 1); restarting</code></pre>
+      </div>
+      <p>Другий рядок — важливий практичний нюанс: балансування відбувається на рівні <b>з'єднань</b>. Клієнт з keep-alive (або HTTP/2, або
+      gRPC, або один великий upstream-проксі з пулом з'єднань) може "приклеїтися" до одного воркера. Той самий ефект — у Kubernetes
+      Service з gRPC.</p>
+
+      <h3>Чому cluster зараз використовують рідше</h3>
+      <ul>
+        <li>У контейнерах типова модель — <b>один процес на контейнер</b>; масштабування — кількістю pod-ів (HPA), перезапуск — оркестратором,
+        балансування — Service/Ingress. Cluster всередині pod дублює ці функції.</li>
+        <li>Pod з <code>cpu: 1</code> не виграє від 4 воркерів; а <code>os.cpus()</code> може показати ядра хоста і створити зайві процеси
+        (<a href="07-fs-process-os.html">туторіал 7</a>).</li>
+        <li>Кожен воркер — окремий процес з власним heap: 8 воркерів × 150 MB = 1.2 GB, і 8 окремих пулів з'єднань до БД (s11).</li>
+        <li>Де cluster/PM2 досі доречний: VM або bare metal без оркестратора, великі інстанси, де один pod на ноду, легасі-деплої.</li>
+      </ul>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> PM2</h2>
+      <p class="section-desc">Процес-менеджер, що робить cluster, рестарти, логи і zero-downtime reload однією командою.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">ecosystem.config.cjs</span></div>
+        <pre><code>module.exports = {
+  apps: [{
+    name: 'api',
+    script: './dist/server.js',
+    exec_mode: 'cluster',          // використовує node:cluster всередині
+    instances: 'max',              // або число; 'max' = кількість CPU
+    max_memory_restart: '512M',    // рестарт при перевищенні RSS (латка для витоків, не ліки)
+    kill_timeout: 10000,           // скільки чекати після SIGINT перед SIGKILL
+    wait_ready: true,              // чекати process.send('ready') від застосунку
+    listen_timeout: 10000,
+    env_production: { NODE_ENV: 'production' },
+  }, {
+    name: 'worker',
+    script: './dist/queue-worker.js',
+    exec_mode: 'fork',             // звичайний процес — для споживачів черг
+    instances: 2,
+  }],
+};</code></pre>
+      </div>
+      <table>
+        <tr><th>Команда</th><th>Що робить</th></tr>
+        <tr><td><code>pm2 start ecosystem.config.cjs --env production</code></td><td>старт усіх застосунків</td></tr>
+        <tr><td><code>pm2 reload api</code></td><td><b>zero-downtime</b>: перезапускає воркери по одному, чекаючи готовності нового перед зупинкою старого</td></tr>
+        <tr><td><code>pm2 restart api</code></td><td>убити й підняти всіх одразу (є простій)</td></tr>
+        <tr><td><code>pm2 logs</code>, <code>pm2 monit</code>, <code>pm2 ls</code></td><td>логи, моніторинг CPU/RAM</td></tr>
+        <tr><td><code>pm2 startup</code> + <code>pm2 save</code></td><td>автозапуск після ребуту сервера (systemd)</td></tr>
+      </table>
+      <p>Для reload застосунок має коректно обробляти <code>SIGINT</code> (PM2 шле саме його) з graceful shutdown, а з <code>wait_ready</code> —
+      надсилати <code>process.send('ready')</code> після <code>listen</code> і прогріву. У Docker/K8s PM2 зазвичай не потрібен
+      (<code>pm2-runtime</code> існує, але дублює оркестратор).</p>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Горизонтальне масштабування</h2>
+      <p class="section-desc">Справжнє масштабування — N однакових stateless-інстансів за балансувальником; усе спільне — у зовнішніх сховищах.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 330" role="img" aria-label="Клієнти звертаються до load balancer, який розподіляє запити між трьома stateless Node-інстансами. Для WebSocket потрібні sticky sessions або спільний pub/sub. Усі інстанси зберігають сесії, кеш, rate limit і pub/sub у спільному Redis, а дані — у PostgreSQL через пули з'єднань. Сумарна кількість з'єднань до БД дорівнює розміру пулу помноженому на кількість інстансів, тому між ними і базою часто ставлять PgBouncer.">
+          <defs><marker id="n08d3-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="20" y="130" width="100" height="60" rx="10" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="70" y="157" text-anchor="middle" fill="currentColor">Клієнти</text>
+            <text x="70" y="175" text-anchor="middle" fill="var(--fg-muted)">HTTP / WS</text>
+            <line x1="120" y1="160" x2="156" y2="160" stroke="currentColor" stroke-width="1.3" marker-end="url(#n08d3-arrow)"/>
+
+            <rect x="160" y="115" width="130" height="90" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+            <text x="225" y="145" text-anchor="middle" fill="var(--accent)" font-weight="bold">Load balancer</text>
+            <text x="225" y="165" text-anchor="middle" fill="currentColor">nginx / ALB / Ingress</text>
+            <text x="225" y="185" text-anchor="middle" fill="var(--fg-muted)">sticky для WS (опц.)</text>
+
+            <rect x="350" y="30" width="150" height="56" rx="10" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="425" y="54" text-anchor="middle" fill="var(--info)">Node #1</text>
+            <text x="425" y="72" text-anchor="middle" fill="var(--fg-muted)">stateless, pool=10</text>
+            <rect x="350" y="132" width="150" height="56" rx="10" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="425" y="156" text-anchor="middle" fill="var(--info)">Node #2</text>
+            <text x="425" y="174" text-anchor="middle" fill="var(--fg-muted)">stateless, pool=10</text>
+            <rect x="350" y="234" width="150" height="56" rx="10" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="425" y="258" text-anchor="middle" fill="var(--info)">Node #N</text>
+            <text x="425" y="276" text-anchor="middle" fill="var(--fg-muted)">stateless, pool=10</text>
+            <line x1="290" y1="140" x2="346" y2="62" stroke="currentColor" stroke-width="1.2" marker-end="url(#n08d3-arrow)"/>
+            <line x1="290" y1="160" x2="346" y2="160" stroke="currentColor" stroke-width="1.2" marker-end="url(#n08d3-arrow)"/>
+            <line x1="290" y1="180" x2="346" y2="258" stroke="currentColor" stroke-width="1.2" marker-end="url(#n08d3-arrow)"/>
+
+            <rect x="570" y="30" width="150" height="110" rx="10" fill="none" stroke="var(--bad)" stroke-width="1.4"/>
+            <text x="645" y="54" text-anchor="middle" fill="var(--bad)" font-weight="bold">Redis</text>
+            <text x="645" y="76" text-anchor="middle" fill="currentColor">сесії, кеш</text>
+            <text x="645" y="96" text-anchor="middle" fill="currentColor">rate limit</text>
+            <text x="645" y="116" text-anchor="middle" fill="currentColor">pub/sub для WS</text>
+
+            <rect x="570" y="180" width="150" height="110" rx="10" fill="none" stroke="var(--good)" stroke-width="1.4"/>
+            <text x="645" y="204" text-anchor="middle" fill="var(--good)" font-weight="bold">PostgreSQL</text>
+            <text x="645" y="226" text-anchor="middle" fill="currentColor">max_connections</text>
+            <text x="645" y="246" text-anchor="middle" fill="var(--warn)">N × pool з'єднань!</text>
+            <text x="645" y="266" text-anchor="middle" fill="var(--fg-muted)">→ PgBouncer</text>
+
+            <line x1="500" y1="58" x2="566" y2="70" stroke="var(--bad)" stroke-width="1.1" marker-end="url(#n08d3-arrow)"/>
+            <line x1="500" y1="155" x2="566" y2="100" stroke="var(--bad)" stroke-width="1.1" marker-end="url(#n08d3-arrow)"/>
+            <line x1="500" y1="255" x2="566" y2="125" stroke="var(--bad)" stroke-width="1.1" marker-end="url(#n08d3-arrow)"/>
+            <line x1="500" y1="70" x2="566" y2="200" stroke="var(--good)" stroke-width="1.1" marker-end="url(#n08d3-arrow)"/>
+            <line x1="500" y1="170" x2="566" y2="230" stroke="var(--good)" stroke-width="1.1" marker-end="url(#n08d3-arrow)"/>
+            <line x1="500" y1="270" x2="566" y2="260" stroke="var(--good)" stroke-width="1.1" marker-end="url(#n08d3-arrow)"/>
+          </g>
+        </svg>
+        <figcaption>Будь-який інстанс може обробити будь-який запит, бо стан живе в Redis і БД; ціна — з'єднання до БД множаться на кількість інстансів.</figcaption>
+      </figure>
+
+      <h3>Stateless — що це означає на практиці</h3>
+      <table>
+        <tr><th>Стан у пам'яті процесу (ламається на 2+ інстансах)</th><th>Куди перенести</th></tr>
+        <tr><td><code>express-session</code> MemoryStore</td><td>Redis-store або JWT/підписані cookies</td></tr>
+        <tr><td>in-memory rate limiter (ліміт стає N × заданий)</td><td>Redis (атомарні INCR + EXPIRE, Lua, <code>rate-limiter-flexible</code>)</td></tr>
+        <tr><td>кеш у <code>Map</code></td><td>Redis; локальний LRU лише як L1 з коротким TTL (невідповідність між інстансами!)</td></tr>
+        <tr><td><code>setInterval</code>-cron (виконається N разів)</td><td>окремий scheduler, черга з розподіленим lock (BullMQ repeatable jobs)</td></tr>
+        <tr><td>завантажені файли на локальному диску</td><td>S3/об'єктне сховище</td></tr>
+        <tr><td>WebSocket-кімнати в пам'яті</td><td>Redis pub/sub adapter (Socket.IO), або NATS — <a href="18-realtime-queues.html">туторіал 18</a></td></tr>
+      </table>
+
+      <h3>Sticky sessions для WebSocket</h3>
+      <p>WebSocket — довгоживуче з'єднання з конкретним інстансом, і воно само по собі не потребує sticky. Sticky (за cookie або IP-hash) потрібні,
+      коли протокол робить <b>кілька HTTP-запитів</b>, які мають потрапити на той самий інстанс: Socket.IO long-polling fallback, handshake +
+      upgrade. Але sticky не вирішує "повідомлення для користувача, підключеного до іншого інстансу" — для цього все одно потрібен спільний
+      pub/sub. І sticky погіршує балансування: при масштабуванні нові інстанси довго стоять напівпорожні.</p>
+
+      <h3>Масштабування з'єднань до БД</h3>
+      <div class="callout warn"><div class="ic">🧮</div><div class="body"><b>Арифметика, яку забувають:</b> 20 pod-ів × cluster 4 воркери ×
+      pool 10 = <b>800 з'єднань</b> до Postgres, у якого <code>max_connections = 100</code> за замовчуванням, і кожне з'єднання — окремий
+      бекенд-процес на ~5–10 MB. При автоскейлінгу під навантаженням ви кладете БД саме тоді, коли вона найпотрібніша. Ліки: менші пули на інстанс,
+      <b>PgBouncer</b> у transaction mode (або RDS Proxy), ліміт max replicas, read replicas для читання
+      (<a href="12-databases-orm.html">туторіал 12</a>).</div></div>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Куди подіти CPU-роботу</h2>
+      <p class="section-desc">Немає одного правильного рішення: вибір залежить від тривалості задачі, частоти, вимог до відповіді і навичок команди.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 360" role="img" aria-label="Блок-схема вибору стратегії для CPU-роботи. Спочатку: чи можна зробити менше роботи або використати нативну асинхронну бібліотеку? Якщо так — зробіть це. Якщо ні: чи потрібен результат у тій самій HTTP-відповіді? Якщо ні — використати чергу задач з окремими worker-процесами. Якщо так: задача коротка, до кількох сотень мілісекунд? Якщо так — пул worker_threads. Якщо задача довга або важка постійно, або є краща екосистема в іншій мові — окремий сервіс, наприклад на Go, Rust чи Python.">
+          <defs><marker id="n08d4-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="200" y="15" width="340" height="44" rx="22" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="370" y="35" text-anchor="middle" fill="currentColor">Можна зробити менше роботи / є нативна</text>
+            <text x="370" y="51" text-anchor="middle" fill="currentColor">async-бібліотека (sharp, crypto.scrypt)?</text>
+            <line x1="540" y1="37" x2="586" y2="37" stroke="var(--good)" stroke-width="1.3" marker-end="url(#n08d4-arrow)"/>
+            <text x="562" y="30" text-anchor="middle" fill="var(--good)">так</text>
+            <rect x="590" y="17" width="140" height="40" rx="8" fill="none" stroke="var(--good)" stroke-width="1.4"/>
+            <text x="660" y="42" text-anchor="middle" fill="var(--good)">Зробіть це спершу</text>
+
+            <line x1="370" y1="59" x2="370" y2="93" stroke="currentColor" stroke-width="1.3" marker-end="url(#n08d4-arrow)"/>
+            <text x="382" y="80" fill="var(--bad)">ні</text>
+            <rect x="200" y="97" width="340" height="44" rx="22" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="370" y="124" text-anchor="middle" fill="currentColor">Результат потрібен у цій самій HTTP-відповіді?</text>
+            <line x1="540" y1="119" x2="586" y2="119" stroke="var(--bad)" stroke-width="1.3" marker-end="url(#n08d4-arrow)"/>
+            <text x="562" y="112" text-anchor="middle" fill="var(--bad)">ні</text>
+            <rect x="590" y="94" width="140" height="50" rx="8" fill="none" stroke="var(--info)" stroke-width="1.4"/>
+            <text x="660" y="115" text-anchor="middle" fill="var(--info)">Черга задач</text>
+            <text x="660" y="133" text-anchor="middle" fill="var(--fg-muted)">BullMQ + воркери</text>
+
+            <line x1="370" y1="141" x2="370" y2="175" stroke="currentColor" stroke-width="1.3" marker-end="url(#n08d4-arrow)"/>
+            <text x="382" y="162" fill="var(--good)">так</text>
+            <rect x="200" y="179" width="340" height="44" rx="22" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="370" y="199" text-anchor="middle" fill="currentColor">Задача коротка (≲ сотні мс), рідкісна або</text>
+            <text x="370" y="215" text-anchor="middle" fill="currentColor">помірна, логіка вже на JS/TS?</text>
+            <line x1="540" y1="201" x2="586" y2="201" stroke="var(--good)" stroke-width="1.3" marker-end="url(#n08d4-arrow)"/>
+            <text x="562" y="194" text-anchor="middle" fill="var(--good)">так</text>
+            <rect x="590" y="176" width="140" height="50" rx="8" fill="none" stroke="var(--good)" stroke-width="1.4"/>
+            <text x="660" y="197" text-anchor="middle" fill="var(--good)">Пул worker_threads</text>
+            <text x="660" y="215" text-anchor="middle" fill="var(--fg-muted)">piscina</text>
+
+            <line x1="370" y1="223" x2="370" y2="257" stroke="currentColor" stroke-width="1.3" marker-end="url(#n08d4-arrow)"/>
+            <text x="382" y="244" fill="var(--bad)">ні</text>
+            <rect x="200" y="261" width="340" height="56" rx="8" fill="none" stroke="var(--warn)" stroke-width="1.4"/>
+            <text x="370" y="283" text-anchor="middle" fill="var(--warn)">Окремий сервіс (Go / Rust / Python)</text>
+            <text x="370" y="302" text-anchor="middle" fill="var(--fg-muted)">важке, постійне, краща екосистема (ML, відео)</text>
+
+                        <text x="20" y="335" fill="var(--fg-muted)">Комбінації нормальні: сервіс у Go, викликаний з BullMQ-воркера; воркер-пул всередині consumer-а черги.</text>
+          </g>
+        </svg>
+        <figcaption>Спочатку — чи можна уникнути роботи; потім — чи треба чекати результат синхронно; і лише потім — потоки всередині Node чи окремий сервіс.</figcaption>
+      </figure>
+
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: стратегія для CPU-роботи</div>
+        <table><tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>Пул worker_threads (piscina)</b> ✅ за замовчуванням для синхронних задач</td><td>той самий код і репозиторій, низька латентність, без мережі, спільні типи</td><td>ділить CPU/RAM з HTTP-обробкою; падіння нативного коду кладе процес; масштабується лише разом з сервісом</td></tr>
+          <tr><td>Черга задач (BullMQ/SQS) + окремі worker-процеси</td><td>незалежне масштабування, ретраї, переживає рестарти, HTTP-шар не страждає</td><td>асинхронна модель (polling/webhook/SSE для результату), інфраструктура (Redis), ідемпотентність задач</td></tr>
+          <tr><td>Окремий сервіс іншою мовою</td><td>швидший рантайм (Go/Rust), найкраща екосистема (Python для ML), ізоляція відмов</td><td>друга мова/деплой/моніторинг, мережева латентність і серіалізація, контракт API</td></tr>
+          <tr><td>cluster / більше pod-ів</td><td>просто; збільшує загальну пропускну здатність</td><td>не прибирає блокування конкретного запиту — важкий запит усе одно заморозить свій інстанс</td></tr>
+          <tr><td>Розбити на шматки + <code>setImmediate</code></td><td>без потоків</td><td>загальний час не зменшується, код складніший; лише для рідкісних задач</td></tr></table>
+        <p><b>Коли що:</b> генерація звіту на 30 секунд — черга; хеш/валідація/ресайз на 50 мс у запиті — пул воркерів; ML-інференс — Python-сервіс;
+        відеотранскодинг — ffmpeg через <code>spawn</code> у consumer-і черги.</p>
+      </div>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Каверзні питання співбесіди</h2>
+      <p class="section-desc">Ці питання перевіряють, чи розумієте ви, де в Node насправді є паралелізм.</p>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Node однопотоковий?</summary>
+        <div class="a">Ваш JS виконується в одному потоці (на ізолят), але процес багатопотоковий: libuv threadpool (fs, dns.lookup, crypto, zlib),
+        потоки V8 для GC/JIT, а також <code>worker_threads</code>, які дають кілька JS-потоків в одному процесі. Мережеве I/O йде через epoll/kqueue/IOCP
+        без потоків.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чи допоможуть worker_threads прискорити запити до БД?</summary>
+        <div class="a">Ні. Очікування БД не блокує main thread — це I/O. Воркер додасть накладні витрати (clone, окремий пул з'єднань). Воркери — для CPU-bound
+        задач.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>worker_threads vs child_process.fork vs cluster?</summary>
+        <div class="a">Worker — потік у тому ж процесі: дешевший старт, SharedArrayBuffer, transfer; падіння нативного коду кладе все. fork — окремий процес:
+        повна ізоляція, лише IPC (JSON/advanced serialization), більше пам'яті. cluster — fork-и, що ділять серверний порт, для масштабування
+        HTTP-пропускної здатності, а не для окремих CPU-задач.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому postMessage великого масиву об'єктів може "заморозити" сервер?</summary>
+        <div class="a">Structured clone виконується синхронно на потоці відправника: 200k об'єктів — ~115 мс блокування в нашому вимірі. Передавайте
+        посилання (шлях, id), переносіть ArrayBuffer через transferList або використовуйте SharedArrayBuffer.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>arr[0]++ на SharedArrayBuffer з 4 потоків — що не так?</summary>
+        <div class="a">Data race: інкремент — це read, add, write; потоки перебивають один одного. У нашому демо з 4 000 000 вийшло 1 139 542.
+        Потрібно <code>Atomics.add</code> (або CAS-цикл з <code>compareExchange</code>).</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чим небезпечний Atomics.wait на main thread?</summary>
+        <div class="a">Node дозволяє його (браузер — ні), але він заморожує event loop: запити, таймери і навіть повідомлення воркерів не обробляються. Легко
+        отримати дедлок, коли main чекає на воркер, а воркер — на щось від main. Використовуйте <code>Atomics.waitAsync</code> або повідомлення, завжди з таймаутом.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>UV_THREADPOOL_SIZE і worker_threads — це одне й те саме?</summary>
+        <div class="a">Ні. Threadpool виконує C++-частини Node API (fs, dns.lookup, crypto, zlib), розмір 4 за замовчуванням, задається env до першого використання.
+        worker_threads виконують ваш JS у окремих ізолятах. Збільшити threadpool не допоможе вашому JS-циклу.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому з cluster один воркер на 100% CPU, а інші простоюють?</summary>
+        <div class="a">Cluster балансує <b>з'єднання</b>, а не запити. Keep-alive клієнт, HTTP/2 чи проксі з пулом кількох з'єднань "приклеюються" до одного
+        воркера (у демо: одне keep-alive з'єднання → усі 9 запитів на воркер 3). Рішення — балансування на L7 перед інстансами, обмеження тривалості
+        з'єднань.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чи потрібен cluster/PM2 у Kubernetes?</summary>
+        <div class="a">Зазвичай ні: один процес на контейнер, масштабування кількістю pod-ів, рестарти — kubelet, балансування — Service. Cluster у pod-і множить
+        пам'ять і з'єднання до БД і плутає метрики. Виняток — великі pod-и з кількома ядрами, коли так дешевше.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Ви масштабували сервіс з 2 до 20 інстансів, і впала БД. Чому?</summary>
+        <div class="a">Кожен інстанс тримає свій пул: 20 × 10 = 200 з'єднань (з cluster — ще × воркери) проти <code>max_connections</code> 100. Ліки:
+        PgBouncer/RDS Proxy, менші пули, обмежити max replicas, read replicas.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що робить сервіс stateless і навіщо?</summary>
+        <div class="a">Жодного стану, потрібного для наступних запитів, у пам'яті чи на диску інстансу: сесії, кеш, rate limits, кімнати WS, файли — у Redis/БД/S3.
+        Тоді будь-який інстанс обробляє будь-який запит, інстанси можна вбивати й додавати вільно.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чи потрібні sticky sessions для WebSocket?</summary>
+        <div class="a">Для самого WS-з'єднання — ні (воно і так живе на одному інстансі). Потрібні, коли протокол має кілька HTTP-запитів до upgrade (Socket.IO
+        polling). Але для доставки повідомлень між інстансами все одно потрібен спільний pub/sub (Redis adapter).</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Звіт генерується 40 секунд. Куди його подіти?</summary>
+        <div class="a">У чергу (BullMQ/SQS): HTTP повертає <code>202 Accepted</code> з id задачі, окремі worker-процеси виконують, результат — у S3, клієнт дізнається
+        через polling/SSE/webhook. Пул воркерів у HTTP-сервісі для 40 с — погано: тримає з'єднання, губиться при рестарті, конкурує з API за CPU.</div>
+      </details>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Шпаргалка</h2>
+      <p class="section-desc">Ключові API і правила на одному екрані.</p>
+      <div class="cheat"><table>
+        <tr><th>Задача</th><th>Як</th></tr>
+        <tr><td>Запустити воркер</td><td><code>new Worker(new URL('./w.js', import.meta.url), { workerData })</code></td></tr>
+        <tr><td>Обмін повідомленнями</td><td><code>parentPort.postMessage(v)</code> ⇄ <code>worker.on('message')</code>; канал — <code>new MessageChannel()</code></td></tr>
+        <tr><td>Передати великий буфер без копії</td><td><code>postMessage(buf, [buf])</code> — transferList</td></tr>
+        <tr><td>Спільна пам'ять</td><td><code>new SharedArrayBuffer(n)</code> + <code>Int32Array</code> + <code>Atomics.add/load/store</code></td></tr>
+        <tr><td>Чекати/будити</td><td><code>Atomics.wait</code> (лише у воркері, з таймаутом) / <code>Atomics.notify</code>; main — <code>waitAsync</code></td></tr>
+        <tr><td>Обмежити пам'ять воркера</td><td><code>resourceLimits: { maxOldGenerationSizeMb }</code></td></tr>
+        <tr><td>Зависла задача</td><td>таймаут + <code>worker.terminate()</code></td></tr>
+        <tr><td>Пул</td><td><code>piscina</code>: <code>maxThreads ≈ availableParallelism() - 1</code>, <code>maxQueue</code>, <code>signal</code></td></tr>
+        <tr><td>Threadpool libuv</td><td><code>UV_THREADPOOL_SIZE=N</code> у env до старту (fs, dns.lookup, crypto, zlib)</td></tr>
+        <tr><td>cluster</td><td><code>cluster.isPrimary</code> → <code>fork()</code> ×N; <code>on('exit')</code> → fork з backoff</td></tr>
+        <tr><td>PM2 zero-downtime</td><td><code>exec_mode: 'cluster'</code> + <code>pm2 reload app</code> + graceful SIGINT</td></tr>
+        <tr><td>Stateless</td><td>сесії/кеш/rate limit/WS pub-sub → Redis; файли → S3; cron → черга</td></tr>
+        <tr><td>З'єднання до БД</td><td>інстанси × воркери × pool ≤ max_connections; PgBouncer</td></tr>
+        <tr><td>Довга CPU-задача</td><td>черга + окремі воркери; результат — асинхронно</td></tr>
+        <tr><td>Event loop lag</td><td><code>perf_hooks.monitorEventLoopDelay()</code></td></tr>
+      </table></div>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Як запам'ятати</h2>
+      <p class="section-desc">Образи для кожної ключової ідеї.</p>
+      <div class="flashgrid">
+        <div class="flashcard">
+          <div class="fc-num">1</div>
+          <div class="term">Concurrency vs parallelism</div>
+          <div class="def">Багато задач у процесі vs багато задач одночасно на різних ядрах.</div>
+          <div class="mnemo"><b>Асоціація:</b> один жонглер з п'ятьма м'ячами vs п'ять жонглерів.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">2</div>
+          <div class="term">Worker thread</div>
+          <div class="def">Окремий потік з власним V8 isolate, heap і event loop у тому ж процесі.</div>
+          <div class="mnemo"><b>Асоціація:</b> сусід по квартирі: своя кімната і свої речі, спільні лише стіни й вхідні двері.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">3</div>
+          <div class="term">Structured clone</div>
+          <div class="def">postMessage копіює дані, синхронно, на потоці відправника.</div>
+          <div class="mnemo"><b>Асоціація:</b> ксерокопіювати книгу перед тим, як віддати, — чим товща, тим довше стоїш біля ксерокса.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">4</div>
+          <div class="term">transferList</div>
+          <div class="def">Перенос власності ArrayBuffer: миттєво, у відправника лишається 0 байт.</div>
+          <div class="mnemo"><b>Асоціація:</b> передати ключі від машини — не копія, а машина тепер не твоя.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">5</div>
+          <div class="term">Atomics</div>
+          <div class="def">Неподільні операції над SharedArrayBuffer — без них інкременти губляться.</div>
+          <div class="mnemo"><b>Асоціація:</b> одна дошка, четверо пишуть рахунок — без черги до крейди цифри перетираються.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">6</div>
+          <div class="term">Atomics.wait на main</div>
+          <div class="def">Блокує event loop; ризик дедлоку.</div>
+          <div class="mnemo"><b>Асоціація:</b> диспетчер, що заснув біля телефону в очікуванні дзвінка — і не чує інших дзвінків.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">7</div>
+          <div class="term">UV_THREADPOOL_SIZE</div>
+          <div class="def">Розмір пулу libuv для fs/dns.lookup/crypto/zlib — не для вашого JS.</div>
+          <div class="mnemo"><b>Асоціація:</b> чотири каси в банку для паперової роботи; твій власний калькулятор вони не рахують.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">8</div>
+          <div class="term">cluster</div>
+          <div class="def">Primary роздає TCP-з'єднання N процесам round-robin.</div>
+          <div class="mnemo"><b>Асоціація:</b> хостес у ресторані садить гостей по черзі — але компанія, що сіла, лишається за тим столом весь вечір (keep-alive).</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">9</div>
+          <div class="term">Stateless</div>
+          <div class="def">Інстанс нічого не пам'ятає між запитами; стан — у Redis/БД/S3.</div>
+          <div class="mnemo"><b>Асоціація:</b> таксист: будь-яка машина довезе, бо адреса в замовленні, а не в пам'яті водія.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">10</div>
+          <div class="term">N × pool</div>
+          <div class="def">Кожен інстанс множить з'єднання до БД.</div>
+          <div class="mnemo"><b>Асоціація:</b> кожен новий офіс компанії підключає ще 10 телефонних ліній до однієї АТС.</div>
+        </div>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Node.js Doc · частина серії туторіалів AI Delivery Planner. Приклади коду перевірені на Node.js 24.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

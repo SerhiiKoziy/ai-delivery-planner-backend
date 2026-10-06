@@ -1,0 +1,1647 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1. Архітектура Node.js — Node.js Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🟢 Node.js Doc <span>· AI Delivery Planner</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Node.js Doc · Туторіал 1 з 20</div>
+  <h1>Архітектура Node.js: V8, libuv і що насправді відбувається під капотом</h1>
+  <p class="lead">Node.js — це не мова і не фреймворк, а <b>runtime</b>: рушій V8, бібліотека libuv і шар C++-зв'язок, склеєні так, щоб JavaScript міг працювати з файлами, мережею і процесами. У цьому туторіалі розберемо, з яких шарів складається Node, які операції йдуть у <b>thread pool</b>, а які — напряму в ядро ОС, і чому фраза «Node однопотоковий» — лише напівправда.</p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="01-node-architecture.html" class="active">1. Архітектура Node.js</a>
+        <a href="02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="07-fs-process-os.html">7. fs, process, os</a>
+        <a href="08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="09-http-networking.html">9. HTTP і мережа</a>
+        <a href="10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="12-databases-orm.html">12. БД і ORM</a>
+        <a href="13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="14-security.html">14. Безпека Node</a>
+        <a href="15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="16-testing.html">16. Тестування</a>
+        <a href="17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+  </aside>
+
+    <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Що таке Node.js</a></li>
+      <li><a href="#s2">2. Коротка історія</a></li>
+      <li><a href="#s3">3. Шари архітектури</a></li>
+      <li><a href="#s4">4. V8: від тексту до машинного коду</a></li>
+      <li><a href="#s5">5. libuv: event loop і thread pool</a></li>
+      <li><a href="#s6">6. Демо: насичуємо thread pool</a></li>
+      <li><a href="#s7">7. C++ bindings, N-API, вбудовані модулі</a></li>
+      <li><a href="#s8">8. Що відбувається при node app.js</a></li>
+      <li><a href="#s9">9. Міф про «однопотоковість»</a></li>
+      <li><a href="#s10">10. Node vs браузер</a></li>
+      <li><a href="#s11">11. Для чого Node добрий, а для чого ні</a></li>
+      <li><a href="#s12">12. Релізний цикл і версії</a></li>
+      <li><a href="#s13">13. Каверзні питання співбесіди</a></li>
+      <li><a href="#s14">14. Шпаргалка</a></li>
+      <li><a href="#s15">15. Як запам'ятати</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Що таке Node.js насправді</h2>
+      <p class="section-desc">Перше питання співбесіди звучить просто, але неточна відповідь одразу видає людину, яка не заглядала під капот.</p>
+
+      <p><b>Node.js — це середовище виконання (runtime) для JavaScript поза браузером.</b> Не мова
+      (мова — це JavaScript / ECMAScript), не фреймворк (фреймворки — Express, Fastify, NestJS
+      будуються <i>поверх</i> Node), і не «сервер» (HTTP-сервер — лише один із модулів, які Node
+      надає). Якщо спростити до формули:</p>
+
+      <div class="card">
+        <p><b>Node.js = V8</b> (виконує JavaScript) <b>+ libuv</b> (event loop, асинхронний I/O,
+        thread pool) <b>+ C++ bindings</b> (місток між JS і системою) <b>+ стандартна бібліотека
+        на JS</b> (<code>fs</code>, <code>http</code>, <code>stream</code>, <code>crypto</code>...)
+        <b>+ набір C/C++-залежностей</b> (OpenSSL, zlib, llhttp, c-ares, ICU...).</p>
+      </div>
+
+      <p>Сам по собі JavaScript (як мова) не вміє читати файли, відкривати сокети чи запускати
+      процеси — у специфікації ECMAScript немає ні слова про I/O. Усе це дає <b>хост-середовище</b>.
+      У браузері хост — це Chrome/Firefox з їхніми Web API (DOM, <code>fetch</code>, <code>setTimeout</code>).
+      У Node хост — це сам Node зі своїми API. Тому <code>setTimeout</code> у браузері й у Node —
+      це <i>дві різні реалізації</i> з однаковим іменем (і, як побачимо, навіть різним типом
+      значення, що повертається).</p>
+
+      <table>
+        <tr><th>Твердження</th><th>Правда?</th><th>Уточнення</th></tr>
+        <tr><td>Node.js — мова програмування</td><td>❌</td><td>Мова — JavaScript (або TypeScript, який Node 22.6+ вміє запускати через type stripping)</td></tr>
+        <tr><td>Node.js — фреймворк</td><td>❌</td><td>Фреймворки (Express, NestJS) — це npm-пакети поверх Node</td></tr>
+        <tr><td>Node.js — runtime</td><td>✅</td><td>Програма на C++, що вбудовує V8 і дає JS доступ до ОС</td></tr>
+        <tr><td>Node.js однопотоковий</td><td>⚠️</td><td>Ваш JS виконується в одному потоці, але процес має багато потоків (розділ 9)</td></tr>
+        <tr><td>Node.js асинхронний</td><td>⚠️</td><td>Асинхронний I/O — так; але JS-код і <code>*Sync</code>-функції цілком синхронні й блокують</td></tr>
+      </table>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">На співбесіді запитають так</span>
+        «Що таке Node.js?» Сильна відповідь за 20 секунд: <i>«Runtime для JavaScript на базі
+        V8 і libuv. V8 виконує JS, libuv дає event loop і неблокуючий I/O — мережа через механізми
+        ОС (epoll/kqueue/IOCP), а файли, DNS-lookup і важкий crypto — через пул потоків. Модель —
+        один потік для JS + event-driven I/O, тому Node чудовий для I/O-bound задач і поганий для
+        CPU-bound без worker threads.»</i> Кожне слово тут — гачок для наступних питань, до яких
+        ви будете готові після цього туторіалу.</div>
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Коротка історія: від C10k до OpenJS Foundation</h2>
+      <p class="section-desc">Історія пояснює архітектуру: Node створювали саме як відповідь на проблему «багато з'єднань — мало потоків».</p>
+
+      <h3>Проблема C10k</h3>
+      <p>Наприкінці 1990-х Ден Кегел сформулював <b>C10k problem</b>: як одному серверу обслуговувати
+      10 000 одночасних клієнтів? Класичний підхід «один потік (або процес) на з'єднання», як у
+      Apache з prefork/worker MPM, на цьому ламається: кожен потік — це мегабайти стеку і робота
+      планувальника ОС, а більшість часу ці потоки просто <i>чекають</i> на мережу чи диск.
+      Відповіддю стали <b>event-driven сервери</b> (nginx, 2004): один потік + неблокуючі сокети +
+      системний виклик на кшталт <code>epoll</code>, який каже «ось ці 37 сокетів готові до читання».</p>
+
+      <h3>2009: Ryan Dahl і Node.js</h3>
+      <p>Ryan Dahl представив Node.js на JSConf EU у листопаді 2009. Ідея: взяти модель nginx
+      (event loop + неблокуючий I/O) і зробити її <i>єдиною</i> моделлю програмування, причому мовою,
+      де немає легасі синхронного I/O. JavaScript підійшов ідеально: у браузері програмісти вже
+      звикли до колбеків і подій, а в мові не було жодної «блокуючої» стандартної бібліотеки, яку
+      довелося б обходити. Рушій V8 (Chrome, 2008) якраз зробив JS достатньо швидким.</p>
+      <p>Перші версії працювали на <code>libev</code> + <code>libeio</code>; для підтримки Windows
+      (де замість readiness-моделі epoll є completion-модель IOCP) команда написала власну
+      абстракцію — <b>libuv</b>. Сьогодні libuv — окремий проєкт, яким користуються й інші
+      середовища (наприклад, Julia, pyuv, uvloop для Python).</p>
+
+      <h3>npm, io.js і об'єднання</h3>
+      <table>
+        <tr><th>Рік</th><th>Подія</th><th>Чому важливо</th></tr>
+        <tr><td>2009</td><td>Перший реліз Node.js (Ryan Dahl, спонсор — Joyent)</td><td>Event-driven I/O на JS</td></tr>
+        <tr><td>2010</td><td>npm (Isaac Z. Schlueter)</td><td>Пакетний менеджер став головною причиною вибуху екосистеми</td></tr>
+        <tr><td>2011</td><td>libuv, підтримка Windows</td><td>Node — справді кросплатформний</td></tr>
+        <tr><td>2014</td><td>Форк <b>io.js</b></td><td>Спільнота незадоволена повільними релізами і контролем Joyent; io.js швидко оновлював V8 і ввів відкрите управління</td></tr>
+        <tr><td>2015</td><td>Node.js Foundation, злиття io.js назад → <b>Node 4.0</b></td><td>Звідси semver-нумерація і регулярний LTS-графік</td></tr>
+        <tr><td>2018</td><td>Ryan Dahl, доповідь «10 Things I Regret About Node.js» і Deno</td><td>Критика власних рішень: <code>node_modules</code>, відсутність промісів у ранньому API, безпека</td></tr>
+        <tr><td>2019</td><td>Node.js Foundation + JS Foundation → <b>OpenJS Foundation</b></td><td>Нейтральне управління, під тією ж парасолькою — jQuery, webpack, ESLint, Electron тощо</td></tr>
+      </table>
+
+      <div class="callout fun">
+        <div class="ic">🎉</div>
+        <div class="body"><span class="tag">Цікавий факт</span>
+        Саме через io.js Node «перестрибнув» з версії 0.12 одразу на 4.0: io.js встиг дійти до
+        3.x, і щоб не плутати користувачів, об'єднаний проєкт продовжив нумерацію io.js. Версій
+        Node 1, 2 і 3 як «Node.js» ніколи не існувало.</div>
+      </div>
+
+      <div class="remember"><b>🧠 Запам'ятай:</b> Node — це «модель nginx, доступна з JavaScript»: створений для тисяч одночасних I/O-з'єднань, а не для обчислень.</div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Шари архітектури</h2>
+      <p class="section-desc">Коли ви пишете fs.readFile, виклик проходить крізь п'ять шарів — знати їх означає розуміти, де шукати проблему.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 400" role="img" aria-label="Шари архітектури Node.js згори донизу: ваш JavaScript-код і npm-пакети; Node.js API на JavaScript (fs, http, net, crypto, stream, events); C++ bindings і native addons через N-API; на одному рівні три блоки — V8 (парсер, Ignition, JIT, GC), libuv (event loop, thread pool, асинхронний I/O) та інші C-залежності (OpenSSL, zlib, llhttp, c-ares, ICU); внизу операційна система з epoll, kqueue, IOCP, файлами, сокетами і потоками.">
+          <defs><marker id="n01d1-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="55" y="72" text-anchor="middle" font-weight="600" fill="var(--accent)">JavaScript</text>
+            <line x1="20" y1="125" x2="700" y2="125" stroke="var(--fg-muted)" stroke-dasharray="4 4"/>
+            <text x="55" y="195" text-anchor="middle" font-weight="600" fill="var(--info)">C / C++</text>
+            <text x="55" y="350" text-anchor="middle" font-weight="600" fill="var(--fg-muted)">Ядро ОС</text>
+
+            <rect x="110" y="15" width="590" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="405" y="42" text-anchor="middle" fill="currentColor">Ваш код: app.js + npm-пакети (express, prisma, zod...)</text>
+
+            <line x1="405" y1="61" x2="405" y2="73" stroke="currentColor" marker-end="url(#n01d1-arrow)"/>
+
+            <rect x="110" y="75" width="590" height="44" rx="8" fill="none" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="405" y="102" text-anchor="middle" fill="currentColor">Node.js API на JS (lib/): fs · http · net · crypto · stream · events · timers</text>
+
+            <line x1="405" y1="121" x2="405" y2="133" stroke="currentColor" marker-end="url(#n01d1-arrow)"/>
+
+            <rect x="110" y="135" width="590" height="44" rx="8" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="405" y="155" text-anchor="middle" fill="currentColor">C++ bindings: internalBinding('fs'), ('tcp_wrap')...</text>
+            <text x="405" y="171" text-anchor="middle" font-size="11" fill="var(--fg-muted)">+ ваші native addons через N-API (bcrypt, sharp, better-sqlite3)</text>
+
+            <line x1="210" y1="181" x2="210" y2="193" stroke="currentColor" marker-end="url(#n01d1-arrow)"/>
+            <line x1="405" y1="181" x2="405" y2="193" stroke="currentColor" marker-end="url(#n01d1-arrow)"/>
+            <line x1="600" y1="181" x2="600" y2="193" stroke="currentColor" marker-end="url(#n01d1-arrow)"/>
+
+            <rect x="110" y="195" width="190" height="96" rx="8" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="205" y="220" text-anchor="middle" font-weight="600" fill="currentColor">V8</text>
+            <text x="205" y="242" text-anchor="middle" font-size="11" fill="currentColor">parser · Ignition</text>
+            <text x="205" y="260" text-anchor="middle" font-size="11" fill="currentColor">Sparkplug · Maglev · TurboFan</text>
+            <text x="205" y="278" text-anchor="middle" font-size="11" fill="currentColor">heap · GC · isolates</text>
+
+            <rect x="310" y="195" width="190" height="96" rx="8" fill="none" stroke="var(--good)" stroke-width="1.6"/>
+            <text x="405" y="220" text-anchor="middle" font-weight="600" fill="currentColor">libuv</text>
+            <text x="405" y="242" text-anchor="middle" font-size="11" fill="currentColor">event loop (6 фаз)</text>
+            <text x="405" y="260" text-anchor="middle" font-size="11" fill="currentColor">thread pool (4 потоки)</text>
+            <text x="405" y="278" text-anchor="middle" font-size="11" fill="currentColor">таймери · сигнали · процеси</text>
+
+            <rect x="510" y="195" width="190" height="96" rx="8" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="605" y="220" text-anchor="middle" font-weight="600" fill="currentColor">Інші залежності</text>
+            <text x="605" y="242" text-anchor="middle" font-size="11" fill="currentColor">OpenSSL (tls, crypto)</text>
+            <text x="605" y="260" text-anchor="middle" font-size="11" fill="currentColor">llhttp · nghttp2 · zlib</text>
+            <text x="605" y="278" text-anchor="middle" font-size="11" fill="currentColor">c-ares · ICU · ada · simdutf</text>
+
+            <line x1="405" y1="293" x2="405" y2="323" stroke="currentColor" marker-end="url(#n01d1-arrow)"/>
+            <line x1="205" y1="293" x2="205" y2="323" stroke="currentColor" marker-end="url(#n01d1-arrow)"/>
+            <text x="230" y="312" font-size="11" fill="var(--fg-muted)">пам'ять</text>
+            <text x="415" y="312" font-size="11" fill="var(--fg-muted)">syscalls</text>
+
+            <rect x="110" y="325" width="590" height="50" rx="8" fill="var(--bg-soft)" stroke="currentColor" stroke-width="1.3"/>
+            <text x="405" y="346" text-anchor="middle" fill="currentColor">Операційна система</text>
+            <text x="405" y="364" text-anchor="middle" font-size="11" fill="var(--fg-muted)">epoll (Linux) · kqueue (macOS/BSD) · IOCP (Windows) · файли · сокети · потоки</text>
+          </g>
+        </svg>
+        <figcaption>JS-код ніколи не говорить з ОС напряму: виклик спускається через Node API → C++ bindings → libuv/OpenSSL/zlib → syscalls, а результат піднімається назад колбеком у event loop.</figcaption>
+      </figure>
+
+      <h3>Що лежить на кожному шарі</h3>
+      <table>
+        <tr><th>Шар</th><th>Де в репозиторії nodejs/node</th><th>Приклад</th></tr>
+        <tr><td>Node API на JS</td><td><code>lib/</code> (<code>lib/fs.js</code>, <code>lib/internal/...</code>)</td><td>Валідація аргументів, обгортки в проміси, streams, EventEmitter</td></tr>
+        <tr><td>C++ bindings</td><td><code>src/</code> (<code>node_file.cc</code>, <code>tcp_wrap.cc</code>)</td><td>Перетворення JS-значень у C-структури, виклик <code>uv_fs_open</code></td></tr>
+        <tr><td>V8</td><td><code>deps/v8</code></td><td>Компілює й виконує ваш JS і JS самого Node</td></tr>
+        <tr><td>libuv</td><td><code>deps/uv</code></td><td>Event loop, неблокуючі сокети, пул потоків для fs</td></tr>
+        <tr><td>Інші deps</td><td><code>deps/openssl</code>, <code>deps/llhttp</code>, <code>deps/undici</code>...</td><td>TLS, парсинг HTTP, вбудований <code>fetch</code> (undici — це JS)</td></tr>
+      </table>
+
+      <p>Простежимо один виклик <code>fs.readFile('a.txt', cb)</code>:</p>
+      <ol>
+        <li><b>lib/fs.js</b> валідує аргументи, створює об'єкт-запит (<code>FSReqCallback</code>) і викликає binding.</li>
+        <li><b>C++ binding</b> (<code>node_file.cc</code>) перетворює рядок шляху в C-рядок і викликає <code>uv_fs_open(loop, req, path, ..., callback)</code>.</li>
+        <li><b>libuv</b> кладе задачу в чергу <b>thread pool</b>; вільний потік пулу робить блокуючий <code>open()</code>, потім <code>fstat</code>, <code>read</code>, <code>close</code> (readFile — це кілька таких кроків).</li>
+        <li>Після завершення потік пулу сигналізує головному циклу (через <code>uv_async</code>), і на наступній ітерації в <b>poll-фазі</b> libuv викликає C++-колбек.</li>
+        <li>C++ «входить» у V8 (<code>MakeCallback</code>) і викликає ваш JS <code>cb(err, data)</code>; після колбеку Node проганяє чергу <code>process.nextTick</code> і мікрозадачі.</li>
+      </ol>
+
+      <div class="remember"><b>🧠 Запам'ятай:</b> V8 вміє лише виконувати JS; усе, що «торкається світу» (файли, мережа, таймери), робить libuv через ОС, а C++ bindings склеюють ці два світи.</div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> V8: від тексту до машинного коду</h2>
+      <p class="section-desc">Достатньо розуміти конвеєр компіляції і що таке деоптимізація — глибоке тюнінгування в туторіалі 15.</p>
+
+      <p><b>V8</b> — рушій JavaScript і WebAssembly від Google, написаний на C++. Той самий, що в
+      Chrome. Node вбудовує його як бібліотеку: створює <b>Isolate</b> (ізольований екземпляр рушія
+      зі своєю купою і GC) і <b>Context</b> (набір глобальних об'єктів). Кожен worker thread у Node
+      — це окремий Isolate, тому workers не ділять звичайні JS-об'єкти (лише <code>SharedArrayBuffer</code>).</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 230" role="img" aria-label="Конвеєр V8: вихідний код парситься в AST, Ignition генерує байткод і інтерпретує його збираючи type feedback; гарячі функції компілюються Sparkplug (базовий компілятор без оптимізацій), далі Maglev (швидкий оптимізуючий) і TurboFan (найпотужніший оптимізуючий); якщо припущення про типи порушуються, відбувається деоптимізація назад до Ignition.">
+          <defs><marker id="n01d2-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+          <marker id="n01d2-arrow-bad" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--bad)"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="60" width="90" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="55" y="82" text-anchor="middle" fill="currentColor">Source</text>
+            <text x="55" y="98" text-anchor="middle" font-size="11" fill="var(--fg-muted)">app.js</text>
+            <line x1="100" y1="85" x2="118" y2="85" stroke="currentColor" marker-end="url(#n01d2-arrow)"/>
+
+            <rect x="120" y="60" width="90" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="165" y="82" text-anchor="middle" fill="currentColor">Parser</text>
+            <text x="165" y="98" text-anchor="middle" font-size="11" fill="var(--fg-muted)">→ AST (lazy)</text>
+            <line x1="210" y1="85" x2="228" y2="85" stroke="currentColor" marker-end="url(#n01d2-arrow)"/>
+
+            <rect x="230" y="60" width="110" height="50" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="285" y="82" text-anchor="middle" fill="currentColor">Ignition</text>
+            <text x="285" y="98" text-anchor="middle" font-size="11" fill="var(--fg-muted)">байткод + feedback</text>
+            <line x1="340" y1="85" x2="358" y2="85" stroke="currentColor" marker-end="url(#n01d2-arrow)"/>
+
+            <rect x="360" y="60" width="100" height="50" rx="8" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="410" y="82" text-anchor="middle" fill="currentColor">Sparkplug</text>
+            <text x="410" y="98" text-anchor="middle" font-size="11" fill="var(--fg-muted)">baseline</text>
+            <line x1="460" y1="85" x2="478" y2="85" stroke="currentColor" marker-end="url(#n01d2-arrow)"/>
+
+            <rect x="480" y="60" width="100" height="50" rx="8" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="530" y="82" text-anchor="middle" fill="currentColor">Maglev</text>
+            <text x="530" y="98" text-anchor="middle" font-size="11" fill="var(--fg-muted)">mid-tier opt</text>
+            <line x1="580" y1="85" x2="598" y2="85" stroke="currentColor" marker-end="url(#n01d2-arrow)"/>
+
+            <rect x="600" y="60" width="110" height="50" rx="8" fill="none" stroke="var(--good)" stroke-width="1.6"/>
+            <text x="655" y="82" text-anchor="middle" fill="currentColor">TurboFan</text>
+            <text x="655" y="98" text-anchor="middle" font-size="11" fill="var(--fg-muted)">top-tier opt</text>
+
+            <text x="470" y="40" text-anchor="middle" font-size="11" fill="var(--fg-muted)">функція «гарячіша» → вищий рівень, довша компіляція, швидший код</text>
+            <line x1="300" y1="48" x2="680" y2="48" stroke="var(--fg-muted)" marker-end="url(#n01d2-arrow)"/>
+
+            <path d="M655,112 C655,175 285,175 285,114" fill="none" stroke="var(--bad)" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#n01d2-arrow-bad)"/>
+            <text x="470" y="190" text-anchor="middle" fill="var(--bad)">deopt: «припущення про типи хибне» → назад в Ignition</text>
+            <text x="470" y="210" text-anchor="middle" font-size="11" fill="var(--fg-muted)">наприклад, функція завжди отримувала числа, а тепер отримала рядок</text>
+          </g>
+        </svg>
+        <figcaption>V8 — багаторівневий JIT: стартує з дешевого інтерпретатора, а для гарячого коду поступово генерує все швидший машинний код, ризикуючи деоптимізацією.</figcaption>
+      </figure>
+
+      <table>
+        <tr><th>Рівень</th><th>Що робить</th><th>Компроміс</th></tr>
+        <tr><td><b>Parser</b></td><td>Будує AST. Функції спершу лише «препарсить» (перевіряє синтаксис), повний парсинг — при першому виклику (lazy parsing)</td><td>Швидкий старт, але парсинг гарячої функції двічі</td></tr>
+        <tr><td><b>Ignition</b></td><td>Генерує компактний байткод і інтерпретує його; паралельно збирає <b>type feedback</b> (які типи/форми об'єктів бачили)</td><td>Мало пам'яті, повільне виконання</td></tr>
+        <tr><td><b>Sparkplug</b></td><td>Майже дослівно перекладає байткод у машинний код, без оптимізацій</td><td>Компілюється миттєво, дає помітний приріст</td></tr>
+        <tr><td><b>Maglev</b></td><td>Оптимізуючий компілятор середнього рівня, використовує feedback</td><td>Набагато швидше компілюється, ніж TurboFan</td></tr>
+        <tr><td><b>TurboFan</b></td><td>Агресивні спекулятивні оптимізації: inlining, escape analysis, усунення перевірок</td><td>Найшвидший код, найдорожча компіляція, найболючіший deopt</td></tr>
+      </table>
+
+      <p><b>Hidden classes (shapes/maps) та inline caches</b> — ключ до швидкості: об'єкти з однаковим
+      набором властивостей, доданих в однаковому порядку, мають одну «форму», і доступ до
+      <code>obj.x</code> компілюється в зчитування за фіксованим зміщенням. Якщо в одне місце коду
+      приходять об'єкти багатьох форм (megamorphic), оптимізація пропадає.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">deopt-demo.js — запуск: node --trace-deopt deopt-demo.js | grep add</span></div>
+        <pre><code>function add(a, b) { return a + b; }
+
+for (let i = 0; i &lt; 1e6; i++) add(i, 1);   // V8 спеціалізує add під числа (Smi)
+add('x', 'y');                               // типи змінились → deoptimization
+for (let i = 0; i &lt; 1e6; i++) add(i, 1);   // повторна оптимізація, вже поліморфна
+
+// Реальний рядок з виводу (Node 24):
+// [bailout (kind: deopt-eager, reason: not a Smi): begin. deoptimizing ... &lt;JSFunction add ...&gt;, &lt;Code TURBOFAN_JS&gt; ...]</code></pre>
+      </div>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body"><b>Що варто знати на рівні senior, а що — ні.</b> Достатньо: «V8 — багаторівневий
+        JIT з інтерпретатором Ignition і оптимізуючими компіляторами; він спекулює на типах і
+        деоптимізується, якщо спекуляція хибна; тому мономорфний код зі стабільними формами
+        об'єктів швидший». Назви рівнів і те, що Maglev — відносно нова проміжна ланка, — приємний
+        бонус. Купа, GC (Scavenger / Mark-Compact), <code>--max-old-space-size</code> і профілювання —
+        у <a href="15-performance-memory.html">туторіалі 15</a>.</div>
+      </div>
+
+      <div class="callout fun">
+        <div class="ic">🎉</div>
+        <div class="body"><span class="tag">Цікавий факт</span>
+        Node стартує за десятки мілісекунд, хоча при запуску виконує чималий шматок власного JS
+        (bootstrap, CJS/ESM-завантажувачі). Секрет — <b>V8 startup snapshot</b>: стан купи після
+        bootstrap серіалізується під час збирання Node і просто десеріалізується при старті.
+        Той самий механізм доступний і вам (<code>--build-snapshot</code>), а також використовується
+        для Single Executable Applications (<code>node:sea</code>).</div>
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> libuv: event loop і thread pool</h2>
+      <p class="section-desc">Найважливіше знання про Node: які операції не займають жодного потоку, а які стоять у черзі до пулу з 4 потоків.</p>
+
+      <p><b>libuv</b> — кросплатформна C-бібліотека асинхронного I/O. Вона дає Node:</p>
+      <ul>
+        <li><b>event loop</b> — цикл із 6 фаз, який чекає на події ОС і викликає колбеки (детально — <a href="02-event-loop-deep-dive.html">туторіал 2</a>);</li>
+        <li><b>handles</b> — довгоживучі об'єкти: TCP/UDP-сокети, таймери, pipes, TTY, сигнали, дочірні процеси;</li>
+        <li><b>requests</b> — короткі операції: запис у сокет, операція з файлом, DNS-lookup;</li>
+        <li><b>thread pool</b> — пул робочих потоків для того, що ОС не вміє робити асинхронно.</li>
+      </ul>
+
+      <h3>Два принципово різні шляхи асинхронності</h3>
+      <p>Ключова ідея: «асинхронна операція» у Node може бути реалізована двома способами.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 360" role="img" aria-label="Два шляхи асинхронного I/O в Node. Ліворуч мережевий I/O: socket.read реєструє сокет у механізмі ОС (epoll, kqueue, IOCP), жоден потік не чекає; ядро повідомляє event loop, що сокет готовий, і колбек виконується в головному потоці. Праворуч fs, dns.lookup, crypto.pbkdf2 і zlib: задача ставиться в чергу thread pool з 4 потоків, потік робить блокуючий системний виклик, після завершення результат повертається в event loop і колбек виконується в головному потоці.">
+          <defs><marker id="n01d3-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="230" y="12" width="280" height="56" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="370" y="36" text-anchor="middle" font-weight="600" fill="currentColor">Головний потік: V8 + event loop</text>
+            <text x="370" y="54" text-anchor="middle" font-size="11" fill="var(--fg-muted)">виконує JS і всі колбеки</text>
+
+            <text x="30" y="98" font-weight="600" fill="var(--good)">Мережа: OS async I/O</text>
+            <text x="710" y="98" text-anchor="end" font-weight="600" fill="var(--warn)">fs · dns.lookup · crypto · zlib</text>
+
+            <line x1="260" y1="70" x2="220" y2="118" stroke="currentColor" marker-end="url(#n01d3-arrow)"/>
+                        <rect x="30" y="120" width="240" height="56" rx="8" fill="none" stroke="var(--good)" stroke-width="1.3"/>
+            <text x="150" y="143" text-anchor="middle" fill="currentColor">Неблокуючий сокет зареєстровано</text>
+            <text x="150" y="161" text-anchor="middle" font-size="11" fill="var(--fg-muted)">у epoll / kqueue / IOCP — 0 потоків</text>
+            <line x1="150" y1="176" x2="150" y2="208" stroke="currentColor" marker-end="url(#n01d3-arrow)"/>
+            <rect x="30" y="210" width="240" height="56" rx="8" fill="var(--bg-soft)" stroke="currentColor" stroke-width="1.3"/>
+            <text x="150" y="233" text-anchor="middle" fill="currentColor">Ядро ОС: дані прийшли</text>
+            <text x="150" y="251" text-anchor="middle" font-size="11" fill="var(--fg-muted)">«сокети 7, 12, 40 готові»</text>
+            <path d="M150,266 L150,300 L300,300 L300,72" fill="none" stroke="var(--good)" stroke-width="1.3" marker-end="url(#n01d3-arrow)"/>
+            <text x="225" y="318" text-anchor="middle" font-size="11" fill="var(--good)">poll-фаза отримує подію</text>
+
+            <line x1="480" y1="70" x2="515" y2="118" stroke="currentColor" marker-end="url(#n01d3-arrow)"/>
+            <rect x="450" y="120" width="240" height="56" rx="8" fill="none" stroke="var(--warn)" stroke-width="1.3"/>
+            <text x="570" y="143" text-anchor="middle" fill="currentColor">Черга задач thread pool</text>
+            <text x="570" y="161" text-anchor="middle" font-size="11" fill="var(--fg-muted)">FIFO, один пул на процес</text>
+            <line x1="570" y1="176" x2="570" y2="196" stroke="currentColor" marker-end="url(#n01d3-arrow)"/>
+            <rect x="450" y="198" width="54" height="40" rx="6" fill="none" stroke="var(--warn)"/>
+            <rect x="512" y="198" width="54" height="40" rx="6" fill="none" stroke="var(--warn)"/>
+            <rect x="574" y="198" width="54" height="40" rx="6" fill="none" stroke="var(--warn)"/>
+            <rect x="636" y="198" width="54" height="40" rx="6" fill="none" stroke="var(--warn)"/>
+            <text x="477" y="223" text-anchor="middle" font-size="11" fill="currentColor">T1</text>
+            <text x="539" y="223" text-anchor="middle" font-size="11" fill="currentColor">T2</text>
+            <text x="601" y="223" text-anchor="middle" font-size="11" fill="currentColor">T3</text>
+            <text x="663" y="223" text-anchor="middle" font-size="11" fill="currentColor">T4</text>
+            <text x="570" y="258" text-anchor="middle" font-size="11" fill="var(--fg-muted)">кожен робить блокуючий read() / pbkdf2</text>
+            <path d="M570,264 L570,300 L440,300 L440,72" fill="none" stroke="var(--warn)" stroke-width="1.3" marker-end="url(#n01d3-arrow)"/>
+            <text x="510" y="318" text-anchor="middle" font-size="11" fill="var(--warn)">uv_async → колбек у poll-фазі</text>
+
+            <text x="370" y="350" text-anchor="middle" font-size="11" fill="currentColor">В обох випадках ваш JS-колбек виконується в ГОЛОВНОМУ потоці</text>
+          </g>
+        </svg>
+        <figcaption>Мережевий I/O масштабується до десятків тисяч з'єднань без потоків; файлові та CPU-важкі операції обмежені розміром пулу (4 за замовчуванням).</figcaption>
+      </figure>
+
+      <h3>Хто куди йде</h3>
+      <table>
+        <tr><th>Операція</th><th>Механізм</th><th>Чому</th></tr>
+        <tr><td>TCP/UDP-сокети, HTTP-сервер і клієнт, <code>fetch</code>, pipes, TTY</td><td>✅ OS async (epoll/kqueue/IOCP)</td><td>Ядро вміє повідомляти про готовність сокета</td></tr>
+        <tr><td>Таймери (<code>setTimeout</code>)</td><td>✅ сам event loop</td><td>Купа таймерів + таймаут блокування poll-фази</td></tr>
+        <tr><td>Дочірні процеси, сигнали</td><td>✅ OS (SIGCHLD, self-pipe)</td><td>—</td></tr>
+        <tr><td><code>dns.resolve*()</code>, <code>dns.promises.resolve</code></td><td>✅ мережа через c-ares</td><td>Сам шле DNS-запити по UDP</td></tr>
+        <tr><td><b>Усі async <code>fs.*</code></b> (крім <code>fs.watch</code>)</td><td>⚠️ thread pool</td><td>Звичайні файли на POSIX завжди «готові», epoll для них безглуздий</td></tr>
+        <tr><td><b><code>dns.lookup()</code></b> — його неявно використовують <code>http.get</code>, <code>net.connect</code>, <code>fetch</code> за hostname</td><td>⚠️ thread pool</td><td>Викликає системний блокуючий <code>getaddrinfo()</code> (поважає /etc/hosts)</td></tr>
+        <tr><td><b>crypto</b>: <code>pbkdf2</code>, <code>scrypt</code>, <code>randomBytes</code>/<code>randomFill</code> з колбеком, <code>generateKeyPair</code>, <code>hkdf</code></td><td>⚠️ thread pool</td><td>Чисті обчислення, які інакше заблокували б головний потік</td></tr>
+        <tr><td><b>zlib</b> async (<code>gzip</code>, <code>deflate</code>, <code>brotliCompress</code>)</td><td>⚠️ thread pool</td><td>CPU-робота</td></tr>
+        <tr><td><code>crypto.createHash().update()</code>, <code>JSON.parse</code>, <code>*Sync</code>-функції</td><td>❌ головний потік</td><td>Синхронні — блокують event loop</td></tr>
+      </table>
+
+      <h3>UV_THREADPOOL_SIZE</h3>
+      <ul>
+        <li>Розмір за замовчуванням — <b>4</b>; можна збільшити змінною середовища <code>UV_THREADPOOL_SIZE</code> (максимум — 1024 у сучасних libuv).</li>
+        <li>Пул створюється <b>ліниво</b> — при першій задачі — і далі розмір не змінюється. Тому задавайте змінну <b>до старту процесу</b>: <code>UV_THREADPOOL_SIZE=16 node app.js</code>. Присвоєння <code>process.env.UV_THREADPOOL_SIZE</code> у першому рядку коду інколи спрацьовує, але це крихко (і на Windows не працює) — не покладайтеся.</li>
+        <li>Пул <b>один на процес</b> і спільний для всіх: ваші <code>fs</code>, bcrypt-addon, <code>dns.lookup</code> з HTTP-клієнта. Повільний NFS-диск або 4 одночасні хешування паролів можуть «заморозити» вихідні HTTP-запити, яким потрібен DNS-lookup.</li>
+        <li>Більше потоків ≠ завжди швидше: для CPU-задач немає сенсу ставити більше, ніж ядер; для повільних fs-операцій (мережеві диски) — має.</li>
+      </ul>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Класичний продакшн-інцидент.</b> Сервіс логіну хешує паролі через
+        <code>bcrypt</code> (native addon, використовує thread pool). Під навантаженням усі 4 потоки
+        зайняті хешуванням → <code>dns.lookup</code> для вихідних запитів до БД/API стоїть у черзі →
+        таймаути «звідусіль», хоча CPU не на 100% і event loop не заблокований. Лікування: більший
+        <code>UV_THREADPOOL_SIZE</code>, кешування DNS або IP, винесення хешування у worker threads /
+        окремий сервіс.</div>
+      </div>
+
+      <div class="callout fun">
+        <div class="ic">🎉</div>
+        <div class="body"><span class="tag">Цікавий факт</span>
+        На Linux libuv експериментував з <b>io_uring</b> — інтерфейсом ядра, який дає справді асинхронні
+        файлові операції без пулу потоків. Через проблеми з безпекою і сумісністю його використання за
+        замовчуванням згодом обмежили, тож на практиці вважайте: <b>fs у Node = thread pool</b>.</div>
+      </div>
+
+      <div class="remember"><b>🧠 Запам'ятай:</b> мережа — без потоків (ядро ОС), а fs, dns.lookup, crypto.pbkdf2/scrypt/randomBytes і zlib — у спільний пул з 4 потоків.</div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Демо: насичуємо thread pool</h2>
+      <p class="section-desc">Три маленькі скрипти, які за хвилину переконують сильніше за будь-яку діаграму.</p>
+
+      <h3>Демо 1: хеші йдуть «пачками по 4»</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">pool.js</span></div>
+        <pre><code>const crypto = require('node:crypto');
+const start = Date.now();
+
+for (let i = 1; i &lt;= 8; i++) {
+  crypto.pbkdf2('secret', 'salt', 200_000, 64, 'sha512', () => {
+    console.log(`hash ${i}: ${Date.now() - start} ms`);
+  });
+}</code></pre>
+      </div>
+      <p>Реальний запуск (Node 24, macOS, 16 ядер):</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">$ node pool.js  →  потім  UV_THREADPOOL_SIZE=8 node pool.js</span></div>
+        <pre><code>hash 2: 145 ms        # перша «пачка» з 4 — майже одночасно
+hash 4: 148 ms
+hash 3: 149 ms
+hash 1: 149 ms
+hash 5: 298 ms        # друга пачка чекала, поки звільняться потоки → вдвічі довше
+hash 7: 303 ms
+hash 6: 304 ms
+hash 8: 304 ms
+---
+hash 8: 200 ms        # UV_THREADPOOL_SIZE=8: усі 8 паралельно, одна «хвиля»
+hash 6: 202 ms
+...
+hash 3: 212 ms</code></pre>
+      </div>
+      <p>Що видно: (1) рівно чотири хеші завершуються разом, наступні чотири — через ще один
+      «квант» часу; (2) порядок завершення всередині пачки випадковий — потоки працюють паралельно;
+      (3) з 8 потоками всі вісім закінчуються однією хвилею. Кожен окремий хеш при 8 потоках трохи
+      повільніший (~200 мс замість ~145) — ядра ділять кеш, частоту і пропускну здатність пам'яті.</p>
+
+      <h3>Демо 2: файл чекає на криптографію</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">starve-pool.js</span></div>
+        <pre><code>const crypto = require('node:crypto');
+const fs = require('node:fs');
+const start = Date.now();
+const ms = () => `${Date.now() - start} ms`;
+
+for (let i = 0; i &lt; 4; i++) {
+  crypto.pbkdf2('x', 'y', 300_000, 64, 'sha512', () => console.log('pbkdf2 done', ms()));
+}
+fs.readFile(__filename, () => console.log('fs.readFile done', ms()));
+setTimeout(() => console.log('timer 10ms', ms()), 10);</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">$ node starve-pool.js   |   UV_THREADPOOL_SIZE=5 node starve-pool.js</span></div>
+        <pre><code>timer 10ms 11 ms               fs.readFile done 1 ms
+pbkdf2 done 174 ms             timer 10ms 11 ms
+pbkdf2 done 174 ms             pbkdf2 done 181 ms
+fs.readFile done 174 ms        pbkdf2 done 184 ms
+pbkdf2 done 175 ms             pbkdf2 done 186 ms
+pbkdf2 done 176 ms             pbkdf2 done 186 ms</code></pre>
+      </div>
+      <p>Читання крихітного файлу зайняло <b>174 мс</b> замість 1 мс — бо всі 4 потоки зайняті.
+      При цьому таймер спрацював вчасно (11 мс): <b>event loop не заблокований</b>, заблокований
+      лише пул. Це дві різні хвороби з різними симптомами.</p>
+
+      <h3>Демо 3: синхронна версія блокує все</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">sync-vs-async.js</span></div>
+        <pre><code>const crypto = require('node:crypto');
+const start = Date.now();
+setTimeout(() => console.log('timer (хотів 0 ms):', Date.now() - start, 'ms'), 0);
+crypto.pbkdf2Sync('x', 'y', 500_000, 64, 'sha512'); // блокує головний потік
+console.log('sync hash done:', Date.now() - start, 'ms');
+
+// Реальний вивід:
+// sync hash done: 284 ms
+// timer (хотів 0 ms): 285 ms</code></pre>
+      </div>
+      <p>Таймер на 0 мс спрацював через 285 мс. Якби це був HTTP-сервер, <i>жоден</i> інший запит не
+      обробився б ці 285 мс.</p>
+
+      <table>
+        <tr><th>Симптом</th><th>Заблокований event loop</th><th>Насичений thread pool</th></tr>
+        <tr><td>Таймери запізнюються</td><td>✅ так</td><td>❌ ні</td></tr>
+        <tr><td>Прості HTTP-відповіді без I/O повільні</td><td>✅ так</td><td>❌ ні</td></tr>
+        <tr><td>fs / DNS / bcrypt повільні</td><td>✅ так</td><td>✅ так</td></tr>
+        <tr><td>Метрика</td><td><code>monitorEventLoopDelay</code> росте</td><td>Event loop lag нормальний, latency fs/DNS росте</td></tr>
+        <tr><td>Лікування</td><td>Прибрати sync-код, worker threads, розбити роботу</td><td><code>UV_THREADPOOL_SIZE</code>, кеш DNS, менше паралельних задач</td></tr>
+      </table>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">На співбесіді запитають так</span>
+        «Запускаємо 8 викликів <code>crypto.pbkdf2</code> одночасно. Скільки часу це займе?» — очікують
+        почути про thread pool з 4 потоків і «дві хвилі». Бонус: сказати, що при
+        <code>UV_THREADPOOL_SIZE=8</code> на машині з ≥8 ядрами буде одна хвиля, а на 2-ядерній
+        машині — ні, бо потоків більше, ніж ядер.</div>
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> C++ bindings, N-API і вбудовані модулі</h2>
+      <p class="section-desc">Звідки береться require('fs'), як працюють native-пакети на кшталт bcrypt і sharp, і навіщо префікс node:.</p>
+
+      <h3>Internal bindings</h3>
+      <p>JS-модулі в <code>lib/</code> отримують доступ до C++ через <code>internalBinding('fs')</code>,
+      <code>internalBinding('tcp_wrap')</code> тощо. Це внутрішній, нестабільний API — з коду
+      користувача він недоступний (колись існував <code>process.binding()</code>, нині застарілий).
+      Тобто публічний контракт Node — це саме JS-модулі, а C++ — деталь реалізації.</p>
+
+      <h3>Native addons: від NAN до N-API</h3>
+      <p>Деякі пакети містять C/C++/Rust-код, скомпільований у <code>.node</code>-файл (динамічна
+      бібліотека, яку <code>require</code> завантажує через <code>dlopen</code>): <code>bcrypt</code>,
+      <code>sharp</code>, <code>better-sqlite3</code>, <code>canvas</code>, драйвери на кшталт
+      <code>@node-rs/*</code>.</p>
+
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: як писати native-код для Node</div>
+        <table><tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr><td>Прямо V8 API / NAN</td><td>Максимум контролю</td><td>Ламається з кожною мажорною версією V8 → перекомпіляція під кожен Node</td></tr>
+          <tr class="chosen"><td><b>Node-API (N-API) + node-addon-api</b> ✅</td><td><b>Стабільний ABI</b>: бінарник, зібраний під одну версію Node-API, працює на новіших Node без перезбирання; C++-обгортка зручна</td><td>Потрібен компілятор або prebuilt-бінарники для кожної ОС/архітектури</td></tr>
+          <tr><td>napi-rs (Rust)</td><td>Безпека пам'яті, зручна генерація типів, той самий Node-API</td><td>Rust-тулчейн</td></tr>
+          <tr><td>WebAssembly</td><td>Один бінарник для всіх платформ, пісочниця</td><td>Повільніший доступ до системи, копіювання даних</td></tr>
+        </table>
+        <p><b>Коли що:</b> для нового addon — Node-API (через node-addon-api або napi-rs) з prebuilt-бінарниками
+        (prebuildify / optionalDependencies під кожну платформу); для чистих обчислень, які мають
+        працювати скрізь (включно з браузером і edge) — WASM.</p>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Чому native-пакети болять у Docker.</b> <code>.node</code>-бінарник зібраний
+        під конкретні ОС, архітектуру і libc. <code>npm install</code> на Mac (arm64) і копіювання
+        <code>node_modules</code> в Alpine-образ (x64, musl) → <code>invalid ELF header</code> або
+        «Error loading shared library». Завжди ставте залежності <i>всередині</i> образу (див.
+        <a href="05-npm-packages.html">туторіал 5</a>).</div>
+      </div>
+
+      <h3>Вбудовані модулі і префікс node:</h3>
+      <p>Node має ~70 вбудованих модулів (<code>require('node:module').builtinModules</code> на
+      Node 24 повертає 72 записи, включно з підшляхами на кшталт <code>fs/promises</code>).
+      Їх можна імпортувати з префіксом <code>node:</code>, і це сучасна рекомендація:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">builtins.mjs</span></div>
+        <pre><code>import fs from 'node:fs/promises';   // явно: це вбудований модуль, а не npm-пакет "fs"
+import { test } from 'node:test';     // ДЕЯКІ модулі існують ЛИШЕ з префіксом
+import { DatabaseSync } from 'node:sqlite';
+
+// require('test')  → Error: Cannot find module 'test'  (code: MODULE_NOT_FOUND)
+// require('node:test') → працює</code></pre>
+      </div>
+      <ul>
+        <li>Префікс захищає від <b>typosquatting/підміни</b>: пакет з назвою <code>events</code> у
+        <code>node_modules</code> не перекриє вбудований <code>node:events</code>.</li>
+        <li>Модулі, додані останніми роками (<code>node:test</code>, <code>node:sqlite</code>,
+        <code>node:sea</code>), доступні <b>тільки</b> з префіксом — щоб не ламати існуючі npm-пакети
+        з такими іменами.</li>
+        <li>Вбудовані модулі завантажуються зі snapshot / вбудованого коду, а не з диска — тому вони
+        швидкі й не потребують <code>node_modules</code>.</li>
+      </ul>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Що відбувається, коли ви пишете node app.js</h2>
+      <p class="section-desc">Життєвий цикл процесу: від bootstrap до моменту, коли Node вирішує, що роботи більше немає.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 360" role="img" aria-label="Життєвий цикл процесу Node: запуск node app.js; bootstrap — ініціалізація V8, isolate, десеріалізація snapshot, створення process; завантаження головного модуля через CJS або ESM loader з module wrapper; виконання всього синхронного коду верхнього рівня, з дренажем nextTick і мікрозадач; вхід у event loop; перевірка чи є активні ref-нуті handles або requests: якщо так — ще одна ітерація циклу; якщо ні — подія beforeExit; якщо обробник beforeExit запланував нову роботу, повертаємось у цикл; інакше подія exit і завершення процесу з exit code.">
+          <defs><marker id="n01d4-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="20" width="120" height="56" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="70" y="44" text-anchor="middle" font-weight="600" fill="currentColor">node app.js</text>
+            <text x="70" y="62" text-anchor="middle" font-size="11" fill="var(--fg-muted)">exec процесу</text>
+            <line x1="130" y1="48" x2="153" y2="48" stroke="currentColor" marker-end="url(#n01d4-arrow)"/>
+
+            <rect x="155" y="20" width="170" height="56" rx="8" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="240" y="40" text-anchor="middle" font-weight="600" fill="currentColor">Bootstrap</text>
+            <text x="240" y="56" text-anchor="middle" font-size="11" fill="var(--fg-muted)">V8 platform, isolate,</text>
+            <text x="240" y="69" text-anchor="middle" font-size="11" fill="var(--fg-muted)">snapshot, process, libuv loop</text>
+            <line x1="325" y1="48" x2="348" y2="48" stroke="currentColor" marker-end="url(#n01d4-arrow)"/>
+
+            <rect x="350" y="20" width="170" height="56" rx="8" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="435" y="40" text-anchor="middle" font-weight="600" fill="currentColor">Завантажити модуль</text>
+            <text x="435" y="56" text-anchor="middle" font-size="11" fill="var(--fg-muted)">CJS або ESM loader,</text>
+            <text x="435" y="69" text-anchor="middle" font-size="11" fill="var(--fg-muted)">module wrapper</text>
+            <line x1="520" y1="48" x2="543" y2="48" stroke="currentColor" marker-end="url(#n01d4-arrow)"/>
+
+            <rect x="545" y="20" width="165" height="56" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="627" y="40" text-anchor="middle" font-weight="600" fill="currentColor">Sync-код top-level</text>
+            <text x="627" y="56" text-anchor="middle" font-size="11" fill="var(--fg-muted)">реєструє таймери, сервери;</text>
+            <text x="627" y="69" text-anchor="middle" font-size="11" fill="var(--fg-muted)">потім nextTick + microtasks</text>
+
+            <line x1="627" y1="76" x2="627" y2="118" stroke="currentColor" marker-end="url(#n01d4-arrow)"/>
+
+            <rect x="500" y="120" width="210" height="56" rx="8" fill="none" stroke="var(--good)" stroke-width="1.6"/>
+            <text x="605" y="144" text-anchor="middle" font-weight="600" fill="currentColor">Event loop: ітерація</text>
+            <text x="605" y="162" text-anchor="middle" font-size="11" fill="var(--fg-muted)">timers → ... → poll → check → close</text>
+
+            <line x1="500" y1="148" x2="417" y2="148" stroke="currentColor" marker-end="url(#n01d4-arrow)"/>
+            <rect x="225" y="120" width="190" height="56" rx="8" fill="none" stroke="var(--warn)" stroke-width="1.3"/>
+            <text x="320" y="142" text-anchor="middle" font-weight="600" fill="currentColor">Є ref-нуті handles</text>
+            <text x="320" y="160" text-anchor="middle" font-weight="600" fill="currentColor">або requests?</text>
+
+            <path d="M320,120 C320,95 605,100 605,118" fill="none" stroke="var(--good)" stroke-width="1.3" marker-end="url(#n01d4-arrow)"/>
+            <text x="440" y="100" text-anchor="middle" font-size="11" fill="var(--good)">так → ще ітерація</text>
+
+            <line x1="320" y1="176" x2="320" y2="218" stroke="currentColor" marker-end="url(#n01d4-arrow)"/>
+            <text x="332" y="202" font-size="11" fill="var(--bad)">ні</text>
+
+            <rect x="225" y="220" width="190" height="50" rx="8" fill="none" stroke="var(--warn)" stroke-width="1.3"/>
+            <text x="320" y="242" text-anchor="middle" font-weight="600" fill="currentColor">emit 'beforeExit'</text>
+            <text x="320" y="259" text-anchor="middle" font-size="11" fill="var(--fg-muted)">можна запланувати нову роботу</text>
+
+            <path d="M415,245 C480,245 560,230 580,178" fill="none" stroke="var(--good)" stroke-width="1.3" marker-end="url(#n01d4-arrow)"/>
+            <text x="530" y="262" text-anchor="middle" font-size="11" fill="var(--good)">з'явилась робота</text>
+
+            <line x1="225" y1="245" x2="167" y2="245" stroke="currentColor" marker-end="url(#n01d4-arrow)"/>
+            <rect x="10" y="220" width="155" height="50" rx="8" fill="var(--bg-soft)" stroke="var(--bad)" stroke-width="1.3"/>
+            <text x="87" y="242" text-anchor="middle" font-weight="600" fill="currentColor">emit 'exit'</text>
+            <text x="87" y="259" text-anchor="middle" font-size="11" fill="var(--fg-muted)">лише sync-код!</text>
+
+            <line x1="87" y1="270" x2="87" y2="303" stroke="currentColor" marker-end="url(#n01d4-arrow)"/>
+            <rect x="10" y="305" width="155" height="40" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="87" y="330" text-anchor="middle" fill="currentColor">exit(code)</text>
+
+            <text x="440" y="320" text-anchor="middle" font-size="11" fill="var(--fg-muted)">process.exit() перестрибує одразу до 'exit',</text>
+            <text x="440" y="336" text-anchor="middle" font-size="11" fill="var(--fg-muted)">необроблена помилка — теж (з кодом 1)</text>
+          </g>
+        </svg>
+        <figcaption>Node не «завершує програму» в кінці файлу — він виходить, коли event loop більше не має жодного ref-нутого handle чи незавершеного request.</figcaption>
+      </figure>
+
+      <h3>1. Bootstrap</h3>
+      <p>C++-функція <code>node::Start</code> парсить аргументи CLI та <code>NODE_OPTIONS</code>,
+      ініціалізує OpenSSL, V8-платформу (у неї свої фонові потоки), створює Isolate і Context
+      (зі snapshot), налаштовує <code>process</code>, <code>globalThis</code>, таймери, обробники
+      сигналів, запускає internal JS-bootstrap і створює libuv-loop.</p>
+
+      <h3>2. Module wrapper</h3>
+      <p>CommonJS-файл не виконується «як є» — Node загортає його у функцію. Саме тому
+      <code>require</code>, <code>module</code>, <code>__dirname</code> «глобальні», хоча насправді це
+      параметри функції:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">wrapper.js</span></div>
+        <pre><code>console.log(typeof require, typeof module, typeof exports, typeof __filename);
+console.log(arguments.length);              // у файлі верхнього рівня є arguments!
+console.log(require('node:module').wrapper);
+console.log(this === module.exports);
+
+// Реальний вивід (Node 24):
+// function object object string
+// 5
+// [ '(function (exports, require, module, __filename, __dirname) { ', '\n});' ]
+// true</code></pre>
+      </div>
+      <p>ES-модулі (<code>.mjs</code> або <code>"type": "module"</code>) так не загортаються: там немає
+      <code>require</code>/<code>__dirname</code> (замість них — <code>import.meta.url</code>,
+      <code>import.meta.dirname</code>, <code>import.meta.filename</code>), <code>this</code> на
+      верхньому рівні — <code>undefined</code>, а top-level <code>await</code> дозволений. Деталі — у
+      <a href="04-modules-cjs-esm.html">туторіалі 4</a>.</p>
+
+      <h3>3. Синхронний код і вхід у цикл</h3>
+      <p>Увесь код верхнього рівня виконується синхронно від першого до останнього рядка: він лише
+      <i>реєструє</i> роботу (<code>server.listen</code>, <code>setTimeout</code>, <code>fs.readFile</code>).
+      Потім Node проганяє <code>process.nextTick</code> і мікрозадачі, і викликає <code>uv_run()</code> —
+      event loop.</p>
+
+      <h3>4. Коли процес завершується: ref і unref</h3>
+      <p>Цикл крутиться, поки є хоч один <b>активний ref-нутий handle</b> (сервер слухає порт,
+      таймер очікує, сокет відкритий, stdin читається) або <b>незавершений request</b> (файл
+      читається). Будь-який handle можна «відв'язати»: <code>unref()</code> означає «не тримай процес
+      заради мене».</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">unref.js</span></div>
+        <pre><code>const t = setInterval(() => console.log('tick'), 100);
+t.unref();                         // інтервал не тримає процес живим
+setTimeout(() => console.log('done'), 250);
+process.on('beforeExit', () => console.log('beforeExit'));
+process.on('exit', (code) => console.log('exit', code));
+
+// Реальний вивід:
+// tick
+// tick
+// done
+// beforeExit
+// exit 0</code></pre>
+      </div>
+      <p>Без <code>unref()</code> процес жив би вічно. Типові застосування: фоновий heartbeat чи
+      періодичний flush метрик, які не повинні заважати graceful exit; <code>server.unref()</code> у
+      тестах. <code>'beforeExit'</code> не викликається при <code>process.exit()</code> і при
+      необробленому виключенні; в обробнику <code>'exit'</code> можна робити лише синхронні речі —
+      цикл уже не працює. Ще більше прикладів (включно з «зацикленим» beforeExit) — у
+      <a href="02-event-loop-deep-dive.html">туторіалі 2</a>.</p>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">На співбесіді запитають так</span>
+        «Чому мій скрипт міграції не завершується після останнього рядка?» — майже завжди відкритий
+        handle: пул з'єднань до БД (<code>pg.Pool</code>, Prisma, Redis-клієнт) тримає сокети. Правильно —
+        викликати <code>pool.end()</code> / <code>prisma.$disconnect()</code>, а не <code>process.exit()</code>.
+        Діагностика: <code>process.getActiveResourcesInfo()</code> або пакет <code>why-is-node-running</code>.</div>
+      </div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Міф про «однопотоковість»</h2>
+      <p class="section-desc">«Node однопотоковий» — правильно про ваш JS-код і неправильно про процес.</p>
+
+      <p>Точне формулювання: <b>JavaScript-код у Node виконується в одному потоці</b> (на один
+      Isolate), тому немає data races між вашими колбеками і не потрібні mutex-и для звичайних
+      змінних. Але <b>процес Node має багато потоків</b>:</p>
+      <ul>
+        <li><b>головний потік</b> — V8 + event loop + усі ваші колбеки;</li>
+        <li><b>libuv thread pool</b> — 4 потоки (створюються при першій задачі);</li>
+        <li><b>V8 platform worker threads</b> — фонова компіляція (Maglev/TurboFan компілюють
+        не в головному потоці), конкурентне маркування і sweeping для GC;</li>
+        <li>службові потоки: inspector, обробка сигналів тощо;</li>
+        <li><b>worker_threads</b>, якщо ви їх створили — кожен зі своїм Isolate і своїм event loop.</li>
+      </ul>
+      <div class="codecard">
+        <div class="bar"><span class="path">threads.js (macOS; на Linux — ls /proc/$PID/task | wc -l)</span></div>
+        <pre><code>const { execSync } = require('node:child_process');
+const count = () => execSync(`ps -M -p ${process.pid} | tail -n +2 | wc -l`).toString().trim();
+
+console.log('idle process threads:', count());
+require('node:crypto').pbkdf2('a', 'b', 1, 8, 'sha1', () => {
+  console.log('after first thread-pool task:', count());
+});
+
+// Реальний вивід:
+// idle process threads: 7
+// after first thread-pool task: 11     ← +4 потоки libuv-пулу, створені ліниво</code></pre>
+      </div>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Як сказати правильно:</b> «Node використовує один потік для виконання JavaScript
+        і event loop, а паралелізм I/O забезпечують ядро ОС і пул потоків libuv. Для паралельних
+        обчислень на JS є <code>worker_threads</code>, для використання всіх ядер під HTTP —
+        <code>cluster</code> або кілька процесів за балансувальником» (див.
+        <a href="08-concurrency-scaling.html">туторіал 8</a>).</div>
+      </div>
+
+      <p class="muted">Порівняння з Python: у CPython теж «один потік виконує байткод одночасно» —
+      через GIL (див. <a href="../python-tutorials/06-gil-and-concurrency.html">Python, туторіал 6</a>).
+      Різниця в тому, що Python дає вам потоки, які <i>конкурують</i> за GIL, а Node взагалі не дає
+      потоків для звичайного JS — лише ізольовані workers з передачею повідомлень.</p>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Node vs браузер: той самий JS, різні середовища</h2>
+      <p class="section-desc">Мова однакова, рушій часто той самий (V8), але глобальні об'єкти, модулі і таймери відрізняються.</p>
+
+      <table>
+        <tr><th>Аспект</th><th>Браузер</th><th>Node.js</th></tr>
+        <tr><td>Глобальний об'єкт</td><td><code>window</code> (+ <code>self</code>)</td><td><code>global</code>; універсально — <code>globalThis</code> (<code>globalThis === global</code>)</td></tr>
+        <tr><td>DOM, <code>document</code>, <code>localStorage</code></td><td>✅</td><td>❌ (для тестів — jsdom/happy-dom)</td></tr>
+        <tr><td><code>process</code>, <code>Buffer</code></td><td>❌</td><td>✅ глобальні</td></tr>
+        <tr><td><code>require</code>, <code>__dirname</code></td><td>❌</td><td>✅ лише в CJS (параметри module wrapper)</td></tr>
+        <tr><td>Модулі</td><td>ESM (<code>&lt;script type="module"&gt;</code>), import maps</td><td>CJS і ESM; <code>require(esm)</code> у Node 22+</td></tr>
+        <tr><td><code>setTimeout</code> повертає</td><td>число</td><td>об'єкт <code>Timeout</code> з <code>ref()</code>/<code>unref()</code>/<code>refresh()</code></td></tr>
+        <tr><td><code>setImmediate</code></td><td>❌ (нестандартний)</td><td>✅ check-фаза event loop</td></tr>
+        <tr><td><code>process.nextTick</code></td><td>❌</td><td>✅ окрема черга з найвищим пріоритетом</td></tr>
+        <tr><td>Event loop</td><td>HTML-специфікація: task → microtasks → rendering (rAF)</td><td>libuv: 6 фаз, без rendering</td></tr>
+        <tr><td>Web API: <code>fetch</code>, <code>URL</code>, <code>AbortController</code>, <code>structuredClone</code>, Web Streams, <code>WebSocket</code>, <code>navigator</code></td><td>✅</td><td>✅ — Node поступово додає їх як глобальні (fetch на undici, WebSocket-клієнт, <code>navigator</code> — у свіжих версіях)</td></tr>
+        <tr><td>Доступ до ФС, мережі, процесів</td><td>❌ пісочниця</td><td>✅ повний (обмежити можна permission model: <code>--permission</code>)</td></tr>
+        <tr><td><code>this</code> на верхньому рівні</td><td><code>window</code> (класичний скрипт)</td><td><code>module.exports</code> (CJS) / <code>undefined</code> (ESM)</td></tr>
+      </table>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">globals.js</span></div>
+        <pre><code>const t = setTimeout(() => {}, 10);
+console.log(typeof t, t.constructor.name, typeof t.unref);   // object Timeout function
+console.log(+t > 0);            // true: Timeout має Symbol.toPrimitive → id
+clearTimeout(t);
+
+console.log(typeof window, typeof process, typeof Buffer, typeof fetch, typeof navigator);
+// undefined object function function object   (Node 24)
+console.log(globalThis === global);  // true</code></pre>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Пастка ізоморфного коду:</b> <code>if (typeof window === 'undefined')</code>
+        як перевірка «ми на сервері» стає менш надійною, бо Node додає браузерні глобальні об'єкти
+        (з'явився <code>navigator</code>; деякі бібліотеки дивилися саме на нього). Надійніше —
+        <code>typeof process !== 'undefined' &amp;&amp; process.versions?.node</code>. А в TypeScript —
+        <code>ReturnType&lt;typeof setTimeout&gt;</code> замість <code>number</code> для id таймера.</div>
+      </div>
+
+      <p>Як влаштований браузерний event loop (call stack, макро/мікрозадачі, rAF) — розібрано в
+      <a href="../js-doc/01-core-js-engine.html">JS Doc, туторіал 1</a>; специфічне для Node (фази libuv,
+      <code>nextTick</code>, <code>setImmediate</code>) — у <a href="02-event-loop-deep-dive.html">туторіалі 2</a>.</p>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Для чого Node добрий, а для чого ні</h2>
+      <p class="section-desc">Інтуїція «на рівні чисел»: скільки запитів витягне один процес і що його вбиває.</p>
+
+      <h3>I/O-bound: сильна сторона</h3>
+      <p>Типовий бекенд-запит: розпарсити JSON (0.1 мс CPU), сходити в БД (20 мс очікування), ще в
+      Redis (1 мс), відповісти. CPU зайнятий частки мілісекунди, решту часу запит просто «висить»
+      у event loop, не займаючи потоку. Один процес може тримати <b>десятки тисяч одночасних
+      з'єднань</b> — кожне коштує кілька кілобайт пам'яті на об'єкти сокета, а не мегабайти стеку
+      окремого потоку.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">io-concurrency.js</span></div>
+        <pre><code>const http = require('node:http');
+
+// Сервер «повільно» відповідає: 200 мс очікування (імітація БД/API)
+const server = http.createServer((req, res) => {
+  setTimeout(() => res.end('ok'), 200);
+});
+
+server.listen(0, async () => {
+  const { port } = server.address();
+  const start = Date.now();
+  // 300 одночасних запитів — клієнт і сервер в ОДНОМУ процесі, без жодного worker
+  await Promise.all(
+    Array.from({ length: 300 }, () => fetch(`http://127.0.0.1:${port}/`).then((r) => r.text()))
+  );
+  console.log(`300 запитів по 200 мс: ${Date.now() - start} ms`);
+  server.close();
+});
+
+// Реальний вивід (3 запуски): 419 ms, 420 ms, 418 ms
+// Послідовно це було б 300 × 200 = 60 000 ms</code></pre>
+      </div>
+
+      <h3>CPU-bound: слабка сторона</h3>
+      <p>Проста арифметика: якщо обробка одного запиту займає <b>X мс чистого CPU</b>, один процес
+      Node обробить не більше <b>1000 / X запитів на секунду</b> — незалежно від того, скільки
+      запитів чекають. Гірше: поки йде обчислення, <i>усі</i> інші запити стоять, тож p99 latency
+      росте для всіх.</p>
+      <table>
+        <tr><th>CPU на запит</th><th>Стеля одного процесу</th><th>Приклад</th></tr>
+        <tr><td>0.1 мс</td><td>~10 000 rps</td><td>Простий JSON-API, проксі</td></tr>
+        <tr><td>1 мс</td><td>~1 000 rps</td><td>Серіалізація великих відповідей, валідація</td></tr>
+        <tr><td>50 мс</td><td>~20 rps</td><td>Генерація PDF, ресайз зображень на JS</td></tr>
+        <tr><td>300 мс</td><td>~3 rps</td><td><code>pbkdf2Sync</code> з великою кількістю ітерацій (див. демо 3)</td></tr>
+      </table>
+      <p class="muted">Числа — порядок величини для одного ядра, не бенчмарк; реальний throughput ще
+      залежить від накладних витрат HTTP-стеку, GC і мережі.</p>
+
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: брати Node чи ні</div>
+        <table><tr><th>Задача</th><th>Node?</th><th>Чому / що замість</th></tr>
+          <tr class="chosen"><td><b>REST/GraphQL API, BFF, API gateway</b> ✅</td><td>Так</td><td>I/O-bound, одна мова з фронтендом, величезна екосистема</td></tr>
+          <tr class="chosen"><td><b>Realtime: WebSocket, чати, SSE, нотифікації</b> ✅</td><td>Так</td><td>Тисячі довгоживучих з'єднань — ідеальний сценарій event loop</td></tr>
+          <tr class="chosen"><td><b>Стрімінг, проксі, upload/download</b> ✅</td><td>Так</td><td>Streams + backpressure (<a href="06-events-streams-buffers.html">туторіал 6</a>)</td></tr>
+          <tr><td>CLI-інструменти, тулінг (bundlers, linters)</td><td>Так</td><td>Хоча найгарячіші частини дедалі частіше переписують на Rust/Go (esbuild, SWC, Biome)</td></tr>
+          <tr><td>Важкі обчислення: ML, обробка відео, числові задачі</td><td>Ні / з обережністю</td><td>Python (NumPy, PyTorch), Go, Rust; або Node + worker_threads / native addon / окремий сервіс</td></tr>
+          <tr><td>Низька latency з жорсткими гарантіями (trading)</td><td>Ні</td><td>GC-паузи і JIT-прогрів; C++/Rust</td></tr>
+        </table>
+        <p><b>Коли що:</b> Node — оркестратор I/O. Якщо в сервісі є CPU-гаряча ділянка, її ізолюють:
+        worker pool (piscina), черга задач (BullMQ, <a href="18-realtime-queues.html">туторіал 18</a>) або
+        окремий сервіс іншою мовою.</p>
+      </div>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Релізний цикл і керування версіями</h2>
+      <p class="section-desc">Яку версію ставити в прод, що таке LTS і чому непарні версії — не для продакшну.</p>
+
+      <h3>Як влаштований графік</h3>
+      <ul>
+        <li>Нова мажорна версія виходить <b>двічі на рік</b>: у квітні та жовтні.</li>
+        <li>Кожна нова мажорна версія спершу має статус <b>Current</b> (~6 місяців): нові фічі,
+        можливі breaking changes у мінорних релізах екосистеми — для тестування.</li>
+        <li><b>Парні</b> версії (18, 20, 22, 24...) у жовтні стають <b>Active LTS</b> (Long-Term Support) —
+        ~12 місяців активної підтримки з бекпортом фіч і фіксів.</li>
+        <li>Далі — <b>Maintenance LTS</b>: лише критичні баги і безпека. Загальний строк життя
+        парної версії — близько <b>30 місяців</b>, після чого — EOL (End-of-Life).</li>
+        <li><b>Непарні</b> версії (21, 23, 25...) ніколи не стають LTS і живуть ~8 місяців.</li>
+      </ul>
+      <p>Станом на осінь 2026: Node 24 — Active LTS, Node 22 — Maintenance LTS, Node 20 вже досяг EOL,
+      а свіжа парна версія проходить шлях Current → LTS. Перевіряйте актуальну таблицю на
+      <code>nodejs.org/en/about/previous-releases</code> — проєкт також обговорював зміну графіку
+      релізів, тож деталі можуть змінитися.</p>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Правило для продакшну:</b> лише Active або Maintenance LTS; оновлюватися на
+        нову LTS протягом її першого року (а не в останній місяць перед EOL); закріплювати версію
+        в <code>.nvmrc</code> / <code>.node-version</code>, полі <code>engines</code> у package.json і в базовому
+        Docker-образі (<code>node:24-slim</code>, а не <code>node:latest</code>).</div>
+      </div>
+
+      <h3>Version managers</h3>
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: менеджер версій Node</div>
+        <table><tr><th>Інструмент</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr><td>nvm</td><td>Стандарт де-факто, <code>.nvmrc</code> розуміють усі</td><td>Bash-скрипт, повільно ініціалізує shell, немає нативного Windows (є окремий nvm-windows)</td></tr>
+          <tr class="chosen"><td><b>fnm</b> ✅</td><td>Написаний на Rust, дуже швидкий, читає <code>.nvmrc</code>/<code>.node-version</code>, автоперемикання при <code>cd</code></td><td>Менш відомий у старих командах</td></tr>
+          <tr><td>Volta</td><td>Закріплює версії Node і глобальних тулів у package.json</td><td>Власна модель, розвиток сповільнився</td></tr>
+          <tr><td>mise / asdf</td><td>Одна утиліта для Node, Python, Go...</td><td>Ще один шар абстракції</td></tr>
+        </table>
+        <p><b>Коли що:</b> локально — fnm або nvm; поліглот-команди — mise; у CI — офіційний
+        <code>actions/setup-node</code> з <code>node-version-file: .nvmrc</code>; у проді — версія з Docker-образу.</p>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal</span></div>
+        <pre><code>node -p "process.versions"     # версії node, v8, uv, openssl, zlib...
+node -p "process.release.lts"  # кодова назва LTS (напр. 'Krypton') або undefined для Current
+
+# На цій машині:
+# node 24.18.0 · v8 13.6 · uv 1.52.1</code></pre>
+      </div>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Каверзні питання співбесіди</h2>
+      <p class="section-desc">Питання, на яких перевіряють, чи розумієте ви механіку, а не лише API.</p>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що таке Node.js і з чого він складається?</summary>
+        <div class="a">Runtime для JS поза браузером: <b>V8</b> (виконує JS), <b>libuv</b> (event loop, async I/O,
+        thread pool), <b>C++ bindings</b>, стандартна бібліотека на JS (<code>lib/</code>) і C-залежності
+        (OpenSSL, zlib, llhttp, c-ares, ICU). Не мова і не фреймворк.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Node.js однопотоковий?</summary>
+        <div class="a">JS-код виконується в <b>одному потоці</b> (на Isolate), але процес має щонайменше
+        головний потік, 4 потоки libuv-пулу, фонові потоки V8 (компіляція, GC) і службові потоки.
+        Мережевий I/O взагалі не займає потоків — його веде ядро ОС через epoll/kqueue/IOCP.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Які операції йдуть у libuv thread pool?</summary>
+        <div class="a">Async <code>fs.*</code> (крім <code>fs.watch</code>), <code>dns.lookup</code> (а отже
+        й підключення за hostname), <code>crypto.pbkdf2/scrypt/randomBytes/randomFill/generateKeyPair</code>
+        з колбеком, async <code>zlib</code>, а також native addons, які самі ставлять задачі
+        (bcrypt). Мережа, таймери, процеси, <code>dns.resolve*</code> — <b>не</b> в пулі.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому HTTP-запити до зовнішнього API раптом почали «висіти», коли ми додали хешування паролів?</summary>
+        <div class="a">Обидві речі ділять один thread pool: <code>bcrypt</code>/<code>pbkdf2</code> займають
+        усі 4 потоки, а <code>dns.lookup</code> для вихідних з'єднань стоїть у черзі за ними. Event loop
+        при цьому не заблокований. Рішення: <code>UV_THREADPOOL_SIZE</code>, keep-alive агенти (менше
+        нових lookup-ів), кеш DNS, винесення хешування у workers.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що таке UV_THREADPOOL_SIZE і як його правильно задати?</summary>
+        <div class="a">Розмір пулу libuv (за замовчуванням 4, максимум 1024). Пул створюється ліниво при
+        першій задачі й більше не змінюється, тому задають <b>змінною середовища до старту</b>
+        процесу: <code>UV_THREADPOOL_SIZE=16 node app.js</code> (або в Dockerfile <code>ENV</code>).</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому файлові операції йдуть через пул, а не через epoll, як сокети?</summary>
+        <div class="a">epoll/kqueue — це <b>readiness</b>-модель: «скажи, коли дескриптор готовий». Звичайний
+        файл на POSIX завжди вважається «готовим», а читання з диска все одно блокує потік. Тому libuv
+        робить блокуючий <code>read()</code> у потоці пулу. (На Windows є completion-модель IOCP, на
+        Linux — io_uring, але переносимий шлях libuv — пул.)</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що відбувається при <code>node app.js</code>?</summary>
+        <div class="a">Bootstrap (V8, isolate зі snapshot, <code>process</code>, libuv loop) → завантаження
+        модуля (CJS обгортається у <code>function (exports, require, module, __filename, __dirname)</code>)
+        → синхронний top-level код → дренаж nextTick і мікрозадач → event loop, поки є ref-нуті
+        handles/requests → <code>beforeExit</code> → <code>exit</code>.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Звідки береться <code>require</code>, якщо це не глобальна змінна?</summary>
+        <div class="a">З <b>module wrapper</b>: CJS-модуль загортається у функцію з 5 параметрами
+        (<code>exports, require, module, __filename, __dirname</code>). Тому в CJS-файлі навіть працює
+        <code>arguments.length === 5</code>, а <code>this === module.exports</code>. У ESM обгортки немає.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що таке Node-API (N-API) і навіщо він?</summary>
+        <div class="a">Стабільний C ABI для native addons, незалежний від внутрішнього API V8. Addon,
+        зібраний під певну версію Node-API, завантажується в новіших версіях Node без перекомпіляції.
+        C++-обгортка — <code>node-addon-api</code>, для Rust — napi-rs.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Навіщо префікс <code>node:</code>, якщо <code>require('fs')</code> і так працює?</summary>
+        <div class="a">Однозначність і безпека: імпорт гарантовано береться з вбудованих модулів, а не з
+        <code>node_modules</code>; читач коду одразу бачить, що це built-in. Плюс нові модулі
+        (<code>node:test</code>, <code>node:sqlite</code>, <code>node:sea</code>) доступні <b>лише</b> з префіксом.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Скрипт закінчився, але процес не виходить. Чому і як знайти причину?</summary>
+        <div class="a">Є ref-нутий handle: відкритий сокет (пул БД, Redis), інтервал, сервер, stdin.
+        Діагностика — <code>process.getActiveResourcesInfo()</code>, <code>why-is-node-running</code>.
+        Лікування — закрити ресурс (<code>pool.end()</code>) або <code>unref()</code> для фонових таймерів,
+        а не <code>process.exit()</code>, який обриває незаписані логи і незавершені запити.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим Node-середовище відрізняється від браузера?</summary>
+        <div class="a">Немає DOM; є <code>process</code>, <code>Buffer</code>, доступ до ФС і мережі; CJS + ESM;
+        <code>setTimeout</code> повертає об'єкт <code>Timeout</code>; є <code>setImmediate</code> і
+        <code>process.nextTick</code>; event loop — фази libuv замість HTML-моделі з rendering. Спільне:
+        <code>globalThis</code> і дедалі більше Web API (fetch, URL, Web Streams, WebSocket).</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Що таке деоптимізація у V8 і чому вона важлива для бекенду?</summary>
+        <div class="a">Оптимізуючі компілятори (Maglev, TurboFan) генерують код під <i>припущення</i> з type
+        feedback (наприклад, «тут завжди числа», «об'єкт має таку форму»). Якщо припущення порушене —
+        V8 викидає оптимізований код і повертається в інтерпретатор. Гарячий шлях з поліморфними
+        об'єктами (різні набори полів, <code>delete obj.x</code>) може постійно деоптимізуватися. Діагностика —
+        <code>--trace-deopt</code>, профайлер (<a href="15-performance-memory.html">туторіал 15</a>).</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Яку версію Node брати в продакшн?</summary>
+        <div class="a">Парну у статусі Active LTS (або Maintenance, якщо міграція ще триває). Непарні версії
+        ніколи не стають LTS. Закріплювати версію в <code>.nvmrc</code>, <code>engines</code> і Docker-тезі.</div>
+      </details>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Шпаргалка</h2>
+      <p class="section-desc">Усе головне з туторіалу на одному екрані.</p>
+      <div class="cheat">
+        <table>
+          <tr><th>Тема</th><th>Коротко</th></tr>
+          <tr><td>Node.js</td><td>Runtime = V8 + libuv + C++ bindings + lib/ на JS + OpenSSL/zlib/llhttp/c-ares/ICU</td></tr>
+          <tr><td>Історія</td><td>2009 Ryan Dahl (C10k) → 2010 npm → 2014 io.js → 2015 злиття, Node 4 → 2019 OpenJS Foundation</td></tr>
+          <tr><td>V8</td><td>Parser → Ignition (байткод) → Sparkplug → Maglev → TurboFan; deopt при хибних припущеннях про типи</td></tr>
+          <tr><td>libuv</td><td>Event loop (6 фаз), handles/requests, thread pool</td></tr>
+          <tr><td>Thread pool</td><td>4 потоки, <code>UV_THREADPOOL_SIZE</code> (до 1024), задавати до старту; один на процес</td></tr>
+          <tr><td>У пулі</td><td>fs.*, dns.lookup, crypto pbkdf2/scrypt/randomBytes/generateKeyPair, zlib async, деякі addons</td></tr>
+          <tr><td>Не в пулі</td><td>Сокети, HTTP, fetch, таймери, процеси, сигнали, dns.resolve (c-ares)</td></tr>
+          <tr><td>Механізми ОС</td><td>epoll (Linux), kqueue (macOS/BSD), IOCP (Windows)</td></tr>
+          <tr><td>Module wrapper</td><td><code>(function (exports, require, module, __filename, __dirname) {...})</code></td></tr>
+          <tr><td>Вихід процесу</td><td>Нема ref-нутих handles/requests → beforeExit → exit; <code>unref()</code> відв'язує handle</td></tr>
+          <tr><td>Потоки процесу</td><td>Головний (JS + loop) + пул libuv + фонові V8 + службові + ваші workers</td></tr>
+          <tr><td>Node vs браузер</td><td>globalThis, process, Buffer, без DOM, CJS+ESM, Timeout-об'єкт, setImmediate, nextTick</td></tr>
+          <tr><td>Native</td><td>Node-API = стабільний ABI; node-addon-api, napi-rs; prebuilt-бінарники</td></tr>
+          <tr><td>Built-ins</td><td>Префікс <code>node:</code>; node:test, node:sqlite, node:sea — лише з префіксом</td></tr>
+          <tr><td>Сильне / слабке</td><td>I/O-bound ✅ (десятки тисяч з'єднань); CPU-bound ❌ (стеля ≈ 1000 / мс_CPU rps на процес)</td></tr>
+          <tr><td>Релізи</td><td>Квітень + жовтень; парні → LTS (~30 міс.), непарні — ні; прод = Active/Maintenance LTS</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Як запам'ятати</h2>
+      <p class="section-desc">Асоціації, які спливуть у голові на співбесіді.</p>
+      <div class="flashgrid">
+        <div class="flashcard">
+          <div class="fc-num">1</div>
+          <div class="term">Node.js</div>
+          <div class="def">Runtime, що поєднує V8 (виконання JS) і libuv (I/O) через C++ bindings.</div>
+          <div class="mnemo"><b>Асоціація:</b> автомобіль — V8 це двигун, libuv — коробка передач і колеса, а Node — уся машина з кермом (API).</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">2</div>
+          <div class="term">libuv thread pool</div>
+          <div class="def">4 спільні потоки для fs, dns.lookup, важкого crypto і zlib.</div>
+          <div class="mnemo"><b>Асоціація:</b> 4 каси в супермаркеті: восьмий покупець з повним возиком (pbkdf2) чекає, поки звільниться каса, навіть якщо в нього лише хліб (readFile).</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">3</div>
+          <div class="term">epoll / kqueue / IOCP</div>
+          <div class="def">Механізми ОС, що повідомляють про готовність тисяч сокетів без окремих потоків.</div>
+          <div class="mnemo"><b>Асоціація:</b> пейджер у ресторані — не стоїш біля кухні, а чекаєш, поки завібрує саме твій.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">4</div>
+          <div class="term">C10k</div>
+          <div class="def">Проблема обслуговування 10 000 одночасних клієнтів, через яку з'явилися event-driven сервери і Node.</div>
+          <div class="mnemo"><b>Асоціація:</b> один офіціант на весь зал замість офіціанта біля кожного столика.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">5</div>
+          <div class="term">JIT-рівні V8</div>
+          <div class="def">Ignition → Sparkplug → Maglev → TurboFan: що гарячіший код, то сильніша оптимізація.</div>
+          <div class="mnemo"><b>Асоціація:</b> «ІСМТ» — Іди, Спринтуй, Мчи, Турбо; а deopt — штраф і назад на старт.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">6</div>
+          <div class="term">Module wrapper</div>
+          <div class="def">CJS-файл загортається у функцію з exports, require, module, __filename, __dirname.</div>
+          <div class="mnemo"><b>Асоціація:</b> лист у конверті — require і __dirname надруковані на конверті, а не в самому листі.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">7</div>
+          <div class="term">ref / unref</div>
+          <div class="def">Ref-нутий handle тримає процес живим; unref() каже «не чекай на мене».</div>
+          <div class="mnemo"><b>Асоціація:</b> останній, хто виходить з офісу, вимикає світло — але фонове радіо (unref) не рахується як «людина в офісі».</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">8</div>
+          <div class="term">Node-API</div>
+          <div class="def">Стабільний ABI для native addons, що не ламається при оновленні V8.</div>
+          <div class="mnemo"><b>Асоціація:</b> стандартна розетка — техніку не перепаюєш при кожній заміні електростанції.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">9</div>
+          <div class="term">LTS</div>
+          <div class="def">Парні версії стають LTS у жовтні й живуть ~30 місяців; непарні — ніколи.</div>
+          <div class="mnemo"><b>Асоціація:</b> «парне — надійне»: як парна кількість коліс у машині, а непарне — одноколісний велосипед для експериментів.</div>
+        </div>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Node.js Doc · частина серії туторіалів AI Delivery Planner. Приклади коду перевірені на Node.js 24.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

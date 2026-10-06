@@ -1,0 +1,1841 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>12. Бази даних і ORM у Node.js — Node.js Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🟢 Node.js Doc <span>· AI Delivery Planner</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Node.js Doc · Туторіал 12 з 20</div>
+  <h1>Бази даних у Node.js: драйвери, пули, транзакції та вибір ORM</h1>
+  <p class="lead">Від <b>pg.Pool</b> і витоку клієнтів до Prisma, Drizzle, Kysely і Mongoose: що відбувається між вашим <code>await</code> і процесом бази, чому N+1 і вичерпаний пул — головні вбивці латентності, і як обрати шар доступу до даних під свою команду.</p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="07-fs-process-os.html">7. fs, process, os</a>
+        <a href="08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="09-http-networking.html">9. HTTP і мережа</a>
+        <a href="10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="12-databases-orm.html" class="active">12. БД і ORM</a>
+        <a href="13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="14-security.html">14. Безпека Node</a>
+        <a href="15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="16-testing.html">16. Тестування</a>
+        <a href="17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+  </aside>
+
+    <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Шари доступу до БД</a></li>
+      <li><a href="#s2">2. Драйвери і параметри</a></li>
+      <li><a href="#s3">3. Connection pooling</a></li>
+      <li><a href="#s4">4. Транзакції та ізоляція</a></li>
+      <li><a href="#s5">5. Prisma</a></li>
+      <li><a href="#s6">6. Drizzle</a></li>
+      <li><a href="#s7">7. TypeORM, MikroORM, Sequelize</a></li>
+      <li><a href="#s8">8. Knex і Kysely</a></li>
+      <li><a href="#s9">9. MongoDB і Mongoose</a></li>
+      <li><a href="#s10">10. Проблема N+1</a></li>
+      <li><a href="#s11">11. Міграції</a></li>
+      <li><a href="#s12">12. Redis-клієнти і тести</a></li>
+      <li><a href="#s13">13. Таблиця рішень</a></li>
+      <li><a href="#s14">14. Питання співбесіди</a></li>
+      <li><a href="#s15">15. Шпаргалка</a></li>
+      <li><a href="#s16">16. Як запам'ятати</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Шари доступу до БД: від драйвера до ORM</h2>
+      <p class="section-desc">Перш ніж сперечатися "Prisma чи Drizzle", треба бачити, з яких шарів складається будь-який доступ до бази в Node — і на якому шарі живе кожна бібліотека.</p>
+
+      <p>Будь-який запит до бази з Node-процесу проходить однаковий шлях: ваш код → (ORM або query builder) →
+      <b>драйвер</b>, що говорить мережевим протоколом бази (wire protocol PostgreSQL, MySQL, MongoDB OP_MSG) →
+      <b>TCP/TLS-з'єднання з пулу</b> → процес бази. Усе, що вище драйвера, — лише різні способи
+      <i>згенерувати SQL і розпакувати результат</i>. Тому проблеми продуктивності майже завжди лежать або
+      у згенерованому SQL (N+1, зайві колонки, відсутні індекси), або в пулі (вичерпані з'єднання), — і майже
+      ніколи у "швидкості ORM" як такої.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 250" role="img" aria-label="Спектр абстракцій доступу до бази даних. Зліва raw SQL через драйвери pg, postgres.js, mysql2, mongodb: максимум контролю. Посередині query builders Knex і Kysely, а також Drizzle як SQL-подібний ORM. Справа повноцінні ORM Prisma, TypeORM, MikroORM, Sequelize, Mongoose: максимум абстракції. Усі шари внизу спираються на драйвер і пул з'єднань.">
+          <defs><marker id="n12d1-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <line x1="40" y1="30" x2="680" y2="30" stroke="currentColor" stroke-width="1.3" marker-start="url(#n12d1-arrow)" marker-end="url(#n12d1-arrow)"/>
+            <text x="40" y="20" fill="var(--good)">більше контролю, видно SQL</text>
+            <text x="680" y="20" text-anchor="end" fill="var(--accent)">більше абстракції та DX</text>
+
+            <rect x="20" y="50" width="190" height="110" rx="8" fill="var(--bg-soft)" stroke="var(--good)" stroke-width="1.3"/>
+            <text x="115" y="72" text-anchor="middle" fill="currentColor" font-weight="bold">Raw SQL + драйвер</text>
+            <text x="115" y="95" text-anchor="middle" fill="currentColor">pg · postgres.js</text>
+            <text x="115" y="113" text-anchor="middle" fill="currentColor">mysql2 · mongodb</text>
+            <text x="115" y="140" text-anchor="middle" fill="var(--fg-muted)">типи — вручну</text>
+
+            <rect x="230" y="50" width="130" height="110" rx="8" fill="var(--bg-soft)" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="295" y="72" text-anchor="middle" fill="currentColor" font-weight="bold">Query builder</text>
+            <text x="295" y="95" text-anchor="middle" fill="currentColor">Knex</text>
+            <text x="295" y="113" text-anchor="middle" fill="currentColor">Kysely</text>
+            <text x="295" y="140" text-anchor="middle" fill="var(--fg-muted)">SQL як API</text>
+
+            <rect x="380" y="50" width="120" height="110" rx="8" fill="var(--bg-soft)" stroke="var(--interview)" stroke-width="1.3"/>
+            <text x="440" y="72" text-anchor="middle" fill="currentColor" font-weight="bold">"SQL-like ORM"</text>
+            <text x="440" y="95" text-anchor="middle" fill="currentColor">Drizzle</text>
+            <text x="440" y="140" text-anchor="middle" fill="var(--fg-muted)">схема в TS</text>
+
+            <rect x="520" y="50" width="180" height="110" rx="8" fill="var(--bg-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="610" y="72" text-anchor="middle" fill="currentColor" font-weight="bold">Повний ORM</text>
+            <text x="610" y="95" text-anchor="middle" fill="currentColor">Prisma · TypeORM</text>
+            <text x="610" y="113" text-anchor="middle" fill="currentColor">MikroORM · Sequelize</text>
+            <text x="610" y="131" text-anchor="middle" fill="currentColor">Mongoose (ODM)</text>
+            <text x="610" y="150" text-anchor="middle" fill="var(--fg-muted)">моделі, зв'язки, UoW</text>
+
+            <rect x="20" y="185" width="680" height="45" rx="8" fill="var(--accent-soft)" stroke="currentColor" stroke-width="1.1"/>
+            <text x="360" y="212" text-anchor="middle" fill="currentColor">спільний фундамент: драйвер (wire protocol) + пул TCP-з'єднань → процес бази</text>
+          </g>
+        </svg>
+        <figcaption>Чим правіше бібліотека, тим менше SQL ви пишете — і тим більше SQL генерується без вашого погляду на нього.</figcaption>
+      </figure>
+
+      <table>
+        <tr><th>Шар</th><th>Що робить</th><th>Хто відповідає за SQL</th><th>Типова пастка</th></tr>
+        <tr><td><b>Драйвер</b></td><td>протокол, параметри, парсинг типів, пул</td><td>ви</td><td>конкатенація рядків, витік клієнтів</td></tr>
+        <tr><td><b>Query builder</b></td><td>будує SQL з ланцюжка викликів</td><td>ви (структурно)</td><td>думати, що builder сам додасть індекси</td></tr>
+        <tr><td><b>ORM</b></td><td>моделі, зв'язки, міграції, change tracking</td><td>ORM</td><td>N+1, overfetching, "магічні" запити</td></tr>
+      </table>
+
+      <div class="remember"><b>🧠 Запам'ятай:</b> ORM змінює спосіб написання запитів, але не скасовує ні пулу, ні транзакцій, ні індексів — їх розуміти треба на будь-якому шарі.</div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Драйвери і параметризовані запити</h2>
+      <p class="section-desc">Драйвер — найнижчий шар, який ви контролюєте; правильна передача параметрів тут — головний захист від SQL-ін'єкцій.</p>
+
+      <h3>Основні драйвери</h3>
+      <table>
+        <tr><th>Драйвер</th><th>База</th><th>Особливості</th></tr>
+        <tr><td><code>pg</code> (node-postgres)</td><td>PostgreSQL</td><td>де-факто стандарт; <code>Pool</code>/<code>Client</code>, плейсхолдери <code>$1, $2</code>; на ньому стоять Knex, Kysely, Drizzle, TypeORM. Опційний нативний біндинг <code>pg-native</code> (libpq) майже ніколи не потрібен.</td></tr>
+        <tr><td><code>postgres</code> (postgres.js)</td><td>PostgreSQL</td><td>API на tagged templates: <code>sql`... ${id}`</code> — інтерполяція автоматично стає параметром; дуже швидкий, вбудований пул, pipelining.</td></tr>
+        <tr><td><code>mysql2</code></td><td>MySQL / MariaDB</td><td>сумісний з давнім <code>mysql</code>, але з промісами (<code>mysql2/promise</code>) і справжніми prepared statements через <code>execute()</code>; плейсхолдери <code>?</code>.</td></tr>
+        <tr><td><code>mongodb</code></td><td>MongoDB</td><td>офіційний драйвер; <code>MongoClient</code> сам тримає пул (<code>maxPoolSize</code>, за замовчуванням 100) — один клієнт на процес.</td></tr>
+        <tr><td><code>node:sqlite</code>, <code>better-sqlite3</code></td><td>SQLite</td><td>вбудована/нативна, <b>синхронна</b> робота з файлом: чудово для CLI, тестів, edge-кейсів; на гарячому шляху HTTP-сервера блокує event loop.</td></tr>
+      </table>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">drivers.js</span></div>
+        <pre><code>// node-postgres
+import pg from 'pg';
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+const { rows } = await pool.query('SELECT id, email FROM users WHERE id = $1', [userId]);
+
+// postgres.js — ${} у tagged template НЕ конкатенація, а параметр
+import postgres from 'postgres';
+const sql = postgres(process.env.DATABASE_URL, { max: 10 });
+const users = await sql`SELECT id, email FROM users WHERE id = ${userId}`;
+
+// mysql2 — execute() = server-side prepared statement
+import mysql from 'mysql2/promise';
+const my = mysql.createPool({ uri: process.env.MYSQL_URL, connectionLimit: 10 });
+const [rowsMy] = await my.execute('SELECT id FROM users WHERE email = ?', [email]);
+
+// MongoDB — один MongoClient на весь процес
+import { MongoClient } from 'mongodb';
+const client = new MongoClient(process.env.MONGO_URL, { maxPoolSize: 20 });
+const user = await client.db('app').collection('users').findOne({ email });</code></pre>
+      </div>
+
+      <h3>Чому параметри, а не конкатенація</h3>
+      <p>Коли ви вклеюєте вхід у рядок SQL, база отримує <b>новий текст програми</b>, частину якого написав
+      атакувальник. Параметр передається <i>окремо</i> від тексту запиту (у PostgreSQL — повідомленням Bind
+      розширеного протоколу), тож база вже розпарсила структуру запиту, і значення ніколи не стане кодом.
+      Запустимо це на вбудованому <code>node:sqlite</code> — ефект той самий для будь-якої SQL-бази:</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">inject.mjs</span></div>
+        <pre><code>import { DatabaseSync } from 'node:sqlite';
+const db = new DatabaseSync(':memory:');
+db.exec(`CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT, role TEXT);
+         INSERT INTO users (email, role) VALUES ('olena@ex.com','admin'), ('ivan@ex.com','user');`);
+
+const input = "nobody@ex.com' OR '1'='1";
+
+// ❌ конкатенація: вхід стає частиною SQL-коду
+const bad = db.prepare(`SELECT id, email FROM users WHERE email = '${input}'`).all();
+console.log('concat  ->', bad.length, 'rows');
+
+// ✅ параметр: вхід — лише значення, SQL-структура зафіксована
+const good = db.prepare('SELECT id, email FROM users WHERE email = ?').all(input);
+console.log('param   ->', good.length, 'rows');</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">$ node inject.mjs</span></div>
+        <pre><code>concat  -> 2 rows
+param   -> 0 rows</code></pre>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Параметром не можна передати ідентифікатор.</b> Назви таблиць, колонок, напрям
+        сортування (<code>ORDER BY ${col} ${dir}</code>) не параметризуються — це частина структури. Для них —
+        тільки <b>allowlist</b>: <code>const col = { name: 'name', date: 'created_at' }[req.query.sort] ?? 'id'</code>.
+        Або спеціальні хелпери: <code>pg-format</code> (<code>%I</code>), <code>sql(identifier)</code> у postgres.js,
+        <code>sql.ref()</code>/<code>sql.id()</code> у Kysely.</div>
+      </div>
+
+      <div class="callout bad">
+        <div class="ic">🚫</div>
+        <div class="body"><b>Пастка tagged templates.</b> У postgres.js і в <code>prisma.$queryRaw`...`</code>
+        інтерполяція безпечна <i>тільки</i> в тегованому шаблоні. Варто зібрати рядок заздалегідь
+        (<code>const q = `... ${id}`; sql.unsafe(q)</code> або <code>$queryRawUnsafe(q)</code>) — і ви повернулися до
+        конкатенації. Код-рев'ю має ловити будь-яке <code>Unsafe</code>/<code>unsafe</code>/<code>raw(</code> з
+        інтерполяцією.</div>
+      </div>
+
+      <h3>Що ще робить драйвер: парсинг типів</h3>
+      <p>Менш очевидний аспект: <code>pg</code> за замовчуванням повертає <code>bigint</code> (int8) і
+      <code>numeric</code> як <b>рядки</b> — бо JS <code>number</code> не вміщує 64-бітні цілі й десяткові
+      без втрат. <code>COUNT(*)</code> у PostgreSQL має тип bigint, тож <code>rows[0].count</code> — це
+      <code>'42'</code>, а не <code>42</code>. Рішення: явний каст у SQL (<code>COUNT(*)::int</code>), або
+      <code>pg.types.setTypeParser(20, BigInt)</code>, або парсити гроші як рядок у decimal-бібліотеку. Дати
+      <code>timestamp</code> без зони парсяться в локальній зоні процесу — тримайте в базі
+      <code>timestamptz</code>, а процес у <code>TZ=UTC</code>.</p>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">На співбесіді запитають так</span> "Чому <code>COUNT(*)</code> з pg
+        повертає рядок?" — int8 не влазить у <code>Number.MAX_SAFE_INTEGER</code> (2⁵³−1) без ризику втрати точності,
+        тож драйвер не вирішує за вас; ви або кастите, або вмикаєте BigInt-парсер.</div>
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Connection pooling: черга, розмір, інстанси</h2>
+      <p class="section-desc">З'єднання з базою дороге (TCP + TLS + автентифікація + окремий процес у Postgres), тому його позичають з пулу, а не відкривають на кожен запит.</p>
+
+      <p>У PostgreSQL кожне з'єднання — це окремий <b>процес-бекенд</b> з власною пам'яттю (порядку кількох МБ і
+      більше під навантаженням). Встановлення з'єднання з TLS коштує кілька round-trip і мілісекунди CPU.
+      Пул тримає N "теплих" з'єднань і видає їх запитам по черзі. Якщо всі зайняті — запит <b>чекає в черзі
+      пулу</b> (у Node це просто проміс, що ще не резолвнувся), а не відкриває нове з'єднання.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 280" role="img" aria-label="Механіка пулу з'єднань. П'ять HTTP-запитів одночасно викликають pool.query. Пул має max рівне 3: три клієнти C1, C2, C3 зайняті запитами R1, R2, R3 і з'єднані TCP з трьома бекенд-процесами PostgreSQL. Запити R4 і R5 стоять у черзі очікування пулу. Коли R1 викликає release, C1 одразу передається R4. Якщо очікування перевищує connectionTimeoutMillis, запит отримує помилку timeout.">
+          <defs><marker id="n12d2-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="70" y="22" text-anchor="middle" fill="var(--fg-muted)">HTTP-запити</text>
+            <rect x="20" y="35" width="100" height="30" rx="6" fill="none" stroke="currentColor"/><text x="70" y="55" text-anchor="middle" fill="currentColor">R1</text>
+            <rect x="20" y="75" width="100" height="30" rx="6" fill="none" stroke="currentColor"/><text x="70" y="95" text-anchor="middle" fill="currentColor">R2</text>
+            <rect x="20" y="115" width="100" height="30" rx="6" fill="none" stroke="currentColor"/><text x="70" y="135" text-anchor="middle" fill="currentColor">R3</text>
+            <rect x="20" y="175" width="100" height="30" rx="6" fill="none" stroke="var(--warn)"/><text x="70" y="195" text-anchor="middle" fill="currentColor">R4</text>
+            <rect x="20" y="215" width="100" height="30" rx="6" fill="none" stroke="var(--warn)"/><text x="70" y="235" text-anchor="middle" fill="currentColor">R5</text>
+
+            <rect x="170" y="30" width="250" height="230" rx="10" fill="var(--bg-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="295" y="50" text-anchor="middle" fill="var(--accent)" font-weight="bold">pg.Pool (max = 3)</text>
+            <rect x="190" y="62" width="210" height="95" rx="8" fill="none" stroke="var(--good)"/>
+            <text x="295" y="78" text-anchor="middle" fill="var(--good)">зайняті клієнти</text>
+            <text x="295" y="100" text-anchor="middle" fill="currentColor">C1 ← R1</text>
+            <text x="295" y="120" text-anchor="middle" fill="currentColor">C2 ← R2</text>
+            <text x="295" y="140" text-anchor="middle" fill="currentColor">C3 ← R3</text>
+            <rect x="190" y="170" width="210" height="75" rx="8" fill="none" stroke="var(--warn)" stroke-dasharray="4 3"/>
+            <text x="295" y="188" text-anchor="middle" fill="var(--warn)">черга очікування (FIFO)</text>
+            <text x="295" y="210" text-anchor="middle" fill="currentColor">R4 · R5 (pending promise)</text>
+            <text x="295" y="232" text-anchor="middle" fill="var(--fg-muted)">timeout → помилка</text>
+
+            <line x1="120" y1="50" x2="188" y2="98" stroke="currentColor" marker-end="url(#n12d2-arrow)"/>
+            <line x1="120" y1="90" x2="188" y2="118" stroke="currentColor" marker-end="url(#n12d2-arrow)"/>
+            <line x1="120" y1="130" x2="188" y2="138" stroke="currentColor" marker-end="url(#n12d2-arrow)"/>
+            <line x1="120" y1="190" x2="188" y2="205" stroke="var(--warn)" marker-end="url(#n12d2-arrow)"/>
+            <line x1="120" y1="230" x2="188" y2="215" stroke="var(--warn)" marker-end="url(#n12d2-arrow)"/>
+
+            <rect x="500" y="30" width="200" height="230" rx="10" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="600" y="50" text-anchor="middle" fill="currentColor" font-weight="bold">PostgreSQL</text>
+            <rect x="520" y="80" width="160" height="26" rx="5" fill="var(--accent-soft)" stroke="currentColor"/><text x="600" y="98" text-anchor="middle" fill="currentColor">backend-процес 1</text>
+            <rect x="520" y="115" width="160" height="26" rx="5" fill="var(--accent-soft)" stroke="currentColor"/><text x="600" y="133" text-anchor="middle" fill="currentColor">backend-процес 2</text>
+            <rect x="520" y="150" width="160" height="26" rx="5" fill="var(--accent-soft)" stroke="currentColor"/><text x="600" y="168" text-anchor="middle" fill="currentColor">backend-процес 3</text>
+            <text x="600" y="210" text-anchor="middle" fill="var(--fg-muted)">max_connections</text>
+            <text x="600" y="228" text-anchor="middle" fill="var(--fg-muted)">(default 100)</text>
+            <line x1="400" y1="100" x2="518" y2="93" stroke="var(--good)" marker-end="url(#n12d2-arrow)"/>
+            <line x1="400" y1="120" x2="518" y2="128" stroke="var(--good)" marker-end="url(#n12d2-arrow)"/>
+            <line x1="400" y1="140" x2="518" y2="163" stroke="var(--good)" marker-end="url(#n12d2-arrow)"/>
+            <text x="460" y="80" text-anchor="middle" fill="var(--fg-muted)">TCP/TLS</text>
+          </g>
+        </svg>
+        <figcaption>Пул — це семафор на N з'єднань плюс FIFO-черга промісів: зайвий запит не створює з'єднання, а чекає на <code>release()</code> чужого.</figcaption>
+      </figure>
+
+      <p>Ось ця механіка в 15 рядках (спрощена модель, без справжньої бази) — п'ять запитів по 100 мс на пулі з двома з'єднаннями:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">pool-sim.mjs</span></div>
+        <pre><code>class TinyPool {
+  constructor(max) { this.max = max; this.busy = 0; this.waiting = []; }
+  async connect() {
+    if (this.busy &lt; this.max) { this.busy++; return; }
+    await new Promise((resolve) => this.waiting.push(resolve)); // стаємо в чергу
+  }
+  release() {
+    const next = this.waiting.shift();
+    if (next) next(); else this.busy--;          // передаємо з'єднання наступному
+  }
+  async query(ms) { await this.connect(); try { await new Promise((r) => setTimeout(r, ms)); } finally { this.release(); } }
+}
+const pool = new TinyPool(2);
+const t0 = performance.now();
+await Promise.all([1, 2, 3, 4, 5].map(async (id) => {
+  await pool.query(100);
+  console.log(`query ${id} done at ~${Math.round((performance.now() - t0) / 100) * 100} ms`);
+}));</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">$ node pool-sim.mjs</span></div>
+        <pre><code>query 1 done at ~100 ms
+query 2 done at ~100 ms
+query 3 done at ~200 ms
+query 4 done at ~200 ms
+query 5 done at ~300 ms</code></pre>
+      </div>
+      <p>Запити 3–5 нічого не робили з базою перші 100–200 мс — вони стояли в черзі. У продакшені це
+      виглядає як "база швидка (p50 запиту 2 мс), а ендпоінт повільний" — бо час очікування пулу
+      не видно в логах SQL. Метрики пулу (<code>pool.totalCount</code>, <code>pool.idleCount</code>,
+      <code>pool.waitingCount</code> у pg) — обов'язкові на дашборді.</p>
+
+      <h3>Налаштування pg.Pool, які важливі</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">db.js</span></div>
+        <pre><code>import pg from 'pg';
+
+export const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 10,                        // default 10 — на ОДИН процес Node
+  idleTimeoutMillis: 30_000,      // закривати простоюючі з'єднання
+  connectionTimeoutMillis: 2_000, // не чекати в черзі вічно → швидка помилка 503
+  statement_timeout: 5_000,       // сервер вб'є запит довший за 5 с
+  application_name: 'orders-api', // видно в pg_stat_activity
+});
+
+// ОБОВ'ЯЗКОВО: idle-клієнт може отримати помилку (рестарт бази, мережа).
+// Без обробника 'error' на EventEmitter — процес впаде.
+pool.on('error', (err) => logger.error({ err }, 'idle pg client error'));
+
+// graceful shutdown (див. туторіал 17)
+process.on('SIGTERM', async () => { await pool.end(); process.exit(0); });</code></pre>
+      </div>
+
+      <h3>Скільки з'єднань потрібно? Інтуїція формули</h3>
+      <p>Відома евристика з wiki PostgreSQL / HikariCP: <b>connections ≈ (ядра_CPU_бази × 2) + кількість_дисків</b>.
+      Сенс не в точному числі, а в інтуїції: база виконує паралельно приблизно стільки запитів, скільки має
+      ядер (плюс трохи на очікування I/O). Понад це з'єднання лише <b>конкурують</b> за CPU, локи й кеш —
+      пропускна здатність падає, latency росте. Тобто <b>менший пул часто швидший</b>, а черга в застосунку
+      дешевша за чергу в базі.</p>
+
+      <p>Друга половина інтуїції — Закон Літтла: потрібно з'єднань ≈ <i>RPS запитів до бази × середній час
+      запиту</i>. 500 запитів/с × 4 мс = 2 з'єднання "в середньому зайняті"; пул 10 дає запас на піки.
+      Якщо ж вам "потрібно" 200 з'єднань — найчастіше запити повільні або тримають з'єднання під час
+      не-БД роботи (HTTP-виклик всередині транзакції!).</p>
+
+      <h3>Пул × інстанси vs max_connections</h3>
+      <p>Пул налаштовується <b>на процес</b>. Реальне навантаження на базу — це сума по всіх процесах:</p>
+      <div class="flow"><div class="step">pool.max = 20</div><div class="arrow">×</div><div class="step">4 воркери cluster/PM2</div><div class="arrow">×</div><div class="step">3 поди</div><div class="arrow">=</div><div class="step">240 &gt; 100 max_connections</div></div>
+      <p>Плюс деплой rolling update на мить подвоює кількість подів, плюс міграції, cron, адмінка, BI.
+      Сума має бути з запасом нижча за <code>max_connections</code> мінус <code>superuser_reserved_connections</code>.
+      Тому при горизонтальному масштабуванні (<a href="08-concurrency-scaling.html">туторіал 8</a>) пул на
+      процес <i>зменшують</i>, а не збільшують.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 270" role="img" aria-label="Порівняння двох схем. Зліва: serverless-функції, кожна з власним пулом, сто конкурентних викликів відкривають сто і більше прямих з'єднань до PostgreSQL з max_connections 100, що призводить до помилки too many clients. Справа: ті самі сто функцій підключаються до PgBouncer або RDS Proxy, який мультиплексує їх у двадцять реальних з'єднань до бази в transaction mode.">
+          <defs><marker id="n12d3-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="170" y="20" text-anchor="middle" fill="var(--bad)" font-weight="bold">Connection storm</text>
+            <rect x="20" y="35" width="90" height="26" rx="5" fill="none" stroke="currentColor"/><text x="65" y="53" text-anchor="middle" fill="currentColor">λ #1</text>
+            <rect x="20" y="70" width="90" height="26" rx="5" fill="none" stroke="currentColor"/><text x="65" y="88" text-anchor="middle" fill="currentColor">λ #2</text>
+            <text x="65" y="122" text-anchor="middle" fill="var(--fg-muted)">...</text>
+            <rect x="20" y="140" width="90" height="26" rx="5" fill="none" stroke="currentColor"/><text x="65" y="158" text-anchor="middle" fill="currentColor">λ #100</text>
+            <rect x="220" y="70" width="120" height="70" rx="8" fill="var(--bg-soft)" stroke="var(--bad)" stroke-width="1.3"/>
+            <text x="280" y="98" text-anchor="middle" fill="currentColor">PostgreSQL</text>
+            <text x="280" y="118" text-anchor="middle" fill="var(--bad)">too many clients</text>
+            <line x1="110" y1="48" x2="218" y2="85" stroke="var(--bad)" marker-end="url(#n12d3-arrow)"/>
+            <line x1="110" y1="83" x2="218" y2="98" stroke="var(--bad)" marker-end="url(#n12d3-arrow)"/>
+            <line x1="110" y1="153" x2="218" y2="125" stroke="var(--bad)" marker-end="url(#n12d3-arrow)"/>
+            <text x="170" y="200" text-anchor="middle" fill="var(--fg-muted)">100+ прямих з'єднань,</text>
+            <text x="170" y="218" text-anchor="middle" fill="var(--fg-muted)">кожне з TLS-handshake</text>
+
+            <line x1="360" y1="20" x2="360" y2="250" stroke="var(--fg-muted)" stroke-dasharray="4 4"/>
+
+            <text x="550" y="20" text-anchor="middle" fill="var(--good)" font-weight="bold">З проксі-пулером</text>
+            <rect x="380" y="35" width="80" height="26" rx="5" fill="none" stroke="currentColor"/><text x="420" y="53" text-anchor="middle" fill="currentColor">λ #1</text>
+            <rect x="380" y="70" width="80" height="26" rx="5" fill="none" stroke="currentColor"/><text x="420" y="88" text-anchor="middle" fill="currentColor">λ #2</text>
+            <text x="420" y="122" text-anchor="middle" fill="var(--fg-muted)">...</text>
+            <rect x="380" y="140" width="80" height="26" rx="5" fill="none" stroke="currentColor"/><text x="420" y="158" text-anchor="middle" fill="currentColor">λ #100</text>
+            <rect x="500" y="65" width="100" height="80" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="550" y="95" text-anchor="middle" fill="currentColor">PgBouncer /</text>
+            <text x="550" y="113" text-anchor="middle" fill="currentColor">RDS Proxy</text>
+            <text x="550" y="131" text-anchor="middle" fill="var(--fg-muted)">txn mode</text>
+            <line x1="460" y1="48" x2="498" y2="80" stroke="currentColor" marker-end="url(#n12d3-arrow)"/>
+            <line x1="460" y1="83" x2="498" y2="98" stroke="currentColor" marker-end="url(#n12d3-arrow)"/>
+            <line x1="460" y1="153" x2="498" y2="130" stroke="currentColor" marker-end="url(#n12d3-arrow)"/>
+            <rect x="630" y="75" width="80" height="60" rx="8" fill="var(--bg-soft)" stroke="var(--good)" stroke-width="1.3"/>
+            <text x="670" y="100" text-anchor="middle" fill="currentColor">Postgres</text>
+            <text x="670" y="118" text-anchor="middle" fill="var(--good)">20 з'єдн.</text>
+            <line x1="600" y1="95" x2="628" y2="95" stroke="var(--good)" marker-end="url(#n12d3-arrow)"/>
+            <line x1="600" y1="115" x2="628" y2="115" stroke="var(--good)" marker-end="url(#n12d3-arrow)"/>
+            <text x="550" y="200" text-anchor="middle" fill="var(--fg-muted)">тисячі клієнтів → десятки</text>
+            <text x="550" y="218" text-anchor="middle" fill="var(--fg-muted)">серверних з'єднань</text>
+          </g>
+        </svg>
+        <figcaption>У serverless кожен інстанс функції має свій крихітний пул — масштабування трафіку автоматично стає масштабуванням з'єднань, тож між функціями й базою потрібен зовнішній пулер.</figcaption>
+      </figure>
+
+      <h3>Serverless і зовнішні пулери</h3>
+      <ul>
+        <li><b>Проблема:</b> AWS Lambda / Vercel Functions масштабуються інстансами; кожен холодний старт відкриває
+        нове з'єднання, а "заморожені" інстанси тримають з'єднання, які ніхто не використовує. Пік трафіку = <i>connection storm</i>
+        (див. <a href="19-runtimes-serverless.html">туторіал 19</a>).</li>
+        <li><b>У функції:</b> створюйте пул <i>поза</i> handler (переживає warm-виклики), <code>max: 1</code>–<code>2</code>,
+        короткий <code>idleTimeoutMillis</code>.</li>
+        <li><b>PgBouncer</b> у <b>transaction mode</b>: серверне з'єднання видається клієнту лише на час транзакції.
+        Ціна — не працює сесійний стан: <code>SET</code> без <code>LOCAL</code>, сесійні advisory locks,
+        <code>LISTEN/NOTIFY</code>, тимчасові таблиці; іменовані prepared statements підтримуються лише новішими
+        версіями PgBouncer з окремим налаштуванням. Prisma для цього має параметр <code>?pgbouncer=true</code>.</li>
+        <li><b>RDS Proxy</b> (AWS), <b>Supavisor</b> (Supabase), вбудований пулер Neon — те саме як керований сервіс. RDS Proxy
+        "пінить" з'єднання при використанні сесійних фіч — і тоді мультиплексування зникає.</li>
+        <li><b>HTTP-драйвери</b> (Neon serverless driver, PlanetScale/Data API-подібні): запит іде по HTTP/WebSocket — немає довгоживучого TCP взагалі; зручно для edge-рантаймів.</li>
+      </ul>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">На співбесіді запитають так</span> "Ми збільшили pool.max з 10 до 50, а стало
+        гірше. Чому?" — сумарна кількість з'єднань × інстанси наблизилась до <code>max_connections</code>; база
+        витрачає CPU на перемикання між сотнями бекендів і конкуренцію за локи; плюс справжня причина (довгі запити
+        або тримання з'єднання під час HTTP-викликів) нікуди не ділась.</div>
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Транзакції: checkout клієнта, release у finally, ізоляція</h2>
+      <p class="section-desc">Найчастіший production-баг з pg — транзакція через <code>pool.query</code> або "забутий" <code>release()</code>, що повільно висушує пул.</p>
+
+      <h3>Чому не можна робити BEGIN через pool.query</h3>
+      <p><code>pool.query()</code> щоразу бере <i>будь-який</i> вільний клієнт і одразу повертає його. Транзакція ж —
+      це стан <b>одного з'єднання</b>. Якщо виконати <code>pool.query('BEGIN')</code>, а потім <code>pool.query('UPDATE ...')</code>,
+      ці два виклики легко потраплять на різні з'єднання: <code>UPDATE</code> виконається в автокоміті, а
+      <code>BEGIN</code> залишиться "висіти" на іншому клієнті, який згодом отримає чужий запит усередині
+      відкритої транзакції. Тому транзакція = <b>checkout</b> конкретного клієнта.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">transfer.js</span></div>
+        <pre><code>export async function transfer(fromId, toId, amount) {
+  const client = await pool.connect();          // checkout: клієнт тепер лише наш
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(
+      'SELECT balance FROM accounts WHERE id = $1 FOR UPDATE', [fromId]); // рядковий лок
+    if (rows[0].balance &lt; amount) throw new Error('insufficient funds');
+    await client.query('UPDATE accounts SET balance = balance - $1 WHERE id = $2', [amount, fromId]);
+    await client.query('UPDATE accounts SET balance = balance + $1 WHERE id = $2', [amount, toId]);
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();                             // ЗАВЖДИ, навіть при помилці
+  }
+}</code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 250" role="img" aria-label="Життєвий цикл транзакції з checkout клієнта. pool.connect видає клієнта, далі BEGIN, запити, потім або COMMIT, або при помилці ROLLBACK. Обидві гілки сходяться у finally з client.release, і клієнт повертається в пул. Червона гілка показує баг: помилка кинута до release без finally, клієнт ніколи не повертається, пул поступово вичерпується і нові запити зависають у черзі.">
+          <defs><marker id="n12d4-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="80" width="110" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="65" y="105" text-anchor="middle" fill="currentColor">pool.connect()</text>
+            <rect x="145" y="80" width="80" height="40" rx="8" fill="none" stroke="currentColor"/>
+            <text x="185" y="105" text-anchor="middle" fill="currentColor">BEGIN</text>
+            <rect x="250" y="80" width="110" height="40" rx="8" fill="none" stroke="currentColor"/>
+            <text x="305" y="100" text-anchor="middle" fill="currentColor">SELECT ... FOR</text>
+            <text x="305" y="114" text-anchor="middle" fill="currentColor">UPDATE, UPDATE</text>
+            <rect x="400" y="30" width="100" height="36" rx="8" fill="none" stroke="var(--good)"/>
+            <text x="450" y="53" text-anchor="middle" fill="var(--good)">COMMIT</text>
+            <rect x="400" y="130" width="100" height="36" rx="8" fill="none" stroke="var(--warn)"/>
+            <text x="450" y="153" text-anchor="middle" fill="var(--warn)">ROLLBACK</text>
+            <rect x="540" y="80" width="170" height="40" rx="8" fill="var(--bg-soft)" stroke="var(--good)" stroke-width="1.3"/>
+            <text x="625" y="105" text-anchor="middle" fill="currentColor">finally: release()</text>
+            <line x1="120" y1="100" x2="143" y2="100" stroke="currentColor" marker-end="url(#n12d4-arrow)"/>
+            <line x1="225" y1="100" x2="248" y2="100" stroke="currentColor" marker-end="url(#n12d4-arrow)"/>
+            <line x1="360" y1="92" x2="398" y2="52" stroke="var(--good)" marker-end="url(#n12d4-arrow)"/>
+            <line x1="360" y1="110" x2="398" y2="145" stroke="var(--warn)" marker-end="url(#n12d4-arrow)"/>
+            <text x="365" y="140" fill="var(--warn)">throw</text>
+            <line x1="500" y1="48" x2="560" y2="78" stroke="var(--good)" marker-end="url(#n12d4-arrow)"/>
+            <line x1="500" y1="148" x2="560" y2="122" stroke="var(--good)" marker-end="url(#n12d4-arrow)"/>
+            <path d="M625,80 C625,0 65,0 65,78" fill="none" stroke="var(--good)" stroke-dasharray="5 4" marker-end="url(#n12d4-arrow)"/>
+            <text x="345" y="16" text-anchor="middle" fill="var(--good)">клієнт повертається в пул</text>
+
+            <path d="M305,120 C305,200 305,205 380,215" fill="none" stroke="var(--bad)" marker-end="url(#n12d4-arrow)"/>
+            <rect x="385" y="195" width="325" height="44" rx="8" fill="none" stroke="var(--bad)" stroke-width="1.3"/>
+            <text x="547" y="214" text-anchor="middle" fill="var(--bad)">без finally: release() не викликано</text>
+            <text x="547" y="231" text-anchor="middle" fill="var(--bad)">клієнт "витік" → пул висихає → запити висять</text>
+          </g>
+        </svg>
+        <figcaption>Транзакція живе на одному з'єднанні від checkout до release; будь-який шлях, що оминає <code>finally</code>, назавжди забирає клієнта з пулу.</figcaption>
+      </figure>
+
+      <h3>Демо: як витік клієнта вбиває сервіс</h3>
+      <p>Модель тієї ж механіки: пул на 2 клієнти, функція, що кидає помилку до <code>release()</code>:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">leak.mjs</span></div>
+        <pre><code>class TinyPool {
+  constructor(max) { this.max = max; this.busy = 0; this.waiting = []; }
+  async connect() {
+    if (this.busy &lt; this.max) { this.busy++; }
+    else await new Promise((resolve) => this.waiting.push(resolve));
+    return { release: () => { const n = this.waiting.shift(); if (n) n(); else this.busy--; } };
+  }
+}
+const pool = new TinyPool(2);
+
+async function transferBuggy(fail) {
+  const client = await pool.connect();
+  if (fail) throw new Error('constraint violation'); // release() ніколи не викличеться
+  client.release();
+}
+for (let i = 1; i &lt;= 2; i++) {
+  await transferBuggy(true).catch((e) => console.log(`request ${i}: ${e.message}`));
+}
+console.log('busy =', pool.busy, 'of', pool.max);
+console.log('request 3: waiting for a client...');
+const timer = setTimeout(() => console.log('request 3: still waiting after 1s -> pool exhausted'), 1000);
+await pool.connect();
+clearTimeout(timer);
+console.log('never printed');</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">$ node leak.mjs; echo "exit=$?"</span></div>
+        <pre><code>request 1: constraint violation
+request 2: constraint violation
+busy = 2 of 2
+request 3: waiting for a client...
+request 3: still waiting after 1s -> pool exhausted
+Warning: Detected unsettled top-level await at file:///.../leak.mjs:22
+await pool.connect();
+^
+
+exit=13</code></pre>
+      </div>
+      <p>Дві помилки — і сервіс мертвий, хоча база здорова. У реальному сервері процес не завершиться (є відкритий
+      HTTP-сокет), просто всі запити до бази зависнуть до <code>connectionTimeoutMillis</code> (а якщо він 0, як за
+      замовчуванням у pg, — назавжди). Бонус: код виходу 13 — це те, як Node повідомляє про top-level await, що
+      ніколи не завершиться.</p>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Захист "за конструкцією":</b> не давайте командам писати <code>pool.connect()</code> вручну.
+        Зробіть один хелпер <code>withTransaction(fn)</code> з try/catch/finally, або використовуйте API, де
+        release неможливо забути: <code>sql.begin(async (sql) =&gt; ...)</code> у postgres.js,
+        <code>db.transaction(async (tx) =&gt; ...)</code> у Drizzle/Kysely/Knex, <code>prisma.$transaction(async (tx) =&gt; ...)</code>.
+        У новому коді можна також використати <code>await using</code> з <code>Symbol.asyncDispose</code>, якщо ваш
+        клієнт його підтримує.</div>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">with-transaction.js</span></div>
+        <pre><code>export async function withTransaction(fn, { isolation = 'READ COMMITTED', retries = 3 } = {}) {
+  for (let attempt = 1; ; attempt++) {
+    const client = await pool.connect();
+    try {
+      await client.query(`BEGIN ISOLATION LEVEL ${isolation}`); // isolation — з allowlist, не від юзера
+      const result = await fn(client);
+      await client.query('COMMIT');
+      return result;
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      // 40001 serialization_failure, 40P01 deadlock_detected — безпечно повторити ВСЮ транзакцію
+      if ((err.code === '40001' || err.code === '40P01') &amp;&amp; attempt &lt; retries) continue;
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+}</code></pre>
+      </div>
+      <p class="muted">Ще одна тонкість: якщо з'єднання зламалося (мережа, kill бекенду), викликайте <code>client.release(err)</code> —
+      з аргументом-помилкою pg <i>знищить</i> клієнта замість повернення битого з'єднання в пул.</p>
+
+      <h3>Рівні ізоляції коротко</h3>
+      <table>
+        <tr><th>Рівень</th><th>Що гарантує</th><th>Коли брати</th></tr>
+        <tr><td><b>READ COMMITTED</b> (default у PostgreSQL)</td><td>кожен <i>оператор</i> бачить закомічені дані на свій момент; можливі non-repeatable read і lost update при read-modify-write</td><td>більшість CRUD; для лічильників — атомарний <code>UPDATE ... SET x = x + 1</code> або <code>FOR UPDATE</code></td></tr>
+        <tr><td><b>REPEATABLE READ</b> (default у MySQL InnoDB)</td><td>знімок на початок транзакції; у PG конфлікт запису дає помилку 40001</td><td>звіти, узгоджене читання кількох таблиць</td></tr>
+        <tr><td><b>SERIALIZABLE</b></td><td>результат як при послідовному виконанні (у PG — SSI); ціна — помилки серіалізації під навантаженням</td><td>складні інваріанти ("не більше 5 активних броней") — <b>лише з retry-циклом</b></td></tr>
+      </table>
+      <p>Детальніше про аномалії (dirty/non-repeatable/phantom read, write skew) — у Python-серії:
+      <a href="../python-tutorials/17-databases-fundamentals.html">бази даних: фундамент</a>. Тут важливе
+      Node-специфічне: <b>не тримайте транзакцію відкритою через <code>await fetch(...)</code></b> до зовнішнього API —
+      з'єднання і локи зайняті весь час відповіді стороннього сервісу.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Паралельні запити в одній транзакції не паралельні.</b> <code>await Promise.all([client.query(a), client.query(b)])</code>
+        на одному клієнті — запити все одно йдуть послідовно по одному з'єднанню (pg ставить їх у внутрішню
+        чергу), а при помилці одного другий може виконатись уже в "aborted" транзакції. Пишіть послідовно.</div>
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Prisma: schema-first ORM з генерованим клієнтом</h2>
+      <p class="section-desc">Найпопулярніший ORM у TS-світі: одна декларативна схема → міграції + повністю типізований клієнт.</p>
+
+      <p>Prisma будується навколо файлу <code>schema.prisma</code> (власна DSL). З нього генерується
+      клієнт (<code>prisma generate</code>) з типами для кожної моделі й кожної форми запиту, і з нього ж
+      Prisma Migrate генерує SQL-міграції.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">prisma/schema.prisma</span></div>
+        <pre><code>generator client {
+  provider = "prisma-client"           // новий генератор; старий — "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  // у Prisma 7 URL переїхав у prisma.config.ts; у 5/6 — url = env("DATABASE_URL") тут
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  orders    Order[]
+  createdAt DateTime @default(now())
+}
+
+model Order {
+  id      Int     @id @default(autoincrement())
+  total   Decimal @db.Decimal(12, 2)
+  user    User    @relation(fields: [userId], references: [id])
+  userId  Int
+  @@index([userId])
+}</code></pre>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">orders.service.ts</span></div>
+        <pre><code>import { PrismaClient, Prisma } from './generated/prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+
+// один клієнт на процес (у dev з --watch — кешуйте в globalThis)
+export const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
+
+// тип результату виводиться з форми запиту: { email: string; orders: { id: number }[] }[]
+const users = await prisma.user.findMany({
+  where: { email: { endsWith: '@acme.com' } },
+  select: { email: true, orders: { select: { id: true }, take: 5 } },
+});
+
+// interactive transaction: tx — "прив'язаний" до одного з'єднання клієнт
+await prisma.$transaction(async (tx) => {
+  const from = await tx.account.update({ where: { id: 1 }, data: { balance: { decrement: 70 } } });
+  if (from.balance.lt(0)) throw new Error('insufficient funds');   // кидок → ROLLBACK
+  await tx.account.update({ where: { id: 2 }, data: { balance: { increment: 70 } } });
+}, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 5_000 });
+
+// batch transaction: масив запитів в одній транзакції (без логіки між ними)
+await prisma.$transaction([
+  prisma.order.deleteMany({ where: { userId: 7 } }),
+  prisma.user.delete({ where: { id: 7 } }),
+]);
+
+// escape hatch: tagged template = параметризовано
+const top = await prisma.$queryRaw&lt;{ user_id: number; sum: string }[]>`
+  SELECT user_id, SUM(total)::text AS sum FROM "Order" GROUP BY user_id ORDER BY 2 DESC LIMIT ${10}`;</code></pre>
+      </div>
+
+      <h3>Міграції в Prisma</h3>
+      <div class="flow"><div class="step">змінили schema.prisma</div><div class="arrow">→</div><div class="step">prisma migrate dev (diff → SQL-файл)</div><div class="arrow">→</div><div class="step">комміт migrations/</div><div class="arrow">→</div><div class="step">CI/CD: prisma migrate deploy</div></div>
+      <ul>
+        <li><code>migrate dev</code> — тільки локально: може запропонувати <b>скинути базу</b> при дрейфі.</li>
+        <li><code>migrate deploy</code> — у продакшені: лише застосовує не застосовані файли, нічого не генерує.</li>
+        <li><code>db push</code> — синхронізує схему без файлів міграцій: прототипи, не прод.</li>
+        <li>Згенерований SQL можна (і інколи треба) редагувати <i>до</i> застосування — наприклад, замінити drop+add колонки на rename.</li>
+      </ul>
+
+      <h3>Плюси і мінуси</h3>
+      <table>
+        <tr><th>👍 Плюси</th><th>👎 Мінуси</th></tr>
+        <tr><td>найкращий DX: автокомпліт, типи результату з <code>select</code>/<code>include</code></td><td>власна DSL і крок <code>generate</code>; забули згенерувати — типи застаріли</td></tr>
+        <tr><td>схема — єдине джерело правди; читабельна для всієї команди</td><td>складні запити (CTE, window functions, <code>FOR UPDATE</code>) — тільки через raw SQL / TypedSQL</td></tr>
+        <tr><td>міграції, Studio, seed "з коробки"</td><td>важча абстракція: історично окремий Rust query engine (бінарник, холодний старт); новіші версії перейшли на TS-реалізацію з driver adapters, що полегшило serverless</td></tr>
+        <tr><td>автобатчинг <code>findUnique</code> в одному тіку (вбудований DataLoader)</td><td><code>include</code> глибоких зв'язків легко генерує важкі запити й overfetching</td></tr>
+      </table>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body"><b>Чесно про "N+1 через include".</b> Сам <code>include</code> не робить запит на кожен рядок:
+        Prisma або підтягує зв'язок одним додатковим запитом з <code>WHERE id IN (...)</code> на кожен рівень вкладеності,
+        або (з <code>relationLoadStrategy: 'join'</code>) робить один запит з LATERAL JOIN і JSON-агрегацією. Справжній N+1 у Prisma —
+        це <code>for (const u of users) await prisma.order.findMany({ where: { userId: u.id } })</code> у циклі. Проблема
+        <code>include</code> інша — він непомітно тягне <i>всі</i> колонки і <i>всі</i> рядки зв'язку. Використовуйте
+        <code>select</code> і <code>take</code>.</div>
+      </div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Drizzle: SQL-подібний TypeScript без кодогенерації</h2>
+      <p class="section-desc">Схема — звичайний TS-код, запити виглядають як SQL, а типи виводяться компілятором без окремого кроку generate.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">src/db/schema.ts</span></div>
+        <pre><code>import { pgTable, serial, text, integer, numeric, timestamp, index } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
+
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  email: text('email').notNull().unique(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const orders = pgTable('orders', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().references(() => users.id),
+  total: numeric('total', { precision: 12, scale: 2 }).notNull(),
+}, (t) => [index('orders_user_id_idx').on(t.userId)]);
+
+export const usersRelations = relations(users, ({ many }) => ({ orders: many(orders) }));
+export const ordersRelations = relations(orders, ({ one }) => ({
+  user: one(users, { fields: [orders.userId], references: [users.id] }),
+}));</code></pre>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">src/db/queries.ts</span></div>
+        <pre><code>import { drizzle } from 'drizzle-orm/node-postgres';
+import { eq, sql, desc } from 'drizzle-orm';
+import { Pool } from 'pg';
+import * as schema from './schema';
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const db = drizzle({ client: pool, schema });
+
+// SQL-like API — що написали, те й виконається
+const rows = await db
+  .select({ email: schema.users.email, spent: sql&lt;string>`sum(${schema.orders.total})` })
+  .from(schema.users)
+  .leftJoin(schema.orders, eq(schema.orders.userId, schema.users.id))
+  .groupBy(schema.users.email)
+  .orderBy(desc(sql`2`))
+  .limit(10);
+
+// relational queries API — вкладені дані ОДНИМ SQL-запитом
+const withOrders = await db.query.users.findMany({ with: { orders: true }, limit: 20 });
+
+// транзакція: tx живе на одному checkout-клієнті, release — автоматично
+await db.transaction(async (tx) => {
+  await tx.update(schema.orders).set({ total: '0' }).where(eq(schema.orders.userId, 7));
+  await tx.delete(schema.users).where(eq(schema.users.id, 7));
+});</code></pre>
+      </div>
+
+      <h3>drizzle-kit</h3>
+      <ul>
+        <li><code>drizzle-kit generate</code> — порівнює TS-схему з попереднім снапшотом і пише SQL-файл міграції.</li>
+        <li><code>drizzle-kit migrate</code> — застосовує їх (або викликайте <code>migrate()</code> з коду при деплої).</li>
+        <li><code>drizzle-kit push</code> — пряма синхронізація для прототипів; <code>pull</code> — інтроспекція існуючої бази в TS-схему.</li>
+      </ul>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Чому Drizzle полюбили:</b> тонкий (немає двигуна, лише генерація SQL), однаково працює в Node,
+        Bun, edge і serverless (драйвери для Neon HTTP, D1, libSQL), ви бачите й контролюєте SQL, а типи — це просто TS-inference.
+        Ціна — треба знати SQL; менше "магії" (немає Unit of Work, change tracking, автоматичних каскадів); API ще
+        еволюціонує між версіями.</div>
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> TypeORM, MikroORM, Sequelize: класичні ORM</h2>
+      <p class="section-desc">ORM у стилі Hibernate/Doctrine: класи-сутності з декораторами, репозиторії, change tracking — потужно, але з більшою кількістю прихованої поведінки.</p>
+
+      <h3>TypeORM</h3>
+      <p>Дефолтний вибір у NestJS-туторіалах (<a href="11-nestjs-architecture.html">туторіал 11</a>). Сутності описуються класами з
+      декораторами, метадані читаються через <code>reflect-metadata</code> (потрібні <code>experimentalDecorators</code> і
+      <code>emitDecoratorMetadata</code> у tsconfig — див. <a href="13-typescript-validation-config.html">туторіал 13</a>).</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">user.entity.ts</span></div>
+        <pre><code>import { Entity, PrimaryGeneratedColumn, Column, OneToMany, BaseEntity } from 'typeorm';
+
+@Entity('users')
+export class User {                      // Data Mapper: проста сутність
+  @PrimaryGeneratedColumn() id!: number;
+  @Column({ unique: true }) email!: string;
+  @OneToMany(() => Order, (o) => o.user) orders!: Order[];
+}
+
+// Data Mapper — логіка доступу в репозиторії
+const repo = dataSource.getRepository(User);
+const u = await repo.findOne({ where: { email }, relations: { orders: true } });
+
+// Active Record — сутність сама себе зберігає (class X extends BaseEntity)
+// const u = await UserAR.findOneBy({ email }); u.email = 'x'; await u.save();</code></pre>
+      </div>
+
+      <table>
+        <tr><th></th><th>Active Record</th><th>Data Mapper</th></tr>
+        <tr><td>Ідея</td><td>об'єкт = рядок + методи <code>save()</code>, <code>remove()</code></td><td>сутність — дані; персистентність — окремий репозиторій/EntityManager</td></tr>
+        <tr><td>Плюс</td><td>мало коду, швидкий старт (Rails, Laravel)</td><td>тестованість, чистий домен, легше замінити сховище</td></tr>
+        <tr><td>Мінус</td><td>домен знає про БД, важко мокати</td><td>більше церемоній</td></tr>
+      </table>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Відомі болі TypeORM:</b>
+        <code>synchronize: true</code> у продакшені (автоматично "підганяє" схему і може дропнути колонку з даними);
+        <code>save()</code> робить SELECT перед INSERT/UPDATE і поводиться неочевидно з каскадами;
+        типізація <code>find</code>-опцій і результатів слабша, ніж у Prisma/Drizzle (relations не відображаються в типі);
+        згенеровані міграції бувають зайвими або неповними; історично повільна підтримка й накопичені issues.
+        Для нових проєктів його обирають рідше, але в легасі NestJS-коді його багато.</div>
+      </div>
+
+      <h3>MikroORM: Unit of Work та Identity Map</h3>
+      <p>MikroORM — Data Mapper ORM, який чесно реалізує патерни з книги Фаулера:</p>
+      <ul>
+        <li><b>Identity Map</b> — в межах одного <code>EntityManager</code> одна сутність з одним id існує рівно одним об'єктом.
+        Повторний <code>findOne(User, 1)</code> не йде в базу і повертає той самий екземпляр.</li>
+        <li><b>Unit of Work</b> — ви просто змінюєте об'єкти; <code>em.flush()</code> обчислює diff (change set) і
+        відправляє всі INSERT/UPDATE/DELETE <b>в одній транзакції</b>, у правильному порядку залежностей.</li>
+        <li>Через це <b>EntityManager має бути per-request</b>: <code>em.fork()</code> або <code>RequestContext</code>
+        (під капотом — AsyncLocalStorage, див. <a href="03-async-patterns.html">туторіал 3</a>). Спільний глобальний
+        EM = identity map, що росте вічно, і "протікання" даних між запитами різних користувачів.</li>
+      </ul>
+      <div class="codecard">
+        <div class="bar"><span class="path">mikro.ts</span></div>
+        <pre><code>const em = orm.em.fork();                 // окремий UoW на запит
+const user = await em.findOneOrFail(User, { email });
+user.name = 'Olena';                      // лише змінюємо об'єкт
+em.persist(new Order(user, 100));
+await em.flush();                         // UPDATE users + INSERT orders в одній транзакції</code></pre>
+      </div>
+
+      <h3>Sequelize</h3>
+      <p>Найстаріший популярний Node ORM (з 2010-х), JS-first, Active Record-стиль (<code>User.findAll({ include: Order })</code>).
+      Досі в тисячах легасі-проєктів, але TypeScript-підтримка прикручена збоку, нова мажорна версія
+      роками в розробці. Для нового коду — майже ніколи; на співбесіді достатньо знати, що це і чому від нього йдуть.</p>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Query builders: Knex і Kysely</h2>
+      <p class="section-desc">Золота середина: ви думаєте в термінах SQL, але збираєте його з безпечних, композиційних шматків.</p>
+
+      <h3>Knex</h3>
+      <p>Ветеран (JS, з 2013): builder для PG/MySQL/SQLite/MSSQL, власні міграції й seed, пул на базі tarn.
+      Сильна сторона — композиція умов динамічно (фільтри з UI). Слабка — типи: результат за замовчуванням <code>any</code>.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">knex.js</span></div>
+        <pre><code>const q = knex('orders').select('id', 'total').where('user_id', userId);
+if (status) q.andWhere('status', status);        // динамічна композиція
+if (minTotal) q.andWhere('total', '>=', minTotal);
+const rows = await q.orderBy('created_at', 'desc').limit(20);
+
+// knex migrate:make add_status / knex migrate:latest</code></pre>
+      </div>
+
+      <h3>Kysely</h3>
+      <p>"Типобезпечний Knex": ви описуєте інтерфейс бази (руками або генеруєте з живої бази через <code>kysely-codegen</code>),
+      і компілятор перевіряє <b>назви таблиць, колонок, аліаси і тип результату</b> — помилка в назві колонки ламає
+      <code>tsc</code>, а не продакшен.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">kysely.ts</span></div>
+        <pre><code>import { Kysely, PostgresDialect, sql, type Generated } from 'kysely';
+import { Pool } from 'pg';
+
+interface Database {
+  users: { id: Generated&lt;number>; email: string };
+  orders: { id: Generated&lt;number>; user_id: number; total: string };
+}
+const db = new Kysely&lt;Database>({ dialect: new PostgresDialect({ pool: new Pool() }) });
+
+const rows = await db
+  .selectFrom('users as u')
+  .innerJoin('orders as o', 'o.user_id', 'u.id')
+  .select(['u.email', sql&lt;string>`sum(o.total)`.as('spent')])
+  .groupBy('u.email')
+  .execute();
+// rows: { email: string; spent: string }[]  — 'u.emial' не скомпілюється
+
+await db.transaction().execute(async (trx) => {
+  await trx.deleteFrom('orders').where('user_id', '=', 7).execute();
+});</code></pre>
+      </div>
+
+      <div class="remember"><b>🧠 Запам'ятай:</b> Knex — SQL-композиція без типів, Kysely — та сама ідея з типами з першого дня; обидва не мають моделей і зв'язків, і це фіча, а не баг.</div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> MongoDB: драйвер і Mongoose</h2>
+      <p class="section-desc">Mongoose повертає "схему" в schemaless-базу на рівні застосунку — разом з middleware, валідацією і власними пастками продуктивності.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">user.model.js</span></div>
+        <pre><code>import mongoose from 'mongoose';
+
+const userSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true, lowercase: true },
+  passwordHash: { type: String, required: true, select: false },  // не повертати за замовчуванням
+  team: { type: mongoose.Schema.Types.ObjectId, ref: 'Team' },
+}, { timestamps: true });
+
+// middleware (hooks): виконується перед save()
+userSchema.pre('save', async function () {
+  if (this.isModified('passwordHash')) { /* напр., аудит */ }
+});
+
+export const User = mongoose.model('User', userSchema);
+
+// populate = "join" на стороні застосунку: ДОДАТКОВИЙ запит до teams з $in
+const users = await User.find({ active: true }).populate('team').lean();</code></pre>
+      </div>
+
+      <ul>
+        <li><b><code>populate()</code></b> — не JOIN у базі, а другий запит <code>teams.find({ _id: { $in: [...] } })</code>
+        на кожен шлях. Для списку це 2 запити, не N+1. Але <code>populate</code> всередині циклу,
+        глибоко вкладені populate або <code>findById</code> на кожен елемент — класичний N+1. Альтернатива — <code>$lookup</code> в aggregation pipeline (JOIN на сервері) або денормалізація.</li>
+        <li><b><code>lean()</code></b> — повертає прості JS-об'єкти замість Mongoose-документів (без getter-ів, virtuals,
+        change tracking, <code>save()</code>). У рази менше пам'яті та CPU на великих вибірках; для read-only API — майже завжди.</li>
+        <li><b>Middleware-пастка:</b> <code>pre('save')</code> НЕ спрацьовує на <code>updateOne</code>/<code>findOneAndUpdate</code> —
+        для них окремі query middleware. Валідація на update вимкнена, поки не передати <code>runValidators: true</code>.</li>
+        <li><b>Безпека:</b> фільтр з <code>req.body</code> напряму (<code>User.findOne({ email: req.body.email })</code>) дозволяє
+        operator injection <code>{ "$ne": null }</code> — детально в <a href="14-security.html">туторіалі 14</a>; у Mongoose є
+        опція <code>sanitizeFilter</code>.</li>
+      </ul>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Проблема N+1: як виглядає і як лікувати</h2>
+      <p class="section-desc">Найдорожча помилка ORM-коду: один запит на список і ще по одному на кожен рядок — латентність множиться на N.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 280" role="img" aria-label="Порівняння N+1 і пакетного завантаження. Зліва застосунок робить один запит SELECT users і потім по одному запиту SELECT orders WHERE user_id для кожного з N користувачів: N+1 мережевих round-trip, латентність росте лінійно. Справа застосунок робить або один запит з JOIN, або два запити: users і orders WHERE user_id = ANY від масиву id, після чого групує результат у памʼяті. Кількість round-trip стала незалежно від N.">
+          <defs><marker id="n12d5-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="175" y="20" text-anchor="middle" fill="var(--bad)" font-weight="bold">N+1: 1 + N round-trip</text>
+            <rect x="20" y="40" width="80" height="220" rx="8" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="60" y="155" text-anchor="middle" fill="currentColor">App</text>
+            <rect x="250" y="40" width="80" height="220" rx="8" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="290" y="155" text-anchor="middle" fill="currentColor">DB</text>
+            <line x1="100" y1="60" x2="248" y2="60" stroke="currentColor" marker-end="url(#n12d5-arrow)"/>
+            <text x="175" y="55" text-anchor="middle" fill="currentColor">SELECT users</text>
+            <line x1="100" y1="95" x2="248" y2="95" stroke="var(--bad)" marker-end="url(#n12d5-arrow)"/>
+            <text x="175" y="90" text-anchor="middle" fill="var(--bad)">orders WHERE uid=1</text>
+            <line x1="100" y1="130" x2="248" y2="130" stroke="var(--bad)" marker-end="url(#n12d5-arrow)"/>
+            <text x="175" y="125" text-anchor="middle" fill="var(--bad)">orders WHERE uid=2</text>
+            <line x1="100" y1="165" x2="248" y2="165" stroke="var(--bad)" marker-end="url(#n12d5-arrow)"/>
+            <text x="175" y="160" text-anchor="middle" fill="var(--bad)">orders WHERE uid=3</text>
+            <text x="175" y="195" text-anchor="middle" fill="var(--fg-muted)">... ще N−3 разів</text>
+            <line x1="100" y1="235" x2="248" y2="235" stroke="var(--bad)" marker-end="url(#n12d5-arrow)"/>
+            <text x="175" y="230" text-anchor="middle" fill="var(--bad)">orders WHERE uid=N</text>
+
+            <line x1="360" y1="20" x2="360" y2="265" stroke="var(--fg-muted)" stroke-dasharray="4 4"/>
+
+            <text x="545" y="20" text-anchor="middle" fill="var(--good)" font-weight="bold">Batch / JOIN: стала кількість</text>
+            <rect x="390" y="40" width="80" height="220" rx="8" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="430" y="155" text-anchor="middle" fill="currentColor">App</text>
+            <rect x="620" y="40" width="80" height="220" rx="8" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="660" y="155" text-anchor="middle" fill="currentColor">DB</text>
+            <text x="545" y="62" text-anchor="middle" fill="var(--fg-muted)">варіант A</text>
+            <line x1="470" y1="85" x2="618" y2="85" stroke="var(--good)" marker-end="url(#n12d5-arrow)"/>
+            <text x="545" y="80" text-anchor="middle" fill="var(--good)">users JOIN orders</text>
+            <text x="545" y="140" text-anchor="middle" fill="var(--fg-muted)">варіант B</text>
+            <line x1="470" y1="165" x2="618" y2="165" stroke="var(--good)" marker-end="url(#n12d5-arrow)"/>
+            <text x="545" y="160" text-anchor="middle" fill="var(--good)">SELECT users</text>
+            <line x1="470" y1="200" x2="618" y2="200" stroke="var(--good)" marker-end="url(#n12d5-arrow)"/>
+            <text x="545" y="195" text-anchor="middle" fill="var(--good)">uid = ANY($1)</text>
+            <text x="545" y="240" text-anchor="middle" fill="var(--fg-muted)">групування в пам'яті</text>
+          </g>
+        </svg>
+        <figcaption>N+1 платить мережеву латентність N разів; JOIN або <code>IN/ANY</code>-батч платить її один-два рази незалежно від розміру списку.</figcaption>
+      </figure>
+
+      <h3>Демо: 51 запит проти 2</h3>
+      <p>Фейкова "база" з затримкою ~5 мс на round-trip (реалістично для бази в сусідній зоні доступності):</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">nplus1.mjs</span></div>
+        <pre><code>let queries = 0;
+const users = Array.from({ length: 50 }, (_, i) => ({ id: i + 1, name: `u${i + 1}` }));
+const orders = users.flatMap((u) => [{ id: u.id * 10, userId: u.id }, { id: u.id * 10 + 1, userId: u.id }]);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function query(fn) { queries++; await sleep(5); return fn(); }
+
+async function nPlusOne() {
+  const list = await query(() => users);                       // 1 запит
+  for (const u of list) {                                      // + N запитів
+    u.orders = await query(() => orders.filter((o) => o.userId === u.id));
+  }
+  return list;
+}
+
+async function batched() {
+  const list = await query(() => users);                       // 1 запит
+  const ids = new Set(list.map((u) => u.id));
+  const all = await query(() => orders.filter((o) => ids.has(o.userId))); // WHERE user_id = ANY($1)
+  const byUser = Map.groupBy(all, (o) => o.userId);
+  return list.map((u) => ({ ...u, orders: byUser.get(u.id) ?? [] }));
+}
+
+for (const [name, fn] of [['N+1', nPlusOne], ['batched', batched]]) {
+  queries = 0;
+  const t = performance.now();
+  const r = await fn();
+  console.log(`${name.padEnd(8)} queries=${String(queries).padStart(2)}  time≈${Math.round((performance.now() - t) / 10) * 10} ms  orders=${r.reduce((s, u) => s + u.orders.length, 0)}`);
+}</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">$ node nplus1.mjs</span></div>
+        <pre><code>N+1      queries=51  time≈290 ms  orders=100
+batched  queries= 2  time≈10 ms  orders=100</code></pre>
+      </div>
+      <p class="muted">Точні мілісекунди залежать від машини; важливе співвідношення — латентність N+1 росте лінійно з N, а батча — ні. Плюс N+1 тримає з'єднання з пулу в 25 разів довше.</p>
+
+      <h3>Способи лікування</h3>
+      <table>
+        <tr><th>Спосіб</th><th>Як</th><th>Коли</th></tr>
+        <tr><td><b>JOIN</b></td><td>один запит; Drizzle <code>leftJoin</code> / relational queries, Prisma <code>relationLoadStrategy: 'join'</code>, Kysely <code>innerJoin</code></td><td>1:1, невеликі 1:N; обережно з "розмноженням" рядків при кількох 1:N</td></tr>
+        <tr><td><b>Batch IN / ANY</b></td><td><code>WHERE user_id = ANY($1::int[])</code> + групування в пам'яті; так працюють Prisma <code>include</code> і Mongoose <code>populate</code></td><td>великі 1:N, кілька зв'язків одночасно</td></tr>
+        <tr><td><b>DataLoader</b></td><td>збирає всі <code>load(id)</code> одного тіку event loop у один <code>batchFn(ids)</code></td><td>GraphQL-резолвери, де структура запиту невідома заздалегідь</td></tr>
+        <tr><td><b>Агрегація в SQL</b></td><td><code>json_agg</code>, підзапит, materialized view</td><td>звіти, лічильники ("кількість замовлень" — не тягніть самі замовлення)</td></tr>
+      </table>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">loaders.js</span></div>
+        <pre><code>import DataLoader from 'dataloader';
+
+// СТВОРЮВАТИ НА КОЖЕН ЗАПИТ: кеш DataLoader-а не має бачити дані іншого користувача
+export const createLoaders = () => ({
+  ordersByUser: new DataLoader(async (userIds) => {
+    const { rows } = await pool.query('SELECT * FROM orders WHERE user_id = ANY($1)', [userIds]);
+    const byUser = Map.groupBy(rows, (r) => r.user_id);
+    return userIds.map((id) => byUser.get(id) ?? []);   // той самий порядок і довжина, що й ключі!
+  }),
+});
+
+// resolver: User.orders = (user, _, ctx) => ctx.loaders.ordersByUser.load(user.id)</code></pre>
+      </div>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">На співбесіді запитають так</span> "Як знайти N+1 у продакшені?" —
+        логувати кількість SQL-запитів на HTTP-запит (через AsyncLocalStorage-лічильник або OpenTelemetry spans,
+        <a href="17-production-observability.html">туторіал 17</a>), шукати трейси з "гребінцем" однакових коротких запитів;
+        <code>pg_stat_statements</code> — запит з величезним <code>calls</code> і мікроскопічним <code>mean_time</code>; у тестах —
+        assert на кількість запитів.</div>
+      </div>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Міграції: expand/contract і правила безпеки</h2>
+      <p class="section-desc">Під час rolling-деплою стара і нова версії коду працюють з ОДНІЄЮ базою одночасно — міграція мусить бути сумісною з обома.</p>
+
+      <h3>Незламні правила</h3>
+      <ol>
+        <li><b>Ніколи не редагуйте застосовану міграцію.</b> Інструмент зберігає список/чексуми застосованих
+        (<code>_prisma_migrations</code>, <code>__drizzle_migrations</code>, <code>knex_migrations</code>). Змінений файл або
+        не застосується на проді (там він уже "виконаний"), або зламає перевірку чексуми — і dev/prod-схеми розійдуться.
+        Помилка в міграції → <b>нова</b> міграція, що її виправляє.</li>
+        <li><b>Міграції — у VCS і в CI</b>, застосовуються окремим кроком деплою (<code>migrate deploy</code> / init-container / job),
+        а не при старті кожного з 10 подів одночасно (гонка; якщо інакше ніяк — advisory lock).</li>
+        <li><b>Деструктивні зміни — окремим релізом</b> після того, як жоден код не використовує стару колонку.</li>
+      </ol>
+
+      <h3>Expand / contract (parallel change) на прикладі перейменування колонки</h3>
+      <table>
+        <tr><th>Крок</th><th>Міграція</th><th>Код</th></tr>
+        <tr><td>1. Expand</td><td><code>ADD COLUMN full_name TEXT NULL</code></td><td>пише в обидві колонки, читає стару</td></tr>
+        <tr><td>2. Backfill</td><td><code>UPDATE ... SET full_name = name</code> батчами по 1–10 тис. рядків</td><td>—</td></tr>
+        <tr><td>3. Switch</td><td>(за потреби) <code>NOT NULL</code> через <code>CHECK ... NOT VALID</code> + <code>VALIDATE</code></td><td>читає нову, пише в обидві</td></tr>
+        <tr><td>4. Contract</td><td><code>DROP COLUMN name</code> — окремий деплой</td><td>лише нова колонка</td></tr>
+      </table>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Операції, що лочать таблицю в PostgreSQL:</b> <code>CREATE INDEX</code> без <code>CONCURRENTLY</code>
+        (блокує запис); <code>ALTER COLUMN TYPE</code> (переписує таблицю); додавання <code>NOT NULL</code> чи FK без
+        <code>NOT VALID</code>. Навіть "миттєвий" <code>ALTER</code> чекає <code>ACCESS EXCLUSIVE</code>-лок, і поки чекає за довгою транзакцією — <i>блокує всі нові запити до таблиці</i>.
+        Ставте <code>SET lock_timeout = '5s'</code> у міграціях. Зверніть увагу: <code>CREATE INDEX CONCURRENTLY</code> не працює всередині
+        транзакції, а багато інструментів обгортають міграцію в транзакцію — шукайте опцію її вимкнути.</div>
+      </div>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Redis-клієнти і тестування коду з БД</h2>
+      <p class="section-desc">Два практичні питання, які неминуче виникають поруч з ORM: яким клієнтом говорити з Redis і як тестувати SQL, не обманюючи себе моками.</p>
+
+      <h3>ioredis vs node-redis</h3>
+      <table>
+        <tr><th></th><th><code>ioredis</code></th><th><code>redis</code> (node-redis)</th></tr>
+        <tr><td>Підключення</td><td>підключається автоматично в конструкторі</td><td><code>createClient()</code> + обов'язковий <code>await client.connect()</code></td></tr>
+        <tr><td>Cluster / Sentinel</td><td>зрілі, давно</td><td>є (<code>createCluster</code>), Sentinel — у новіших версіях</td></tr>
+        <tr><td>Статус</td><td>масово використовується (BullMQ стоїть на ньому), розвивається повільніше</td><td>офіційний клієнт Redis, рекомендований для нових проєктів, підтримує нові модулі (JSON, Search)</td></tr>
+        <tr><td>Пастка</td><td colspan="2">одне з'єднання мультиплексує команди (pipelining) — пул зазвичай не потрібен; але <b>блокуючі команди</b> (<code>BLPOP</code>, <code>SUBSCRIBE</code>) потребують окремого з'єднання; обов'язковий обробник <code>'error'</code></td></tr>
+      </table>
+      <p>Детальніше про патерни Redis (кеш, локи, черги) — <a href="18-realtime-queues.html">туторіал 18</a> і
+      <a href="../python-tutorials/20-redis.html">Python-туторіал про Redis</a>.</p>
+
+      <h3>Тестування: справжня база в контейнері</h3>
+      <p>Моки репозиторію перевіряють, що ви викликали <code>findMany</code>, — але не що SQL правильний, індекс
+      використовується, constraint спрацьовує, а міграція застосовується. Для шару доступу до даних найкраще
+      співвідношення — <b>інтеграційні тести з реальним Postgres</b> через Testcontainers (потрібен Docker):</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">orders.repo.test.ts</span></div>
+        <pre><code>import { before, after, beforeEach, test } from 'node:test';
+import assert from 'node:assert/strict';
+import { PostgreSqlContainer } from '@testcontainers/postgresql';
+import pg from 'pg';
+
+let container, pool;
+before(async () => {
+  container = await new PostgreSqlContainer('postgres:17-alpine').start(); // ~2–5 с на старті
+  pool = new pg.Pool({ connectionString: container.getConnectionUri() });
+  await runMigrations(pool);                       // ті самі міграції, що й у проді
+});
+after(async () => { await pool.end(); await container.stop(); });
+beforeEach(() => pool.query('TRUNCATE orders, users RESTART IDENTITY CASCADE'));
+
+test('transfer rolls back on insufficient funds', async () => {
+  await seedAccounts(pool, [{ id: 1, balance: 30 }, { id: 2, balance: 0 }]);
+  await assert.rejects(transfer(1, 2, 70), /insufficient funds/);
+  const { rows } = await pool.query('SELECT balance FROM accounts ORDER BY id');
+  assert.deepEqual(rows.map((r) => r.balance), [30, 0]);
+});</code></pre>
+      </div>
+      <ul>
+        <li><b>Ізоляція тестів:</b> <code>TRUNCATE</code> між тестами, або кожен тест у транзакції з <code>ROLLBACK</code> в кінці
+        (швидко, але не працює, якщо код сам комітить), або окрема база-шаблон (<code>CREATE DATABASE ... TEMPLATE</code>) на воркер.</li>
+        <li>Не підміняйте Postgres на SQLite "бо швидше" — інші типи, інший SQL, інша поведінка локів.</li>
+        <li>Більше про стратегії — <a href="16-testing.html">туторіал 16</a>.</li>
+      </ul>
+
+      <p>А транзакційну логіку можна перевірити навіть без Docker на <code>node:sqlite</code>, коли важливий сам патерн BEGIN/COMMIT/ROLLBACK:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">tx.mjs</span></div>
+        <pre><code>import { DatabaseSync } from 'node:sqlite';
+const db = new DatabaseSync(':memory:');
+db.exec(`CREATE TABLE accounts (id INTEGER PRIMARY KEY, balance INTEGER CHECK (balance >= 0));
+         INSERT INTO accounts VALUES (1, 100), (2, 0);`);
+const move = db.prepare('UPDATE accounts SET balance = balance + ? WHERE id = ?');
+
+function transfer(from, to, amount) {
+  db.exec('BEGIN');
+  try {
+    move.run(amount, to);        // спершу зараховуємо
+    move.run(-amount, from);     // потім списуємо — може порушити CHECK
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    console.log('rolled back:', e.message);
+  }
+}
+transfer(1, 2, 70);
+transfer(1, 2, 70);  // на рахунку 1 лишилось 30
+console.log(db.prepare('SELECT id, balance FROM accounts').all().map((r) => `${r.id}:${r.balance}`).join(' '));</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">$ node tx.mjs</span></div>
+        <pre><code>rolled back: CHECK constraint failed: balance >= 0
+1:30 2:70</code></pre>
+      </div>
+      <p>Другий переказ встиг зарахувати 70 на рахунок 2, але <code>ROLLBACK</code> скасував і це зарахування — рахунок 2 має 70, а не 140.</p>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Як вибрати: велика таблиця рішень</h2>
+      <p class="section-desc">Немає "найкращого ORM" — є відповідність команді, складності запитів і середовищу виконання.</p>
+
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: шар доступу до даних для нового TS-бекенду</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th><th>Коли</th></tr>
+          <tr><td><b>pg / postgres.js</b></td><td>нуль абстракції, максимальна швидкість, повний SQL</td><td>типи і маппінг — вручну; динамічні запити — рядками</td><td>невеликі сервіси, гарячі шляхи, команда сильна в SQL</td></tr>
+          <tr><td><b>Kysely</b></td><td>типобезпечний SQL, без генерації рантайм-коду, легкий</td><td>немає моделей/зв'язків; міграції — простіші</td><td>складні запити + сувора типізація</td></tr>
+          <tr><td><b>Knex</b></td><td>зрілий, гнучкий, міграції</td><td>слабкі типи</td><td>легасі JS, швидкі скрипти</td></tr>
+          <tr class="chosen"><td><b>Drizzle</b> ✅</td><td>SQL-like + схема в TS + relational queries, тонкий, serverless/edge-friendly</td><td>треба знати SQL; API ще еволюціонує</td><td>дефолт для нового TS-проєкту з SQL-базою, особливо serverless</td></tr>
+          <tr><td><b>Prisma</b></td><td>найкращий DX, читабельна схема, міграції, Studio</td><td>DSL + generate; складний SQL — raw; більша абстракція</td><td>продуктові команди з різним рівнем SQL, CRUD-домінантні застосунки</td></tr>
+          <tr><td><b>MikroORM</b></td><td>справжній UoW / identity map, DDD-friendly</td><td>менша спільнота, крива навчання</td><td>складний домен з агрегатами, люди з Hibernate/Doctrine</td></tr>
+          <tr><td><b>TypeORM</b></td><td>декоратори, інтеграція з NestJS, обидва патерни</td><td>слабка типізація, неочевидний <code>save</code>, історія багів</td><td>підтримка існуючого NestJS-коду</td></tr>
+          <tr><td><b>Sequelize</b></td><td>зрілий, багато прикладів</td><td>погана TS-історія, застарілий дизайн</td><td>лише легасі</td></tr>
+          <tr><td><b>Mongoose</b></td><td>схеми, валідація, middleware для MongoDB</td><td>overhead документів (лікує <code>lean()</code>), populate-пастки</td><td>MongoDB з потребою в схемі на рівні застосунку</td></tr>
+          <tr><td><b>mongodb</b> driver</td><td>тонкий, швидкий, повний доступ до aggregation</td><td>валідація — самі (zod/JSON Schema у колекції)</td><td>MongoDB + власні шари валідації</td></tr>
+        </table>
+        <p><b>Коли що:</b> обирайте за найскладнішим запитом, а не за найпростішим CRUD. Якщо 30% запитів — аналітика з CTE і window-функціями, ORM з "магією" перетвориться на суміш raw SQL і боротьби з абстракцією; тоді Kysely/Drizzle. Якщо 95% — CRUD і команда різнорідна, Prisma заощадить місяці.</p>
+      </div>
+
+      <div class="callout fun">
+        <div class="ic">🎉</div>
+        <div class="body"><span class="tag">Цікавий факт</span> Практично всі популярні SQL-рішення для Node (Knex, Kysely, Drizzle,
+        TypeORM, Sequelize і driver adapter у Prisma) під капотом для PostgreSQL використовують той самий <code>pg</code>.
+        Тому знання <code>pg.Pool</code> переноситься на будь-який вибір.</div>
+      </div>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Каверзні питання співбесіди</h2>
+      <p class="section-desc">Питання, на яких відрізняють "користувався ORM" від "розумію, що відбувається з базою".</p>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чому не можна робити транзакцію через <code>pool.query('BEGIN')</code>?</summary>
+        <div class="a">Транзакція — стан <b>одного з'єднання</b>, а кожен <code>pool.query</code> може взяти інший клієнт. BEGIN
+        потрапить на одне з'єднання, UPDATE — на інше (в автокоміті), а "висяча" транзакція захопить чужі запити. Потрібно
+        <code>const c = await pool.connect()</code> і всі запити через <code>c</code>, з <code>release()</code> у <code>finally</code>.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Сервіс періодично "зависає" на всіх ендпоінтах з БД, база при цьому здорова. Що перевірити першим?</summary>
+        <div class="a">Витік клієнтів пулу: <code>pool.connect()</code> без <code>release()</code> у <code>finally</code> (або release лише в happy path).
+        Метрика <code>waitingCount</code> росте, <code>idleCount</code> = 0. Також: транзакції, що тримають з'єднання під час HTTP-викликів,
+        і відсутній <code>connectionTimeoutMillis</code> (за замовчуванням pg чекає вічно).</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Як порахувати розмір пулу?</summary>
+        <div class="a">Від бази, а не від застосунку: сумарно всі процеси мають бути помітно нижче <code>max_connections</code>; ефективна паралельність бази ≈ <b>ядра × 2 + диски</b>. На процес — RPS × середній час запиту (Little's law) з запасом. Типово 5–20 на процес Node; більше пулу ≠ більше throughput.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чим PgBouncer у transaction mode може зламати застосунок?</summary>
+        <div class="a">Серверне з'єднання змінюється між транзакціями, тож ламається все сесійне: <code>SET</code> (без <code>LOCAL</code>), сесійні advisory locks,
+        <code>LISTEN/NOTIFY</code>, temp tables, а в старих версіях — іменовані prepared statements (звідси <code>?pgbouncer=true</code> у Prisma).</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чи захищає ORM від SQL-ін'єкцій повністю?</summary>
+        <div class="a">Лише API, що параметризує значення. Raw-методи з рядками (<code>$queryRawUnsafe</code>, <code>sql.unsafe</code>, <code>knex.raw(`...${x}`)</code>),
+        динамічні ідентифікатори (<code>orderBy(req.query.sort)</code> у деяких білдерах) і Mongo-фільтри з <code>req.body</code> залишаються дірами. Ідентифікатори — тільки allowlist.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Prisma <code>include</code> — це N+1?</summary>
+        <div class="a">Ні, у класичному сенсі: один додатковий запит з <code>IN (...)</code> на рівень вкладеності (або JOIN з <code>relationLoadStrategy: 'join'</code>).
+        N+1 — це виклик запиту в циклі. Реальна проблема <code>include</code> — overfetching усіх колонок і рядків зв'язку; лікується <code>select</code>/<code>take</code>.
+        Бонус: Prisma автоматично батчить <code>findUnique</code>, викликані в одному тіку.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Active Record vs Data Mapper?</summary>
+        <div class="a">AR: сутність сама вміє <code>save()</code> — просто, але домен залежить від БД. DM: сутність — чисті дані, персистентність у репозиторії/EntityManager — тестованіше,
+        краще для складного домену. TypeORM вміє обидва, MikroORM — DM з Unit of Work, Sequelize/Mongoose — ближче до AR.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому MikroORM EntityManager не можна шарити глобально?</summary>
+        <div class="a">Identity map і Unit of Work накопичують сутності: глобальний EM росте в пам'яті без меж і "протікає" стан між запитами різних користувачів
+        (ви отримаєте застарілий кешований об'єкт замість свіжих даних). Тому <code>em.fork()</code> або <code>RequestContext</code> на кожен запит.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чому <code>COUNT(*)</code> з <code>pg</code> повертає рядок <code>'42'</code>?</summary>
+        <div class="a"><code>COUNT</code> повертає <code>bigint</code> (int8), який не завжди вміщається в JS <code>number</code> без втрати точності; pg за замовчуванням не ризикує.
+        <code>COUNT(*)::int</code>, <code>setTypeParser(20, ...)</code> або BigInt. Те саме з <code>numeric</code> — для грошей правильно лишати рядком і використовувати decimal-бібліотеку.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Помилка в уже застосованій міграції. Можна просто виправити файл?</summary>
+        <div class="a">Ні. Інструмент вважає її виконаною (за назвою/чексумою): на проді вона не перезапуститься, а на нових середовищах виконається вже інша версія — схеми розійдуться
+        (або перевірка чексуми зламає деплой). Пишеться нова міграція-виправлення.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Як перейменувати колонку без даунтайму?</summary>
+        <div class="a">Expand/contract: додати нову колонку → код пише в обидві → backfill батчами → код читає нову → окремим релізом drop старої. Rename "в лоб" ламає
+        стару версію коду, яка ще працює під час rolling-деплою.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Що не так з <code>await Promise.all(items.map(i =&gt; tx.insert(i)))</code> всередині транзакції?</summary>
+        <div class="a">Транзакція = одне з'єднання, тож паралелізму немає: запити серіалізуються на клієнті. Користі нуль, а при помилці одного інші продовжать
+        відправлятися в уже aborted-транзакцію ("current transaction is aborted"), що заплутує логи. Краще один batch-INSERT з багатьма VALUES.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Навіщо <code>lean()</code> у Mongoose?</summary>
+        <div class="a">Повертає прості об'єкти без обгорток документа (getters, virtuals, change tracking, <code>save</code>) — суттєво менше пам'яті та CPU на гідрацію.
+        Для read-only відповідей API — майже завжди; не підходить, якщо потрібні virtuals/методи документа або подальший <code>save()</code>.</div>
+      </details>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Шпаргалка</h2>
+      <p class="section-desc">Усе ключове на одному екрані.</p>
+      <div class="cheat">
+        <table>
+          <tr><th>Тема</th><th>Правило</th></tr>
+          <tr><td>Параметри</td><td><code>$1</code> (pg), <code>?</code> (mysql2/sqlite), tagged template (postgres.js, <code>$queryRaw</code>); ідентифікатори — allowlist</td></tr>
+          <tr><td>Пул</td><td>один на процес; <code>max</code> × процеси × поди &lt; <code>max_connections</code>; <code>connectionTimeoutMillis</code>; <code>pool.on('error')</code></td></tr>
+          <tr><td>Розмір</td><td>≈ ядра бази × 2 + диски (сумарно); на процес — RPS × час запиту + запас</td></tr>
+          <tr><td>Serverless</td><td>пул поза handler, <code>max: 1–2</code>, PgBouncer/RDS Proxy або HTTP-драйвер</td></tr>
+          <tr><td>Транзакція</td><td><code>pool.connect()</code> → BEGIN → ... → COMMIT/ROLLBACK → <code>release()</code> у <code>finally</code>; або <code>db.transaction(fn)</code></td></tr>
+          <tr><td>Retry</td><td><code>40001</code> serialization / <code>40P01</code> deadlock — повторити всю транзакцію</td></tr>
+          <tr><td>Ізоляція</td><td>PG default READ COMMITTED; MySQL — REPEATABLE READ; SERIALIZABLE лише з retry</td></tr>
+          <tr><td>N+1</td><td>JOIN, <code>= ANY($1)</code>-батч, DataLoader (per request), агрегати в SQL</td></tr>
+          <tr><td>Міграції</td><td>не редагувати застосовані; expand/contract; <code>CONCURRENTLY</code>; <code>lock_timeout</code>; окремий крок деплою</td></tr>
+          <tr><td>Prisma</td><td><code>migrate dev</code> локально, <code>migrate deploy</code> у проді; <code>select</code> замість широкого <code>include</code></td></tr>
+          <tr><td>Mongoose</td><td><code>lean()</code> для читання; <code>populate</code> = +1 запит на шлях; <code>runValidators</code> на update</td></tr>
+          <tr><td>Тести</td><td>Testcontainers + ті самі міграції; TRUNCATE між тестами; не SQLite замість Postgres</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section id="s16">
+      <h2><span class="num">16</span> Як запам'ятати</h2>
+      <p class="section-desc">Асоціації, що повертають усю тему за секунду.</p>
+      <div class="flashgrid">
+        <div class="flashcard">
+          <div class="fc-num">1</div>
+          <div class="term">Connection pool</div>
+          <div class="def">Фіксований набір теплих з'єднань і FIFO-черга тих, хто чекає.</div>
+          <div class="mnemo"><b>Асоціація:</b> прокат самокатів: самокатів 10, черга людей — скільки завгодно; хто не повернув самокат, той вкрав його в усіх.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">2</div>
+          <div class="term">release() у finally</div>
+          <div class="def">Клієнт повертається в пул на будь-якому шляху виконання, включно з помилкою.</div>
+          <div class="mnemo"><b>Асоціація:</b> ключі від номера готелю здаєш на рецепції, навіть якщо виїжджаєш зі скандалом.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">3</div>
+          <div class="term">Параметризований запит</div>
+          <div class="def">Текст SQL і значення йдуть до бази окремо; значення ніколи не стає кодом.</div>
+          <div class="mnemo"><b>Асоціація:</b> бланк з клітинками: що б ти не написав у клітинці "Ім'я", воно не змінить текст договору.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">4</div>
+          <div class="term">pool × instances</div>
+          <div class="def">База бачить суму пулів усіх процесів, а не налаштування одного.</div>
+          <div class="mnemo"><b>Асоціація:</b> кожен із 12 гостей "взяв лише 10 тарілок" — у кухні 120 брудних тарілок.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">5</div>
+          <div class="term">N+1</div>
+          <div class="def">Один запит на список і окремий запит на кожен елемент.</div>
+          <div class="mnemo"><b>Асоціація:</b> ходити в магазин окремо за кожним яйцем замість узяти лоток.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">6</div>
+          <div class="term">DataLoader</div>
+          <div class="def">Збирає всі <code>load(id)</code> одного тіку і робить один batch-запит.</div>
+          <div class="mnemo"><b>Асоціація:</b> офіціант, який спершу обходить увесь стіл, а потім одним рейсом іде на кухню.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">7</div>
+          <div class="term">Unit of Work + Identity Map</div>
+          <div class="def">Змінюєш об'єкти; <code>flush()</code> записує diff однією транзакцією; один id — один об'єкт.</div>
+          <div class="mnemo"><b>Асоціація:</b> кошик в інтернет-магазині: накидаєш і правиш, а оплачуєш один раз.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">8</div>
+          <div class="term">Expand / contract</div>
+          <div class="def">Спершу додаємо нове поруч зі старим, потім мігруємо, і лише потім видаляємо старе.</div>
+          <div class="mnemo"><b>Асоціація:</b> новий міст будують поруч зі старим і зносять старий лише після того, як усі поїхали новим.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">9</div>
+          <div class="term">PgBouncer transaction mode</div>
+          <div class="def">Серверне з'єднання видається лише на час транзакції — тисячі клієнтів на десятки з'єднань.</div>
+          <div class="mnemo"><b>Асоціація:</b> таксі-пул: машина твоя лише на одну поїздку, тож речі в багажнику не залишай (сесійний стан).</div>
+        </div>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Node.js Doc · частина серії туторіалів AI Delivery Planner. Приклади коду перевірені на Node.js 24.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4. Модулі: CommonJS vs ESM — Node.js Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🟢 Node.js Doc <span>· AI Delivery Planner</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Node.js Doc · Туторіал 4 з 20</div>
+  <h1>Модулі в Node.js: CommonJS, ESM і як вони уживаються</h1>
+  <p class="lead">Дві модульні системи в одному рантаймі — джерело половини "дивних" помилок <code>ERR_REQUIRE_ESM</code>, <code>ERR_PACKAGE_PATH_NOT_EXPORTED</code> і подвійних singleton-ів. Розбираємо механіку <b>обох</b> систем, interop, <code>package.json</code> exports і циклічні залежності — на прикладах, запущених у Node 24.</p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="04-modules-cjs-esm.html" class="active">4. Модулі: CJS vs ESM</a>
+        <a href="05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="07-fs-process-os.html">7. fs, process, os</a>
+        <a href="08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="09-http-networking.html">9. HTTP і мережа</a>
+        <a href="10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="12-databases-orm.html">12. БД і ORM</a>
+        <a href="13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="14-security.html">14. Безпека Node</a>
+        <a href="15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="16-testing.html">16. Тестування</a>
+        <a href="17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+  </aside>
+
+    <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Навіщо дві системи</a></li>
+      <li><a href="#s2">2. CommonJS: wrapper і exports</a></li>
+      <li><a href="#s3">3. require: кеш і singleton-и</a></li>
+      <li><a href="#s4">4. Алгоритм резолюції require</a></li>
+      <li><a href="#s5">5. ESM: статичні import і live bindings</a></li>
+      <li><a href="#s6">6. ESM: фази завантаження, import.meta</a></li>
+      <li><a href="#s7">7. Як Node визначає тип модуля</a></li>
+      <li><a href="#s8">8. Interop: CJS ↔ ESM, require(esm)</a></li>
+      <li><a href="#s9">9. package.json exports та imports</a></li>
+      <li><a href="#s10">10. Dual package hazard</a></li>
+      <li><a href="#s11">11. Циклічні залежності</a></li>
+      <li><a href="#s12">12. Customization hooks і JSON-імпорти</a></li>
+      <li><a href="#s13">13. Каверзні питання співбесіди</a></li>
+      <li><a href="#s14">14. Шпаргалка</a></li>
+      <li><a href="#s15">15. Як запам'ятати</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Навіщо в Node дві модульні системи</h2>
+      <p class="section-desc">Історична довідка, без якої незрозуміло, чому interop такий кострубатий.</p>
+
+      <p>У 2009 році в JavaScript <b>не було</b> модулів. Node взяв специфікацію <b>CommonJS</b> (спільнота, що намагалась
+      стандартизувати серверний JS) і реалізував її: <code>require()</code> — звичайна функція, що <b>синхронно</b> читає файл
+      з диска, виконує його і повертає <code>module.exports</code>. На сервері синхронне читання — нормально: файли локальні, а
+      завантаження відбувається при старті.</p>
+      <p>У 2015 році ES2015 стандартизував <b>ES Modules</b> — <code>import</code>/<code>export</code>, розраховані і на браузер,
+      де модулі вантажаться з мережі, тобто <b>асинхронно</b>. Звідси ключова відмінність дизайну: ESM — <b>статичний</b>
+      (граф залежностей відомий до виконання) і <b>асинхронний</b> за природою; CJS — <b>динамічний</b> і синхронний. Node
+      підтримує ESM стабільно з v12/v14, і з того часу екосистема живе у перехідному періоді.</p>
+
+      <table>
+        <tr><th>Властивість</th><th>CommonJS</th><th>ES Modules</th></tr>
+        <tr><td>Синтаксис</td><td><code>require()</code>, <code>module.exports</code></td><td><code>import</code>, <code>export</code></td></tr>
+        <tr><td>Коли відомі залежності</td><td>під час виконання (require — функція)</td><td>до виконання (парсинг)</td></tr>
+        <tr><td>Завантаження</td><td>синхронне</td><td>асинхронне, у фазах</td></tr>
+        <tr><td>Що імпортується</td><td>копія значення <code>module.exports</code> (посилання на об'єкт)</td><td><b>live binding</b> — "вікно" у змінну модуля</td></tr>
+        <tr><td><code>this</code> на верхньому рівні</td><td><code>module.exports</code></td><td><code>undefined</code></td></tr>
+        <tr><td>Strict mode</td><td>за бажанням</td><td>завжди</td></tr>
+        <tr><td>Top-level await</td><td>ні</td><td>так</td></tr>
+        <tr><td><code>__dirname</code>, <code>__filename</code></td><td>є</td><td><code>import.meta.dirname</code> / <code>filename</code></td></tr>
+        <tr><td>Розширення в шляху</td><td>можна опускати</td><td><b>обов'язкове</b> для відносних шляхів</td></tr>
+        <tr><td>Tree-shaking бандлерами</td><td>погано</td><td>добре (статичний аналіз)</td></tr>
+      </table>
+
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        Порада на сьогодні (Node 22/24): <b>новий код — пишіть ESM</b>. Бібліотеки — ESM-first; якщо потрібна підтримка
+        CJS-споживачів, у Node 22.12+ / 20.19+ вони можуть просто <code>require()</code> ваш ESM (без top-level await) — див.
+        <a href="#s8">розділ 8</a>. TypeScript-компіляція й нюанси <code>moduleResolution</code> — у
+        <a href="13-typescript-validation-config.html">туторіалі 13</a>.
+      </div></div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> CommonJS: module wrapper і пастка exports</h2>
+      <p class="section-desc">Звідки в CJS-файлі беруться <code>require</code>, <code>module</code> і <code>__dirname</code>, якщо їх ніхто не оголошував.</p>
+
+      <p>Перед виконанням Node <b>загортає</b> код кожного CJS-файлу у функцію. Звідси п'ять "глобальних" змінних, які насправді —
+      параметри; звідси ж і локальна область видимості файлу (ваші <code>const</code> не потрапляють у <code>globalThis</code>).</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">wrapper.cjs</span></div>
+        <pre><code>console.log(arguments.length);                 // 5 — так, у файлі є arguments!
+console.log(require('node:module').wrapper);
+// [ '(function (exports, require, module, __filename, __dirname) { ', '\n});' ]
+console.log(this === module.exports, exports === module.exports);   // true true</code></pre>
+      </div>
+
+      <table>
+        <tr><th>Параметр</th><th>Що це</th></tr>
+        <tr><td><code>exports</code></td><td>Посилання на <i>той самий</i> об'єкт, що й <code>module.exports</code> на старті. Скорочення.</td></tr>
+        <tr><td><code>require</code></td><td>Функція, прив'язана до цього модуля (резолвить шляхи відносно нього). Має <code>.resolve</code>, <code>.cache</code>, <code>.main</code>.</td></tr>
+        <tr><td><code>module</code></td><td>Об'єкт <code>Module</code>: <code>exports</code>, <code>id</code>, <code>filename</code>, <code>loaded</code>, <code>children</code>, <code>paths</code>.</td></tr>
+        <tr><td><code>__filename</code></td><td>Абсолютний шлях до файлу.</td></tr>
+        <tr><td><code>__dirname</code></td><td>Директорія файлу.</td></tr>
+      </table>
+
+      <h3>Пастка: <code>exports = …</code></h3>
+      <p><code>require()</code> повертає <code>module.exports</code>, а не <code>exports</code>. Присвоєння <code>exports = {...}</code>
+      лише перенаправляє локальну змінну-параметр — зв'язок з <code>module.exports</code> рветься.</p>
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 1</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Що експортує модуль</span></div>
+        <div class="codecard"><div class="bar"><span class="path">lib.js</span></div><pre><code>exports.a = 1;
+exports = { b: 2 };          // перевизначили ЛОКАЛЬНУ змінну
+module.exports.c = 3;
+
+// main.js
+console.log(require('./lib'));</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">{ a: 1, c: 3 }</span><p><code>exports.a</code> мутує спільний об'єкт → є. <code>exports = {b}</code> — новий об'єкт, про який
+        <code>require</code> не знає → <code>b</code> втрачено. <code>module.exports.c</code> — знову спільний об'єкт. Правило: або лише
+        <code>exports.x = …</code>, або один раз <code>module.exports = …</code> — і не змішувати.</p></div></details>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">what-else-can-require.js</span></div>
+        <pre><code>const cfg = require('./config.json');   // JSON парситься і кешується (той самий об'єкт для всіх!)
+const addon = require('./build/Release/addon.node');   // нативний аддон (C++/N-API), через dlopen
+const os = require('node:os');           // core module; префікс node: — явний і не підміниш через node_modules
+
+require.main === module;                 // true, якщо файл запущено напряму (аналог if __name__ == '__main__')</code></pre>
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> require: кеш і singleton-и</h2>
+      <p class="section-desc">Модуль виконується один раз — на цьому тримаються пули з'єднань, конфіги й, на жаль, частина багів у тестах.</p>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 2</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Скільки разів виконається модуль</span></div>
+        <div class="codecard"><div class="bar"><span class="path">cache/main.js</span></div><pre><code>// counter.js:
+//   console.log('counter.js evaluated');
+//   let n = 0;
+//   module.exports = { inc: () =&gt; ++n };
+
+const a = require('./counter');
+const b = require('./counter.js');
+a.inc(); a.inc();
+console.log(b.inc(), a === b);
+
+delete require.cache[require.resolve('./counter')];
+const c = require('./counter');
+console.log(c.inc(), c === a);
+console.log(Object.keys(require.cache).map((p) =&gt; p.split('/').pop()));</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">counter.js evaluated
+3 true
+counter.js evaluated
+1 false
+[ 'main.js', 'counter.js' ]</span><p>Ключ кешу — <b>абсолютний резолвлений шлях</b>, тож <code>'./counter'</code> і <code>'./counter.js'</code> —
+        один запис. Модуль виконано один раз, a і b — той самий об'єкт. Після видалення з <code>require.cache</code> модуль виконується
+        заново і створює <b>новий</b> стан — а старі посилання (<code>a</code>) живуть далі. Так працюють "hot reload"-хаки і так
+        народжуються два "singleton-и" одночасно.</p></div></details>
+      </div>
+
+      <ul>
+        <li><b>Singleton через кеш</b> — це <code>module.exports = new Pool()</code>. Працює, поки шлях резолвиться в <b>один</b> файл.
+        Дві копії пакета в <code>node_modules</code> (різні версії, симлінки в монорепо, дублікат у <code>npm link</code>) = два singleton-и.
+        Класичний симптом — "<code>instanceof</code> повертає false" або "два екземпляри React/GraphQL".</li>
+        <li>Регістр важливий: на macOS (case-insensitive FS) <code>require('./User')</code> і <code>require('./user')</code> дадуть <b>два</b>
+        записи в кеші одного файлу, а на Linux у CI — помилку "module not found".</li>
+        <li>У тестах (Jest) кожен тестовий файл має свій реєстр модулів — тому <code>jest.resetModules()</code>, і тому singleton-и між файлами тестів не діляться.</li>
+        <li>ESM теж кешує (за URL), але кеш <b>недоступний</b> для видалення — для перезавантаження використовують query: <code>import(`./mod.js?v=${Date.now()}`)</code> (з витоком пам'яті).</li>
+      </ul>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Алгоритм резолюції require</h2>
+      <p class="section-desc">Що саме робить Node, коли бачить <code>require('x')</code> — і чому <code>require.resolve</code> корисний при дебазі.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 420" role="img" aria-label="Блок-схема резолюції require(X): якщо X — core module, повернути його; якщо X починається з ./ ../ або / — спробувати як файл (X, X.js, X.json, X.node), потім як директорію (package.json main, index.js); інакше — пошук у node_modules, піднімаючись від поточної директорії до кореня, з урахуванням поля exports у package.json; якщо нічого — MODULE_NOT_FOUND">
+          <defs><marker id="n04d1-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="270" y="10" width="200" height="34" rx="17" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="370" y="32" text-anchor="middle" fill="currentColor" font-weight="bold">require('X') з файлу F</text>
+
+            <rect x="250" y="62" width="240" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="370" y="84" text-anchor="middle" fill="currentColor">0. Є в require.cache? → повернути</text>
+            <line x1="370" y1="44" x2="370" y2="60" stroke="currentColor" marker-end="url(#n04d1-arrow)"/>
+
+            <rect x="250" y="114" width="240" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="370" y="136" text-anchor="middle" fill="currentColor">1. Core module (fs, node:fs)?</text>
+            <line x1="370" y1="96" x2="370" y2="112" stroke="currentColor" marker-end="url(#n04d1-arrow)"/>
+            <line x1="490" y1="131" x2="560" y2="131" stroke="var(--good)" marker-end="url(#n04d1-arrow)"/>
+            <rect x="562" y="114" width="165" height="34" rx="6" fill="none" stroke="var(--good)"/>
+            <text x="644" y="136" text-anchor="middle" fill="currentColor">так → вбудований модуль</text>
+
+            <rect x="250" y="166" width="240" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="370" y="188" text-anchor="middle" fill="currentColor">2. Починається з ./ ../ / ?</text>
+            <line x1="370" y1="148" x2="370" y2="164" stroke="currentColor" marker-end="url(#n04d1-arrow)"/>
+            <text x="380" y="160" fill="var(--fg-muted)" font-size="11">ні</text>
+
+            <line x1="250" y1="183" x2="200" y2="183" stroke="currentColor" marker-end="url(#n04d1-arrow)"/>
+            <text x="225" y="176" text-anchor="middle" fill="var(--fg-muted)" font-size="11">так</text>
+            <rect x="10" y="166" width="188" height="66" rx="6" fill="none" stroke="currentColor"/>
+            <text x="20" y="184" fill="currentColor">LOAD_AS_FILE:</text>
+            <text x="20" y="201" fill="var(--fg-muted)" font-size="11">X, X.js, X.json, X.node</text>
+            <text x="20" y="220" fill="var(--fg-muted)" font-size="11">(.cjs/.mjs — лише явно)</text>
+            <rect x="10" y="246" width="188" height="66" rx="6" fill="none" stroke="currentColor"/>
+            <text x="20" y="264" fill="currentColor">LOAD_AS_DIRECTORY:</text>
+            <text x="20" y="281" fill="var(--fg-muted)" font-size="11">X/package.json "main"</text>
+            <text x="20" y="300" fill="var(--fg-muted)" font-size="11">інакше X/index.js</text>
+            <line x1="104" y1="232" x2="104" y2="244" stroke="currentColor" marker-end="url(#n04d1-arrow)"/>
+
+            <rect x="250" y="226" width="240" height="96" rx="6" fill="none" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="260" y="246" fill="currentColor">3. LOAD_NODE_MODULES (bare 'X'):</text>
+            <text x="260" y="266" fill="var(--fg-muted)" font-size="11">dir(F)/node_modules/X</text>
+            <text x="260" y="283" fill="var(--fg-muted)" font-size="11">../node_modules/X → ../../ → … → /</text>
+            <text x="260" y="300" fill="var(--fg-muted)" font-size="11">+ NODE_PATH (legacy)</text>
+            <text x="260" y="316" fill="var(--fg-muted)" font-size="11">у знайденому пакеті:</text>
+            <line x1="370" y1="200" x2="370" y2="224" stroke="currentColor" marker-end="url(#n04d1-arrow)"/>
+            <text x="380" y="216" fill="var(--fg-muted)" font-size="11">ні</text>
+
+            <rect x="530" y="226" width="200" height="96" rx="6" fill="none" stroke="var(--warn)" stroke-width="1.3"/>
+            <text x="540" y="246" fill="currentColor">package.json "exports"?</text>
+            <text x="540" y="266" fill="var(--fg-muted)" font-size="11">так → ТІЛЬКИ дозволені шляхи</text>
+            <text x="540" y="283" fill="var(--fg-muted)" font-size="11">умова "require"/"default"</text>
+            <text x="540" y="300" fill="var(--fg-muted)" font-size="11">ні → "main" / index.js</text>
+            <text x="540" y="316" fill="var(--fg-muted)" font-size="11">deep path → як файл</text>
+            <line x1="490" y1="274" x2="528" y2="274" stroke="currentColor" marker-end="url(#n04d1-arrow)"/>
+
+            <rect x="250" y="350" width="240" height="34" rx="6" fill="none" stroke="var(--bad)" stroke-width="1.3"/>
+            <text x="370" y="372" text-anchor="middle" fill="var(--bad)">нічого → MODULE_NOT_FOUND</text>
+            <line x1="370" y1="322" x2="370" y2="348" stroke="currentColor" marker-end="url(#n04d1-arrow)"/>
+            <text x="370" y="408" text-anchor="middle" fill="var(--fg-muted)" font-size="11">знайдений файл → realpath (симлінки розгортаються) → ключ кешу → wrapper → виконання</text>
+          </g>
+        </svg>
+        <figcaption>require: кеш → core → відносний шлях (файл, потім директорія) → підйом по node_modules до кореня; поле exports, якщо є, — єдине джерело правди.</figcaption>
+      </figure>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">resolve-debug.js</span></div>
+        <pre><code>require.resolve('dual');                 // абсолютний шлях, БЕЗ виконання модуля
+require.resolve('./config', { paths: [__dirname + '/env'] });
+require.resolve.paths('lodash');
+// [ '/project/src/node_modules', '/project/node_modules', '/node_modules', ... ]
+
+// ESM-аналог (синхронний у сучасних версіях):
+import.meta.resolve('dual');             // 'file:///project/node_modules/dual/dist/index.mjs'</code></pre>
+      </div>
+
+      <ul>
+        <li><b>Підйом по node_modules</b> — основа hoisting-у npm і причина "phantom dependencies" (див.
+        <a href="05-npm-packages.html">туторіал 5</a>): ви можете <code>require</code> пакет, якого немає у вашому package.json, бо його підняв хтось інший.</li>
+        <li><b>Симлінки:</b> за замовчуванням Node резолвить реальний шлях (<code>realpath</code>). Тому пакет із pnpm-store бачить
+        <i>свої</i> залежності, а не ваші. Прапорець <code>--preserve-symlinks</code> змінює це (рідко потрібен).</li>
+        <li>ESM <b>не</b> використовує ці "розумні" здогадки для відносних шляхів: ні автододавання <code>.js</code>, ні <code>index.js</code> —
+        тільки точний шлях (<code>ERR_MODULE_NOT_FOUND</code> / <code>ERR_UNSUPPORTED_DIR_IMPORT</code>). Bare specifiers ESM резолвить через той самий підйом по node_modules + exports.</li>
+      </ul>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> ESM: статичні import/export і live bindings</h2>
+      <p class="section-desc">Головна семантична різниця між системами — не синтаксис, а що саме ви отримуєте при імпорті.</p>
+
+      <h3>Статичність</h3>
+      <ul>
+        <li><code>import</code>/<code>export</code> — лише на верхньому рівні, специфікатор — рядковий літерал. Не можна
+        <code>if (x) import …</code> — для умовного завантаження є <code>import()</code>.</li>
+        <li>Import-и <b>"піднімаються" (hoisting)</b>: усі залежності завантажуються і виконуються до першого рядка тіла модуля, незалежно від того, де в файлі написано <code>import</code>.</li>
+        <li>Завдяки статичності помилка "немає такого експорту" — це <code>SyntaxError</code> <b>на етапі лінкування</b>, ще до виконання будь-якого коду.</li>
+      </ul>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 3</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Порядок виконання ESM</span></div>
+        <div class="codecard"><div class="bar"><span class="path">order/main.mjs</span></div><pre><code>// a.mjs:  console.log('a body'); export const a = 1;
+// b.mjs:  import './a.mjs'; console.log('b body');
+// c.mjs:  console.log('c body'); export const c = 3;
+console.log('main body (hoisting: imports run first)');
+import './b.mjs';
+import './a.mjs';
+const lazy = await import('./c.mjs');
+console.log('lazy', lazy.c);</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">a body
+b body
+main body (hoisting: imports run first)
+c body
+lazy 3</span><p>Обхід графа — <b>post-order DFS</b>: спочатку залежності b (тобто a), потім b, потім сам main.
+        <code>a.mjs</code> імпортується двічі, але виконується один раз. Хоча <code>console.log</code> стоїть вище за import-и,
+        він виконується після них. Динамічний <code>import()</code> — звичайний вираз: виконується там, де написаний, і повертає Promise простору імен.</p></div></details>
+      </div>
+
+      <h3>Live bindings vs копії значень</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">live/main.mjs</span></div>
+        <pre><code>// counter.mjs:  export let count = 0;  export function inc() { count++; }
+import { count, inc } from './counter.mjs';
+import * as ns from './counter.mjs';
+console.log(count);            // 0
+inc(); inc();
+console.log(count, ns.count);  // 2 2  ← імпорт "бачить" поточне значення змінної модуля
+try { count = 10; } catch (e) { console.log(e.constructor.name + ': ' + e.message); }
+// TypeError: Assignment to constant variable.   ← імпорт read-only для імпортера</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">live/main.cjs</span></div>
+        <pre><code>// counter.cjs:
+//   let count = 0;
+//   module.exports = { count, inc() { count++; }, get live() { return count; } };
+const { count, inc } = require('./counter.cjs');
+const m = require('./counter.cjs');
+inc(); inc();
+console.log(count, m.count, m.live);   // 0 0 2  ← count скопійовано в момент присвоєння</code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 250" role="img" aria-label="Ліворуч ESM: змінна count живе в записі середовища модуля counter.mjs, а імпорт у main.mjs — це посилання на цей самий слот, тож після inc() обидва бачать 2. Праворуч CJS: module.exports.count отримав копію 0 при створенні об'єкта, а локальна змінна count всередині модуля стала 2; деструктуризація в main.cjs зробила ще одну копію 0">
+          <defs><marker id="n04d2-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="180" y="22" text-anchor="middle" fill="var(--good)" font-weight="bold">ESM — live binding</text>
+            <rect x="20" y="40" width="160" height="80" rx="8" fill="none" stroke="currentColor"/>
+            <text x="100" y="60" text-anchor="middle" fill="currentColor">counter.mjs</text>
+            <rect x="45" y="72" width="110" height="34" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="100" y="94" text-anchor="middle" fill="currentColor">let count = 2</text>
+            <rect x="210" y="40" width="140" height="80" rx="8" fill="none" stroke="currentColor"/>
+            <text x="280" y="60" text-anchor="middle" fill="currentColor">main.mjs</text>
+            <text x="280" y="94" text-anchor="middle" fill="currentColor">count → (слот)</text>
+            <line x1="215" y1="89" x2="158" y2="89" stroke="var(--good)" stroke-width="1.5" marker-end="url(#n04d2-arrow)"/>
+            <text x="185" y="145" text-anchor="middle" fill="var(--fg-muted)" font-size="11">імпорт — посилання на той самий слот</text>
+            <text x="185" y="162" text-anchor="middle" fill="var(--fg-muted)" font-size="11">читання = поточне значення; запис = TypeError</text>
+            <text x="185" y="190" text-anchor="middle" fill="var(--good)">console.log(count) → 2</text>
+
+            <line x1="370" y1="20" x2="370" y2="230" stroke="var(--fg-muted)" stroke-dasharray="4,4"/>
+
+            <text x="560" y="22" text-anchor="middle" fill="var(--warn)" font-weight="bold">CJS — копія значення</text>
+            <rect x="390" y="40" width="170" height="110" rx="8" fill="none" stroke="currentColor"/>
+            <text x="475" y="58" text-anchor="middle" fill="currentColor">counter.cjs</text>
+            <rect x="405" y="66" width="140" height="28" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="475" y="85" text-anchor="middle" fill="currentColor">let count = 2</text>
+            <rect x="405" y="104" width="140" height="36" rx="5" fill="none" stroke="var(--warn)"/>
+            <text x="475" y="120" text-anchor="middle" fill="currentColor" font-size="11">module.exports</text>
+            <text x="475" y="134" text-anchor="middle" fill="currentColor" font-size="11">{ count: 0 } (копія)</text>
+            <rect x="590" y="40" width="140" height="110" rx="8" fill="none" stroke="currentColor"/>
+            <text x="660" y="58" text-anchor="middle" fill="currentColor">main.cjs</text>
+            <text x="660" y="100" text-anchor="middle" fill="currentColor">const { count }</text>
+            <text x="660" y="118" text-anchor="middle" fill="currentColor">= 0 (ще копія)</text>
+            <line x1="592" y1="122" x2="547" y2="122" stroke="var(--warn)" stroke-width="1.3" marker-end="url(#n04d2-arrow)"/>
+            <text x="560" y="175" text-anchor="middle" fill="var(--fg-muted)" font-size="11">exports — звичайний об'єкт, присвоєння копіює примітив</text>
+            <text x="560" y="197" text-anchor="middle" fill="var(--warn)">console.log(count) → 0</text>
+            <text x="560" y="218" text-anchor="middle" fill="var(--fg-muted)" font-size="11">"живе" значення — лише через getter або функцію</text>
+          </g>
+        </svg>
+        <figcaption>ESM-імпорт — вікно у змінну іншого модуля; CJS-require — знімок значень у момент присвоєння module.exports.</figcaption>
+      </figure>
+
+      <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають так</span>
+        "Чим import відрізняється від require, крім синтаксису?" — сильна відповідь: (1) статичний граф і лінкування до виконання → помилки
+        імпорту на старті і tree-shaking; (2) live bindings замість копій; (3) асинхронне фазове завантаження і top-level await; (4) strict mode,
+        <code>this === undefined</code>, обов'язкові розширення; (5) live bindings + TDZ змінюють поведінку циклічних залежностей.
+      </div></div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> ESM: фази завантаження, import.meta, import()</h2>
+      <p class="section-desc">Чому ESM "асинхронний" навіть для локальних файлів, і що дає розділення на фази.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 250" role="img" aria-label="Три фази завантаження ESM: 1) Construction — резолюція специфікаторів, завантаження і парсинг кожного файлу у Module Record, рекурсивно для всіх import, асинхронно; 2) Instantiation або linking — виділення пам'яті під експорти та прив'язка імпортів до тих самих слотів, без виконання коду, тут виникають помилки неіснуючого експорту; 3) Evaluation — виконання тіл модулів у post-order, заповнення слотів значеннями, top-level await може призупинити цю фазу">
+          <defs><marker id="n04d3-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="15" y="20" width="220" height="150" rx="10" fill="none" stroke="var(--info)" stroke-width="1.4"/>
+            <text x="125" y="42" text-anchor="middle" fill="var(--info)" font-weight="bold">1. Construction</text>
+            <text x="28" y="66" fill="currentColor">resolve специфікатор → URL</text>
+            <text x="28" y="86" fill="currentColor">fetch/read файл (async)</text>
+            <text x="28" y="106" fill="currentColor">parse → Module Record</text>
+            <text x="28" y="126" fill="currentColor">знайти import-и → рекурсія</text>
+            <text x="28" y="152" fill="var(--fg-muted)" font-size="11">код ще НЕ виконується</text>
+
+            <rect x="260" y="20" width="220" height="150" rx="10" fill="none" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="370" y="42" text-anchor="middle" fill="var(--accent)" font-weight="bold">2. Instantiation (link)</text>
+            <text x="273" y="66" fill="currentColor">виділити слоти для export</text>
+            <text x="273" y="86" fill="currentColor">прив'язати import → слоти</text>
+            <text x="273" y="106" fill="currentColor">(звідси live bindings)</text>
+            <text x="273" y="126" fill="var(--bad)">немає export → SyntaxError</text>
+            <text x="273" y="152" fill="var(--fg-muted)" font-size="11">слоти let/const — у TDZ</text>
+
+            <rect x="505" y="20" width="220" height="150" rx="10" fill="none" stroke="var(--good)" stroke-width="1.4"/>
+            <text x="615" y="42" text-anchor="middle" fill="var(--good)" font-weight="bold">3. Evaluation</text>
+            <text x="518" y="66" fill="currentColor">виконати тіла модулів</text>
+            <text x="518" y="86" fill="currentColor">post-order: листя → корінь</text>
+            <text x="518" y="106" fill="currentColor">заповнити слоти значеннями</text>
+            <text x="518" y="126" fill="currentColor">TLA — призупиняє гілку</text>
+            <text x="518" y="152" fill="var(--fg-muted)" font-size="11">кожен модуль — 1 раз</text>
+
+            <line x1="235" y1="95" x2="258" y2="95" stroke="currentColor" stroke-width="1.4" marker-end="url(#n04d3-arrow)"/>
+            <line x1="480" y1="95" x2="503" y2="95" stroke="currentColor" stroke-width="1.4" marker-end="url(#n04d3-arrow)"/>
+
+            <rect x="15" y="190" width="710" height="44" rx="8" fill="var(--bg-soft)" stroke="var(--fg-muted)"/>
+            <text x="370" y="209" text-anchor="middle" fill="currentColor">CJS для порівняння: resolve → read → wrap → execute — усе в одному синхронному кроці на кожен require(),</text>
+            <text x="370" y="226" text-anchor="middle" fill="currentColor">тож залежність виконується в момент виклику, посеред тіла модуля-імпортера</text>
+          </g>
+        </svg>
+        <figcaption>ESM спершу будує і зв'язує весь граф, і лише потім виконує код — тому помилки імпорту з'являються до запуску, а цикли поводяться інакше, ніж у CJS.</figcaption>
+      </figure>
+
+      <h3><code>import.meta</code> і заміна <code>__dirname</code></h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">paths.mjs</span></div>
+        <pre><code>console.log(import.meta.url);        // 'file:///project/src/paths.mjs'
+console.log(import.meta.filename);   // '/project/src/paths.mjs'   (Node 20.11+)
+console.log(import.meta.dirname);    // '/project/src'
+console.log(typeof __dirname);       // 'undefined' — у ESM немає wrapper-а
+
+// для старших версій / універсальний код:
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// файл поруч із модулем — URL відносно import.meta.url:
+const tpl = await readFile(new URL('./template.html', import.meta.url), 'utf8');
+
+// require у ESM, коли дуже треба (наприклад, для JSON чи CJS-only API):
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const pkg = require('./package.json');
+
+// "чи запущено напряму" (аналог require.main === module):
+const isMain = import.meta.filename === process.argv[1];   // Node 24 також має import.meta.main</code></pre>
+      </div>
+
+      <h3>Динамічний <code>import()</code></h3>
+      <ul>
+        <li>Працює і в CJS, і в ESM; повертає <code>Promise&lt;namespace&gt;</code>. Це <b>єдиний</b> спосіб завантажити ESM з CJS у старих Node (до require(esm)).</li>
+        <li>Застосування: lazy-завантаження важких модулів (зменшує cold start у serverless — <a href="19-runtimes-serverless.html">туторіал 19</a>), плагіни за шляхом з конфігу, умовні полiфіли.</li>
+        <li>Специфікатор — будь-який вираз, тому бандлери/статичний аналіз його не бачать повністю.</li>
+        <li>Default-експорт — у <code>.default</code>: <code>const { default: express } = await import('express')</code>.</li>
+      </ul>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Як Node визначає тип модуля</h2>
+      <p class="section-desc">Один і той самий <code>.js</code> може бути CJS чи ESM — залежно від контексту. Порядок правил.</p>
+
+      <table>
+        <tr><th>#</th><th>Правило</th><th>Результат</th></tr>
+        <tr><td>1</td><td>Розширення <code>.mjs</code> / <code>.cjs</code></td><td>завжди ESM / завжди CJS — перемагає все</td></tr>
+        <tr><td>2</td><td><code>.js</code> + найближчий <code>package.json</code> має <code>"type": "module"</code></td><td>ESM</td></tr>
+        <tr><td>3</td><td><code>.js</code> + <code>"type": "commonjs"</code></td><td>CJS (явно; рекомендовано вказувати)</td></tr>
+        <tr><td>4</td><td><code>.js</code> без поля <code>type</code></td><td>CJS, <b>але</b> якщо парсинг падає через ESM-синтаксис (<code>import</code>/<code>export</code>, <code>import.meta</code>, top-level await) — Node перезапускає як ESM (<b>syntax detection</b>, без прапорця з Node 22.7 / 20.19)</td></tr>
+        <tr><td>5</td><td><code>--eval</code>, STDIN</td><td><code>--input-type=module|commonjs</code></td></tr>
+        <tr><td>6</td><td><code>.ts</code>/<code>.mts</code>/<code>.cts</code> (type stripping)</td><td>ті самі правила, що й для <code>.js</code>/<code>.mjs</code>/<code>.cjs</code></td></tr>
+      </table>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">detect.js (немає package.json з "type")</span></div>
+        <pre><code>import os from 'node:os';
+console.log('detected esm', typeof require);   // detected esm undefined
+
+// $ echo 'console.log(typeof require, typeof import.meta)' | node --input-type=module
+// undefined object</code></pre>
+      </div>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        Syntax detection — зручність для скриптів, не для проєктів: Node спершу пробує CJS-парсинг (зайва робота на старті), а в старих версіях
+        друкує warning про "typeless package.json". <b>Завжди вказуйте <code>"type"</code></b> у package.json — і для застосунку, і для бібліотеки.
+        Поле <code>type</code> діє на всі <code>.js</code> у піддереві до наступного package.json — вкладений <code>{"type":"commonjs"}</code> у
+        <code>dist/cjs/</code> — стандартний трюк dual-пакетів.
+      </div></div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Interop: CJS ↔ ESM, require(esm), createRequire</h2>
+      <p class="section-desc">Хто кого може імпортувати і що при цьому губиться.</p>
+
+      <h3>ESM імпортує CJS — завжди можна</h3>
+      <ul>
+        <li><b>Default import</b> = весь <code>module.exports</code>. Працює завжди.</li>
+        <li><b>Named imports</b> — лише ті, які Node "вгадав" статичним аналізом коду через <b>cjs-module-lexer</b> (без виконання!).
+        Розпізнаються <code>exports.x = …</code>, <code>module.exports.x = …</code>, <code>Object.defineProperty(exports, 'x', …)</code>,
+        <code>module.exports = { a, b: c }</code> (лише shorthand / ідентифікатори), а також реекспорт <code>module.exports = require('./x')</code>.
+        Обчислені ключі, функції-значення в літералі, циклове заповнення — не розпізнаються.</li>
+      </ul>
+      <div class="codecard">
+        <div class="bar"><span class="path">interop/main.mjs</span></div>
+        <pre><code>// lib-static.cjs:   exports.add = (a, b) =&gt; a + b;  exports.name = 'static';
+// lib-literal.cjs:  const mul = …; const version = 1;
+//                   module.exports = { mul, version, square: (x) =&gt; x * x };
+// lib-dynamic.cjs:  const api = {}; for (const k of ['sub', 'div']) api[k] = k; module.exports = api;
+// lib-fn.cjs:       module.exports = function greet() {…}; module.exports.helper = () =&gt; 'help';
+
+import def1, { add, name } from './lib-static.cjs';
+import * as lit from './lib-literal.cjs';
+import dyn from './lib-dynamic.cjs';
+import * as dynNs from './lib-dynamic.cjs';
+import greet, { helper } from './lib-fn.cjs';
+
+console.log(add(1, 2), name, def1);   // 3 static { add: [Function (anonymous)], name: 'static' }
+console.log(Object.keys(lit));        // [ 'default', 'module.exports', 'mul', 'version' ]  ← square НЕ знайдено
+console.log(dyn, Object.keys(dynNs)); // { sub: 'sub', div: 'div' } [ 'default', 'module.exports' ]
+console.log(greet(), helper());       // hi help
+
+// import { sub } from './lib-dynamic.cjs'  →
+// SyntaxError: Named export 'sub' not found. The requested module './lib-dynamic.cjs'
+// is a CommonJS module, which may not support all module.exports as named exports.</code></pre>
+      </div>
+      <p class="muted">Ключ <code>'module.exports'</code> у namespace — новація свіжих версій Node: дає явний доступ до оригінального
+      <code>module.exports</code>. Named-експорти CJS — це <b>знімок</b> на момент завершення виконання модуля, без live binding.</p>
+
+      <h3>CJS імпортує ESM — <code>require(esm)</code></h3>
+      <p>Історично — заборонено (<code>ERR_REQUIRE_ESM</code>): <code>require</code> синхронний, а ESM може мати top-level await. Рішення в
+      Node 22.12+ / 20.19+ (без прапорця): <code>require()</code> може синхронно завантажити ESM-граф, <b>якщо в ньому немає top-level await</b>.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">interop/req.cjs</span></div>
+        <pre><code>// esm-lib.mjs:        export default function hello() {…}; export const answer = 42;
+// esm-cjsdefault.mjs: export default class Logger {}; export { Logger as 'module.exports' };
+// esm-tla.mjs:        await Promise.resolve(); export const x = 1;
+
+const ns = require('./esm-lib.mjs');
+console.log(ns, ns.default(), ns.answer);
+// [Module: null prototype] { __esModule: true, answer: 42, default: [Function: hello] } hello 42
+
+console.log(require('./esm-cjsdefault.mjs').name);   // Logger  ← спец-експорт 'module.exports'
+
+try { require('./esm-tla.mjs'); } catch (e) { console.log(e.code); }   // ERR_REQUIRE_ASYNC_MODULE
+console.log(process.features.require_module);                            // true</code></pre>
+      </div>
+      <ul>
+        <li><code>require(esm)</code> повертає <b>namespace-об'єкт</b>, а не default. Щоб CJS-споживач отримав саме клас/функцію, ESM-модуль може
+        експортувати ім'я-рядок <code>'module.exports'</code>.</li>
+        <li><code>__esModule: true</code> додається для сумісності з транспільованим кодом (Babel/TS-interop).</li>
+        <li>Top-level await будь-де в графі → <code>ERR_REQUIRE_ASYNC_MODULE</code>. Тому бібліотекам: <b>жодного TLA у публічних модулях</b>.</li>
+        <li>Для старих Node: <code>const { x } = await import('esm-only-pkg')</code> усередині async-функції.</li>
+      </ul>
+
+      <h3><code>createRequire</code></h3>
+      <p>Створює CJS-<code>require</code>, прив'язаний до довільного шляху/URL. Потрібен у ESM для: JSON без import attributes в
+      старих версіях, <code>require.resolve</code>, завантаження CJS-only API з побічними ефектами, нативних <code>.node</code> аддонів.</p>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> package.json "exports" та "imports"</h2>
+      <p class="section-desc">Публічний контракт пакета: що можна імпортувати, у якому форматі і під якими умовами.</p>
+
+      <h3>"exports" — інкапсуляція і умовні входи</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">node_modules/dual/package.json</span></div>
+        <pre><code>{
+  "name": "dual",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
+    },
+    "./utils": "./dist/utils.js",
+    "./features/*": "./dist/features/*.js",
+    "./internal/*": null,
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.cjs"
+}</code></pre>
+      </div>
+      <ul>
+        <li><b>Інкапсуляція:</b> щойно є <code>exports</code>, будь-який шлях, не перелічений там, — <code>ERR_PACKAGE_PATH_NOT_EXPORTED</code>.
+        <code>require('dual/dist/secret.cjs')</code> більше не працює. Додавання <code>exports</code> у існуючий пакет — <b>breaking change</b> (major).</li>
+        <li><b>Умови перевіряються по порядку</b>, бере першу, що збіглася. Тому <code>"types"</code> — <b>першим</b> (для TypeScript), <code>"default"</code> — <b>останнім</b>.</li>
+        <li>Вбудовані умови Node: <code>node</code>, <code>import</code>, <code>require</code>, <code>module-sync</code>, <code>default</code>. Свої — через
+        <code>node --conditions=development</code> (<code>-C</code>). Бандлери/рантайми додають <code>browser</code>, <code>worker</code>, <code>deno</code>, <code>bun</code>, <code>react-server</code>.</li>
+        <li><b>Subpath patterns</b> <code>"./features/*"</code> і <code>null</code> для явного блокування піддерева.</li>
+        <li><code>"main"</code> ігнорується сучасним Node, якщо є <code>exports</code>, але лишається для старих інструментів.</li>
+        <li>Пакет може імпортувати сам себе за власним ім'ям (<b>self-reference</b>), якщо має <code>exports</code>.</li>
+      </ul>
+
+      <h3>"imports" — приватні аліаси з <code>#</code></h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">package.json (застосунок)</span></div>
+        <pre><code>{
+  "name": "app",
+  "type": "module",
+  "imports": {
+    "#internal/*": "./src/internal/*.js",
+    "#config": { "development": "./src/config.dev.js", "default": "./src/config.prod.js" }
+  }
+}</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">pkgdemo/src/main.js</span></div>
+        <pre><code>import { Money as EsmMoney, flavor } from 'dual';
+import { createRequire } from 'node:module';
+import { db } from '#internal/db';         // замість '../../../internal/db.js'
+import config from '#config';
+const require = createRequire(import.meta.url);
+const { Money: CjsMoney, flavor: f2 } = require('dual');
+
+console.log(flavor, f2, EsmMoney === CjsMoney);       // esm cjs false   ← див. розділ 10!
+console.log(new EsmMoney() instanceof CjsMoney);      // false
+console.log(require('dual/utils').u, db(), config);   // utils db helper prod config
+try { require('dual/dist/secret.cjs'); } catch (e) { console.log(e.code); }   // ERR_PACKAGE_PATH_NOT_EXPORTED
+
+// $ node --conditions=development src/main.js   → ... db helper dev config</code></pre>
+      </div>
+      <p><code>#</code>-аліаси — нативна заміна <code>paths</code> у tsconfig / <code>module-alias</code>: працюють у рантаймі без
+      бандлера, діють лише всередині пакета, підтримують умови. TypeScript розуміє їх з <code>moduleResolution: "nodenext"</code>/<code>"bundler"</code>.</p>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Dual package hazard</h2>
+      <p class="section-desc">Коли пакет публікує і ESM, і CJS версії, у процесі можуть опинитися обидві — з двома різними станами.</p>
+
+      <p>Подивіться на вивід вище: <code>EsmMoney === CjsMoney</code> → <code>false</code>. Застосунок імпортує <code>dual</code> через
+      <code>import</code>, а якась його залежність — через <code>require</code>. Node завантажує <b>два різні файли</b>, два різні класи, два кеші.
+      Наслідки:</p>
+      <ul>
+        <li><code>instanceof</code> ламається (помилки, класи <code>Decimal</code>/<code>ObjectId</code>, <code>GraphQLSchema</code> "from another realm").</li>
+        <li>Два singleton-и: два реєстри плагінів, два пули, конфігурація застосована до однієї копії, а використовується інша.</li>
+        <li>Подвоєний розмір бандла у фронтенді.</li>
+      </ul>
+
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: як публікувати бібліотеку</div>
+        <table><tr><th>Стратегія</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>ESM-only</b> (+ require(esm) для CJS у Node 20.19+/22.12+) ✅</td><td>одна копія коду, немає hazard, простий build</td><td>старі Node/інструменти не завантажать; жодного TLA</td></tr>
+          <tr><td>CJS-only</td><td>працює всюди (ESM імпортує CJS)</td><td>гірший tree-shaking, named exports залежать від lexer-а</td></tr>
+          <tr><td>CJS-ядро + тонка ESM-обгортка (<code>export const { a, b } = cjs</code>)</td><td>стан лише в одній копії — hazard зникає</td><td>ESM-споживачі все одно тягнуть CJS</td></tr>
+          <tr><td>Повний dual build (tsup/unbuild) з <code>import</code>/<code>require</code></td><td>"нативно" для обох</td><td>hazard, якщо є стан або класи; подвійні .d.ts (<code>.d.mts</code>/<code>.d.cts</code>)</td></tr>
+        </table>
+        <p><b>Коли що:</b> для нових бібліотек у 2025–2026 — ESM-only або dual без внутрішнього стану. Якщо пакет має singleton-и чи класи для instanceof —
+        ізолюйте стан у один формат (wrapper-підхід) або використовуйте умову <code>module-sync</code>, щоб і import, і require отримали один ESM-файл.
+        Перевіряйте пакет інструментами <code>publint</code> і <code>@arethetypeswrong/cli</code>.</p>
+      </div>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Циклічні залежності: CJS vs ESM</h2>
+      <p class="section-desc">Обидві системи "дозволяють" цикли, але ламаються по-різному: CJS — тихо, ESM — голосно.</p>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 4</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Цикл у CommonJS</span></div>
+        <div class="codecard"><div class="bar"><span class="path">circ-cjs/a.js</span></div><pre><code>console.log('a: start');
+exports.fromA = 'A1';
+const b = require('./b');
+console.log('a: b is', b);
+exports.fromA2 = 'A2';
+
+// circ-cjs/b.js
+console.log('b: start');
+const a = require('./a');
+console.log('b: a is', { ...a });            // partial!
+console.log('b: a.fromA2 =', a.fromA2);
+setImmediate(() =&gt; console.log('b later:', { ...a }));
+module.exports = { fromB: 'B' };
+
+// $ node circ-cjs/a.js</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">a: start
+b: start
+b: a is { fromA: 'A1' }
+b: a.fromA2 = undefined
+a: b is { fromB: 'B' }
+b later: { fromA: 'A1', fromA2: 'A2' }
+(stderr) Warning: Accessing non-existent property 'fromA2' of module exports inside circular dependency</span><p>a почав виконуватись і вже лежить у кеші з <b>частково заповненим</b> exports. b робить
+        <code>require('./a')</code> — Node не виконує a вдруге (нескінченна рекурсія), а повертає цей недоробок. Тому <code>fromA2</code> —
+        <code>undefined</code>, і Node друкує спеціальний warning. Пізніше (після завершення a) той самий об'єкт уже повний — але тільки тому,
+        що a <b>мутував</b> <code>exports</code>. Якби a зробив <code>module.exports = {...}</code>, b назавжди тримав би старий порожній об'єкт.</p></div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 5</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Цикл у ESM</span></div>
+        <div class="codecard"><div class="bar"><span class="path">circ-esm/a.mjs</span></div><pre><code>import { b } from './b.mjs';
+console.log('a evaluated, b =', b);
+export const a = 'A';
+export function hello() { return 'hello from a'; }
+
+// circ-esm/b.mjs
+import { a, hello } from './a.mjs';
+console.log('b evaluated; hello() =', hello());
+try { console.log(a); } catch (e) { console.log(e.constructor.name + ': ' + e.message); }
+export const b = 'B';
+
+// $ node circ-esm/a.mjs</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">b evaluated; hello() = hello from a
+ReferenceError: Cannot access 'a' before initialization
+a evaluated, b = B</span><p>Post-order: b (залежність entry-модуля) виконується
+        першим, хоча a ще не виконався. Але <b>лінкування вже відбулося</b>: імпорт <code>a</code> прив'язаний до слоту, який ще в TDZ →
+        <code>ReferenceError</code>. Function declarations ініціалізуються на етапі instantiation, тому <code>hello()</code> працює. Після
+        виконання a слот заповнюється — і live binding побачив би 'A'.</p></div></details>
+      </div>
+
+      <h3>Як лікувати цикли</h3>
+      <ul>
+        <li><b>Виявляти:</b> <code>madge --circular src/</code>, <code>dpdm</code>, ESLint <code>import/no-cycle</code> (повільний на великих проєктах).</li>
+        <li><b>Розривати:</b> винести спільне в третій модуль; dependency injection замість прямого імпорту; ліниво — <code>require</code>/<code>import()</code>
+        усередині функції, а не на верхньому рівні.</li>
+        <li><b>Barrel-файли</b> (<code>index.ts</code>, що реекспортує все) — найчастіше джерело неявних циклів і повільного старту:
+        імпорт однієї утиліти тягне весь пакет.</li>
+        <li>У NestJS цикли між провайдерами лікуються <code>forwardRef()</code> — симптом того самого (<a href="11-nestjs-architecture.html">туторіал 11</a>).</li>
+      </ul>
+      <div class="remember"><b>🧠 Запам'ятай:</b> CJS у циклі віддає "недопечений" exports (тихий undefined), ESM — прив'язаний, але ще не ініціалізований слот (гучний ReferenceError у TDZ).</div>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Customization hooks і JSON-імпорти</h2>
+      <p class="section-desc">Як перехопити резолюцію і завантаження модулів — і як імпортувати не-JS файли.</p>
+
+      <h3>Import attributes</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">json-import.mjs</span></div>
+        <pre><code>import data from './data.json' with { type: 'json' };
+console.log(data);                       // { name: 'demo', n: 1 }
+
+try { await import('./data.json'); } catch (e) { console.log(e.code); }
+// ERR_IMPORT_ATTRIBUTE_MISSING — без атрибута JSON не імпортується
+
+const cfg = await import('./data.json', { with: { type: 'json' } });   // динамічно; дані в cfg.default</code></pre>
+      </div>
+      <p>Навіщо атрибут: безпека. Без нього сервер (у браузері) міг би віддати JS замість очікуваного JSON — і той виконався б.
+      Атрибут каже "це <i>має</i> бути JSON, інакше помилка". Старий синтаксис <code>assert { type: 'json' }</code> видалено — у Node 24 це <code>SyntaxError: Unexpected identifier 'assert'</code>.
+      JSON-модуль має лише default-експорт (named — ні).</p>
+
+      <h3>Module customization hooks</h3>
+      <p><code>module.register()</code> реєструє <b>асинхронні</b> хуки <code>resolve</code> і <code>load</code>, які виконуються в окремому
+      потоці-завантажувачі; у новіших версіях є і <b>синхронний</b> in-thread варіант <code>module.registerHooks()</code>, що діє також на
+      <code>require</code>. Так працюють TypeScript-лоадери (<code>tsx</code>), мок-бібліотеки, APM-інструментація (OpenTelemetry обгортає
+      модулі при завантаженні), імпорт <code>.yaml</code>/<code>.graphql</code>.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">register-hooks.mjs</span></div>
+        <pre><code>// node --import ./register-hooks.mjs app.js
+import { register } from 'node:module';
+register('./yaml-loader.mjs', import.meta.url);
+
+// yaml-loader.mjs
+export async function resolve(specifier, context, nextResolve) {
+  return nextResolve(specifier, context);          // ланцюжок: можна переписати specifier
+}
+export async function load(url, context, nextLoad) {
+  if (url.endsWith('.yaml')) {
+    const { source } = await nextLoad(url, { ...context, format: 'module' });
+    const { parse } = await import('yaml');
+    return {
+      format: 'module',
+      shortCircuit: true,
+      source: `export default ${JSON.stringify(parse(String(source)))};`,
+    };
+  }
+  return nextLoad(url, context);
+}</code></pre>
+      </div>
+      <p class="muted"><code>--import</code> (preload ESM) — сучасний аналог <code>-r/--require</code> для CJS; старий <code>--loader</code> /
+      <code>--experimental-loader</code> вважається застарілим на користь <code>register</code>. Для TypeScript у Node 22.6+/23.6+ часто
+      достатньо вбудованого type stripping — без лоадерів взагалі.</p>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Каверзні питання співбесіди</h2>
+      <p class="section-desc">Модулі — улюблена тема для "а що буде, якщо…".</p>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Звідки в CJS-модулі беруться require, module, exports, __filename, __dirname?</summary>
+        <div class="a">Node загортає код файлу у функцію <code>(function (exports, require, module, __filename, __dirname) { … })</code>
+        і викликає її. Це параметри, а не глобальні змінні. Звідси ж ізоляція області видимості файлу і <code>this === module.exports</code>.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому <code>exports = { foo }</code> нічого не експортує?</summary>
+        <div class="a"><code>exports</code> — лише локальне посилання на початковий об'єкт <code>module.exports</code>. Присвоєння перенаправляє
+        локальну змінну; <code>require</code> повертає <code>module.exports</code>, який лишився старим. Треба <code>module.exports = { foo }</code>.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що таке live binding?</summary>
+        <div class="a">ESM-імпорт — посилання на змінну (слот) модуля-експортера, а не копія значення. Якщо експортер змінить <code>export let</code>,
+        імпортер побачить нове значення; сам імпортер змінити його не може (TypeError). У CJS деструктуризація з <code>require</code> копіює значення.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чи може <code>require()</code> завантажити ESM-модуль?</summary>
+        <div class="a">У Node 22.12+ / 20.19+ — так, без прапорця, якщо в графі модуля <b>немає top-level await</b> (інакше
+        <code>ERR_REQUIRE_ASYNC_MODULE</code>). Повертається namespace-об'єкт; для "default як module.exports" ESM експортує ім'я <code>'module.exports'</code>.
+        У старших версіях — <code>ERR_REQUIRE_ESM</code>, вихід — <code>await import()</code>.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому <code>import { foo } from './x.cjs'</code> падає, хоча <code>x.cjs</code> експортує foo?</summary>
+        <div class="a">Named exports з CJS визначаються статично cjs-module-lexer-ом без виконання коду. Якщо <code>foo</code> додано динамічно
+        (цикл, обчислений ключ, <code>Object.assign</code>, значення-вираз у літералі) — lexer його не бачить. Обхід: default import і деструктуризація.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Як Node вирішує, чи <code>.js</code> — CJS чи ESM?</summary>
+        <div class="a">.mjs/.cjs — завжди однозначно. Для .js — поле <code>"type"</code> найближчого package.json. Без нього — CJS з fallback на
+        ESM, якщо знайдено ESM-синтаксис (syntax detection у Node 22.7+/20.19+). Для eval/stdin — <code>--input-type</code>.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Навіщо поле "exports" у package.json?</summary>
+        <div class="a">(1) Інкапсуляція — неперелічені шляхи недоступні (<code>ERR_PACKAGE_PATH_NOT_EXPORTED</code>), можна рефакторити внутрішню
+        структуру; (2) умовні входи — різні файли для import/require/types/browser/development; (3) subpath patterns. Додати exports у існуючий пакет — major.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Що таке dual package hazard?</summary>
+        <div class="a">Пакет з окремими ESM і CJS файлами може бути завантажений двічі в одному процесі (один споживач робить import, інший — require).
+        Два кеші → два singleton-и, <code>instanceof</code> між копіями false. Рішення: ESM-only, CJS-ядро з ESM-обгорткою, умова <code>module-sync</code>, відсутність стану.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Як поводяться циклічні залежності в CJS і в ESM?</summary>
+        <div class="a">CJS: другий учасник циклу отримує частково заповнений <code>exports</code> першого — тихі <code>undefined</code> (Node друкує warning
+        при доступі до неіснуючої властивості). ESM: імпорти вже прив'язані, але <code>let/const/class</code> ще в TDZ → <code>ReferenceError</code>;
+        function declarations працюють, бо ініціалізуються при instantiation.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим замінити __dirname в ESM?</summary>
+        <div class="a"><code>import.meta.dirname</code> / <code>import.meta.filename</code> (Node 20.11+), або <code>path.dirname(fileURLToPath(import.meta.url))</code>.
+        Для файлів поруч — <code>new URL('./file', import.meta.url)</code>, який приймають fs-функції.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому в ESM <code>import './utils'</code> не працює, а в CJS <code>require('./utils')</code> — так?</summary>
+        <div class="a">ESM (за аналогією з браузером, де це URL) не вгадує розширення і не шукає <code>index.js</code>. Потрібно <code>'./utils.js'</code>
+        (навіть у TypeScript-коді з <code>moduleResolution: nodenext</code> пишуть <code>.js</code>). Бандлери дозволяють більше — звідси плутанина.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Як перевантажити модуль без рестарту процесу?</summary>
+        <div class="a">CJS: <code>delete require.cache[require.resolve(p)]</code> — але старі посилання і їхній стан залишаються, легко отримати два "singleton-и".
+        ESM: кеш недоступний, лише <code>import(p + '?v=' + Date.now())</code> — старі модулі ніколи не звільняються (memory leak). У продакшені — рестарт процесу; у dev — <code>node --watch</code>.</div>
+      </details>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Шпаргалка</h2>
+      <p class="section-desc">CJS і ESM поруч — на одному екрані.</p>
+      <div class="cheat"><table>
+        <tr><th>Питання</th><th>CommonJS</th><th>ESM</th></tr>
+        <tr><td>Експорт</td><td><code>module.exports = x</code> / <code>exports.a = 1</code></td><td><code>export default x</code> / <code>export const a = 1</code></td></tr>
+        <tr><td>Імпорт</td><td><code>const x = require('x')</code></td><td><code>import x from 'x'</code></td></tr>
+        <tr><td>Умовно / ліниво</td><td><code>require()</code> будь-де</td><td><code>await import()</code></td></tr>
+        <tr><td>Шлях до файлу</td><td><code>__dirname</code>, <code>__filename</code></td><td><code>import.meta.dirname</code>, <code>.filename</code>, <code>.url</code></td></tr>
+        <tr><td>Резолв без завантаження</td><td><code>require.resolve()</code></td><td><code>import.meta.resolve()</code></td></tr>
+        <tr><td>Чи запущено напряму</td><td><code>require.main === module</code></td><td><code>import.meta.main</code> / порівняння з argv[1]</td></tr>
+        <tr><td>JSON</td><td><code>require('./a.json')</code></td><td><code>import a from './a.json' with { type: 'json' }</code></td></tr>
+        <tr><td>Кеш</td><td><code>require.cache</code> (можна видалити)</td><td>за URL, недоступний</td></tr>
+        <tr><td>Цикл</td><td>partial exports, тихий undefined</td><td>TDZ ReferenceError</td></tr>
+        <tr><td>Імпорт іншої системи</td><td><code>require(esm)</code> без TLA (22.12+)</td><td>default завжди; named — через cjs-module-lexer</td></tr>
+        <tr><td>Тип файлу</td><td><code>.cjs</code> або <code>"type": "commonjs"</code></td><td><code>.mjs</code> або <code>"type": "module"</code></td></tr>
+        <tr><td>Preload</td><td><code>node -r ./setup.cjs</code></td><td><code>node --import ./setup.mjs</code></td></tr>
+        <tr><td>Приватні аліаси</td><td colspan="2"><code>"imports": { "#db": "./src/db.js" }</code> — працює для обох</td></tr>
+        <tr><td>Публічний контракт</td><td colspan="2"><code>"exports"</code>: types → import → require → default (порядок важливий)</td></tr>
+      </table></div>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Як запам'ятати</h2>
+      <p class="section-desc">Образи, що чіпляються до термінів.</p>
+      <div class="flashgrid">
+        <div class="flashcard">
+          <div class="fc-num">1</div>
+          <div class="term">Module wrapper</div>
+          <div class="def">Функція з 5 параметрами, в яку Node загортає кожен CJS-файл.</div>
+          <div class="mnemo"><b>Асоціація:</b> конверт: усе, що в листі, — всередині; на конверті 5 полів (exports, require, module, filename, dirname).</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">2</div>
+          <div class="term">exports vs module.exports</div>
+          <div class="def">exports — ярлик на module.exports; перевизначення ярлика нічого не змінює.</div>
+          <div class="mnemo"><b>Асоціація:</b> переклеїти табличку з номером квартири — посилка все одно приїде за старою адресою.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">3</div>
+          <div class="term">require.cache</div>
+          <div class="def">Мапа "абсолютний шлях → module"; модуль виконується один раз.</div>
+          <div class="mnemo"><b>Асоціація:</b> бібліотечний формуляр — книгу видали, вдруге не друкують.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">4</div>
+          <div class="term">Live binding</div>
+          <div class="def">ESM-імпорт — посилання на змінну експортера, а не копія.</div>
+          <div class="mnemo"><b>Асоціація:</b> вебкамера (ESM) проти фотографії (CJS).</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">5</div>
+          <div class="term">3 фази ESM</div>
+          <div class="def">Construction → Instantiation (link) → Evaluation.</div>
+          <div class="mnemo"><b>Асоціація:</b> будівництво: завезти матеріали → прокласти проводку → увімкнути світло.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">6</div>
+          <div class="term">cjs-module-lexer</div>
+          <div class="def">Статичний аналізатор, що вгадує named exports CJS без виконання.</div>
+          <div class="mnemo"><b>Асоціація:</b> митник, який вирішує за накладною, а не відкриваючи коробку.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">7</div>
+          <div class="term">require(esm)</div>
+          <div class="def">Синхронне завантаження ESM з CJS у Node 22.12+, якщо немає top-level await.</div>
+          <div class="mnemo"><b>Асоціація:</b> експрес-доставка — лише для посилок, які не треба "чекати на складі" (TLA).</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">8</div>
+          <div class="term">"exports"</div>
+          <div class="def">Публічне меню пакета: що можна імпортувати і в якому форматі.</div>
+          <div class="mnemo"><b>Асоціація:</b> меню ресторану — на кухню (dist/internal) не пускають.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">9</div>
+          <div class="term">Dual package hazard</div>
+          <div class="def">ESM- і CJS-копії одного пакета в процесі — два стани, instanceof false.</div>
+          <div class="mnemo"><b>Асоціація:</b> близнюки з однаковими іменами в одному класі — оцінки ставлять не тому.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">10</div>
+          <div class="term">Цикл: partial vs TDZ</div>
+          <div class="def">CJS повертає недозаповнений exports; ESM кидає ReferenceError.</div>
+          <div class="mnemo"><b>Асоціація:</b> CJS — недопечений торт мовчки на столі; ESM — табличка "ще в духовці, не чіпати".</div>
+        </div>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Node.js Doc · частина серії туторіалів AI Delivery Planner. Приклади коду перевірені на Node.js 24.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1774 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3. Асинхронні патерни — Node.js Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🟢 Node.js Doc <span>· AI Delivery Planner</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Node.js Doc · Туторіал 3 з 20</div>
+  <h1>Асинхронні патерни в Node.js: від callback до AbortSignal</h1>
+  <p class="lead">Механіку event loop ми розібрали в <a href="02-event-loop-deep-dive.html">туторіалі 2</a>. Тут — <b>як писати</b> асинхронний код, що не губить помилки, не перевантажує сервіси, вміє скасовуватись і тримає контекст запиту. Усі задачі з виводом перевірені на Node 24.</p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="03-async-patterns.html" class="active">3. Асинхронні патерни</a>
+        <a href="04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="07-fs-process-os.html">7. fs, process, os</a>
+        <a href="08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="09-http-networking.html">9. HTTP і мережа</a>
+        <a href="10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="12-databases-orm.html">12. БД і ORM</a>
+        <a href="13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="14-security.html">14. Безпека Node</a>
+        <a href="15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="16-testing.html">16. Тестування</a>
+        <a href="17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+  </aside>
+
+    <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Еволюція: callback → Promise → async</a></li>
+      <li><a href="#s2">2. Мости: promisify і */promises API</a></li>
+      <li><a href="#s3">3. Promise: стани, ланцюжки, thenable</a></li>
+      <li><a href="#s4">4. Комбінатори all / allSettled / race / any</a></li>
+      <li><a href="#s5">5. Помилки в async/await і floating promises</a></li>
+      <li><a href="#s6">6. unhandledRejection і uncaughtException</a></li>
+      <li><a href="#s7">7. Послідовно, паралельно, з лімітом</a></li>
+      <li><a href="#s8">8. Retry з exponential backoff і jitter</a></li>
+      <li><a href="#s9">9. Таймаути й скасування: AbortController</a></li>
+      <li><a href="#s10">10. Events, async-ітератори, генератори</a></li>
+      <li><a href="#s11">11. AsyncLocalStorage, стеки, top-level await</a></li>
+      <li><a href="#s12">12. Пастки змішування: Zalgo, подвійний callback</a></li>
+      <li><a href="#s13">13. Каверзні питання співбесіди</a></li>
+      <li><a href="#s14">14. Шпаргалка</a></li>
+      <li><a href="#s15">15. Як запам'ятати</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Еволюція: callback → Promise → async/await</h2>
+      <p class="section-desc">Три покоління одного й того ж ідеалу: "зроби I/O, а коли буде готово — продовж". Кожне виправляло біль попереднього.</p>
+
+      <h3>Error-first callback — конвенція, на якій виріс Node</h3>
+      <p>Ранній Node (2009+) мав одне правило для всього core API: <b>останній аргумент — callback</b>,
+      а <b>перший аргумент callback — помилка</b> (або <code>null</code>). Чому помилка саме першою? Щоб її
+      неможливо було "не помітити" — вона стоїть на найвиднішому місці, і linter/рев'юер одразу бачить,
+      якщо <code>err</code> ігнорується.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">error-first.js</span></div>
+        <pre><code>const fs = require('node:fs');
+
+fs.readFile('config.json', 'utf8', (err, text) =&gt; {
+  if (err) {
+    // ENOENT, EACCES, ... — помилку ОБОВ'ЯЗКОВО обробити або передати вище
+    return console.error('cannot read config:', err.code);
+  }
+  const cfg = JSON.parse(text);   // ⚠️ якщо JSON битий — throw тут НІХТО не зловить
+  console.log(cfg.port);
+});</code></pre>
+      </div>
+
+      <p>Головні проблеми callback-стилю — не лише "піраміда":</p>
+      <ul>
+        <li><b>Callback hell / pyramid of doom</b> — кожен наступний крок вкладається на рівень глибше,
+        обробка помилок дублюється на кожному рівні.</li>
+        <li><b>Inversion of control</b> — ви віддаєте свою функцію чужому коду і <i>довіряєте</i>, що він
+        викличе її рівно один раз, асинхронно, з правильними аргументами. Ніхто цього не гарантує
+        (див. <a href="#s12">розділ 12</a>).</li>
+        <li><b><code>try/catch</code> не працює</b> через межу асинхронності: виняток, кинутий усередині
+        callback, вилітає вже з іншого стеку — як <code>uncaughtException</code>.</li>
+        <li><b>Композиція важка</b>: "запусти 3 запити паралельно і дочекайся всіх" — це ручний лічильник.</li>
+      </ul>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">callback-hell.js</span></div>
+        <pre><code>getUser(id, (err, user) =&gt; {
+  if (err) return done(err);
+  getOrders(user.id, (err, orders) =&gt; {
+    if (err) return done(err);
+    getInvoice(orders[0].id, (err, invoice) =&gt; {
+      if (err) return done(err);
+      sendEmail(user.email, invoice, (err) =&gt; {
+        if (err) return done(err);
+        done(null, 'sent');            // 4 рівні, 4 однакові if (err)
+      });
+    });
+  });
+});</code></pre>
+      </div>
+
+      <h3>Promise → async/await</h3>
+      <p><b>Promise</b> (у Node стабільно з v4, ES2015) повертає контроль: функція не приймає ваш callback, а
+      <i>повертає об'єкт-обіцянку</i>, на який ви підписуєтесь самі. Гарантії вбудовані в специфікацію:
+      settle — рівно один раз, обробники — завжди асинхронно (мікрозадача), помилка тече ланцюжком до
+      найближчого <code>.catch</code>. <b>async/await</b> (Node 7.6+/8) — синтаксичний цукор над Promise +
+      генераторами: код виглядає синхронним, і звичайний <code>try/catch</code> знову працює.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">same-flow-async.js</span></div>
+        <pre><code>async function sendInvoice(id) {
+  const user = await getUser(id);
+  const orders = await getOrders(user.id);
+  const invoice = await getInvoice(orders[0].id);
+  await sendEmail(user.email, invoice);
+  return 'sent';
+}   // одна точка обробки помилок — у того, хто викликає (try/catch або .catch)</code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 280" role="img" aria-label="Три колонки: callbacks утворюють піраміду вкладеності з обробкою помилки на кожному рівні; promises — плоский ланцюжок then з одним catch у кінці; async/await — лінійна послідовність await усередині одного try/catch">
+          <defs><marker id="n03d1-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="120" y="22" text-anchor="middle" fill="var(--bad)" font-weight="bold">Callbacks (2009)</text>
+            <rect x="15" y="35" width="210" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="25" y="57" fill="currentColor">getUser(cb) · if (err)</text>
+            <rect x="40" y="77" width="185" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="50" y="99" fill="currentColor">getOrders(cb) · if (err)</text>
+            <rect x="65" y="119" width="160" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="75" y="141" fill="currentColor">getInvoice(cb) · if</text>
+            <rect x="90" y="161" width="135" height="34" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="100" y="183" fill="currentColor">sendEmail(cb) · if</text>
+            <text x="120" y="222" text-anchor="middle" fill="var(--fg-muted)">вкладеність росте вправо</text>
+            <text x="120" y="240" text-anchor="middle" fill="var(--fg-muted)">помилка — на кожному рівні</text>
+
+            <text x="370" y="22" text-anchor="middle" fill="var(--warn)" font-weight="bold">Promises (ES2015)</text>
+            <rect x="285" y="35" width="170" height="30" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="370" y="55" text-anchor="middle" fill="currentColor">getUser(id)</text>
+            <rect x="285" y="80" width="170" height="30" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="370" y="100" text-anchor="middle" fill="currentColor">.then(getOrders)</text>
+            <rect x="285" y="125" width="170" height="30" rx="6" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="370" y="145" text-anchor="middle" fill="currentColor">.then(getInvoice)</text>
+            <rect x="285" y="170" width="170" height="30" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="370" y="190" text-anchor="middle" fill="currentColor">.catch(handle) — один</text>
+            <line x1="370" y1="65" x2="370" y2="78" stroke="currentColor" marker-end="url(#n03d1-arrow)"/>
+            <line x1="370" y1="110" x2="370" y2="123" stroke="currentColor" marker-end="url(#n03d1-arrow)"/>
+            <line x1="370" y1="155" x2="370" y2="168" stroke="currentColor" marker-end="url(#n03d1-arrow)"/>
+            <text x="370" y="222" text-anchor="middle" fill="var(--fg-muted)">плоский ланцюжок</text>
+            <text x="370" y="240" text-anchor="middle" fill="var(--fg-muted)">помилка "тече" вниз</text>
+
+            <text x="610" y="22" text-anchor="middle" fill="var(--good)" font-weight="bold">async/await (ES2017)</text>
+            <rect x="510" y="35" width="200" height="165" rx="8" fill="none" stroke="var(--good)" stroke-width="1.2" stroke-dasharray="5,3"/>
+            <text x="522" y="54" fill="var(--good)">try {</text>
+            <text x="535" y="80" fill="currentColor">await getUser(id)</text>
+            <text x="535" y="105" fill="currentColor">await getOrders(u)</text>
+            <text x="535" y="130" fill="currentColor">await getInvoice(o)</text>
+            <text x="535" y="155" fill="currentColor">await sendEmail(...)</text>
+            <text x="522" y="185" fill="var(--good)">} catch (e) { ... }</text>
+            <text x="610" y="222" text-anchor="middle" fill="var(--fg-muted)">читається як sync-код</text>
+            <text x="610" y="240" text-anchor="middle" fill="var(--fg-muted)">звичайний try/catch</text>
+          </g>
+          <line x1="235" y1="262" x2="500" y2="262" stroke="currentColor" stroke-width="1" marker-end="url(#n03d1-arrow)"/>
+          <text x="370" y="276" text-anchor="middle" font-size="11" fill="var(--fg-muted)">та сама семантика, менше ручної роботи</text>
+        </svg>
+        <figcaption>Callback → Promise → async/await: логіка ідентична, але з кожним кроком гарантії переходять від "домовленості" до мови.</figcaption>
+      </figure>
+
+      <div class="remember"><b>🧠 Запам'ятай:</b> async/await — не нова модель виконання, а синтаксис над Promise; Promise — не "швидший callback", а контракт (один settle, завжди async, помилка тече ланцюжком).</div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Мости: util.promisify, callbackify і */promises API</h2>
+      <p class="section-desc">У реальному коді все ще трапляються callback-бібліотеки — треба вміти акуратно "перекласти" їх у Promise і назад.</p>
+
+      <h3><code>util.promisify</code> і <code>util.callbackify</code></h3>
+      <p><code>promisify(fn)</code> повертає функцію, яка додає свій callback останнім аргументом і
+      перетворює <code>(err, value)</code> на reject/resolve. Працює лише для функцій, що дотримуються
+      error-first конвенції. Якщо функція має нестандартну сигнатуру (наприклад, кілька результатів),
+      автор може задати власну версію через символ <code>util.promisify.custom</code> — так зроблено для
+      <code>setTimeout</code>, <code>fs.exists</code>, <code>child_process.exec</code> (повертає <code>{ stdout, stderr }</code>).</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">promisify.js</span></div>
+        <pre><code>const util = require('node:util');
+
+function legacy(a, b, cb) {
+  setImmediate(() =&gt; (a &lt; 0 ? cb(new Error('neg')) : cb(null, a + b)));
+}
+const legacyAsync = util.promisify(legacy);
+legacyAsync(1, 2).then((v) =&gt; console.log('promisified:', v));     // promisified: 3
+legacyAsync(-1, 2).catch((e) =&gt; console.log('err:', e.message));    // err: neg
+
+// у зворотний бік — коли старий API чекає callback, а у вас async-функція
+const cbStyle = util.callbackify(async (x) =&gt; x * 2);
+cbStyle(21, (err, v) =&gt; console.log(err, v));                       // null 42
+
+// нюанс: reject(null) не можна передати як err=null — callbackify загортає його
+const cbNull = util.callbackify(async () =&gt; { throw null; });
+cbNull((err) =&gt; console.log(err.message, err.reason));
+// "Promise was rejected with falsy value" null
+
+// promisify втрачає this! Для методів — bind:
+const getAsync = util.promisify(redisClient.get).bind(redisClient);</code></pre>
+      </div>
+
+      <h3>Promise-based core API — більше не треба promisify</h3>
+      <p>Майже весь core Node має promise-версії. Використовуйте їх напряму — вони кращі за promisify,
+      бо підтримують <code>AbortSignal</code> і правильно типізовані:</p>
+      <table>
+        <tr><th>Модуль</th><th>Що дає</th><th>Приклад</th></tr>
+        <tr><td><code>node:fs/promises</code></td><td>readFile, writeFile, open (FileHandle), readdir, mkdir, rm, watch (async iterator)</td><td><code>await readFile(p, { signal })</code></td></tr>
+        <tr><td><code>node:timers/promises</code></td><td>setTimeout, setImmediate, setInterval (async iterator), scheduler.wait</td><td><code>await setTimeout(100, val, { signal })</code></td></tr>
+        <tr><td><code>node:stream/promises</code></td><td>pipeline, finished — з коректним закриттям і помилками</td><td><code>await pipeline(src, gzip, dst)</code></td></tr>
+        <tr><td><code>node:dns/promises</code></td><td>lookup, resolve4, resolveMx, …</td><td><code>await lookup('example.com')</code></td></tr>
+        <tr><td><code>node:readline/promises</code></td><td>question() через await</td><td><code>await rl.question('Name? ')</code></td></tr>
+        <tr><td><code>node:events</code></td><td>once(), on() — події як Promise / async iterator</td><td><code>await once(server, 'listening')</code></td></tr>
+        <tr><td>global <code>fetch</code></td><td>HTTP-клієнт (undici), з коробки з Node 18</td><td><code>await fetch(url, { signal })</code></td></tr>
+      </table>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">core-promises.mjs</span></div>
+        <pre><code>import { readFile } from 'node:fs/promises';
+import { setTimeout as sleep } from 'node:timers/promises';
+import { pipeline } from 'node:stream/promises';
+import { createReadStream, createWriteStream } from 'node:fs';
+import { createGzip } from 'node:zlib';
+
+const cfg = JSON.parse(await readFile('config.json', 'utf8'));
+await sleep(50);                                    // замість new Promise(r =&gt; setTimeout(r, 50))
+await pipeline(                                     // backpressure + закриття всіх стрімів при помилці
+  createReadStream('access.log'),
+  createGzip(),
+  createWriteStream('access.log.gz'),
+);
+for await (const _ of setInterval(1000)) { /* тік раз на секунду, break — і таймер зупинено */ break; }</code></pre>
+      </div>
+
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        Замість <code>stream.pipe()</code> завжди беріть <code>pipeline</code> з <code>stream/promises</code>:
+        <code>.pipe()</code> не пробрасує помилки і не закриває решту стрімів, якщо один впав, — класичне
+        джерело file-descriptor leak. Детально — у <a href="06-events-streams-buffers.html">туторіалі 6</a>.
+      </div></div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Promise: стани, ланцюжки, thenable</h2>
+      <p class="section-desc">Більшість багів з промісами — це нерозуміння, що саме повертає <code>.then</code> і куди тече помилка.</p>
+
+      <h3>Три стани і одна стрілка</h3>
+      <ul>
+        <li><b>pending</b> → або <b>fulfilled</b> (зі значенням), або <b>rejected</b> (з причиною). Разом
+        fulfilled і rejected називають <b>settled</b>. Перехід — одноразовий і незворотний.</li>
+        <li>"<b>resolved</b>" ≠ "fulfilled": проміс, resolved іншим промісом, ще може бути pending і зрештою
+        стати rejected. Resolve = "моя доля прив'язана до X".</li>
+        <li><code>.then(onOk, onErr)</code> <b>завжди повертає новий проміс</b>. Його доля визначається тим,
+        що повернув/кинув обробник: значення → fulfilled, <code>throw</code> → rejected, проміс → "переходимо
+        на нього".</li>
+        <li>Пропущений обробник = прозорий прохід: <code>.then(f)</code> без onErr пропускає rejection далі,
+        <code>.catch(g)</code> пропускає значення далі.</li>
+        <li><code>.finally(fn)</code> не бачить значення і <b>не змінює</b> його (якщо тільки сам не кине або
+        не поверне rejected-проміс).</li>
+      </ul>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 1</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Куди тече значення і помилка</span></div>
+        <div class="codecard"><div class="bar"><span class="path">task-1.js</span></div><pre><code>Promise.resolve(1)
+  .then((x) =&gt; x + 1)
+  .then((x) =&gt; { throw new Error('boom ' + x); })
+  .then((x) =&gt; console.log('skipped', x))
+  .catch((e) =&gt; { console.log('caught:', e.message); return 10; })
+  .finally(() =&gt; { console.log('finally'); return 999; })
+  .then((x) =&gt; console.log('after:', x));</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">caught: boom 2
+finally
+after: 10</span><p>1 → 2 → throw. Третій <code>.then</code> не має onErr, тож rejection проходить повз нього до
+        <code>.catch</code>. <code>.catch</code> повертає 10 — ланцюжок знову fulfilled. <code>.finally</code> повертає
+        999, але це <b>ігнорується</b>: finally прозоро пропускає попереднє значення 10.</p></div></details>
+      </div>
+
+      <h3>Thenable — "качина типізація" промісів</h3>
+      <p>Специфікація Promise не перевіряє <code>instanceof Promise</code>: будь-який об'єкт із методом
+      <code>then</code> — це <b>thenable</b>, і <code>await</code>/<code>Promise.resolve</code> "розгортають" його,
+      викликаючи <code>then(resolve, reject)</code>. Так співіснують різні реалізації (Bluebird, старі jQuery
+      Deferred, query builder-и на кшталт Knex/Mongoose Query — у них є <code>.then</code>, тому
+      <code>await query</code> виконує запит).</p>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 2</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Коли викликається then у thenable</span></div>
+        <div class="codecard"><div class="bar"><span class="path">task-2.mjs</span></div><pre><code>const thenable = { then(resolve) { console.log('then called'); resolve(7); } };
+console.log('await -&gt;', await thenable);
+const p = Promise.resolve(thenable);
+console.log('is Promise:', p instanceof Promise, p === thenable);
+console.log(await p);</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">then called
+await -&gt; 7
+is Promise: true false
+then called
+7</span><p><code>Promise.resolve(thenable)</code> повертає <b>новий справжній</b> Promise, а <code>then</code> thenable-а
+        викликає <b>не синхронно</b>, а в окремій мікрозадачі (PromiseResolveThenableJob). Тому "is Promise" друкується
+        раніше за другий "then called". Звідси й пастка: якщо випадково дати класу метод <code>then</code>
+        (наприклад, у builder-і), <code>await obj</code> поведеться зовсім не так, як ви чекаєте.</p></div></details>
+      </div>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Promise constructor anti-pattern:</b> загортати проміс у <code>new Promise((res, rej) =&gt; other().then(res, rej))</code>
+        — зайво й небезпечно (легко забути <code>rej</code> і отримати вічний pending). <code>new Promise</code> потрібен
+        <i>тільки</i> для адаптації не-промісних API (callback, event). Винятки, кинуті синхронно в executor,
+        перетворюються на reject — а от винятки в асинхронному callback усередині executor-а вже ні.
+      </div></div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Комбінатори: all, allSettled, race, any</h2>
+      <p class="section-desc">Чотири способи дочекатися кількох промісів — і в кожного своя семантика відмови. Найпопулярніше питання на співбесіді з async.</p>
+
+      <table>
+        <tr><th>Комбінатор</th><th>Fulfilled коли</th><th>Rejected коли</th><th>Результат</th><th>Типове застосування</th></tr>
+        <tr><td><code>Promise.all</code></td><td>усі fulfilled</td><td><b>перший</b> reject (fail-fast)</td><td>масив значень у порядку входу</td><td>усі дані обов'язкові: user + settings + permissions</td></tr>
+        <tr><td><code>Promise.allSettled</code></td><td>завжди, коли всі settled</td><td>ніколи</td><td><code>[{status, value | reason}]</code></td><td>batch-операції, де часткова невдача ок: розсилка, звіт</td></tr>
+        <tr><td><code>Promise.race</code></td><td>перший settled — fulfilled</td><td>перший settled — rejected</td><td>значення/помилка першого</td><td>таймаут (стара школа), "хто перший відповість"</td></tr>
+        <tr><td><code>Promise.any</code></td><td><b>перший</b> fulfilled</td><td>усі rejected → <code>AggregateError</code></td><td>значення першого успішного</td><td>дзеркала/репліки: беремо найшвидшу успішну</td></tr>
+      </table>
+
+      <div class="callout bad"><div class="ic">🚫</div><div class="body">
+        <b>Жоден комбінатор нічого не скасовує.</b> Коли <code>Promise.all</code> відхилився через першу помилку,
+        решта операцій <i>продовжують виконуватись</i> (запити летять, записи в БД пишуться). Коли
+        <code>race</code> виграв таймаут — "повільний" запит теж живе далі. Справжнє скасування — тільки через
+        <code>AbortSignal</code> (<a href="#s9">розділ 9</a>).
+      </div></div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 3</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">all падає швидко, але не зупиняє інших</span></div>
+        <div class="codecard"><div class="bar"><span class="path">task-3.js</span></div><pre><code>const delay = (ms, v, fail) =&gt; new Promise((res, rej) =&gt;
+  setTimeout(() =&gt; { console.log('settled', v); fail ? rej(new Error(v)) : res(v); }, ms));
+
+async function main() {
+  try {
+    await Promise.all([delay(60, 'A'), delay(10, 'B', true), delay(30, 'C')]);
+  } catch (e) { console.log('all rejected with', e.message); }
+  const r = await Promise.allSettled([delay(10, 'D'), delay(5, 'E', true)]);
+  console.log(r.map((x) =&gt; x.status).join(','));
+}
+main();</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">settled B
+all rejected with B
+settled E
+settled D
+fulfilled,rejected
+settled C
+settled A</span><p>На 10 мс B відхиляється → <code>all</code> одразу rejected, ми переходимо до allSettled (стартує на ~10 мс).
+        E (~15 мс) і D (~20 мс) settled → allSettled готовий; статуси — у порядку <b>входу</b>, не завершення.
+        А C (30 мс) і A (60 мс) усе одно виконуються, коли <code>main</code> уже "забув" про них — їх ніхто не скасував.</p></div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 4</span><span class="taskdiff easy">Легко</span><span class="tasktitle">any і race</span></div>
+        <div class="codecard"><div class="bar"><span class="path">task-4.js</span></div><pre><code>async function main() {
+  try {
+    await Promise.any([Promise.reject(new Error('a')), Promise.reject(new Error('b'))]);
+  } catch (e) {
+    console.log(e.constructor.name, e.errors.map((x) =&gt; x.message));
+  }
+  const v = await Promise.race([
+    new Promise((r) =&gt; setTimeout(() =&gt; { console.log('slow finished anyway'); r('slow'); }, 20)),
+    new Promise((r) =&gt; setTimeout(() =&gt; r('fast'), 5)),
+  ]);
+  console.log('winner:', v);
+}
+main();</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">AggregateError [ 'a', 'b' ]
+winner: fast
+slow finished anyway</span><p><code>any</code> з усіма відмовами кидає <code>AggregateError</code> з масивом <code>errors</code>.
+        <code>race</code> віддає перший settled, але "повільний" таймер не скасовано — і його side effect відбувається.
+        Також пам'ятайте: <code>Promise.race([])</code> назавжди pending, <code>Promise.any([])</code> одразу reject, <code>Promise.all([])</code> одразу <code>[]</code>.</p></div></details>
+      </div>
+
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: який комбінатор</div>
+        <table><tr><th>Ситуація</th><th>Беремо</th><th>Чому</th></tr>
+          <tr><td>Без будь-якої частини відповідь неможлива</td><td><code>all</code> + AbortController</td><td>fail-fast; а signal скасує "сиріт"</td></tr>
+          <tr><td>Треба знати долю кожного елемента</td><td><code>allSettled</code></td><td>ніколи не кидає, повний звіт</td></tr>
+          <tr><td>Кілька еквівалентних джерел</td><td><code>any</code></td><td>одна відмова не шкодить; хеджовані запити</td></tr>
+          <tr><td>Таймаут</td><td><code>AbortSignal.timeout()</code></td><td>race лише "перестає чекати", signal — реально зупиняє</td></tr>
+          <tr><td>Сотні/тисячі елементів</td><td>ліміт конкурентності (розділ 7)</td><td>all над 10 000 fetch — DoS на власний сервіс</td></tr>
+        </table>
+        <p><b>Коли що:</b> на співбесіді назвіть різницю у семантиці відмови (fail-fast / never / first-settled / first-fulfilled) і згадайте, що жоден з них не скасовує роботу.</p>
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Помилки в async/await і floating promises</h2>
+      <p class="section-desc">async/await повертає try/catch, але лише там, де ви справді <i>чекаєте</i>. Все, що не awaited — летить повз.</p>
+
+      <h3>Правила async-функції</h3>
+      <ul>
+        <li><code>async function</code> <b>завжди</b> повертає Promise. <code>throw</code> усередині = rejected promise, а не синхронний виняток.</li>
+        <li><code>try/catch</code> ловить відмову тільки того промісу, який <b>awaited усередині try</b>.</li>
+        <li><code>return promise</code> у try ≠ <code>return await promise</code> у try (задача 5).</li>
+        <li>Кидайте <code>Error</code>, а не рядки: тільки в Error є <code>stack</code>, і з ES2022 є <code>cause</code>:
+        <code>throw new Error('load user failed', { cause: err })</code>.</li>
+      </ul>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 5</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">return vs return await у try/catch</span></div>
+        <div class="codecard"><div class="bar"><span class="path">task-5.js</span></div><pre><code>async function fetchData() { throw new Error('db down'); }
+
+async function a() {
+  try { return fetchData(); }
+  catch { return 'fallback-a'; }
+}
+async function b() {
+  try { return await fetchData(); }
+  catch { return 'fallback-b'; }
+}
+a().then(console.log, (e) =&gt; console.log('a rejected:', e.message));
+b().then(console.log, (e) =&gt; console.log('b rejected:', e.message));</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">fallback-b
+a rejected: db down</span><p>У <code>a</code> проміс повертається <b>з</b> try до того, як він відхилився — catch вже не активний,
+        і відмова "просочується" назовні. У <code>b</code> <code>await</code> чекає відмову <b>всередині</b> try → catch спрацьовує.
+        Порядок рядків: <code>a</code> розгортає повернений проміс через додаткові мікрозадачі, тому "a rejected" приходить пізніше.
+        Правило (і ESLint <code>@typescript-eslint/return-await: in-try-catch</code>): усередині try — завжди <code>return await</code>.
+        Бонус: <code>return await</code> зберігає функцію в async stack trace.</p></div></details>
+      </div>
+
+      <h3>Floating promise — тихий вбивця</h3>
+      <p><b>Floating promise</b> — проміс, на який ніхто не підписався: забутий <code>await</code>, async callback у
+      <code>forEach</code>, async event handler. Наслідки: (1) помилка стає unhandled rejection → процес падає
+      (<a href="#s6">розділ 6</a>); (2) порядок операцій ламається — відповідь відправлено до завершення запису в БД;
+      (3) тести "зелені", бо завершуються раніше за перевірку.</p>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 6</span><span class="taskdiff easy">Легко</span><span class="tasktitle">await у forEach</span></div>
+        <div class="codecard"><div class="bar"><span class="path">task-6.js</span></div><pre><code>const sleep = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+async function main() {
+  [3, 1, 2].forEach(async (n) =&gt; {
+    await sleep(n * 10);
+    console.log('item', n);
+  });
+  console.log('done');
+}
+main();</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">done
+item 1
+item 2
+item 3</span><p><code>forEach</code> ігнорує повернене значення callback-а — три промиси "плавають". "done" друкується
+        одразу, далі елементи в порядку <b>таймерів</b>, а не масиву. Виправлення: послідовно — <code>for (const n of arr) await f(n)</code>;
+        паралельно — <code>await Promise.all(arr.map(f))</code>. Те саме з <code>.map(async)</code> без <code>Promise.all</code>,
+        <code>.filter(async)</code> (проміс завжди truthy!) і <code>.reduce(async)</code>.</p></div></details>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">floating-fixes.ts</span></div>
+        <pre><code>// ❌ async обробник події: відмова нікому не належить
+emitter.on('order', async (o) =&gt; { await save(o); });
+
+// ✅ ловимо всередині (або events captureRejections, див. туторіал 6)
+emitter.on('order', (o) =&gt; { save(o).catch((err) =&gt; log.error({ err }, 'save failed')); });
+
+// ✅ свідомий "fire-and-forget" — явно позначений void + catch
+void audit.write(evt).catch(reportError);
+
+// ✅ ESLint: @typescript-eslint/no-floating-promises, no-misused-promises
+//    (ловить async callback там, де очікується void-функція — forEach, onClick, setInterval)</code></pre>
+      </div>
+
+      <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають так</span>
+        "Чому <code>try { promise } catch</code> без await нічого не ловить?" — тому що try/catch синхронний: він охоплює
+        лише виконання коду до виходу з блоку, а відмова промісу відбудеться пізніше, в мікрозадачі. <code>await</code>
+        "призупиняє" функцію всередині try, і відновлення з відмовою кидає виняток у правильному місці.
+      </div></div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> unhandledRejection і uncaughtException</h2>
+      <p class="section-desc">Що робить Node, коли помилка нікому не потрібна — і чому з Node 15 процес у цьому разі падає.</p>
+
+      <h3>Поведінка за замовчуванням</h3>
+      <ul>
+        <li><b>uncaughtException</b> — синхронний виняток, що вилетів з верхнього рівня стеку (зокрема з callback
+        таймера чи I/O). Node друкує стек і завершує процес з кодом <b>1</b>.</li>
+        <li><b>unhandledRejection</b> — проміс відхилився, і до кінця поточного обходу мікрозадач на нього ніхто не
+        підписався. До Node 15 був лише warning (<code>UnhandledPromiseRejectionWarning</code> + DeprecationWarning).
+        <b>З Node 15 режим за замовчуванням — <code>throw</code></b>: rejection піднімається як uncaught exception → процес падає з кодом 1.</li>
+      </ul>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 7</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Чи встигне таймер?</span></div>
+        <div class="codecard"><div class="bar"><span class="path">task-7.js</span></div><pre><code>process.on('exit', (c) =&gt; console.log('exit code', c));
+async function job() { throw new Error('nobody awaits me'); }
+job();
+setTimeout(() =&gt; console.log('timer fired'), 100);
+console.log('sync end');</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">sync end
+exit code 1
+(+ у stderr: стек "Error: nobody awaits me")</span><p>Після синхронного коду Node обробляє мікрозадачі, бачить відхилений проміс без обробника і
+        (режим <code>throw</code>) кидає його як uncaught exception. Процес падає, таймер так і не спрацьовує.
+        З <code>node --unhandled-rejections=warn task-7.js</code> отримаємо warning, потім "timer fired" і "exit code 0".</p></div></details>
+      </div>
+
+      <h3>Режими <code>--unhandled-rejections</code></h3>
+      <table>
+        <tr><th>Режим</th><th>Поведінка</th></tr>
+        <tr><td><code>throw</code> (default з v15)</td><td>Емітить <code>unhandledRejection</code>; якщо обробника немає — кидає як uncaught exception.</td></tr>
+        <tr><td><code>strict</code></td><td>Одразу кидає як uncaught exception, навіть якщо є <code>unhandledRejection</code>-обробник (той викликається, лише якщо виняток перехоплено uncaughtException-обробником).</td></tr>
+        <tr><td><code>warn</code></td><td>Завжди лише warning, процес живе.</td></tr>
+        <tr><td><code>warn-with-error-code</code></td><td>Warning + <code>process.exitCode = 1</code>.</td></tr>
+        <tr><td><code>none</code></td><td>Мовчки ігнорує. Не робіть так.</td></tr>
+      </table>
+
+      <h3>Що робити в production</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">process-guards.js</span></div>
+        <pre><code>process.on('unhandledRejection', (reason, promise) =&gt; {
+  logger.fatal({ err: reason }, 'unhandledRejection');
+  throw reason;                       // перетворюємо на uncaughtException — одна точка обробки
+});
+
+process.on('uncaughtException', (err, origin) =&gt; {
+  logger.fatal({ err, origin }, 'uncaughtException');
+  // стан процесу НЕВІДОМИЙ (недозакриті транзакції, зламані інваріанти):
+  // дозаписати логи, спробувати graceful shutdown з таймаутом — і вийти
+  server.close(() =&gt; process.exit(1));
+  setTimeout(() =&gt; process.exit(1), 5_000).unref();
+});</code></pre>
+      </div>
+      <div class="callout bad"><div class="ic">🚫</div><div class="body">
+        <code>uncaughtException</code> — не "try/catch для всього застосунку". Після нього процес у невизначеному стані;
+        продовжувати обслуговувати запити — шлях до тихої корупції даних. Правильна стратегія: <b>залогувати → graceful
+        shutdown → exit(1)</b>, а перезапуск залишити оркестратору (systemd, PM2, Kubernetes) —
+        див. <a href="17-production-observability.html">туторіал 17</a>.
+      </div></div>
+      <p class="muted">Є ще подія <code>rejectionHandled</code> (обробник додали запізно) і <code>process.on('warning')</code>.
+      Для "запізнілих" обробників режим throw жорсткий: обробник, доданий у <code>setTimeout</code> після відмови, вже не врятує процес.</p>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Послідовно, паралельно, з лімітом конкурентності</h2>
+      <p class="section-desc">Найчастіша продуктивнісна помилка в Node — випадково послідовний код. Друга за частотою — необмежено паралельний.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">three-styles.js</span></div>
+        <pre><code>// 1) Послідовно: час = сума. Потрібно, лише коли крок N залежить від N-1
+for (const id of ids) results.push(await fetchUser(id));
+
+// 2) Паралельно без меж: час ≈ max, але 10 000 ids = 10 000 сокетів/запитів одночасно
+const results = await Promise.all(ids.map(fetchUser));
+
+// 3) Паралельно з лімітом: час ≈ сума / N, навантаження під контролем
+const limit = pLimit(8);
+const results = await Promise.all(ids.map((id) =&gt; limit(() =&gt; fetchUser(id))));
+
+// Незалежні await, записані підряд — теж прихована послідовність:
+const user = await getUser(id);          // 100 ms
+const feed = await getFeed(id);          // 100 ms   → 200 ms разом
+// ✅
+const [user2, feed2] = await Promise.all([getUser(id), getFeed(id)]);   // ~100 ms</code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 290" role="img" aria-label="Часова шкала для чотирьох задач a=30мс, b, c, d по 10мс. Послідовно: задачі одна за одною, разом 60мс. Паралельно: усі стартують у нуль, разом 30мс, але 4 одночасні. З лімітом 2: a і b стартують разом, c після b, d після c, разом 30мс і не більше двох одночасно">
+          <g font-size="12">
+            <text x="20" y="30" fill="currentColor" font-weight="bold">Послідовно</text>
+            <text x="20" y="46" fill="var(--fg-muted)" font-size="11">60 мс · 1 одночасно</text>
+            <rect x="150" y="22" width="240" height="22" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="270" y="37" text-anchor="middle" fill="currentColor">a</text>
+            <rect x="390" y="22" width="80" height="22" rx="4" fill="none" stroke="currentColor"/>
+            <text x="430" y="37" text-anchor="middle" fill="currentColor">b</text>
+            <rect x="470" y="22" width="80" height="22" rx="4" fill="none" stroke="currentColor"/>
+            <text x="510" y="37" text-anchor="middle" fill="currentColor">c</text>
+            <rect x="550" y="22" width="80" height="22" rx="4" fill="none" stroke="currentColor"/>
+            <text x="590" y="37" text-anchor="middle" fill="currentColor">d</text>
+
+            <text x="20" y="90" fill="currentColor" font-weight="bold">Promise.all</text>
+            <text x="20" y="106" fill="var(--fg-muted)" font-size="11">30 мс · 4 одночасно</text>
+            <rect x="150" y="70" width="240" height="18" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="270" y="83" text-anchor="middle" fill="currentColor">a</text>
+            <rect x="150" y="91" width="80" height="18" rx="4" fill="none" stroke="currentColor"/>
+            <text x="190" y="104" text-anchor="middle" fill="currentColor">b</text>
+            <rect x="150" y="112" width="80" height="18" rx="4" fill="none" stroke="currentColor"/>
+            <text x="190" y="125" text-anchor="middle" fill="currentColor">c</text>
+            <rect x="150" y="133" width="80" height="18" rx="4" fill="none" stroke="currentColor"/>
+            <text x="190" y="146" text-anchor="middle" fill="currentColor">d</text>
+            <text x="420" y="118" fill="var(--warn)" font-size="11">при 10 000 задач → 10 000 з'єднань</text>
+
+            <text x="20" y="190" fill="currentColor" font-weight="bold">pLimit(2)</text>
+            <text x="20" y="206" fill="var(--fg-muted)" font-size="11">30 мс · ≤ 2 одночасно</text>
+            <rect x="150" y="174" width="240" height="20" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="270" y="188" text-anchor="middle" fill="currentColor">a</text>
+            <rect x="150" y="202" width="80" height="20" rx="4" fill="none" stroke="var(--good)"/>
+            <text x="190" y="216" text-anchor="middle" fill="currentColor">b</text>
+            <rect x="230" y="202" width="80" height="20" rx="4" fill="none" stroke="var(--good)"/>
+            <text x="270" y="216" text-anchor="middle" fill="currentColor">c</text>
+            <rect x="310" y="202" width="80" height="20" rx="4" fill="none" stroke="var(--good)"/>
+            <text x="350" y="216" text-anchor="middle" fill="currentColor">d</text>
+            <text x="420" y="205" fill="var(--good)" font-size="11">звільнився слот → бере наступну з черги</text>
+
+            <line x1="150" y1="250" x2="640" y2="250" stroke="currentColor"/>
+            <line x1="150" y1="245" x2="150" y2="255" stroke="currentColor"/>
+            <text x="150" y="270" text-anchor="middle" fill="var(--fg-muted)" font-size="11">0</text>
+            <line x1="230" y1="245" x2="230" y2="255" stroke="currentColor"/>
+            <text x="230" y="270" text-anchor="middle" fill="var(--fg-muted)" font-size="11">10</text>
+            <line x1="310" y1="245" x2="310" y2="255" stroke="currentColor"/>
+            <text x="310" y="270" text-anchor="middle" fill="var(--fg-muted)" font-size="11">20</text>
+            <line x1="390" y1="245" x2="390" y2="255" stroke="currentColor"/>
+            <text x="390" y="270" text-anchor="middle" fill="var(--fg-muted)" font-size="11">30</text>
+            <line x1="470" y1="245" x2="470" y2="255" stroke="currentColor"/>
+            <text x="470" y="270" text-anchor="middle" fill="var(--fg-muted)" font-size="11">40</text>
+            <line x1="550" y1="245" x2="550" y2="255" stroke="currentColor"/>
+            <text x="550" y="270" text-anchor="middle" fill="var(--fg-muted)" font-size="11">50</text>
+            <line x1="630" y1="245" x2="630" y2="255" stroke="currentColor"/>
+            <text x="630" y="270" text-anchor="middle" fill="var(--fg-muted)" font-size="11">60 мс</text>
+          </g>
+        </svg>
+        <figcaption>Ліміт конкурентності дає майже ту саму швидкість, що й Promise.all, але з гарантованою стелею навантаження на БД/API.</figcaption>
+      </figure>
+
+      <h3>Свій p-limit за 15 рядків</h3>
+      <p>Ідея: черга функцій-фабрик (не промісів! проміс уже стартував у момент створення) + лічильник активних.
+      Коли задача завершується (успіхом чи помилкою) — декрементуємо і беремо наступну.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">p-limit.mjs</span></div>
+        <pre><code>function pLimit(concurrency) {
+  const queue = [];
+  let active = 0;
+  const next = () =&gt; {
+    if (active &gt;= concurrency || queue.length === 0) return;
+    active++;
+    const { fn, resolve, reject } = queue.shift();
+    Promise.resolve()
+      .then(fn)                       // fn() викликається тут — і синхронний throw теж стане reject
+      .then(resolve, reject)
+      .finally(() =&gt; { active--; next(); });
+  };
+  return (fn) =&gt; new Promise((resolve, reject) =&gt; {
+    queue.push({ fn, resolve, reject });
+    next();
+  });
+}
+
+// --- перевірка ---
+const sleep = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+const limit = pLimit(2);
+let running = 0, peak = 0;
+const task = (id, ms) =&gt; limit(async () =&gt; {
+  running++; peak = Math.max(peak, running);
+  await sleep(ms);
+  running--;
+  return id;
+});
+const t0 = Date.now();
+const results = await Promise.all([task('a', 30), task('b', 10), task('c', 10), task('d', 10)]);
+console.log(results, 'peak =', peak, 'took ~', Math.round((Date.now() - t0) / 10) * 10, 'ms');
+// [ 'a', 'b', 'c', 'd' ] peak = 2 took ~ 30 ms</code></pre>
+      </div>
+      <p class="muted"><code>queue.shift()</code> — O(n); для десятків тисяч задач візьміть linked-list чергу (так і робить
+      пакет <code>p-limit</code> через <code>yocto-queue</code>).</p>
+
+      <h3>Worker pool з промісів — для великих батчів</h3>
+      <p>Альтернатива: замість черги функцій запустити <b>N "воркерів"</b> — async-циклів, які тягнуть наступний індекс зі
+      спільного лічильника. Безпечно без локів, бо JS однопотоковий: між <code>i++</code> і читанням немає <code>await</code>.
+      Плюс — легко додати прогрес, rate-limit і зупинку по signal.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">map-pool.mjs</span></div>
+        <pre><code>async function mapPool(items, concurrency, worker) {
+  const results = new Array(items.length);
+  let i = 0;
+  async function runner(wid) {
+    while (i &lt; items.length) {
+      const idx = i++;              // атомарно в межах одного тіку
+      results[idx] = await worker(items[idx], wid);
+    }
+  }
+  const n = Math.min(concurrency, items.length);
+  await Promise.all(Array.from({ length: n }, (_, w) =&gt; runner(w)));
+  return results;
+}
+
+const sleep = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+console.log(await mapPool([40, 10, 10, 10, 10], 2, async (ms, wid) =&gt; {
+  await sleep(ms); return `${ms}@w${wid}`;
+}));
+// [ '40@w0', '10@w1', '10@w1', '10@w1', '10@w1' ]  — швидкий воркер забрав усю решту</code></pre>
+      </div>
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        У цьому пулі перша помилка відхиляє <code>Promise.all</code>, але інші runner-и продовжують крутитись. Для
+        продакшену додайте спільний <code>AbortController</code>: при першій помилці <code>ac.abort()</code>, а runner-и перевіряють
+        <code>signal.aborted</code> перед наступною ітерацією. Готові рішення: <code>p-limit</code>, <code>p-map</code> (з <code>stopOnError</code>),
+        <code>p-queue</code> (пріоритети, interval-cap для rate limit). Для CPU-задач промісний пул не допоможе — потрібні
+        worker_threads (<a href="08-concurrency-scaling.html">туторіал 8</a>).
+      </div></div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Retry з exponential backoff і jitter</h2>
+      <p class="section-desc">Мережа ненадійна, але наївний retry перетворює короткий збій на thundering herd.</p>
+
+      <ul>
+        <li><b>Що ретраїти:</b> лише ідемпотентні операції або з idempotency key; лише тимчасові помилки — мережеві
+        (<code>ECONNRESET</code>, <code>ETIMEDOUT</code>), 429, 502/503/504. Не ретраїти 400/401/403/404/422 — вони не "минуть".</li>
+        <li><b>Exponential backoff:</b> пауза росте <code>base · 2^attempt</code> з верхньою межею (cap).</li>
+        <li><b>Jitter</b> (випадковість) обов'язковий: без нього 1000 клієнтів, що впали одночасно, ретраять теж
+        одночасно — синхронними хвилями. "Full jitter" (<code>random(0, cap)</code>) з відомої статті AWS Architecture Blog
+        дає найменше сумарне навантаження.</li>
+        <li><b>Поважайте <code>Retry-After</code></b> у відповіді 429/503.</li>
+        <li><b>Загальний дедлайн</b>, а не тільки кількість спроб — через спільний <code>AbortSignal</code>.</li>
+      </ul>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">retry.mjs</span></div>
+        <pre><code>import { setTimeout as sleep } from 'node:timers/promises';
+
+export async function retry(fn, { retries = 5, base = 100, max = 5_000, signal } = {}) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn(attempt, signal);          // return await — щоб catch ловив
+    } catch (err) {
+      if (signal?.aborted || attempt &gt;= retries || !isRetryable(err)) throw err;
+      const cap = Math.min(max, base * 2 ** attempt);
+      const wait = Math.random() * cap;          // full jitter: 0..cap
+      await sleep(wait, undefined, { signal });  // abort перериває і очікування
+    }
+  }
+}
+const isRetryable = (e) =&gt; e.retryable !== false;   // у реальному коді: коди/статуси
+
+// перевірка
+let calls = 0;
+console.log(await retry(async (n) =&gt; {
+  calls++;
+  if (n &lt; 3) throw Object.assign(new Error('503'), { retryable: true });
+  return 'ok after ' + n + ' retries';
+}, { base: 5 }), 'calls =', calls);                // ok after 3 retries calls = 4
+
+try { await retry(async () =&gt; { throw Object.assign(new Error('400'), { retryable: false }); }); }
+catch (e) { console.log('gave up immediately:', e.message); }   // gave up immediately: 400
+
+// використання з дедлайном на ВСЮ операцію (усі спроби разом):
+await retry((n, signal) =&gt; fetch(url, { signal }), { signal: AbortSignal.timeout(10_000) });</code></pre>
+      </div>
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Retry amplification:</b> якщо API-gateway ретраїть 3 рази, сервіс A — 3 рази, і сервіс B — 3 рази, один запит
+        користувача може стати 27 запитами до БД саме тоді, коли вона перевантажена. Ретраї — на одному рівні (зазвичай найближчому
+        до клієнта), плюс circuit breaker (наприклад, <code>opossum</code>) для швидкої відмови, коли залежність лежить.
+      </div></div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Таймаути й скасування: AbortController і AbortSignal</h2>
+      <p class="section-desc">Єдиний стандартний механізм скасування — з браузера, тепер у всьому core Node. Без нього "таймаут" лише перестає чекати.</p>
+
+      <h3>Базова модель</h3>
+      <ul>
+        <li><code>AbortController</code> — "пульт": має <code>.signal</code> і <code>.abort(reason)</code>.</li>
+        <li><code>AbortSignal</code> — "дріт", який ви передаєте вниз у кожну операцію: <code>.aborted</code>, <code>.reason</code>,
+        <code>.throwIfAborted()</code>, подія <code>'abort'</code>.</li>
+        <li><code>AbortSignal.timeout(ms)</code> — сигнал, що спрацює сам, з reason <code>TimeoutError</code>. Його таймер <b>unref</b>-нутий — не тримає процес живим.</li>
+        <li><code>AbortSignal.any([s1, s2])</code> (Node 20+) — об'єднання: спрацює, коли спрацює будь-який.</li>
+        <li><code>AbortSignal.abort(reason)</code> — вже скасований сигнал (для тестів).</li>
+      </ul>
+
+      <p>Хто приймає <code>{ signal }</code>: <code>fetch</code>, <code>fs/promises</code> (readFile, writeFile), <code>timers/promises</code>,
+      <code>events.once/on</code>, <code>stream.pipeline</code>, <code>child_process.spawn/exec</code>, <code>readline</code>,
+      <code>http.request</code>, <code>net.connect</code>, а також багато сучасних бібліотек (undici, AWS SDK v3 через <code>abortSignal</code>) — але не всі, перевіряйте документацію.</p>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 8</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Що лежить у помилці скасування</span></div>
+        <div class="codecard"><div class="bar"><span class="path">task-8.mjs</span></div><pre><code>import { setTimeout as sleep } from 'node:timers/promises';
+try {
+  await sleep(1000, 'value', { signal: AbortSignal.timeout(50) });
+} catch (e) {
+  console.log(e.name, '|', e.code, '|', e.cause?.name);
+}
+const ac = new AbortController();
+setTimeout(() =&gt; ac.abort(new Error('user left')), 10);
+try {
+  await sleep(1000, null, { signal: ac.signal });
+} catch (e) {
+  console.log(e.name, '|', e.cause?.message);
+}</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">AbortError | ABORT_ERR | TimeoutError
+AbortError | user left</span><p>Core API Node кидають <code>AbortError</code> (code <code>ABORT_ERR</code>), а справжня причина — в <code>e.cause</code>
+        (<code>signal.reason</code>). Тому розрізняти "таймаут" і "користувач пішов" треба через <code>cause</code> / <code>signal.reason</code>.
+        Увага: <code>fetch</code> поводиться інакше — він відхиляється <b>самим reason</b>, тобто при <code>AbortSignal.timeout</code>
+        ви отримаєте <code>DOMException</code> з name <code>TimeoutError</code>, а при <code>ac.abort()</code> без аргументу — <code>AbortError</code>.</p></div></details>
+      </div>
+
+      <h3>Пропагація: один сигнал на весь запит</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 740 300" role="img" aria-label="Дерево скасування: HTTP-запит створює AbortController, який спрацьовує при закритті сокета клієнтом; AbortSignal.any об'єднує його з AbortSignal.timeout 5 секунд; отриманий сигнал передається в fetch до API, у retry-паузу timers/promises, у fs readFile і в дочірній controller для фонового під-завдання; abort на вершині каскадно зупиняє все дерево">
+          <defs><marker id="n03d3-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="20" y="20" width="200" height="44" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="120" y="38" text-anchor="middle" fill="currentColor">req 'close' (клієнт пішов)</text>
+            <text x="120" y="55" text-anchor="middle" fill="var(--fg-muted)" font-size="11">→ reqController.abort()</text>
+            <rect x="520" y="20" width="200" height="44" rx="8" fill="none" stroke="var(--warn)" stroke-width="1.3"/>
+            <text x="620" y="38" text-anchor="middle" fill="currentColor">AbortSignal.timeout(5000)</text>
+            <text x="620" y="55" text-anchor="middle" fill="var(--fg-muted)" font-size="11">reason: TimeoutError</text>
+
+            <rect x="250" y="95" width="240" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+            <text x="370" y="113" text-anchor="middle" fill="currentColor" font-weight="bold">signal = AbortSignal.any([...])</text>
+            <text x="370" y="130" text-anchor="middle" fill="var(--fg-muted)" font-size="11">спрацює від будь-якого джерела</text>
+            <line x1="160" y1="64" x2="290" y2="93" stroke="currentColor" marker-end="url(#n03d3-arrow)"/>
+            <line x1="580" y1="64" x2="450" y2="93" stroke="currentColor" marker-end="url(#n03d3-arrow)"/>
+
+            <rect x="15" y="190" width="160" height="44" rx="8" fill="none" stroke="currentColor"/>
+            <text x="95" y="208" text-anchor="middle" fill="currentColor">fetch(api, { signal })</text>
+            <text x="95" y="225" text-anchor="middle" fill="var(--fg-muted)" font-size="11">рве TCP-запит</text>
+            <rect x="195" y="190" width="160" height="44" rx="8" fill="none" stroke="currentColor"/>
+            <text x="275" y="208" text-anchor="middle" fill="currentColor">sleep(backoff, {signal})</text>
+            <text x="275" y="225" text-anchor="middle" fill="var(--fg-muted)" font-size="11">знімає таймер retry</text>
+            <rect x="375" y="190" width="160" height="44" rx="8" fill="none" stroke="currentColor"/>
+            <text x="455" y="208" text-anchor="middle" fill="currentColor">readFile(p, { signal })</text>
+            <text x="455" y="225" text-anchor="middle" fill="var(--fg-muted)" font-size="11">зупиняє читання</text>
+            <rect x="555" y="190" width="170" height="44" rx="8" fill="none" stroke="var(--good)"/>
+            <text x="640" y="208" text-anchor="middle" fill="currentColor">childCtrl (під-задача)</text>
+            <text x="640" y="225" text-anchor="middle" fill="var(--fg-muted)" font-size="11">any([signal, own])</text>
+            <line x1="300" y1="139" x2="110" y2="188" stroke="currentColor" marker-end="url(#n03d3-arrow)"/>
+            <line x1="345" y1="139" x2="285" y2="188" stroke="currentColor" marker-end="url(#n03d3-arrow)"/>
+            <line x1="395" y1="139" x2="450" y2="188" stroke="currentColor" marker-end="url(#n03d3-arrow)"/>
+            <line x1="440" y1="139" x2="620" y2="188" stroke="currentColor" marker-end="url(#n03d3-arrow)"/>
+
+            <text x="370" y="270" text-anchor="middle" fill="var(--bad)">abort() нагорі → кожна операція внизу відхиляється (AbortError або reason)</text>
+            <text x="370" y="288" text-anchor="middle" fill="var(--fg-muted)" font-size="11">дочірній сигнал можна скасувати окремо, не чіпаючи батьківський</text>
+          </g>
+        </svg>
+        <figcaption>Сигнал — як дерево запобіжників: один abort на вершині (клієнт пішов або дедлайн) гасить усю роботу запиту, а не лише перестає її чекати.</figcaption>
+      </figure>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">handler-with-cancel.mjs</span></div>
+        <pre><code>import http from 'node:http';
+
+http.createServer(async (req, res) =&gt; {
+  const clientGone = new AbortController();
+  res.on('close', () =&gt; { if (!res.writableFinished) clientGone.abort(); });
+  const signal = AbortSignal.any([clientGone.signal, AbortSignal.timeout(5_000)]);
+
+  try {
+    const r = await fetch('https://api.example.com/report', { signal });
+    res.end(await r.text());
+  } catch (err) {
+    if (signal.reason?.name === 'TimeoutError') { res.statusCode = 504; res.end('timeout'); }
+    else if (clientGone.signal.aborted) { /* відповідати нікому — просто прибираємо */ }
+    else { res.statusCode = 502; res.end('upstream error'); }
+  }
+}).listen(3000);
+
+// Свої async-функції теж мають приймати signal і поважати його:
+async function processBatch(items, { signal } = {}) {
+  for (const item of items) {
+    signal?.throwIfAborted();        // кооперативне скасування між кроками
+    await handle(item, { signal });
+  }
+}</code></pre>
+      </div>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Скасування кооперативне.</b> Signal не може "вбити" синхронний цикл чи CPU-обчислення — функція мусить сама
+        перевіряти <code>signal.aborted</code>. І пам'ятайте про витік слухачів: якщо ви робите <code>signal.addEventListener('abort', …)</code>
+        у довгоживучому сигналі для кожної операції — знімайте слухача (<code>{ once: true }</code> + <code>removeEventListener</code>)
+        або використовуйте <code>events.addAbortListener</code> (повертає Disposable). Інакше — <code>MaxListenersExceededWarning</code>.
+      </div></div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Events, async-ітератори та генератори</h2>
+      <p class="section-desc">Pull-модель (<code>for await</code>) поверх push-джерел (events, streams) — природний backpressure і зрозумілий код.</p>
+
+      <h3><code>events.once</code> і <code>events.on</code></h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">events-async.mjs</span></div>
+        <pre><code>import { EventEmitter, once, on } from 'node:events';
+const ee = new EventEmitter();
+
+setTimeout(() =&gt; ee.emit('ready', 42, 'x'), 5);
+console.log('once -&gt;', await once(ee, 'ready'));        // once -&gt; [ 42, 'x' ]  (масив аргументів!)
+
+const ac = new AbortController();
+setTimeout(() =&gt; { ee.emit('tick', 1); ee.emit('tick', 2); ee.emit('tick', 3); }, 5);
+try {
+  for await (const [n] of on(ee, 'tick', { signal: ac.signal })) {
+    console.log('tick', n);                               // tick 1, tick 2, tick 3
+    if (n === 3) ac.abort();
+  }
+} catch (e) { console.log('loop ended:', e.name); }       // loop ended: AbortError
+
+setTimeout(() =&gt; ee.emit('error', new Error('bad')), 5);
+try { await once(ee, 'never'); }
+catch (e) { console.log('once rejects on error:', e.message); }   // подія 'error' → reject</code></pre>
+      </div>
+      <ul>
+        <li><code>once</code> повертає <b>масив</b> аргументів події і <b>відхиляється на <code>'error'</code></b> — тому
+        <code>await once(server, 'listening')</code> безпечніший за ручний <code>new Promise</code>.</li>
+        <li><code>on</code> буферизує події, що прийшли, поки тіло циклу зайняте (події не губляться, але буфер може рости), і
+        <b>ніколи не завершується сам</b> — потрібен <code>break</code>, <code>return</code> або signal. Можна задати <code>close</code>-події в опціях новіших версій.</li>
+      </ul>
+
+      <h3>Async iteration протокол</h3>
+      <p>Об'єкт async-iterable, якщо має <code>[Symbol.asyncIterator]()</code>, що повертає ітератор з
+      <code>next(): Promise&lt;{ value, done }&gt;</code>. <code>for await</code> викликає <code>next()</code>, чекає, обробляє —
+      і тільки потім просить наступне. Тому це <b>pull-модель</b>: споживач задає темп. <code>break</code>/<code>throw</code> у циклі
+      викликає <code>iterator.return()</code> — readable-стрім при цьому знищується (<code>destroy()</code>), ресурс закривається.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">async-iter.mjs</span></div>
+        <pre><code>import { createReadStream } from 'node:fs';
+import { createInterface } from 'node:readline';
+
+// 1) рядки великого файлу — без завантаження в пам'ять
+const rl = createInterface({ input: createReadStream('data.txt'), crlfDelay: Infinity });
+let n = 0;
+for await (const line of rl) console.log(++n, line);       // 1 alpha / 2 beta / 3 gamma
+
+// 2) будь-який Readable — async iterable з Buffer-чанками
+let bytes = 0;
+for await (const chunk of createReadStream('data.txt')) bytes += chunk.length;
+
+// 3) async generator — пагінація API як "нескінченний" потік
+async function* paginate(url, { signal } = {}) {
+  let next = url;
+  while (next) {
+    const res = await fetch(next, { signal });
+    const body = await res.json();
+    yield* body.items;              // віддаємо елементи по одному
+    next = body.nextPage;           // наступну сторінку тягнемо, лише коли споживач попросить
+  }
+}
+for await (const item of paginate('https://api.example.com/items')) {
+  if (item.id === 'stop') break;    // break → generator.return() → решта сторінок НЕ запитується
+}</code></pre>
+      </div>
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        Async-генератори можна передавати прямо в <code>stream.pipeline</code> як трансформацію:
+        <code>await pipeline(src, async function* (source) { for await (const c of source) yield c.toString().toUpperCase(); }, dst)</code>.
+        Так пишуться ETL-скрипти без жодного класу Transform. Плюс helper-и стрімів: <code>readable.map(fn, { concurrency })</code>,
+        <code>.filter</code>, <code>.take</code> (experimental у частині версій). Деталі backpressure — <a href="06-events-streams-buffers.html">туторіал 6</a>.
+      </div></div>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> AsyncLocalStorage, async stack traces, top-level await</h2>
+      <p class="section-desc">Як тягнути requestId крізь усі await без передачі параметром, і як читати стеки асинхронного коду.</p>
+
+      <h3>AsyncLocalStorage — "thread-local" для async</h3>
+      <p>У Java є ThreadLocal, бо один запит = один потік. У Node тисячі запитів переплітаються в одному потоці, тому
+      глобальна змінна "поточний запит" не працює. <code>AsyncLocalStorage</code> (<code>node:async_hooks</code>, stable) прив'язує
+      store до <b>асинхронного контексту</b>: усе, що запущено всередині <code>als.run(store, fn)</code> — проміси, таймери, I/O callback-и —
+      бачить той самий store. Під капотом у нових версіях Node це реалізовано через V8 continuation-preserved embedder data (без накладних async_hooks),
+      тож ціна невелика.</p>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 9</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Чий requestId надрукується</span></div>
+        <div class="codecard"><div class="bar"><span class="path">task-9.js</span></div><pre><code>const { AsyncLocalStorage } = require('node:async_hooks');
+const als = new AsyncLocalStorage();
+const log = (msg) =&gt; console.log(`[${als.getStore()?.reqId ?? '-'}] ${msg}`);
+const sleep = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+async function handler(ms) {
+  log('start');
+  await sleep(ms);
+  log('db done');
+}
+als.run({ reqId: 'r1' }, () =&gt; handler(20));
+als.run({ reqId: 'r2' }, () =&gt; handler(5));
+log('outside');</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">[r1] start
+[r2] start
+[-] outside
+[r2] db done
+[r1] db done</span><p>Кожен <code>run</code> створює окремий контекст, який "переживає" <code>await</code> і таймер. Поза <code>run</code>
+        store — <code>undefined</code>. Хоча r1 і r2 переплітаються в часі, кожен лог бачить свій reqId.</p></div></details>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">request-context.mjs</span></div>
+        <pre><code>import { AsyncLocalStorage } from 'node:async_hooks';
+import { randomUUID } from 'node:crypto';
+
+export const ctx = new AsyncLocalStorage();
+
+// middleware (Express/Fastify-подібний)
+export function requestContext(req, res, next) {
+  const reqId = req.headers['x-request-id'] ?? randomUUID();
+  res.setHeader('x-request-id', reqId);
+  ctx.run({ reqId, userId: null, start: performance.now() }, next);
+}
+
+// будь-де глибоко в коді — без прокидання параметрів
+export const logger = {
+  info: (msg, extra) =&gt; console.log(JSON.stringify({ msg, ...extra, reqId: ctx.getStore()?.reqId })),
+};</code></pre>
+      </div>
+      <ul>
+        <li>Store — <b>мутабельний об'єкт</b>: можна дописати <code>userId</code> після автентифікації — побачать усі наступні кроки.</li>
+        <li><code>als.enterWith(store)</code> — встановлює контекст до кінця поточного синхронного виконання; ризиковано, віддавайте перевагу <code>run</code>.</li>
+        <li>Контекст губиться в бібліотеках з власним пулом callback-ів (старі драйвери, кастомні черги). Фікс — <code>AsyncResource.bind(fn)</code> або
+        <code>AsyncLocalStorage.bind(fn)</code> / <code>AsyncLocalStorage.snapshot()</code>.</li>
+        <li>Саме на ALS побудовані pino-http child loggers, OpenTelemetry context у Node, <code>nestjs-cls</code>, request-scoped транзакції в ORM.</li>
+      </ul>
+
+      <h3>Async stack traces</h3>
+      <p>V8 вміє показувати "логічний" стек через <code>await</code> (zero-cost async stack traces, рядки <code>at async fn</code>), але
+      <b>лише для ланцюжка await</b>. Якщо проміс повертається без await або йде через <code>.then</code>/callback, ланка зникає.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">stack.mjs</span></div>
+        <pre><code>const sleep = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+async function db() { await sleep(1); throw new Error('timeout'); }
+async function repo() { return await db(); }
+async function service() { await repo(); }
+try { await service(); } catch (e) { console.log(e.stack); }
+// Error: timeout
+//     at db (stack.mjs:2:45)
+//     at async repo (stack.mjs:3:32)
+//     at async service (stack.mjs:4:28)
+// Приберіть "await" у repo → рядок "at async repo" зникне зі стеку.</code></pre>
+      </div>
+      <p class="muted">Ще інструменти: <code>Error.captureStackTrace</code>, <code>--stack-trace-limit</code> (за замовчуванням 10 кадрів),
+      <code>error.cause</code> для ланцюжків "обгорнутих" помилок — <code>util.inspect</code> друкує їх разом.</p>
+
+      <h3>Top-level await</h3>
+      <ul>
+        <li>Працює <b>тільки в ESM</b> (<code>.mjs</code>, <code>"type": "module"</code>, або файл, який Node визначив як ESM за синтаксисом).
+        У <code>.cjs</code> — <code>SyntaxError</code>. Перевірено: <code>.js</code> без <code>"type"</code> з самим лише top-level await у Node 24
+        запускається як ESM завдяки syntax detection.</li>
+        <li>TLA блокує <b>evaluation</b> модуля і всіх, хто його імпортує (але не сусідні гілки графа) — зручно для
+        <code>const db = await connect()</code>, але повільний TLA у спільному модулі затримує старт усього застосунку.</li>
+        <li>Модуль із TLA <b>не можна <code>require()</code></b> навіть у Node 22+ (<code>ERR_REQUIRE_ASYNC_MODULE</code>) — деталі в
+        <a href="04-modules-cjs-esm.html">туторіалі 4</a>.</li>
+      </ul>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Пастки змішування: Zalgo, подвійний callback</h2>
+      <p class="section-desc">Класичні баги API-дизайну, через які Node-спільнота й перейшла на Promise.</p>
+
+      <h3>"Не випускайте Zalgo"</h3>
+      <p>Термін Isaac Z. Schlueter (автора npm) з есе <i>"Designing APIs for Asynchrony"</i>: функція, яка <b>іноді</b> викликає
+      callback синхронно (дані в кеші), а іноді асинхронно (пішла в мережу), — непередбачувана. Код після виклику бачить
+      різний стан залежно від "погоди в кеші".</p>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 10</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Zalgo в дії</span></div>
+        <div class="codecard"><div class="bar"><span class="path">task-10.js</span></div><pre><code>const cache = new Map();
+function getUser(id, cb) {
+  if (cache.has(id)) return cb(null, cache.get(id));                          // sync!
+  setTimeout(() =&gt; { cache.set(id, { id }); cb(null, cache.get(id)); }, 0);   // async
+}
+function run(label) {
+  let ready = false;
+  getUser(1, () =&gt; console.log(label, 'callback, ready =', ready));
+  ready = true;
+}
+run('first');
+setTimeout(() =&gt; run('second'), 10);</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">first callback, ready = true
+second callback, ready = false</span><p>Перший виклик — кеш порожній, callback асинхронний: <code>ready = true</code> встигає виконатись.
+        Другий — кеш теплий, callback викликається <b>синхронно</b>, до <code>ready = true</code>. Один і той самий код дає різний результат.
+        Фікс для callback-API: завжди відкладати — <code>return process.nextTick(cb, null, cache.get(id))</code> (або <code>queueMicrotask</code>).
+        Promise вирішує це за конструкцією: <code>.then</code> завжди асинхронний, навіть для <code>Promise.resolve(cached)</code>.</p></div></details>
+      </div>
+
+      <h3>Callback, викликаний двічі</h3>
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 11</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">try/catch навколо callback</span></div>
+        <div class="codecard"><div class="bar"><span class="path">task-11.js</span></div><pre><code>function readConfig(cb) {
+  try {
+    const cfg = JSON.parse('{"port":3000}');
+    cb(null, cfg);            // (1) callback кидає тут...
+  } catch (err) {
+    cb(err);                  // (2) ...і викликається ЩЕ РАЗ з власною помилкою
+  }
+}
+let calls = 0;
+readConfig((err, cfg) =&gt; {
+  calls++;
+  console.log('call', calls, err ? 'err: ' + err.message : 'cfg ok');
+  if (!err) throw new Error('bug in callback');
+});</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body"><span class="out">call 1 cfg ok
+call 2 err: bug in callback</span><p><code>try</code> охоплює і виклик <code>cb</code> — виняток з чужого callback-а ловиться і повертається туди ж.
+        У реальному коді це "відповідь відправлено двічі" (<code>ERR_HTTP_HEADERS_SENT</code>), подвійний commit тощо.
+        Правило: викликайте callback <b>поза</b> try, і завжди <code>return cb(...)</code>, щоб не "провалитися" до другого виклику.</p></div></details>
+      </div>
+
+      <h3>Інші пастки на межі callback ↔ promise</h3>
+      <ul>
+        <li><b>Змішаний API</b> "повертає проміс <i>і</i> приймає callback" — легко обробити результат двічі або жодного разу.
+        Обирайте одне; якщо підтримуєте обидва — callback-гілка не повинна повертати проміс, що може відхилитись без обробника.</li>
+        <li><b>Promise в EventEmitter</b>: async-слухач, що кинув виняток, — unhandled rejection, а не <code>'error'</code>-подія.
+        Опція <code>new EventEmitter({ captureRejections: true })</code> перенаправляє такі відмови в <code>'error'</code>.</li>
+        <li><b>Express 4</b> не ловить відмови async-хендлерів (потрібен <code>next(err)</code> або обгортка); <b>Express 5</b> і Fastify — ловлять.</li>
+        <li><b><code>new Promise</code> з асинхронним throw</b>: <code>new Promise(() =&gt; setTimeout(() =&gt; { throw e; }))</code> — це uncaughtException, а не reject.</li>
+        <li><b><code>setTimeout</code> з async-функцією</b>: відмова — unhandled. <code>setInterval(async …)</code> ще й накладає ітерації, якщо тіло довше за інтервал —
+        використовуйте рекурсивний <code>setTimeout</code> або <code>for await (const _ of setInterval(ms))</code> з timers/promises.</li>
+      </ul>
+      <div class="remember"><b>🧠 Запам'ятай:</b> callback-контракт = "рівно один раз, завжди асинхронно, помилка першою". Promise дає це безкоштовно — тому нові API пишіть на Promise, а callback-и лише адаптуйте.</div>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Каверзні питання співбесіди</h2>
+      <p class="section-desc">Питання, на яких відрізняють "користувався async/await" від "розуміє, як це працює".</p>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим Promise.all відрізняється від allSettled, race і any?</summary>
+        <div class="a"><b>all</b> — fail-fast на першій відмові; <b>allSettled</b> — ніколи не відхиляється, дає статус кожного;
+        <b>race</b> — перший settled (будь-який); <b>any</b> — перший fulfilled, а якщо всі відмовили — <code>AggregateError</code>.
+        Ключове доповнення: <b>жоден не скасовує</b> решту операцій — для цього AbortSignal.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому <code>return promise</code> у try не потрапляє в catch?</summary>
+        <div class="a">Бо функція виходить з try синхронно, повертаючи ще pending проміс; відмова станеться пізніше, коли try вже неактивний.
+        <code>return await</code> призупиняє функцію всередині try. Тому правило: <b>в try/catch — <code>return await</code></b>, поза ним — не обов'язково
+        (хоча і там дає кращий async stack trace).</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що станеться з процесом при unhandled rejection у Node 20/22?</summary>
+        <div class="a">Режим за замовчуванням <code>--unhandled-rejections=throw</code> (з Node 15): емітиться <code>unhandledRejection</code>; якщо обробника
+        немає — rejection піднімається як uncaught exception, процес завершується з кодом 1. Раніше був лише warning.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чи можна після <code>uncaughtException</code> продовжувати обслуговувати запити?</summary>
+        <div class="a">Технічно так, але не слід: стан процесу невідомий (відкриті транзакції, частково оновлені структури, зайняті локи).
+        Правильно — залогувати, graceful shutdown з жорстким таймаутом, <code>exit(1)</code> і рестарт оркестратором.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Як обмежити кількість одночасних запитів до API?</summary>
+        <div class="a">Семафор/ліміт конкурентності: черга <b>фабрик</b> (функцій, а не промісів) + лічильник активних; при завершенні — брати наступну.
+        Або N async-воркерів, що тягнуть індекси зі спільного лічильника. Бібліотеки — <code>p-limit</code>, <code>p-map</code>, <code>p-queue</code>.
+        Важливо: передати масив промісів у ліміт уже пізно — вони стартували в момент створення.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому <code>Promise.race([fetch(url), timeout(5000)])</code> — поганий таймаут?</summary>
+        <div class="a">Race лише перестає чекати: запит продовжує тримати сокет, пам'ять і, можливо, змінює дані на сервері. Плюс таймер
+        тримає event loop живим, якщо його не прибрати. Правильно: <code>fetch(url, { signal: AbortSignal.timeout(5000) })</code> — справжнє скасування, unref-таймер.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що таке jitter і навіщо він у retry?</summary>
+        <div class="a">Випадкова складова паузи між спробами. Без неї клієнти, що впали одночасно, ретраять синхронно — хвилі навантаження
+        (thundering herd) на сервіс, що відновлюється. Full jitter: <code>random(0, min(cap, base·2^n))</code>. Ретраять лише ідемпотентне і тимчасове.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Що не так з <code>arr.filter(async (x) =&gt; await isValid(x))</code>?</summary>
+        <div class="a">Async-функція повертає Promise, а Promise — завжди truthy, тож filter поверне <b>весь</b> масив. Правильно:
+        <code>const flags = await Promise.all(arr.map(isValid)); arr.filter((_, i) =&gt; flags[i])</code>.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Як прокинути requestId у логи без передачі параметром?</summary>
+        <div class="a"><code>AsyncLocalStorage</code>: middleware робить <code>als.run({ reqId }, next)</code>, логер читає <code>als.getStore()</code>.
+        Контекст переживає await, таймери та I/O. Губиться лише в бібліотеках з власним пулом callback-ів — лікується <code>AsyncResource.bind</code>.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Що таке Zalgo і як Promise від нього захищає?</summary>
+        <div class="a">API, що викликає callback то синхронно, то асинхронно — порядок виконання залежить від стану кешу. Promise гарантує, що
+        обробники <code>.then</code> завжди виконуються асинхронно (мікрозадача), навіть для вже resolved промісу. Для callback-API — <code>process.nextTick(cb)</code>.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чим відрізняється помилка скасування в <code>fs/promises</code> і в <code>fetch</code>?</summary>
+        <div class="a">Core API Node кидають <code>AbortError</code> (code <code>ABORT_ERR</code>) з причиною в <code>err.cause</code>. <code>fetch</code> (за WHATWG)
+        відхиляється самим <code>signal.reason</code>: для <code>AbortSignal.timeout</code> — <code>DOMException</code> TimeoutError. Надійно — перевіряти <code>signal.reason</code>.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чи можна скасувати синхронний важкий цикл через AbortController?</summary>
+        <div class="a">Ні. Скасування кооперативне: signal лише виставляє прапорець і емітить подію, а подія не обробиться, поки цикл тримає потік.
+        Для CPU-задач — розбивати роботу на шматки з <code>await</code>/<code>setImmediate</code> між ними або виносити у worker_threads і робити <code>worker.terminate()</code>.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому <code>util.promisify(obj.method)</code> іноді падає з "cannot read properties of undefined"?</summary>
+        <div class="a">promisify викликає функцію без контексту — <code>this</code> губиться. Потрібно <code>util.promisify(obj.method).bind(obj)</code>
+        або <code>util.promisify(obj.method.bind(obj))</code>. І promisify не підходить для callback-ів з кількома результатами без <code>util.promisify.custom</code>.</div>
+      </details>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Шпаргалка</h2>
+      <p class="section-desc">Одна таблиця, щоб освіжити все за хвилину перед співбесідою.</p>
+      <div class="cheat"><table>
+        <tr><th>Задача</th><th>Як правильно</th><th>Антипатерн</th></tr>
+        <tr><td>Callback → Promise</td><td><code>util.promisify(fn)</code> або <code>*/promises</code> API</td><td>ручний <code>new Promise</code> навколо проміса</td></tr>
+        <tr><td>Незалежні запити</td><td><code>await Promise.all([a(), b()])</code></td><td>два <code>await</code> підряд</td></tr>
+        <tr><td>Багато елементів</td><td><code>pLimit(n)</code> / пул воркерів</td><td><code>Promise.all(10k.map(fetch))</code></td></tr>
+        <tr><td>Цикл з await</td><td><code>for...of</code> + await (послідовно)</td><td><code>forEach(async)</code></td></tr>
+        <tr><td>Часткова невдача ок</td><td><code>allSettled</code></td><td><code>all</code> + catch на кожному</td></tr>
+        <tr><td>Таймаут</td><td><code>{ signal: AbortSignal.timeout(ms) }</code></td><td><code>Promise.race</code> з таймером</td></tr>
+        <tr><td>Кілька причин скасування</td><td><code>AbortSignal.any([a, b])</code></td><td>ручні прапорці <code>cancelled = true</code></td></tr>
+        <tr><td>Retry</td><td>backoff + full jitter + дедлайн + лише ідемпотентне</td><td>фіксована пауза, ретраї на кожному рівні</td></tr>
+        <tr><td>try/catch</td><td><code>return await</code> всередині try</td><td><code>return promise</code> у try</td></tr>
+        <tr><td>Fire-and-forget</td><td><code>void p.catch(log)</code></td><td>голий виклик async-функції</td></tr>
+        <tr><td>Чекати подію</td><td><code>await once(ee, 'ready')</code></td><td><code>new Promise(r =&gt; ee.on(...))</code> без 'error'</td></tr>
+        <tr><td>Великий файл по рядках</td><td><code>for await (line of readline)</code></td><td><code>readFile</code> + <code>split('\n')</code></td></tr>
+        <tr><td>Контекст запиту</td><td><code>AsyncLocalStorage.run</code></td><td>глобальна змінна "currentRequest"</td></tr>
+        <tr><td>Фатальні помилки</td><td>log → graceful shutdown → <code>exit(1)</code></td><td><code>uncaughtException</code> і "живемо далі"</td></tr>
+        <tr><td>Callback-API</td><td>завжди async (<code>nextTick</code>), <code>return cb()</code> поза try</td><td>Zalgo, cb у try</td></tr>
+      </table></div>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Як запам'ятати</h2>
+      <p class="section-desc">Терміни з асоціаціями — щоб на співбесіді відповідь спливала сама.</p>
+      <div class="flashgrid">
+        <div class="flashcard">
+          <div class="fc-num">1</div>
+          <div class="term">Error-first callback</div>
+          <div class="def">Callback останнім аргументом, помилка — першим параметром callback-а.</div>
+          <div class="mnemo"><b>Асоціація:</b> лікар спершу повідомляє погані новини, потім хороші.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">2</div>
+          <div class="term">Floating promise</div>
+          <div class="def">Проміс, на який ніхто не await-нув і не додав catch — його помилка нікому не належить.</div>
+          <div class="mnemo"><b>Асоціація:</b> пляшка з запискою в океані — може, хтось і прочитає.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">3</div>
+          <div class="term">all / allSettled / race / any</div>
+          <div class="def">Fail-fast / повний звіт / перший фініш / перший успіх.</div>
+          <div class="mnemo"><b>Асоціація:</b> альпіністи в зв'язці / журі олімпіади / спринт / кастинг — беруть першого, хто пройшов.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">4</div>
+          <div class="term">Concurrency limit</div>
+          <div class="def">Не більше N задач одночасно; нові чекають у черзі фабрик.</div>
+          <div class="mnemo"><b>Асоціація:</b> каси в супермаркеті — 4 каси, решта стоїть у черзі, а не штурмує одну.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">5</div>
+          <div class="term">Backoff + jitter</div>
+          <div class="def">Пауза між спробами росте експоненційно і має випадкову складову.</div>
+          <div class="mnemo"><b>Асоціація:</b> після концерту люди виходять не всі в одні двері в одну секунду.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">6</div>
+          <div class="term">AbortSignal</div>
+          <div class="def">Об'єкт-дріт, який передають у кожну операцію, щоб скасувати все одним abort().</div>
+          <div class="mnemo"><b>Асоціація:</b> рубильник у щитку — вимкнув один, згасла вся квартира.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">7</div>
+          <div class="term">AsyncLocalStorage</div>
+          <div class="def">Store, прив'язаний до асинхронного контексту, видимий через усі await.</div>
+          <div class="mnemo"><b>Асоціація:</b> браслет у лікарні — куди б пацієнта не возили, ім'я на руці.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">8</div>
+          <div class="term">Zalgo</div>
+          <div class="def">API, що викликає callback то синхронно, то асинхронно.</div>
+          <div class="mnemo"><b>Асоціація:</b> кур'єр, який іноді приносить піцу ще до того, як ти поклав слухавку.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">9</div>
+          <div class="term">Thenable</div>
+          <div class="def">Будь-який об'єкт з методом then — await його "розгорне".</div>
+          <div class="mnemo"><b>Асоціація:</b> "ходить як качка, крякає як качка" — значить, проміс.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">10</div>
+          <div class="term">unhandled-rejections=throw</div>
+          <div class="def">З Node 15 необроблена відмова валить процес з кодом 1.</div>
+          <div class="mnemo"><b>Асоціація:</b> пожежна сигналізація — раніше лише пищала, тепер вмикає спринклери.</div>
+        </div>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Node.js Doc · частина серії туторіалів AI Delivery Planner. Приклади коду перевірені на Node.js 24.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

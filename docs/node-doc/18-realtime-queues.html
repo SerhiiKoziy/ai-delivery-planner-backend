@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>18. Real-time і черги: WebSocket, SSE, BullMQ — Node.js Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🟢 Node.js Doc <span>· AI Delivery Planner</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Node.js Doc · Туторіал 18 з 20</div>
+  <h1>Real-time і фонові задачі: WebSocket, SSE, Socket.IO, BullMQ</h1>
+  <p class="lead">Node створений для тисяч довгоживучих з'єднань — але <b>тримати</b> їх, <b>масштабувати</b> на кілька інстансів і <b>надійно</b> виконувати фонову роботу — три окремі інженерні задачі. Розбираємо протоколи до рівня байтів, а черги — до рівня станів job-а й гарантій доставки.</p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="07-fs-process-os.html">7. fs, process, os</a>
+        <a href="08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="09-http-networking.html">9. HTTP і мережа</a>
+        <a href="10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="12-databases-orm.html">12. БД і ORM</a>
+        <a href="13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="14-security.html">14. Безпека Node</a>
+        <a href="15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="16-testing.html">16. Тестування</a>
+        <a href="17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="18-realtime-queues.html" class="active">18. Real-time і черги</a>
+        <a href="19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+  </aside>
+
+    <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Карта real-time підходів</a></li>
+      <li><a href="#s2">2. Протокол WebSocket зсередини</a></li>
+      <li><a href="#s3">3. Бібліотека ws: heartbeat і backpressure</a></li>
+      <li><a href="#s4">4. Socket.IO: що це насправді</a></li>
+      <li><a href="#s5">5. Server-Sent Events</a></li>
+      <li><a href="#s6">6. Масштабування real-time</a></li>
+      <li><a href="#s7">7. Навіщо черги задач</a></li>
+      <li><a href="#s8">8. BullMQ: Queue, Worker, стани</a></li>
+      <li><a href="#s9">9. BullMQ: retries, розклад, ліміти, stalled</a></li>
+      <li><a href="#s10">10. Альтернативи BullMQ</a></li>
+      <li><a href="#s11">11. Cron і дублювання між інстансами</a></li>
+      <li><a href="#s12">12. Патерни надійності: idempotency, outbox, DLQ</a></li>
+      <li><a href="#s13">13. Каверзні питання співбесіди</a></li>
+      <li><a href="#s14">14. Шпаргалка</a></li>
+      <li><a href="#s15">15. Як запам'ятати</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Карта real-time підходів</h2>
+      <p class="section-desc">"Real-time" — це не одна технологія, а спектр компромісів між простотою, затримкою і вартістю з'єднання.</p>
+
+      <p>HTTP створювався як модель <b>запит → відповідь</b>: ініціатор завжди клієнт. Real-time з'являється,
+      коли серверу потрібно щось <i>сказати першим</i>: нове повідомлення в чаті, зміна статусу замовлення,
+      прогрес довгої задачі. Історично для цього придумали п'ять підходів, і всі вони досі живі.</p>
+
+      <ul>
+        <li><b>Short polling</b> — клієнт питає "є щось нове?" кожні N секунд. Тупо, дорого, але працює всюди і
+        переживає будь-які проксі.</li>
+        <li><b>Long polling</b> — клієнт питає, а сервер <i>тримає</i> запит відкритим, доки не з'явиться подія
+        (або timeout ~25–30 с), відповідає, і клієнт одразу шле новий запит. Так працювали ранні Facebook-чат і Comet.</li>
+        <li><b>SSE (Server-Sent Events)</b> — один довгий HTTP-запит, у який сервер дописує події у текстовому форматі
+        <code>text/event-stream</code>. Тільки сервер → клієнт, зате автоматичне перепідключення вбудоване в браузер.</li>
+        <li><b>WebSocket</b> — HTTP-запит "апгрейдиться" до двонаправленого протоколу поверх того самого TCP-з'єднання.
+        Повний дуплекс, мінімальні накладні витрати на повідомлення.</li>
+        <li><b>WebTransport</b> — новіший протокол поверх HTTP/3 (QUIC): кілька незалежних потоків + ненадійні
+        datagrams (як UDP) без head-of-line blocking. Підтримка в браузерах є, але серверна екосистема Node поки
+        незріла — на співбесіді достатньо знати, що це і навіщо.</li>
+      </ul>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 340" role="img" aria-label="Часова діаграма чотирьох підходів. Три події на сервері позначені вертикальними пунктирами. Short polling: багато коротких запитів, більшість порожні, дані приходять із запізненням до наступного запиту. Long polling: кожен запит висить до події, потім одразу новий запит. SSE: один довгий запит, події приходять по ньому одразу. WebSocket: після рукостискання 101 одне з'єднання, події йдуть в обидва боки.">
+          <defs><marker id="n18d1-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <line x1="300" y1="25" x2="300" y2="295" stroke="var(--warn)" stroke-dasharray="4 4"/>
+            <line x1="470" y1="25" x2="470" y2="295" stroke="var(--warn)" stroke-dasharray="4 4"/>
+            <line x1="610" y1="25" x2="610" y2="295" stroke="var(--warn)" stroke-dasharray="4 4"/>
+            <text x="300" y="18" text-anchor="middle" fill="var(--warn)">подія 1</text>
+            <text x="470" y="18" text-anchor="middle" fill="var(--warn)">подія 2</text>
+            <text x="610" y="18" text-anchor="middle" fill="var(--warn)">подія 3</text>
+
+            <text x="20" y="64" fill="currentColor" font-weight="bold">Short polling</text>
+            <line x1="170" y1="60" x2="705" y2="60" stroke="var(--fg-muted)"/>
+            <rect x="180" y="52" width="18" height="16" fill="none" stroke="currentColor"/>
+            <rect x="250" y="52" width="18" height="16" fill="none" stroke="currentColor"/>
+            <rect x="320" y="52" width="18" height="16" fill="var(--accent)" stroke="currentColor"/>
+            <rect x="390" y="52" width="18" height="16" fill="none" stroke="currentColor"/>
+            <rect x="460" y="52" width="18" height="16" fill="none" stroke="currentColor"/>
+            <rect x="530" y="52" width="18" height="16" fill="var(--accent)" stroke="currentColor"/>
+            <rect x="600" y="52" width="18" height="16" fill="none" stroke="currentColor"/>
+            <rect x="670" y="52" width="18" height="16" fill="var(--accent)" stroke="currentColor"/>
+            <text x="180" y="88" fill="var(--fg-muted)">запит кожні N с — порожні відповіді, затримка до N с</text>
+
+            <text x="20" y="134" fill="currentColor" font-weight="bold">Long polling</text>
+            <line x1="170" y1="130" x2="705" y2="130" stroke="var(--fg-muted)"/>
+            <rect x="180" y="122" width="120" height="16" fill="var(--accent-soft)" stroke="currentColor"/>
+            <rect x="304" y="122" width="166" height="16" fill="var(--accent-soft)" stroke="currentColor"/>
+            <rect x="474" y="122" width="136" height="16" fill="var(--accent-soft)" stroke="currentColor"/>
+            <rect x="614" y="122" width="90" height="16" fill="var(--accent-soft)" stroke="currentColor"/>
+            <text x="180" y="158" fill="var(--fg-muted)">запит висить до події → відповідь → новий запит (новий HTTP-оверхед)</text>
+
+            <text x="20" y="204" fill="currentColor" font-weight="bold">SSE</text>
+            <rect x="180" y="194" width="524" height="12" fill="var(--accent-soft)" stroke="currentColor"/>
+            <circle cx="300" cy="200" r="6" fill="var(--accent)"/>
+            <circle cx="470" cy="200" r="6" fill="var(--accent)"/>
+            <circle cx="610" cy="200" r="6" fill="var(--accent)"/>
+            <text x="180" y="228" fill="var(--fg-muted)">один GET, події летять сервер → клієнт одразу</text>
+
+            <text x="20" y="274" fill="currentColor" font-weight="bold">WebSocket</text>
+            <rect x="180" y="262" width="36" height="20" fill="none" stroke="currentColor"/>
+            <text x="198" y="276" text-anchor="middle" fill="currentColor" font-size="11">101</text>
+            <rect x="216" y="266" width="488" height="12" fill="var(--accent-soft)" stroke="currentColor"/>
+            <circle cx="300" cy="272" r="6" fill="var(--accent)"/>
+            <circle cx="470" cy="272" r="6" fill="var(--accent)"/>
+            <circle cx="610" cy="272" r="6" fill="var(--accent)"/>
+            <circle cx="390" cy="272" r="6" fill="var(--good)"/>
+            <circle cx="545" cy="272" r="6" fill="var(--good)"/>
+            <text x="180" y="300" fill="var(--fg-muted)">upgrade, далі фрейми в обидва боки по одному TCP</text>
+
+            <circle cx="30" cy="325" r="6" fill="var(--accent)"/>
+            <text x="42" y="329" fill="currentColor">сервер → клієнт</text>
+            <circle cx="170" cy="325" r="6" fill="var(--good)"/>
+            <text x="182" y="329" fill="currentColor">клієнт → сервер</text>
+            <rect x="300" y="318" width="18" height="14" fill="var(--accent-soft)" stroke="currentColor"/>
+            <text x="326" y="329" fill="currentColor">відкритий HTTP-запит / з'єднання</text>
+          </g>
+        </svg>
+        <figcaption>Чим "правіше" в списку, тим менша затримка і накладні витрати на подію — і тим складніше масштабувати stateful-з'єднання.</figcaption>
+      </figure>
+
+      <table>
+        <tr><th></th><th>Short polling</th><th>Long polling</th><th>SSE</th><th>WebSocket</th><th>WebTransport</th></tr>
+        <tr><td>Напрям</td><td>клієнт тягне</td><td>клієнт тягне</td><td>сервер → клієнт</td><td>дуплекс</td><td>дуплекс, багато потоків</td></tr>
+        <tr><td>Транспорт</td><td>HTTP</td><td>HTTP</td><td>HTTP/1.1 або HTTP/2</td><td>TCP після HTTP Upgrade (або RFC 8441 поверх HTTP/2)</td><td>HTTP/3 / QUIC (UDP)</td></tr>
+        <tr><td>Затримка</td><td>до інтервалу</td><td>низька</td><td>низька</td><td>найнижча</td><td>найнижча, без HOL blocking</td></tr>
+        <tr><td>Формат</td><td>будь-який</td><td>будь-який</td><td>лише UTF-8 текст</td><td>текст + бінарні фрейми</td><td>потоки байтів, datagrams</td></tr>
+        <tr><td>Reconnect</td><td>не потрібен</td><td>вручну</td><td><b>вбудований</b> (EventSource + Last-Event-ID)</td><td>вручну (або Socket.IO)</td><td>вручну</td></tr>
+        <tr><td>Проксі/фаєрволи</td><td>ідеально</td><td>добре</td><td>добре (буферизацію треба вимкнути)</td><td>інколи ріжуть Upgrade</td><td>UDP часто блокують</td></tr>
+        <tr><td>Коли брати</td><td>рідкі оновлення, простота</td><td>fallback</td><td>нотифікації, стрімінг LLM, дашборди</td><td>чати, ігри, колаборація</td><td>медіа, ігри з втратами</td></tr>
+      </table>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">На співбесіді запитають так</span>
+        "Чому стрімінг відповіді LLM (ChatGPT-подібний UI) майже завжди SSE, а не WebSocket?" — потік однонаправлений,
+        SSE — звичайний HTTP (працює з auth-заголовками на fetch, CDN, HTTP/2 мультиплексуванням, логами), не треба
+        тримати окремий stateful-протокол. WebSocket потрібен, коли клієнт теж часто шле дані.</div>
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Протокол WebSocket зсередини</h2>
+      <p class="section-desc">Знати рукостискання і формат фрейму — це те, що відрізняє "користувався Socket.IO" від "розумію, що відбувається в мережі".</p>
+
+      <h3>HTTP Upgrade handshake</h3>
+      <p>WebSocket (RFC 6455) починається як <b>звичайний HTTP/1.1 GET</b>. Тому він проходить через ті самі порти 80/443,
+      балансувальники й auth-cookie. Клієнт просить змінити протокол, сервер відповідає <code>101 Switching Protocols</code>,
+      і з цього моменту по тому самому TCP-сокету йдуть уже не HTTP-повідомлення, а <b>WebSocket-фрейми</b>.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 420" role="img" aria-label="Діаграма послідовності WebSocket. Клієнт надсилає GET з заголовками Upgrade websocket, Connection Upgrade, Sec-WebSocket-Key і Version 13. Сервер відповідає 101 Switching Protocols з Sec-WebSocket-Accept, що дорівнює base64 від sha1 ключа плюс GUID. Далі по тому самому TCP йдуть фрейми: клієнт шле замаскований текстовий фрейм, сервер відповідає незамаскованим, сервер шле ping, клієнт pong, і обидва обмінюються close-фреймами з кодом 1000.">
+          <defs><marker id="n18d2-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="60" y="10" width="120" height="34" rx="8" fill="var(--accent-soft)" stroke="currentColor"/>
+            <text x="120" y="32" text-anchor="middle" fill="currentColor" font-weight="bold">Клієнт</text>
+            <rect x="540" y="10" width="120" height="34" rx="8" fill="var(--accent-soft)" stroke="currentColor"/>
+            <text x="600" y="32" text-anchor="middle" fill="currentColor" font-weight="bold">Сервер (Node)</text>
+            <line x1="120" y1="44" x2="120" y2="410" stroke="var(--fg-muted)" stroke-dasharray="3 3"/>
+            <line x1="600" y1="44" x2="600" y2="410" stroke="var(--fg-muted)" stroke-dasharray="3 3"/>
+
+            <text x="360" y="64" text-anchor="middle" fill="currentColor">GET /chat HTTP/1.1</text>
+            <text x="360" y="80" text-anchor="middle" fill="var(--fg-muted)">Upgrade: websocket · Connection: Upgrade</text>
+            <text x="360" y="96" text-anchor="middle" fill="var(--fg-muted)">Sec-WebSocket-Key: dGhl...ZQ== · Version: 13</text>
+            <line x1="122" y1="104" x2="596" y2="104" stroke="currentColor" stroke-width="1.3" marker-end="url(#n18d2-arrow)"/>
+
+            <text x="360" y="128" text-anchor="middle" fill="var(--good)">HTTP/1.1 101 Switching Protocols</text>
+            <text x="360" y="144" text-anchor="middle" fill="var(--fg-muted)">Sec-WebSocket-Accept: base64(sha1(key + GUID))</text>
+            <line x1="598" y1="152" x2="124" y2="152" stroke="var(--good)" stroke-width="1.3" marker-end="url(#n18d2-arrow)"/>
+
+            <rect x="140" y="166" width="440" height="24" rx="6" fill="var(--bg-soft)" stroke="var(--warn)" stroke-dasharray="4 3"/>
+            <text x="360" y="182" text-anchor="middle" fill="var(--warn)">далі той самий TCP-сокет, але вже не HTTP, а фрейми</text>
+
+            <text x="360" y="212" text-anchor="middle" fill="currentColor">text frame "hi" (FIN=1, opcode=0x1, MASK=1)</text>
+            <line x1="122" y1="220" x2="596" y2="220" stroke="currentColor" stroke-width="1.3" marker-end="url(#n18d2-arrow)"/>
+            <text x="360" y="244" text-anchor="middle" fill="currentColor">text frame "echo: hi" (MASK=0)</text>
+            <line x1="598" y1="252" x2="124" y2="252" stroke="var(--accent)" stroke-width="1.3" marker-end="url(#n18d2-arrow)"/>
+
+            <text x="360" y="276" text-anchor="middle" fill="currentColor">ping (opcode 0x9) — heartbeat</text>
+            <line x1="598" y1="284" x2="124" y2="284" stroke="var(--accent)" stroke-width="1.3" marker-end="url(#n18d2-arrow)"/>
+            <text x="360" y="308" text-anchor="middle" fill="currentColor">pong (opcode 0xA) — браузер відповідає сам</text>
+            <line x1="122" y1="316" x2="596" y2="316" stroke="currentColor" stroke-width="1.3" marker-end="url(#n18d2-arrow)"/>
+
+            <text x="360" y="340" text-anchor="middle" fill="currentColor">close (opcode 0x8, code 1000)</text>
+            <line x1="122" y1="348" x2="596" y2="348" stroke="currentColor" stroke-width="1.3" marker-end="url(#n18d2-arrow)"/>
+            <text x="360" y="372" text-anchor="middle" fill="currentColor">close (1000) у відповідь → TCP FIN</text>
+            <line x1="598" y1="380" x2="124" y2="380" stroke="var(--accent)" stroke-width="1.3" marker-end="url(#n18d2-arrow)"/>
+            <text x="360" y="404" text-anchor="middle" fill="var(--fg-muted)">GUID = 258EAFA5-E914-47DA-95CA-C5AB0DC85B11 (константа з RFC)</text>
+          </g>
+        </svg>
+        <figcaption>Рукостискання — це один HTTP-обмін; усе подальше — бінарні фрейми по тому самому TCP, тому WebSocket = stateful з'єднання.</figcaption>
+      </figure>
+
+      <p><code>Sec-WebSocket-Key</code> — це не безпека і не автентифікація. Він лише доводить, що сервер <i>справді</i> розуміє
+      WebSocket (а не кешуючий проксі, що випадково віддав 101). Перевіримо формулу на прикладі з RFC:</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">accept.js</span></div>
+        <pre><code>const { createHash } = require('node:crypto');
+const GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
+const key = 'dGhlIHNhbXBsZSBub25jZQ=='; // приклад із RFC 6455
+const accept = createHash('sha1').update(key + GUID).digest('base64');
+console.log(accept); // s3pPLMBiTxaQ9kYGzzhZRbK+xOo=</code></pre>
+      </div>
+
+      <h3>Формат фрейму</h3>
+      <table>
+        <tr><th>Біти</th><th>Поле</th><th>Сенс</th></tr>
+        <tr><td>1</td><td>FIN</td><td>останній фрагмент повідомлення (великі повідомлення можна різати на фрагменти)</td></tr>
+        <tr><td>3</td><td>RSV1–3</td><td>розширення; RSV1 = стиснення <code>permessage-deflate</code></td></tr>
+        <tr><td>4</td><td>opcode</td><td><code>0x1</code> text, <code>0x2</code> binary, <code>0x0</code> continuation, <code>0x8</code> close, <code>0x9</code> ping, <code>0xA</code> pong</td></tr>
+        <tr><td>1</td><td>MASK</td><td>клієнт → сервер <b>завжди</b> 1, сервер → клієнт 0</td></tr>
+        <tr><td>7 (+16/64)</td><td>payload len</td><td>0–125 напряму; 126 → далі 16 біт; 127 → далі 64 біти</td></tr>
+        <tr><td>32</td><td>masking key</td><td>4 випадкові байти; payload XOR-иться з ними</td></tr>
+      </table>
+
+      <p>Накладні витрати — <b>2–14 байт на повідомлення</b> проти сотень байт HTTP-заголовків у polling. Маскування
+      клієнтських фреймів існує не для шифрування, а проти <b>cache poisoning</b> проміжних проксі: атакуючий скрипт у браузері
+      не може сформувати байти, що виглядають як валідний HTTP-запит для "наївного" проксі.</p>
+
+      <h3>Мінімальний WebSocket-сервер "руками" — щоб побачити байти</h3>
+      <p>Ніколи не пишіть так у проді (немає фрагментації, довгих фреймів, валідації UTF-8), але цей код запущено і він
+      показує весь механізм: <code>'upgrade'</code>-подію <code>http.Server</code>, відповідь 101, кодування/декодування фрейму.
+      Клієнт — <b>вбудований глобальний <code>WebSocket</code></b> (undici), доступний за замовчуванням у Node 22+.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">raw-ws.mjs</span></div>
+        <pre><code>import http from 'node:http';
+import { createHash } from 'node:crypto';
+
+const GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
+
+// Кодуємо короткий текстовий фрейм (сервер -> клієнт, без маски)
+function textFrame(str) {
+  const payload = Buffer.from(str);
+  if (payload.length > 125) throw new Error('demo: only short frames');
+  return Buffer.concat([Buffer.from([0x81, payload.length]), payload]); // FIN=1, opcode=1
+}
+
+// Декодуємо короткий фрейм клієнта (клієнт ЗАВЖДИ маскує payload)
+function decodeFrame(buf) {
+  const opcode = buf[0] &amp; 0x0f;
+  const masked = (buf[1] &amp; 0x80) !== 0;
+  const len = buf[1] &amp; 0x7f;           // для демо: тільки довжини до 125
+  const mask = buf.subarray(2, 6);
+  const data = Buffer.from(buf.subarray(6, 6 + len));
+  for (let i = 0; i &lt; data.length; i++) data[i] ^= mask[i % 4];
+  return { opcode, masked, text: data.toString() };
+}
+
+const server = http.createServer((req, res) =&gt; res.end('plain http'));
+
+server.on('upgrade', (req, socket) =&gt; {
+  console.log('server: upgrade request, version', req.headers['sec-websocket-version']);
+  const accept = createHash('sha1').update(req.headers['sec-websocket-key'] + GUID).digest('base64');
+  socket.write(
+    'HTTP/1.1 101 Switching Protocols\r\n' +
+    'Upgrade: websocket\r\nConnection: Upgrade\r\n' +
+    `Sec-WebSocket-Accept: ${accept}\r\n\r\n`
+  );
+  socket.write(textFrame('hello from raw server'));
+  socket.on('data', (buf) =&gt; {
+    const f = decodeFrame(buf);
+    if (f.opcode === 0x8) { socket.end(Buffer.from([0x88, 0])); return; } // close
+    console.log('server got:', f.text, '| masked:', f.masked);
+    socket.write(textFrame('echo: ' + f.text));
+  });
+});
+
+server.listen(0, () =&gt; {
+  const { port } = server.address();
+  const ws = new WebSocket(`ws://localhost:${port}`); // вбудований клієнт
+  ws.onopen = () =&gt; console.log('client: open');
+  ws.onmessage = (e) =&gt; {
+    console.log('client got:', e.data);
+    if (e.data.startsWith('hello')) ws.send('ping-1');
+    else { ws.close(); server.close(); }
+  };
+  ws.onclose = () =&gt; console.log('client: closed');
+});</code></pre>
+      </div>
+      <p>Реальний вивід (<code>node raw-ws.mjs</code>, Node 24):</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">output</span></div>
+        <pre><code>server: upgrade request, version 13
+client: open
+client got: hello from raw server
+server got: ping-1 | masked: true
+client got: echo: ping-1
+client: closed</code></pre>
+      </div>
+
+      <h3>Close codes, які варто знати</h3>
+      <table>
+        <tr><th>Код</th><th>Значення</th></tr>
+        <tr><td>1000</td><td>нормальне закриття</td></tr>
+        <tr><td>1001</td><td>going away (вкладку закрили, сервер перезапускається)</td></tr>
+        <tr><td>1006</td><td>"abnormal" — з'єднання обірвалось без close-фрейму. <b>Ніколи не надсилається по мережі</b>, це те, що бачить клієнт</td></tr>
+        <tr><td>1008 / 1009</td><td>policy violation / повідомлення завелике</td></tr>
+        <tr><td>1011</td><td>внутрішня помилка сервера</td></tr>
+        <tr><td>4000–4999</td><td>ваші прикладні коди (наприклад, 4001 = "токен протух")</td></tr>
+      </table>
+
+      <div class="remember"><b>🧠 Запам'ятай:</b> WebSocket = HTTP GET з Upgrade → 101 → фрейми з opcode; клієнт маскує, сервер — ні; ping/pong — частина протоколу.</div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Бібліотека ws: heartbeat і backpressure</h2>
+      <p class="section-desc">У Node немає вбудованого WebSocket-<i>сервера</i> — стандарт де-факто це <code>ws</code>, на якому стоять Socket.IO, NestJS-адаптер та інші.</p>
+
+      <p>Вбудований у Node <code>WebSocket</code> — тільки <b>клієнт</b> (браузерний API, реалізований в undici). Для сервера
+      майже завжди беруть <code>ws</code> — мінімалістичний, швидкий, з опціональними нативними прискорювачами
+      (<code>bufferutil</code>, <code>utf-8-validate</code>; у свіжих версіях Node їх роль частково перебрали вбудовані механізми).
+      Альтернатива для екстремальних навантажень — <code>uWebSockets.js</code> (C++ ядро, власний HTTP-сервер, не сумісний із <code>http</code>-API).</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">ws-server.mjs</span></div>
+        <pre><code>import http from 'node:http';
+import { WebSocketServer } from 'ws';
+
+const server = http.createServer();
+// noServer: самі вирішуємо, чи приймати upgrade (auth ДО рукостискання)
+const wss = new WebSocketServer({ noServer: true, maxPayload: 64 * 1024 });
+
+server.on('upgrade', async (req, socket, head) =&gt; {
+  try {
+    const user = await authenticate(req);     // cookie / токен з query / subprotocol
+    wss.handleUpgrade(req, socket, head, (ws) =&gt; {
+      ws.user = user;
+      wss.emit('connection', ws, req);
+    });
+  } catch {
+    socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+    socket.destroy();                          // не тримаємо сокет
+  }
+});
+
+wss.on('connection', (ws) =&gt; {
+  ws.isAlive = true;
+  ws.on('pong', () =&gt; { ws.isAlive = true; });
+  ws.on('error', (err) =&gt; log.warn({ err }, 'ws error')); // без цього — crash
+  ws.on('message', (data, isBinary) =&gt; {
+    const msg = JSON.parse(data.toString());   // валідуйте схемою!
+    handle(ws, msg);
+  });
+});
+
+// Heartbeat: знаходимо "напівмертві" з'єднання (телефон пішов у тунель)
+const interval = setInterval(() =&gt; {
+  for (const ws of wss.clients) {
+    if (!ws.isAlive) { ws.terminate(); continue; } // не відповів на минулий ping
+    ws.isAlive = false;
+    ws.ping();
+  }
+}, 30_000);
+wss.on('close', () =&gt; clearInterval(interval));
+
+server.listen(8080);</code></pre>
+      </div>
+
+      <h3>Навіщо heartbeat, якщо є TCP?</h3>
+      <p>TCP не повідомляє про розрив, якщо друга сторона просто <i>зникла</i> (вимкнувся Wi-Fi, NAT забув мапінг). Без
+      трафіку сокет може вважатися "відкритим" годинами — це <b>half-open connections</b>, і вони їдять пам'ять та файлові
+      дескриптори. Окремо: балансувальники і проксі (AWS ALB, nginx, Cloudflare) закривають "мовчазні" з'єднання за
+      idle timeout (часто 60 с), тож ping кожні 20–30 с ще й тримає з'єднання живим. Браузер відповідає на ping
+      автоматично, але <b>з JS браузера ping надіслати не можна</b> — тому клієнтський heartbeat роблять прикладним
+      повідомленням <code>{type:'ping'}</code>.</p>
+
+      <h3>Backpressure: <code>bufferedAmount</code></h3>
+      <p><code>ws.send()</code> ніколи не блокує: якщо клієнт повільний (3G, завислий таб), дані накопичуються в буфері
+      процесу. Розсилка 10 000 клієнтам великого апдейту з частотою 10 Гц — і один повільний клієнт може роздути heap на
+      сотні мегабайт. Те саме, що backpressure у стрімах (<a href="06-events-streams-buffers.html">туторіал 6</a>), але
+      без <code>pipe()</code> — керувати треба вручну:</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">broadcast.mjs</span></div>
+        <pre><code>const HIGH_WATER = 1 * 1024 * 1024; // 1 MB у буфері — клієнт не встигає
+
+function broadcast(wss, payload) {
+  const data = JSON.stringify(payload);       // серіалізуємо ОДИН раз
+  for (const ws of wss.clients) {
+    if (ws.readyState !== ws.OPEN) continue;
+    if (ws.bufferedAmount &gt; HIGH_WATER) {
+      // стратегії: пропустити апдейт (для "останнього стану"), агрегувати, або відключити
+      metrics.slowClientDrops.inc();
+      continue;
+    }
+    ws.send(data);
+  }
+}</code></pre>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Пастки ws у проді:</b> (1) без <code>ws.on('error')</code> помилка сокета стане
+        uncaught exception; (2) <code>maxPayload</code> за замовчуванням великий (100 MiB) — зменшіть, інакше один клієнт
+        може надіслати гігантське повідомлення; (3) <code>permessage-deflate</code> на сервері вимкнено за замовчуванням
+        не просто так — zlib-контекст на кожне з'єднання з'їдає пам'ять і CPU, вмикайте свідомо; (4) перевіряйте
+        <code>Origin</code> у upgrade — браузер шле cookie на WS-запити з будь-якого сайту (<b>Cross-Site WebSocket Hijacking</b>).</div>
+      </div>
+
+      <h3>Автентифікація на connect</h3>
+      <ul>
+        <li><b>Cookie</b> (session/JWT у httpOnly cookie) — найпростіше для браузера, але обов'язкова перевірка Origin.</li>
+        <li><b>Токен у query</b> <code>?token=...</code> — працює, але токен потрапляє в access-логи; краще короткоживучий
+        одноразовий "ticket", отриманий звичайним HTTP-запитом.</li>
+        <li><b>Перше повідомлення</b> <code>{type:'auth', token}</code> — гнучко, але сокет існує до перевірки; ставте timeout.</li>
+        <li>Браузерний <code>WebSocket</code> <b>не дозволяє</b> власні заголовки (на кшталт <code>Authorization</code>) — частий сюрприз.
+        Хак — передати токен у <code>Sec-WebSocket-Protocol</code>.</li>
+        <li>Токен протухає, а з'єднання живе годинами — плануйте re-auth або закриття з кодом 4001.</li>
+      </ul>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Socket.IO: що це насправді</h2>
+      <p class="section-desc">Найпопулярніша real-time бібліотека Node — і найчастіше неправильно описана на співбесідах як "обгортка над WebSocket".</p>
+
+      <p><b>Socket.IO — це власний протокол</b> поверх транспорту Engine.IO, який використовує WebSocket <i>або</i> HTTP
+      long-polling (а в новіших версіях і WebTransport). Звичайний <code>new WebSocket('ws://...')</code> до Socket.IO-сервера
+      <b>не підключиться</b>, і навпаки — клієнт Socket.IO не говорить із "голим" ws-сервером. Пакети мають свій формат
+      (<code>42["chat",{"text":"hi"}]</code> — 4 = message Engine.IO, 2 = EVENT Socket.IO).</p>
+
+      <p>Що ви отримуєте за цю ціну:</p>
+      <ul>
+        <li><b>Автоматичний reconnect</b> з exponential backoff і буферизацією emit-ів під час обриву.</li>
+        <li><b>Fallback</b> на long-polling, якщо WebSocket ріжуть корпоративні проксі (за замовчуванням клієнт стартує з polling
+        і апгрейдиться — тому без sticky sessions на кількох інстансах буде хаос).</li>
+        <li><b>Події з іменами</b> замість сирих рядків, <b>acknowledgements</b> (callback/Promise-відповідь на emit).</li>
+        <li><b>Rooms і namespaces</b> — групування з'єднань.</li>
+        <li><b>Адаптери</b> (Redis, Redis Streams, Postgres, cluster) для розсилки між інстансами.</li>
+        <li><b>Connection state recovery</b> (v4.6+) — після короткого обриву клієнт отримує пропущені події і той самий <code>socket.id</code>.</li>
+      </ul>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">socketio-server.mjs</span></div>
+        <pre><code>import { createServer } from 'node:http';
+import { Server } from 'socket.io';
+import { createAdapter } from '@socket.io/redis-adapter';
+import { createClient } from 'redis';
+
+const httpServer = createServer();
+const io = new Server(httpServer, {
+  cors: { origin: 'https://app.example.com', credentials: true },
+  connectionStateRecovery: { maxDisconnectionDuration: 2 * 60_000 },
+});
+
+// Розсилка між інстансами через Redis pub/sub
+const pub = createClient({ url: process.env.REDIS_URL });
+const sub = pub.duplicate();
+await Promise.all([pub.connect(), sub.connect()]);
+io.adapter(createAdapter(pub, sub));
+
+// Middleware: auth ОДИН раз на з'єднання
+io.use(async (socket, next) =&gt; {
+  try {
+    socket.data.user = await verifyToken(socket.handshake.auth.token);
+    next();
+  } catch {
+    next(new Error('unauthorized'));          // клієнт отримає 'connect_error'
+  }
+});
+
+const orders = io.of('/orders');               // namespace = окремий "канал" з власними middleware
+orders.on('connection', (socket) =&gt; {
+  socket.join(`org:${socket.data.user.orgId}`); // room = довільна група сокетів
+
+  // acknowledgement: другий аргумент — callback-відповідь
+  socket.on('order:update', async (payload, ack) =&gt; {
+    const order = await updateOrder(payload);
+    // всім у кімнаті, крім відправника
+    socket.to(`org:${order.orgId}`).emit('order:updated', order);
+    ack({ ok: true, version: order.version });
+  });
+});
+
+httpServer.listen(3000);</code></pre>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">client.js</span></div>
+        <pre><code>import { io } from 'socket.io-client';
+const socket = io('https://api.example.com/orders', { auth: { token } });
+
+// emit з таймаутом і Promise-ack
+const res = await socket.timeout(5000).emitWithAck('order:update', { id: 1, status: 'paid' });
+socket.on('order:updated', render);
+socket.on('connect_error', (err) =&gt; showLogin(err.message));</code></pre>
+      </div>
+
+      <table>
+        <tr><th>Поняття</th><th>Що це</th><th>Типове застосування</th></tr>
+        <tr><td>Namespace (<code>io.of('/admin')</code>)</td><td>логічний канал усередині одного фізичного з'єднання; свої middleware і обробники</td><td>розділення доменів / прав (admin vs public)</td></tr>
+        <tr><td>Room (<code>socket.join('x')</code>)</td><td>серверна група сокетів, клієнт про неї не знає</td><td>чат-кімната, tenant, документ, користувач (усі його вкладки)</td></tr>
+        <tr><td>Ack</td><td>відповідь на конкретний emit</td><td>підтвердження збереження, RPC-подібні виклики</td></tr>
+        <tr><td>Volatile emit</td><td><code>socket.volatile.emit</code> — можна загубити, якщо клієнт не готовий</td><td>курсори, позиції в грі</td></tr>
+      </table>
+
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: ws vs Socket.IO vs SSE</div>
+        <table><tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr><td><b>ws</b></td><td>стандартний протокол, будь-який клієнт (мобільний, IoT, інші мови), мінімум оверхеду</td><td>reconnect, rooms, ack, крос-інстансна розсилка — пишете самі</td></tr>
+          <tr><td><b>Socket.IO</b></td><td>"батарейки в комплекті": rooms, ack, reconnect, recovery, адаптери, fallback</td><td>власний протокол (потрібен їхній клієнт), sticky sessions, більше оверхеду на пакет</td></tr>
+          <tr><td><b>SSE</b></td><td>звичайний HTTP, auto-reconnect, найпростіше масштабується, легко кешувати auth</td><td>лише сервер → клієнт, тільки текст</td></tr>
+          <tr><td>Керований сервіс (Ably, Pusher, AWS API Gateway WS)</td><td>не тримаєте з'єднання самі, глобальна розсилка</td><td>ціна за повідомлення/з'єднання, vendor lock-in</td></tr></table>
+        <p><b>Коли що:</b> продуктовий веб-чат зі складними кімнатами — Socket.IO; публічний протокол або мобільні клієнти — ws;
+        нотифікації, live-дашборди, LLM-стрімінг — SSE.</p>
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Server-Sent Events</h2>
+      <p class="section-desc">Найнедооціненіша real-time технологія: ~30 рядків на чистому <code>node:http</code>, з reconnect і відновленням пропущених подій "з коробки".</p>
+
+      <p>Формат <code>text/event-stream</code> — текстові блоки, розділені порожнім рядком. Поля:</p>
+      <ul>
+        <li><code>data:</code> — тіло (може бути кілька рядків <code>data:</code> — вони склеюються через <code>\n</code>);</li>
+        <li><code>event:</code> — ім'я події (у браузері <code>es.addEventListener('order', ...)</code>, без нього — <code>onmessage</code>);</li>
+        <li><code>id:</code> — ідентифікатор; браузер запам'ятовує останній і при перепідключенні шле заголовок <b><code>Last-Event-ID</code></b>;</li>
+        <li><code>retry:</code> — затримка reconnect у мс;</li>
+        <li>рядок, що починається з <code>:</code> — коментар (зручно для heartbeat, щоб проксі не закрив з'єднання).</li>
+      </ul>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">sse.mjs</span></div>
+        <pre><code>import http from 'node:http';
+
+const history = [];          // у проді — Redis Stream / БД
+let nextId = 1;
+const clients = new Set();
+
+function publish(event, data) {
+  const msg = { id: nextId++, event, data: JSON.stringify(data) };
+  history.push(msg);
+  for (const res of clients) write(res, msg);
+}
+function write(res, { id, event, data }) {
+  res.write(`id: ${id}\nevent: ${event}\ndata: ${data}\n\n`);
+}
+
+const server = http.createServer((req, res) =&gt; {
+  if (req.url !== '/events') return res.writeHead(404).end();
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',          // вимкнути буферизацію в nginx
+  });
+  res.write('retry: 3000\n\n');         // через скільки мс браузер перепідключиться
+  // Відновлення: браузер сам надсилає Last-Event-ID після обриву
+  const lastId = Number(req.headers['last-event-id'] ?? 0);
+  for (const msg of history) if (msg.id &gt; lastId) write(res, msg);
+
+  clients.add(res);
+  const hb = setInterval(() =&gt; res.write(': ping\n\n'), 15000); // коментар-heartbeat
+  req.on('close', () =&gt; { clearInterval(hb); clients.delete(res); });
+});
+
+server.listen(0, async () =&gt; {
+  const url = `http://localhost:${server.address().port}/events`;
+  publish('order', { id: 1, status: 'created' });
+  publish('order', { id: 1, status: 'paid' });
+
+  // Клієнт «перепідключається» після події 1 — як це зробив би EventSource
+  const res = await fetch(url, { headers: { 'Last-Event-ID': '1' } });
+  setTimeout(() =&gt; publish('order', { id: 1, status: 'shipped' }), 50);
+
+  const decoder = new TextDecoderStream();
+  let buf = '', got = 0;
+  for await (const chunk of res.body.pipeThrough(decoder)) {
+    buf += chunk;
+    let i;
+    while ((i = buf.indexOf('\n\n')) !== -1) {
+      const block = buf.slice(0, i); buf = buf.slice(i + 2);
+      if (block.startsWith('retry')) { console.log('&lt;-', block); continue; }
+      console.log('&lt;-', block.replaceAll('\n', ' | '));
+      if (++got === 2) { server.closeAllConnections(); server.close(); process.exit(0); }
+    }
+  }
+});</code></pre>
+      </div>
+      <p>Реальний вивід: подія 1 пропущена (клієнт її вже бачив), подія 2 — "доганяння" з історії, подія 3 — живий push.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">output</span></div>
+        <pre><code>&lt;- retry: 3000
+&lt;- id: 2 | event: order | data: {"id":1,"status":"paid"}
+&lt;- id: 3 | event: order | data: {"id":1,"status":"shipped"}</code></pre>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">browser.js</span></div>
+        <pre><code>const es = new EventSource('/events', { withCredentials: true }); // cookie йдуть автоматично
+es.addEventListener('order', (e) =&gt; render(JSON.parse(e.data), e.lastEventId));
+es.onerror = () =&gt; console.log('reconnecting...'); // браузер перепідключиться сам</code></pre>
+      </div>
+
+      <h3>Нюанси SSE, які питають</h3>
+      <ul>
+        <li><b>Ліміт 6 з'єднань на домен у HTTP/1.1</b> — кожна вкладка з EventSource з'їдає одне; 7-ма вкладка "зависне".
+        HTTP/2 мультиплексує потоки і знімає проблему (у Node це <code>node:http2</code> або проксі з HTTP/2 перед Node).</li>
+        <li><b>EventSource не вміє заголовки</b> (немає <code>Authorization</code>) — або cookie, або <code>fetch()</code> +
+        ручний парсинг стріму (як у демо), або бібліотеки на кшталт <code>@microsoft/fetch-event-source</code>.</li>
+        <li><b>Буферизація</b>: nginx (<code>proxy_buffering off</code> / <code>X-Accel-Buffering: no</code>), compression-middleware
+        (gzip буферизує дрібні шматки!) і деякі CDN "склеюють" події — класична причина "SSE працює локально, але не на проді".</li>
+        <li><b>Тільки текст UTF-8</b> — бінарне кодуйте base64 або давайте посилання.</li>
+        <li><b>Відновлення</b> вимагає, щоб сервер мав історію за <code>id</code> — Redis Streams (<code>XRANGE</code> від last id) підходять ідеально.</li>
+        <li>Обов'язково <code>req.on('close')</code> для прибирання — інакше витік пам'яті на кожен відключений клієнт (див. <a href="15-performance-memory.html">туторіал 15</a>).</li>
+      </ul>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Масштабування real-time</h2>
+      <p class="section-desc">Stateless REST масштабується додаванням інстансів; WebSocket — ні: з'єднання "прибите" до конкретного процесу.</p>
+
+      <h3>Проблема №1: подія виникла не там, де клієнт</h3>
+      <p>Користувач A підключений до інстансу #1, B — до #3. A пише в кімнату — інстанс #1 знає тільки про свої сокети.
+      Рішення — <b>pub/sub fan-out</b>: кожен інстанс підписаний на канали шини (Redis Pub/Sub, NATS, Kafka), а
+      публікація йде в шину, а не напряму в сокети.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 360" role="img" aria-label="Горизонтальне масштабування WebSocket. Шість клієнтів через балансувальник зі sticky sessions підключені до трьох інстансів Node. Клієнт A на інстансі 1 надсилає повідомлення в кімнату. Інстанс 1 робить PUBLISH у канал Redis room:42. Redis доставляє повідомлення всім підписаним інстансам 1, 2 і 3, і кожен розсилає його своїм локальним сокетам у цій кімнаті.">
+          <defs><marker id="n18d3-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="20" y="40" width="90" height="30" rx="6" fill="var(--accent-soft)" stroke="currentColor"/>
+            <text x="65" y="60" text-anchor="middle" fill="currentColor">клієнт A</text>
+            <rect x="20" y="85" width="90" height="30" rx="6" fill="none" stroke="currentColor"/>
+            <text x="65" y="105" text-anchor="middle" fill="currentColor">клієнт B</text>
+            <rect x="20" y="145" width="90" height="30" rx="6" fill="none" stroke="currentColor"/>
+            <text x="65" y="165" text-anchor="middle" fill="currentColor">клієнт C</text>
+            <rect x="20" y="190" width="90" height="30" rx="6" fill="none" stroke="currentColor"/>
+            <text x="65" y="210" text-anchor="middle" fill="currentColor">клієнт D</text>
+            <rect x="20" y="250" width="90" height="30" rx="6" fill="none" stroke="currentColor"/>
+            <text x="65" y="270" text-anchor="middle" fill="currentColor">клієнт E</text>
+            <rect x="20" y="295" width="90" height="30" rx="6" fill="none" stroke="currentColor"/>
+            <text x="65" y="315" text-anchor="middle" fill="currentColor">клієнт F</text>
+
+            <rect x="150" y="140" width="130" height="80" rx="8" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="215" y="168" text-anchor="middle" fill="currentColor" font-weight="bold">Load balancer</text>
+            <text x="215" y="186" text-anchor="middle" fill="var(--fg-muted)">sticky: cookie /</text>
+            <text x="215" y="202" text-anchor="middle" fill="var(--fg-muted)">IP hash</text>
+            <line x1="110" y1="55" x2="150" y2="160" stroke="var(--fg-muted)"/>
+            <line x1="110" y1="100" x2="150" y2="168" stroke="var(--fg-muted)"/>
+            <line x1="110" y1="160" x2="150" y2="176" stroke="var(--fg-muted)"/>
+            <line x1="110" y1="205" x2="150" y2="186" stroke="var(--fg-muted)"/>
+            <line x1="110" y1="265" x2="150" y2="200" stroke="var(--fg-muted)"/>
+            <line x1="110" y1="310" x2="150" y2="210" stroke="var(--fg-muted)"/>
+
+            <rect x="330" y="40" width="170" height="70" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="415" y="66" text-anchor="middle" fill="currentColor" font-weight="bold">Node #1</text>
+            <text x="415" y="86" text-anchor="middle" fill="var(--fg-muted)">сокети: A, B</text>
+            <rect x="330" y="145" width="170" height="70" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="415" y="171" text-anchor="middle" fill="currentColor" font-weight="bold">Node #2</text>
+            <text x="415" y="191" text-anchor="middle" fill="var(--fg-muted)">сокети: C, D</text>
+            <rect x="330" y="250" width="170" height="70" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="415" y="276" text-anchor="middle" fill="currentColor" font-weight="bold">Node #3</text>
+            <text x="415" y="296" text-anchor="middle" fill="var(--fg-muted)">сокети: E, F</text>
+            <line x1="280" y1="165" x2="330" y2="80" stroke="var(--fg-muted)"/>
+            <line x1="280" y1="180" x2="330" y2="180" stroke="var(--fg-muted)"/>
+            <line x1="280" y1="195" x2="330" y2="285" stroke="var(--fg-muted)"/>
+
+            <rect x="560" y="140" width="145" height="80" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+            <text x="632" y="168" text-anchor="middle" fill="currentColor" font-weight="bold">Redis Pub/Sub</text>
+            <text x="632" y="188" text-anchor="middle" fill="var(--fg-muted)">канал room:42</text>
+
+            <path d="M500,60 C540,60 560,110 590,140" fill="none" stroke="var(--warn)" stroke-width="1.6" marker-end="url(#n18d3-arrow)"/>
+            <text x="510" y="50" fill="var(--warn)">② PUBLISH</text>
+            <path d="M630,140 C620,100 560,95 502,90" fill="none" stroke="var(--accent)" stroke-width="1.3" stroke-dasharray="5 3" marker-end="url(#n18d3-arrow)"/>
+            <line x1="560" y1="180" x2="504" y2="180" stroke="var(--accent)" stroke-width="1.3" stroke-dasharray="5 3" marker-end="url(#n18d3-arrow)"/>
+            <path d="M632,220 C632,270 560,285 502,285" fill="none" stroke="var(--accent)" stroke-width="1.3" stroke-dasharray="5 3" marker-end="url(#n18d3-arrow)"/>
+            <text x="642" y="244" fill="var(--accent)">③ доставка</text>
+            <text x="642" y="260" fill="var(--accent)">усім</text>
+            <text x="642" y="276" fill="var(--accent)">підписникам</text>
+            <text x="120" y="30" fill="var(--good)">① A шле в кімнату</text>
+            <text x="330" y="345" fill="var(--fg-muted)">④ кожен інстанс шле своїм локальним сокетам у room:42</text>
+          </g>
+        </svg>
+        <figcaption>Інстанси не знають один про одного — вони знають лише шину; Redis Pub/Sub — fire-and-forget, тому повідомлення для офлайн-інстансу губиться.</figcaption>
+      </figure>
+
+      <h3>Проблема №2: sticky sessions</h3>
+      <p>Чистому WebSocket sticky sessions потрібні лише на момент рукостискання (далі це одне TCP-з'єднання). А от
+      <b>Socket.IO з long-polling</b> робить <i>багато</i> HTTP-запитів з одним session id — якщо вони потраплять на різні
+      інстанси, отримаєте <code>400 Session ID unknown</code>. Рішення: sticky за cookie/IP на балансувальнику, або
+      <code>transports: ['websocket']</code> на клієнті (без polling). У Node <code>cluster</code> — пакет
+      <code>@socket.io/sticky</code>.</p>
+
+      <h3>Проблема №3: пам'ять і ліміти з'єднань</h3>
+      <table>
+        <tr><th>Ресурс</th><th>Що обмежує</th><th>Що робити</th></tr>
+        <tr><td>Файлові дескриптори</td><td>кожен сокет = fd; дефолтний <code>ulimit -n</code> часто 1024</td><td>підняти ulimit / LimitNOFILE у systemd / контейнері</td></tr>
+        <tr><td>Пам'ять на з'єднання</td><td>ядро (TCP-буфери) + Node-об'єкти + ваші дані на сокеті; порядок — від кількох до десятків KB, з deflate — значно більше</td><td>не тримати великі об'єкти на сокеті, вимкнути deflate, вимірювати heap на 10k з'єднань</td></tr>
+        <tr><td>Ефемерні порти</td><td>на проксі між LB і Node — ~28k портів на пару IP</td><td>кілька upstream IP, keep-alive</td></tr>
+        <tr><td>CPU на broadcast</td><td><code>JSON.stringify</code> на кожного отримувача</td><td>серіалізувати один раз; для дуже великих fan-out — спеціалізовані сервери</td></tr>
+        <tr><td>Event loop</td><td>важкий обробник повідомлень блокує ВСІ з'єднання процесу</td><td>моніторити event loop lag, винести CPU в worker_threads</td></tr>
+      </table>
+
+      <h3>Проблема №4: деплой і "reconnect storm"</h3>
+      <p>Rolling deploy вбиває інстанс із 50 000 з'єднань — і всі 50 000 клієнтів <i>одночасно</i> перепідключаються, разом
+      ідучи по auth, БД і "догнати пропущене". Захист: <b>jitter</b> у клієнтському backoff, graceful shutdown із поступовим
+      закриттям (кодом 1001/1012) порціями, rate limit на connect, кеш для initial state.</p>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body"><b>Pub/Sub vs Streams.</b> Redis Pub/Sub не зберігає повідомлення: якщо інстанс перезапускався
+        — пропустив. Для "не можна втратити" — Redis Streams (consumer groups, <code>XREAD</code> від id), Kafka або
+        <code>@socket.io/redis-streams-adapter</code>. Для "останній стан важливіший за історію" (курсори, ціни) Pub/Sub достатньо.</div>
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Навіщо черги задач</h2>
+      <p class="section-desc">Event loop не любить довгу роботу, користувач не любить чекати, а зовнішні API не люблять, коли їх викликають 1000 разів на секунду.</p>
+
+      <p>Job queue розв'язує одразу кілька задач:</p>
+      <ul>
+        <li><b>Offload</b> — HTTP-запит відповідає <code>202 Accepted</code> за 20 мс, а генерація PDF / відправка email /
+        ресайз зображення / виклик LLM відбувається у воркері. API лишається швидким і не падає разом із повільною залежністю.</li>
+        <li><b>Надійність</b> — retries з backoff, переживає рестарт процесу (job у Redis/БД, а не в пам'яті).</li>
+        <li><b>Відкладене і періодичне виконання</b> — "надіслати нагадування через 24 год", "щогодини синхронізувати".</li>
+        <li><b>Контроль навантаження</b> — concurrency і rate limiting: не більше 10 запитів/с до платіжного провайдера.</li>
+        <li><b>Окреме масштабування</b> — API і воркери деплояться і скейляться незалежно (воркерів можна скейлити за довжиною черги).</li>
+      </ul>
+
+      <div class="callout bad">
+        <div class="ic">🚫</div>
+        <div class="body"><b>Антипатерн "fire-and-forget у процесі":</b> <code>sendEmail(user).catch(console.error)</code>
+        без await у хендлері. Працює, доки процес не перезапуститься під час відправки (деплой, OOM) — задача зникає
+        безслідно, без retry і без сліду в логах. Для всього, що має значення, — черга.</div>
+      </div>
+
+      <div class="flow"><div class="step">HTTP API: queue.add()</div><div class="arrow">→</div><div class="step">Redis / БД (стан job)</div><div class="arrow">→</div><div class="step">Worker-процеси</div><div class="arrow">→</div><div class="step">результат / подія / вебхук</div></div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> BullMQ: Queue, Worker, стани</h2>
+      <p class="section-desc">BullMQ — стандарт для черг у Node поверх Redis: TypeScript, атомарні Lua-скрипти, flows, rate limiting, job schedulers.</p>
+
+      <p>BullMQ — наступник Bull (Bull у режимі підтримки). Усі переходи станів робляться <b>Lua-скриптами в Redis</b> —
+      тобто атомарно, без гонок між воркерами. Три основні класи: <code>Queue</code> (додати), <code>Worker</code>
+      (обробити), <code>QueueEvents</code> (слухати глобальні події через Redis Streams).</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">queue.ts</span></div>
+        <pre><code>import { Queue } from 'bullmq';
+import IORedis from 'ioredis';
+
+// BullMQ вимагає maxRetriesPerRequest: null для з'єднань воркера (блокуючі команди)
+export const connection = new IORedis(process.env.REDIS_URL!, { maxRetriesPerRequest: null });
+
+export const emailQueue = new Queue('email', {
+  connection,
+  defaultJobOptions: {
+    attempts: 5,
+    backoff: { type: 'exponential', delay: 1000 },   // 1s, 2s, 4s, 8s...
+    removeOnComplete: { age: 3600, count: 1000 },     // не роздувати Redis
+    removeOnFail: { age: 7 * 24 * 3600 },             // failed тримаємо тиждень для розбору
+  },
+});
+
+// у HTTP-хендлері
+await emailQueue.add('welcome', { userId: 42 }, {
+  jobId: `welcome:42`,      // дедуплікація: job з тим самим id не додасться вдруге
+  delay: 10_000,            // через 10 секунд
+  priority: 1,              // 1 — найвищий; без priority job у звичайній FIFO
+});</code></pre>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">worker.ts</span></div>
+        <pre><code>import { Worker, UnrecoverableError } from 'bullmq';
+import { connection } from './queue';
+
+const worker = new Worker('email', async (job) =&gt; {
+  const user = await db.user.find(job.data.userId);
+  if (!user) throw new UnrecoverableError('user deleted'); // без ретраїв — одразу failed
+  await job.updateProgress(50);
+  const { messageId } = await mailer.send(user.email, 'Welcome!');
+  return { messageId };                                    // збережеться як returnvalue
+}, {
+  connection,
+  concurrency: 20,                          // 20 job-ів паралельно в ОДНОМУ процесі (I/O-bound)
+  limiter: { max: 100, duration: 1000 },    // не більше 100 job/с на всю чергу (усі воркери)
+});
+
+worker.on('completed', (job, result) =&gt; log.info({ id: job.id, result }, 'sent'));
+worker.on('failed', (job, err) =&gt; log.error({ id: job?.id, attempt: job?.attemptsMade, err }, 'failed'));
+worker.on('error', (err) =&gt; log.error({ err }, 'worker error')); // обов'язково
+
+// graceful shutdown: дочекатися поточних job-ів
+process.on('SIGTERM', async () =&gt; { await worker.close(); process.exit(0); });</code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 320" role="img" aria-label="Життєвий цикл job у BullMQ. queue.add кладе job у wait, prioritized або delayed. Воркер бере job з wait або prioritized у active. З active job переходить у completed при успіху або у failed при помилці. Якщо спроби лишились, failed-шлях веде в delayed з backoff, а з delayed після таймера назад у wait. Якщо воркер втратив lock, job вважається stalled і повертається у wait або стає failed після maxStalledCount.">
+          <defs><marker id="n18d4-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="15" y="125" width="105" height="40" rx="8" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="67" y="150" text-anchor="middle" fill="currentColor">queue.add()</text>
+
+            <rect x="180" y="40" width="120" height="40" rx="8" fill="var(--accent-soft)" stroke="currentColor"/>
+            <text x="240" y="65" text-anchor="middle" fill="currentColor" font-weight="bold">wait</text>
+            <rect x="180" y="125" width="120" height="40" rx="8" fill="var(--accent-soft)" stroke="currentColor"/>
+            <text x="240" y="150" text-anchor="middle" fill="currentColor" font-weight="bold">prioritized</text>
+            <rect x="180" y="215" width="120" height="40" rx="8" fill="var(--accent-soft)" stroke="currentColor"/>
+            <text x="240" y="240" text-anchor="middle" fill="currentColor" font-weight="bold">delayed</text>
+
+            <rect x="380" y="125" width="110" height="40" rx="8" fill="none" stroke="var(--accent)" stroke-width="1.8"/>
+            <text x="435" y="150" text-anchor="middle" fill="currentColor" font-weight="bold">active</text>
+
+            <rect x="570" y="40" width="130" height="40" rx="8" fill="none" stroke="var(--good)" stroke-width="1.6"/>
+            <text x="635" y="65" text-anchor="middle" fill="var(--good)" font-weight="bold">completed</text>
+            <rect x="570" y="215" width="130" height="40" rx="8" fill="none" stroke="var(--bad)" stroke-width="1.6"/>
+            <text x="635" y="240" text-anchor="middle" fill="var(--bad)" font-weight="bold">failed</text>
+
+            <line x1="120" y1="140" x2="178" y2="65" stroke="currentColor" marker-end="url(#n18d4-arrow)"/>
+            <line x1="120" y1="145" x2="178" y2="145" stroke="currentColor" marker-end="url(#n18d4-arrow)"/>
+            <line x1="120" y1="150" x2="178" y2="230" stroke="currentColor" marker-end="url(#n18d4-arrow)"/>
+            <text x="128" y="100" fill="var(--fg-muted)" font-size="11">FIFO</text>
+            <text x="126" y="205" fill="var(--fg-muted)" font-size="11">delay</text>
+
+            <line x1="300" y1="65" x2="380" y2="135" stroke="currentColor" marker-end="url(#n18d4-arrow)"/>
+            <line x1="300" y1="145" x2="378" y2="145" stroke="currentColor" marker-end="url(#n18d4-arrow)"/>
+            <text x="310" y="137" fill="var(--fg-muted)" font-size="11">worker</text>
+            <line x1="240" y1="215" x2="240" y2="82" stroke="var(--fg-muted)" stroke-dasharray="4 3" marker-end="url(#n18d4-arrow)"/>
+            <text x="246" y="200" fill="var(--fg-muted)" font-size="11">час настав</text>
+
+            <line x1="490" y1="135" x2="568" y2="65" stroke="var(--good)" stroke-width="1.3" marker-end="url(#n18d4-arrow)"/>
+            <text x="500" y="88" fill="var(--good)" font-size="11">return</text>
+            <line x1="490" y1="155" x2="568" y2="230" stroke="var(--bad)" stroke-width="1.3" marker-end="url(#n18d4-arrow)"/>
+            <text x="522" y="200" text-anchor="end" fill="var(--bad)" font-size="11">throw,</text>
+            <text x="522" y="214" text-anchor="end" fill="var(--bad)" font-size="11">спроб нема</text>
+
+            <path d="M435,165 C435,250 340,270 302,245" fill="none" stroke="var(--warn)" stroke-width="1.3" marker-end="url(#n18d4-arrow)"/>
+            <text x="350" y="290" fill="var(--warn)">throw + attempts лишились → backoff</text>
+
+            <path d="M410,125 C390,60 340,45 302,55" fill="none" stroke="var(--warn)" stroke-width="1.3" stroke-dasharray="5 3" marker-end="url(#n18d4-arrow)"/>
+            <text x="350" y="28" fill="var(--warn)">stalled: lock протух → знову wait</text>
+          </g>
+        </svg>
+        <figcaption>Job завжди в рівно одному стані; усі переходи — атомарні Lua-скрипти, тому два воркери не візьмуть одну job.</figcaption>
+      </figure>
+
+      <p>Додаткові стани: <code>waiting-children</code> (батьківська job у <b>flow</b> чекає на дочірні —
+      <code>FlowProducer</code>), <code>paused</code> (черга на паузі). Перевірити стан: <code>await job.getState()</code>.</p>
+
+      <h3>Concurrency: що реально паралельне</h3>
+      <p><code>concurrency: 20</code> — це 20 async-обробників у <b>одному event loop</b>. Для I/O-bound (HTTP, БД, email) —
+      чудово. Для CPU-bound (обробка зображень, PDF, crypto) — ні: обробники блокуватимуть один одного й навіть
+      продовження lock-а (→ stalled). Варіанти: <b>sandboxed processors</b> (передати шлях до файлу процесора —
+      BullMQ запустить його в окремому child process або worker thread через <code>useWorkerThreads</code>), або кілька
+      процесів воркерів з <code>concurrency: 1</code>. Детальніше про CPU-роботу — <a href="08-concurrency-scaling.html">туторіал 8</a>.</p>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> BullMQ: retries, розклад, ліміти, stalled</h2>
+      <p class="section-desc">Найбільше продакшн-інцидентів із чергами — не через "черга не працює", а через неправильно зрозумілу семантику ретраїв, lock-ів і розкладу.</p>
+
+      <h3>Retries і backoff</h3>
+      <ul>
+        <li><code>attempts: 5</code> — <b>загальна</b> кількість спроб (не "ретраїв після першої").</li>
+        <li><code>backoff: { type: 'fixed' | 'exponential', delay }</code>; exponential = <code>delay * 2^(attemptsMade-1)</code>;
+        можна додати <code>jitter</code> або власну стратегію через <code>settings.backoffStrategy</code> у Worker.</li>
+        <li><code>UnrecoverableError</code> — помилка, яку ретраїти безглуздо (валідація, 4xx від API) — job одразу у failed.</li>
+        <li>Ретраї означають, що <b>обробник виконається більше одного разу</b> → він має бути ідемпотентним (розділ 12).</li>
+      </ul>
+
+      <h3>Delayed, повторювані задачі, Job Schedulers</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">schedulers.ts</span></div>
+        <pre><code>// Одноразова відкладена
+await queue.add('reminder', { orderId }, { delay: 24 * 3600_000 });
+
+// Повторювана: Job Scheduler (новий API BullMQ v5, замінює старий repeat-опційний)
+await queue.upsertJobScheduler(
+  'hourly-sync',                                   // id планувальника — upsert ідемпотентний
+  { pattern: '0 * * * *', tz: 'Europe/Kyiv' },     // cron, або { every: 60_000 }
+  { name: 'sync', data: { source: 'crm' }, opts: { attempts: 3 } },
+);
+await queue.removeJobScheduler('hourly-sync');</code></pre>
+      </div>
+      <p>Ключовий момент: розклад зберігається <b>у Redis</b>, а наступна job створюється атомарно — тому 10 інстансів
+      воркерів <b>не</b> запустять одну й ту саму годинну задачу 10 разів (на відміну від <code>node-cron</code>, розділ 11).
+      <code>upsert</code> безпечно викликати на старті кожного інстансу.</p>
+
+      <h3>Пріоритети</h3>
+      <p><code>priority</code> від 1 (найвищий) до 2 097 152. Job з пріоритетом живе в окремому стані
+      <code>prioritized</code> (сортований набір), що трохи дорожче за звичайну FIFO. Альтернатива пріоритетам — окремі черги
+      ("email-transactional" і "email-marketing") з окремими воркерами: простіше пояснити і моніторити, і масова розсилка
+      гарантовано не заблокує листи для відновлення пароля.</p>
+
+      <h3>Rate limiter</h3>
+      <p><code>limiter: { max, duration }</code> у Worker діє <b>глобально на чергу</b> (через Redis), а не на процес. Якщо
+      зовнішній API повернув 429 з <code>Retry-After</code> — викличте <code>await worker.rateLimit(ms)</code> і киньте
+      <code>Worker.RateLimitError()</code>: job повернеться у wait без витрати спроби.</p>
+
+      <h3>Stalled jobs — найпідступніша частина</h3>
+      <p>Коли воркер бере job, він отримує <b>lock</b> у Redis на <code>lockDuration</code> (30 с за замовчуванням) і
+      періодично його продовжує. Якщо процес упав (OOM, SIGKILL) — lock протухає, і перевірка stalled
+      (<code>stalledInterval</code>) повертає job у wait. Після <code>maxStalledCount</code> (1 за замовчуванням) повторних
+      "застрягань" — job у failed.</p>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Класичний інцидент:</b> CPU-bound обробник (синхронний парсинг 200 MB JSON) блокує event loop
+        на 40 с → воркер не встигає продовжити lock → job вважається stalled → інший воркер бере ту саму job → <b>вона
+        виконується двічі паралельно</b>. Лікування: не блокувати event loop (sandboxed processor / worker thread), збільшити
+        <code>lockDuration</code> для довгих задач, ідемпотентність.</div>
+      </div>
+
+      <h3>Події та спостережуваність</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">events.ts</span></div>
+        <pre><code>import { QueueEvents } from 'bullmq';
+const events = new QueueEvents('email', { connection });   // слухає Redis Stream подій черги
+events.on('failed', ({ jobId, failedReason }) =&gt; alert(jobId, failedReason));
+events.on('progress', ({ jobId, data }) =&gt; sse.publish(jobId, data)); // прогрес у UI через SSE
+
+// дочекатися результату конкретної job (обережно в HTTP-хендлерах!)
+const job = await queue.add('render', { id });
+const result = await job.waitUntilFinished(events, 30_000);
+
+// метрики для алертів
+const counts = await queue.getJobCounts('wait', 'active', 'delayed', 'failed');</code></pre>
+      </div>
+      <p>Що моніторити: довжину <code>wait</code> (росте → воркерів мало), вік найстаршої job у wait (latency черги),
+      кількість <code>failed</code>, частоту stalled, пам'ять Redis. UI: <b>Bull Board</b> або Taskforce.sh.
+      І пам'ятайте: Redis для BullMQ має бути з <code>maxmemory-policy noeviction</code> — інакше Redis може тихо
+      "видалити" ваші job-и.</p>
+
+      <h3>Ідемпотентні job-и через jobId</h3>
+      <p>Якщо <code>jobId</code> вже існує в черзі (у будь-якому стані, поки job не видалена), <code>add()</code> не створить
+      дубль. Це захищає від подвійного кліку і повторного вебхука. Але після <code>removeOnComplete</code> той самий id
+      можна додати знову — для довгострокової дедуплікації потрібна власна таблиця/ключ. Є також опція
+      <code>deduplication: { id, ttl }</code> для дедуплікації в межах часового вікна.</p>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Альтернативи BullMQ</h2>
+      <p class="section-desc">"Черга задач" і "брокер повідомлень" — різні класи інструментів; на співбесіді важливо не змішувати.</p>
+
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: черга для Node-проєкту</div>
+        <table><tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>BullMQ</b> (Redis) ✅</td><td>багатий функціонал: delay, cron, пріоритети, rate limit, flows, UI; активний розвиток</td><td>потрібен Redis з persistence і noeviction; Node-центричний (є Python/Elixir порти)</td></tr>
+          <tr><td><b>pg-boss</b> (Postgres)</td><td>немає нової інфраструктури; job додається <b>в тій самій транзакції</b>, що й бізнес-дані (вбудований outbox!); <code>SKIP LOCKED</code></td><td>нижча пропускна здатність, навантаження на основну БД</td></tr>
+          <tr><td><b>Agenda</b> (MongoDB)</td><td>просто, якщо ви вже на Mongo; cron-подібний розклад</td><td>повільніше, менш активний розвиток</td></tr>
+          <tr><td><b>bee-queue</b> (Redis)</td><td>дуже легка й швидка для коротких job</td><td>мінімум функцій, розвиток уповільнився</td></tr>
+          <tr><td><b>RabbitMQ</b> (<code>amqplib</code>)</td><td>справжній брокер: exchanges, routing keys, ack/nack, DLX, мультимовний</td><td>немає "вбудованих" cron і зручних delayed (плагін); окрема інфраструктура</td></tr>
+          <tr><td><b>Kafka</b> (<code>kafkajs</code>, клієнти на librdkafka)</td><td>лог подій: replay, величезна пропускна здатність, порядок у партиції, багато незалежних consumer groups</td><td>не черга задач: немає per-message retry/delay; складна експлуатація; kafkajs фактично без активного супроводу — дивіться на інші клієнти</td></tr>
+          <tr><td><b>AWS SQS</b> (+ Lambda)</td><td>повністю керована, безмежне масштабування, вбудована DLQ, visibility timeout</td><td>delay лише до 15 хв, FIFO-черги з обмеженнями, vendor lock-in</td></tr></table>
+        <p><b>Коли що:</b> фонові задачі одного сервісу — BullMQ або pg-boss (якщо Redis немає і навантаження помірне);
+        інтеграція кількох сервісів/мов із маршрутизацією — RabbitMQ; event streaming, аналітика, event sourcing,
+        replay — Kafka; serverless у AWS — SQS.</p>
+      </div>
+
+      <table>
+        <tr><th>Семантика</th><th>Черга задач (BullMQ, SQS)</th><th>Лог подій (Kafka)</th></tr>
+        <tr><td>Повідомлення після обробки</td><td>видаляється / позначається</td><td>лишається в лозі (retention)</td></tr>
+        <tr><td>Кілька споживачів</td><td>конкурують за job</td><td>кожна consumer group читає все</td></tr>
+        <tr><td>Retry окремого повідомлення</td><td>вбудовано</td><td>самі (retry-топіки), бо offset рухається вперед</td></tr>
+        <tr><td>Порядок</td><td>загалом не гарантований при concurrency</td><td>гарантований у межах партиції</td></tr>
+      </table>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Cron і дублювання між інстансами</h2>
+      <p class="section-desc">"Ми додали node-cron, а потім масштабувались до 4 подів — і клієнти отримали 4 однакові листи".</p>
+
+      <p><code>node-cron</code> (або <code>croner</code>, <code>@nestjs/schedule</code>) — це просто таймер <b>усередині процесу</b>.
+      Він не знає про інші процеси. Запустили 4 репліки / <code>cluster</code> з 8 воркерами / PM2 у cluster-режимі —
+      отримали 4 (або 8) запусків щоночі.</p>
+
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: як запускати періодичні задачі</div>
+        <table><tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr><td><b>node-cron в API-процесі</b></td><td>нуль інфраструктури</td><td>дублі при кількох інстансах; задача помирає з процесом; немає історії запусків; спільний event loop з API</td></tr>
+          <tr><td><b>node-cron + distributed lock</b> (Redis <code>SET key NX PX</code>, Postgres advisory lock)</td><td>прибирає дублі</td><td>lock з TTL коротшим за задачу → два виконання; годинники інстансів; все ще без retry</td></tr>
+          <tr class="chosen"><td><b>BullMQ Job Scheduler / pg-boss schedule</b> ✅</td><td>один запуск на кластер, retry, історія, моніторинг; виконується будь-яким вільним воркером</td><td>потрібна черга</td></tr>
+          <tr><td><b>Зовнішній планувальник</b> (Kubernetes CronJob, EventBridge Scheduler, Cloud Scheduler)</td><td>не залежить від життя сервісу; явний у IaC</td><td>K8s CronJob теж може запустити двічі (<code>concurrencyPolicy: Forbid</code> + ідемпотентність); холодний старт контейнера</td></tr></table>
+        <p><b>Коли що:</b> у проєкті вже є черга — її scheduler; задача-"скрипт" (міграція звітів, бекап) — K8s CronJob / EventBridge;
+        <code>node-cron</code> — тільки для гарантовано одного інстансу або локальних, ідемпотентних дій (почистити кеш у пам'яті цього процесу).</p>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">lock.ts</span></div>
+        <pre><code>// Мінімальний distributed lock (single Redis instance) — якщо вже мусите лишити cron
+const token = crypto.randomUUID();
+const ok = await redis.set('lock:nightly-report', token, 'PX', 10 * 60_000, 'NX');
+if (!ok) return;                       // інший інстанс уже працює
+try {
+  await buildNightlyReport();
+} finally {
+  // видаляємо ТІЛЬКИ свій lock (атомарно, Lua), інакше можна зняти чужий
+  await redis.eval(
+    "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+    1, 'lock:nightly-report', token,
+  );
+}</code></pre>
+      </div>
+      <p class="muted">Lock не дає гарантії "рівно один раз": GC-пауза або мережа можуть зробити так, що lock протух, поки
+      власник ще працює. Тому задачі з побічними ефектами все одно мають бути ідемпотентними (або використовувати fencing token).</p>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Патерни надійності: idempotency, outbox, DLQ</h2>
+      <p class="section-desc">Розподілені системи не дають "exactly once" безкоштовно — його збирають з at-least-once доставки та ідемпотентних обробників.</p>
+
+      <h3>Гарантії доставки</h3>
+      <table>
+        <tr><th>Гарантія</th><th>Як досягається</th><th>Ризик</th></tr>
+        <tr><td>At-most-once</td><td>ack до обробки (або без ack)</td><td>втрата повідомлень</td></tr>
+        <tr><td><b>At-least-once</b></td><td>ack після обробки; при збої — повторна доставка</td><td><b>дублікати</b> — стандарт для BullMQ, SQS, RabbitMQ</td></tr>
+        <tr><td>"Exactly-once"</td><td>at-least-once + ідемпотентний обробник (або транзакції в межах однієї системи, як у Kafka)</td><td>складність; "ефективно один раз" лише для ефектів, які ви контролюєте</td></tr>
+      </table>
+
+      <h3>Idempotency key</h3>
+      <p>Обробник фіксує "я вже обробив ключ X" <b>атомарно разом із побічним ефектом</b>: в одній транзакції БД
+      (UNIQUE-індекс на <code>processed_messages.key</code>), або передає ключ далі зовнішньому API (Stripe приймає
+      заголовок <code>Idempotency-Key</code>). Демо механіки (запущено):</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">idempotent.mjs</span></div>
+        <pre><code>// At-least-once: брокер може доставити повідомлення ще раз,
+// якщо воркер упав ПІСЛЯ побічного ефекту, але ДО ack.
+const processed = new Set();     // у проді: UNIQUE-індекс у БД або Redis SET NX
+let charges = 0;
+let crashOnce = true;
+
+async function handle(msg) {
+  if (processed.has(msg.idempotencyKey)) {
+    console.log(`skip duplicate ${msg.idempotencyKey}`);
+    return;
+  }
+  charges++;                                   // побічний ефект (списання грошей)
+  processed.add(msg.idempotencyKey);
+  if (crashOnce) { crashOnce = false; throw new Error('worker died before ack'); }
+  console.log(`charged ${msg.idempotencyKey}`);
+}
+
+async function deliver(msg, attempt = 1) {
+  try {
+    await handle(msg);
+    console.log(`ack after attempt ${attempt}`);
+  } catch (e) {
+    console.log(`attempt ${attempt} failed: ${e.message} -&gt; redeliver`);
+    await deliver(msg, attempt + 1);
+  }
+}
+
+// Експоненційний backoff із «full jitter»
+const backoff = (attempt, base = 1000, cap = 30000) =&gt;
+  Math.round(Math.random() * Math.min(cap, base * 2 ** (attempt - 1)));
+
+await deliver({ idempotencyKey: 'order-42:charge' });
+console.log('total charges:', charges);
+console.log('max delay for attempts 1..6:',
+  [1, 2, 3, 4, 5, 6].map((a) =&gt; Math.min(30000, 1000 * 2 ** (a - 1))));
+console.log('jittered sample in range:', backoff(3) &lt;= 4000);</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">output</span></div>
+        <pre><code>attempt 1 failed: worker died before ack -&gt; redeliver
+skip duplicate order-42:charge
+ack after attempt 2
+total charges: 1
+max delay for attempts 1..6: [ 1000, 2000, 4000, 8000, 16000, 30000 ]
+jittered sample in range: true</code></pre>
+      </div>
+      <p class="muted">У демо позначка і "списання" — дві окремі дії; у реальності між ними теж можна впасти. Тому або одна
+      транзакція БД (ефект + запис ключа), або ключ іде в сам зовнішній виклик (Idempotency-Key), щоб дедуплікацію робив провайдер.
+      Jitter потрібен, щоб тисячі клієнтів, які впали одночасно, не ретраїли синхронно ("thundering herd").</p>
+
+      <h3>Transactional outbox</h3>
+      <p>Проблема <b>dual write</b>: <code>await db.insert(order); await queue.add('order.created')</code>. Якщо процес упав
+      між рядками — замовлення є, події немає. Якщо поміняти місцями — подія є, замовлення ні (транзакція відкотилась).
+      Розподіленої транзакції між Postgres і Redis немає.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 210" role="img" aria-label="Transactional outbox. Сервіс в одній транзакції БД пише рядок у таблицю orders і рядок події у таблицю outbox. Окремий relay-процес читає неопубліковані рядки outbox, публікує їх у брокер або чергу і позначає опублікованими. Консюмери отримують подію at-least-once і обробляють її ідемпотентно.">
+          <defs><marker id="n18d5-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="15" y="70" width="110" height="50" rx="8" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="70" y="99" text-anchor="middle" fill="currentColor">API / сервіс</text>
+
+            <rect x="165" y="25" width="200" height="140" rx="10" fill="none" stroke="var(--accent)" stroke-dasharray="5 3" stroke-width="1.4"/>
+            <text x="265" y="44" text-anchor="middle" fill="var(--accent)">одна транзакція БД</text>
+            <rect x="185" y="58" width="160" height="38" rx="6" fill="var(--accent-soft)" stroke="currentColor"/>
+            <text x="265" y="82" text-anchor="middle" fill="currentColor">INSERT orders</text>
+            <rect x="185" y="110" width="160" height="38" rx="6" fill="var(--accent-soft)" stroke="currentColor"/>
+            <text x="265" y="134" text-anchor="middle" fill="currentColor">INSERT outbox (event)</text>
+            <line x1="125" y1="95" x2="163" y2="95" stroke="currentColor" marker-end="url(#n18d5-arrow)"/>
+
+            <rect x="405" y="105" width="120" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="465" y="126" text-anchor="middle" fill="currentColor">relay / poller</text>
+            <text x="465" y="143" text-anchor="middle" fill="var(--fg-muted)" font-size="11">або CDC (Debezium)</text>
+            <line x1="345" y1="129" x2="403" y2="129" stroke="currentColor" marker-end="url(#n18d5-arrow)"/>
+            <text x="350" y="185" fill="var(--fg-muted)" font-size="11">SELECT ... FOR UPDATE SKIP LOCKED → publish → mark sent</text>
+
+            <rect x="565" y="40" width="140" height="44" rx="8" fill="var(--accent-soft)" stroke="currentColor"/>
+            <text x="635" y="67" text-anchor="middle" fill="currentColor">брокер / BullMQ</text>
+            <path d="M525,120 C550,110 560,95 585,86" fill="none" stroke="currentColor" marker-end="url(#n18d5-arrow)"/>
+            <rect x="565" y="120" width="140" height="44" rx="8" fill="none" stroke="var(--good)" stroke-width="1.3"/>
+            <text x="635" y="141" text-anchor="middle" fill="currentColor">consumers</text>
+            <text x="635" y="156" text-anchor="middle" fill="var(--good)" font-size="11">ідемпотентні</text>
+            <line x1="660" y1="84" x2="660" y2="118" stroke="currentColor" marker-end="url(#n18d5-arrow)"/>
+          </g>
+        </svg>
+        <figcaption>Подія і бізнес-дані фіксуються атомарно в одній БД; публікація — окремий крок at-least-once, тому консюмери мусять бути ідемпотентними.</figcaption>
+      </figure>
+
+      <h3>Dead letter queue (DLQ)</h3>
+      <p>Повідомлення, яке не вдалося обробити після N спроб ("poison message"), не повинно ні вічно ретраїтись (блокуючи
+      чергу і спалюючи гроші), ні тихо зникати. Його відкладають у <b>DLQ</b> для розбору людиною або автоматичного re-drive після фіксу.</p>
+      <ul>
+        <li><b>SQS</b>: redrive policy з <code>maxReceiveCount</code> → DLQ вбудовано.</li>
+        <li><b>RabbitMQ</b>: dead-letter exchange (<code>x-dead-letter-exchange</code>) при nack/TTL/переповненні.</li>
+        <li><b>BullMQ</b>: окремої DLQ немає — стан <code>failed</code> і є "DLQ"; часто роблять окрему чергу <code>email-dlq</code>
+        у обробнику події <code>failed</code>, коли <code>job.attemptsMade &gt;= job.opts.attempts</code>, плюс алерт і інструмент "retry all".</li>
+        <li><b>Kafka</b>: retry-топіки з затримкою + DLT (dead letter topic).</li>
+      </ul>
+
+      <div class="remember"><b>🧠 Запам'ятай:</b> at-least-once + idempotency key = ефективно один раз; outbox прибирає dual write; DLQ — щоб помилки не губились і не блокували чергу.</div>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Каверзні питання співбесіди</h2>
+      <p class="section-desc">Що перевіряють: розуміння протоколів, stateful-масштабування і гарантій доставки — а не знання API бібліотек.</p>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим WebSocket відрізняється від SSE і коли обрати SSE?</summary>
+        <div class="a">WebSocket — <b>дуплекс</b>, власні фрейми після HTTP Upgrade, текст і бінарні дані, reconnect вручну. SSE — один
+        HTTP-запит, <b>тільки сервер → клієнт</b>, лише текст, але вбудований reconnect з <code>Last-Event-ID</code>, працює з
+        HTTP/2, проксі, звичайною auth. SSE — для нотифікацій, дашбордів, стрімінгу LLM; WebSocket — коли клієнт часто шле дані (чат, ігри, колаборація).</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Socket.IO — це WebSocket?</summary>
+        <div class="a">Ні. Це <b>власний протокол</b> поверх Engine.IO, який може використовувати WebSocket або long-polling. Чистий
+        WebSocket-клієнт не підключиться до Socket.IO-сервера. Через polling-fallback на кількох інстансах потрібні <b>sticky sessions</b>.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що таке Sec-WebSocket-Key і чи захищає він від чогось?</summary>
+        <div class="a">Випадкове base64-значення; сервер повертає <code>base64(sha1(key + GUID))</code>. Це доказ, що сервер розуміє WebSocket
+        (захист від випадкових відповідей кешуючих проксі), а <b>не</b> автентифікація чи шифрування. Безпека — це <code>wss://</code> (TLS), перевірка Origin і ваш auth.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Навіщо ping/pong, якщо TCP і так знає про розрив?</summary>
+        <div class="a">TCP <b>не знає</b>, якщо пір зник мовчки (вимкнений Wi-Fi, NAT-таймаут) — з'являються half-open з'єднання, що
+        жеруть пам'ять і fd. Ping/pong виявляє їх (не відповів — <code>terminate()</code>) і заразом не дає LB/проксі закрити idle-з'єднання.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span><code>ws.send()</code> повернувся одразу — повідомлення доставлене?</summary>
+        <div class="a">Ні, лише покладене в буфер. Для повільних клієнтів буфер росте (<code>bufferedAmount</code>) — це backpressure, і без
+        контролю один повільний клієнт роздуває heap. Доставку на прикладному рівні підтверджують лише ack-повідомлення.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Як розіслати повідомлення в кімнату, якщо учасники на різних інстансах?</summary>
+        <div class="a">Pub/sub-шина: інстанс публікує в Redis Pub/Sub (NATS, Kafka), усі інстанси підписані й шлють своїм локальним
+        сокетам. У Socket.IO — <code>@socket.io/redis-adapter</code>. Якщо втрата неприйнятна — Redis Streams або Kafka, бо Pub/Sub не зберігає повідомлення.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Як передати JWT при підключенні браузерного WebSocket?</summary>
+        <div class="a">Браузерний <code>WebSocket</code> не підтримує власні заголовки. Варіанти: httpOnly cookie (+ перевірка Origin проти CSWSH),
+        короткоживучий одноразовий ticket у query, токен у <code>Sec-WebSocket-Protocol</code>, або перше повідомлення <code>auth</code> з timeout.
+        І план на протухання токена при довгому з'єднанні.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Навіщо черга, якщо можна просто не робити await?</summary>
+        <div class="a">Fire-and-forget у процесі губить задачу при рестарті/OOM, не має retry, backoff, rate limit, розкладу і видимості.
+        Черга зберігає job поза процесом, дає ретраї та дозволяє скейлити воркери окремо від API.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому BullMQ-job виконалась двічі, хоча помилок не було?</summary>
+        <div class="a">Найчастіше — <b>stalled</b>: event loop воркера був заблокований довше за <code>lockDuration</code>, lock не продовжився,
+        job повернули в wait і її взяв інший воркер. Або ретрай після помилки, що сталась ПІСЛЯ побічного ефекту. Лікування: не блокувати loop
+        (sandboxed processor), більший lockDuration, ідемпотентні обробники.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>У нас 4 поди з node-cron — що може піти не так?</summary>
+        <div class="a">Задача запуститься 4 рази. Плюс вона помре разом із подом посеред виконання, без retry та історії. Рішення: scheduler
+        черги (BullMQ <code>upsertJobScheduler</code> зберігає розклад у Redis і створює одну job), зовнішній планувальник або distributed
+        lock — і в будь-якому разі ідемпотентність.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що таке outbox pattern і яку проблему він розв'язує?</summary>
+        <div class="a"><b>Dual write</b>: не можна атомарно записати в БД і в брокер. Outbox: подія пишеться в таблицю <code>outbox</code>
+        в тій самій транзакції, що й дані; окремий relay (polling з <code>SKIP LOCKED</code> або CDC) публікує її. Доставка at-least-once → консюмери ідемпотентні.
+        pg-boss дає це "безкоштовно", бо черга живе в тій самій Postgres.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Kafka — це просто швидша черга задач?</summary>
+        <div class="a">Ні, це <b>розподілений лог</b>: повідомлення не видаляються після читання, кожна consumer group читає все, порядок —
+        у межах партиції, offset рухається вперед. Per-message retry, delay і пріоритети — не вбудовані. Для фонових job-ів сервісу BullMQ/SQS простіші.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Як не "покласти" бекенд при rolling deploy WebSocket-сервера?</summary>
+        <div class="a">Graceful shutdown з поступовим закриттям з'єднань (кодом 1001/1012) порціями, клієнтський reconnect з
+        exponential backoff + <b>jitter</b>, rate limit на connect, дешевий initial state (кеш), connection state recovery, щоб не перезавантажувати все.</div>
+      </details>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Шпаргалка</h2>
+      <p class="section-desc">Усе ключове на одному екрані.</p>
+      <div class="cheat">
+        <table>
+          <tr><th>Тема</th><th>Головне</th></tr>
+          <tr><td>Вибір транспорту</td><td>сервер → клієнт: SSE; дуплекс: WebSocket; найпростіше/рідко: polling; HTTP/3 медіа: WebTransport</td></tr>
+          <tr><td>WS handshake</td><td>GET + <code>Upgrade: websocket</code> → <code>101</code> + <code>Sec-WebSocket-Accept = base64(sha1(key+GUID))</code></td></tr>
+          <tr><td>WS фрейм</td><td>FIN, opcode (1 text, 2 bin, 8 close, 9 ping, A pong), MASK (клієнт завжди), len 7/16/64 біт</td></tr>
+          <tr><td>Node</td><td>глобальний <code>WebSocket</code> — тільки клієнт; сервер — <code>ws</code> (або uWebSockets.js)</td></tr>
+          <tr><td>ws у проді</td><td>heartbeat + <code>terminate()</code>, <code>bufferedAmount</code>, <code>maxPayload</code>, <code>on('error')</code>, auth в <code>upgrade</code>, Origin</td></tr>
+          <tr><td>Socket.IO</td><td>власний протокол; rooms, namespaces, ack, reconnect, recovery; redis-adapter; sticky sessions</td></tr>
+          <tr><td>SSE</td><td><code>text/event-stream</code>, <code>id/event/data/retry</code>, <code>Last-Event-ID</code>, вимкнути буферизацію, ліміт 6 на HTTP/1.1</td></tr>
+          <tr><td>Масштабування</td><td>pub/sub fan-out, sticky, ulimit, пам'ять/з'єднання, jitter при reconnect storm</td></tr>
+          <tr><td>BullMQ</td><td>Queue/Worker/QueueEvents; <code>maxRetriesPerRequest: null</code>; attempts+backoff; jobId; upsertJobScheduler; limiter; concurrency = async у одному loop</td></tr>
+          <tr><td>Stalled</td><td>lock не продовжено (заблокований loop/краш) → job знову в wait → можливе подвійне виконання</td></tr>
+          <tr><td>Cron</td><td>node-cron × N інстансів = N запусків; scheduler черги або зовнішній</td></tr>
+          <tr><td>Гарантії</td><td>at-least-once + idempotency key; outbox проти dual write; DLQ для poison messages</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Як запам'ятати</h2>
+      <p class="section-desc">Асоціації, що чіпляються за пам'ять.</p>
+      <div class="flashgrid">
+        <div class="flashcard">
+          <div class="fc-num">1</div>
+          <div class="term">Long polling</div>
+          <div class="def">Запит, який сервер тримає відкритим до появи події.</div>
+          <div class="mnemo"><b>Асоціація:</b> офіціант стоїть біля столика, доки ви не оберете страву, — і одразу приходить знову.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">2</div>
+          <div class="term">SSE</div>
+          <div class="def">Односторонній текстовий потік подій по HTTP з авто-reconnect.</div>
+          <div class="mnemo"><b>Асоціація:</b> радіо — слухаєте, перемкнулись, а диктор каже "ви пропустили ось це" (Last-Event-ID).</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">3</div>
+          <div class="term">HTTP Upgrade / 101</div>
+          <div class="def">HTTP-запит, після якого той самий TCP говорить іншим протоколом.</div>
+          <div class="mnemo"><b>Асоціація:</b> зайшли в магазин через звичайні двері, а там — телепорт.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">4</div>
+          <div class="term">Heartbeat (ping/pong)</div>
+          <div class="def">Періодична перевірка, що пір живий; немає pong — terminate.</div>
+          <div class="mnemo"><b>Асоціація:</b> рація: "Прийом!" — тиша — значить, зв'язку немає, кладемо трубку.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">5</div>
+          <div class="term">bufferedAmount</div>
+          <div class="def">Скільки байт чекає на відправку повільному клієнту.</div>
+          <div class="mnemo"><b>Асоціація:</b> пошта, що накопичується під дверима того, хто поїхав у відпустку.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">6</div>
+          <div class="term">Pub/Sub fan-out</div>
+          <div class="def">Інстанси обмінюються подіями через шину, щоб дістатись чужих сокетів.</div>
+          <div class="mnemo"><b>Асоціація:</b> гучномовець на вокзалі: кожна платформа чує оголошення, але свої пасажири — у кожної свої.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">7</div>
+          <div class="term">Stalled job</div>
+          <div class="def">Job, чий lock протух, бо воркер помер або заблокував event loop.</div>
+          <div class="mnemo"><b>Асоціація:</b> таксист заснув з увімкненим "зайнято" — диспетчер віддає замовлення іншому, а потім приїжджають двоє.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">8</div>
+          <div class="term">Idempotency key</div>
+          <div class="def">Ключ, за яким повторна обробка того самого повідомлення стає no-op.</div>
+          <div class="mnemo"><b>Асоціація:</b> штамп "ОПЛАЧЕНО" на рахунку — вдруге касир вже не візьме гроші.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">9</div>
+          <div class="term">Outbox</div>
+          <div class="def">Подія пишеться в таблицю в тій самій транзакції, а публікується окремо.</div>
+          <div class="mnemo"><b>Асоціація:</b> лист кладете в поштову скриньку в офісі разом із підписанням договору — кур'єр забере потім.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">10</div>
+          <div class="term">DLQ</div>
+          <div class="def">Окрема черга для повідомлень, що не обробились після N спроб.</div>
+          <div class="mnemo"><b>Асоціація:</b> полиця "незатребувані посилки" — не викидаємо, але й не тримаємо на конвеєрі.</div>
+        </div>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Node.js Doc · частина серії туторіалів AI Delivery Planner. Приклади коду перевірені на Node.js 24.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

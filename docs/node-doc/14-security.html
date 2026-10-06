@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>14. Безпека Node.js-застосунків — Node.js Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🟢 Node.js Doc <span>· AI Delivery Planner</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Node.js Doc · Туторіал 14 з 20</div>
+  <h1>Безпека Node.js: від ін'єкцій і prototype pollution до JWT і supply chain</h1>
+  <p class="lead">Модель загроз однопотокового JS-сервера: <b>ін'єкції</b>, path traversal, <b>prototype pollution</b>, ReDoS і DoS event loop, SSRF, браузерні атаки, паролі й JWT, timing attacks, ланцюг постачання npm і hardening рантайму — з виконуваними демо кожної атаки та захисту.</p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="07-fs-process-os.html">7. fs, process, os</a>
+        <a href="08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="09-http-networking.html">9. HTTP і мережа</a>
+        <a href="10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="12-databases-orm.html">12. БД і ORM</a>
+        <a href="13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="14-security.html" class="active">14. Безпека Node</a>
+        <a href="15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="16-testing.html">16. Тестування</a>
+        <a href="17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+  </aside>
+
+    <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Модель загроз</a></li>
+      <li><a href="#s2">2. Ін'єкції</a></li>
+      <li><a href="#s3">3. Path traversal</a></li>
+      <li><a href="#s4">4. Prototype pollution</a></li>
+      <li><a href="#s5">5. ReDoS і DoS event loop</a></li>
+      <li><a href="#s6">6. SSRF</a></li>
+      <li><a href="#s7">7. XSS, CSRF, CORS, headers</a></li>
+      <li><a href="#s8">8. Rate limiting</a></li>
+      <li><a href="#s9">9. Паролі, JWT, сесії</a></li>
+      <li><a href="#s10">10. Timing і випадковість</a></li>
+      <li><a href="#s11">11. Секрети, supply chain, рантайм</a></li>
+      <li><a href="#s12">12. Питання співбесіди</a></li>
+      <li><a href="#s13">13. Шпаргалка</a></li>
+      <li><a href="#s14">14. Як запам'ятати</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Модель загроз Node API і захист у глибину</h2>
+      <p class="section-desc">Безпека — не список бібліотек, а відповідь на питання "хто може щось нам надіслати і що станеться, якщо він збреше".</p>
+
+      <p>Типовий Node-бекенд приймає недовірений вхід з багатьох боків: HTTP (тіло, query, заголовки, cookies,
+      завантажені файли), вебхуки, повідомлення з черг, відповіді сторонніх API — і сам виконує тисячі рядків
+      <b>чужого коду</b> з <code>node_modules</code>. Дві Node-специфічні обставини роблять модель загроз особливою:</p>
+      <ul>
+        <li><b>Один потік на всіх.</b> Запит, що змусив процес 3 секунди рахувати regex чи парсити JSON, зупиняє
+        <i>всіх</i> користувачів процесу (<a href="02-event-loop-deep-dive.html">туторіал 2</a>). DoS у Node часто дешевший, ніж у
+        багатопотокових серверах.</li>
+        <li><b>Динамічна мова з мутабельними прототипами.</b> Дані можуть змінити поведінку <i>коду</i> (prototype pollution), а
+        об'єкт там, де чекали рядок, змінює семантику запиту до бази (NoSQL injection).</li>
+      </ul>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 300" role="img" aria-label="Захист у глибину для Node API у вигляді вкладених шарів. Зовнішній шар — периметр: TLS, WAF і CDN, rate limiting. Далі HTTP-шар: helmet-заголовки, CORS allowlist, ліміти розміру тіла, CSRF. Далі шар вводу: валідація схемою, allowlist ідентифікаторів, нормалізація шляхів. Далі логіка: автентифікація, авторизація на кожен ресурс, параметризовані запити. Найглибше рантайм: non-root, permission model, секрети не в коді, лок-файл і аудит залежностей. Атака має пробити всі шари.">
+          <defs><marker id="n14d1-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="140" y="10" width="570" height="280" rx="14" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="160" y="30" fill="var(--info)" font-weight="bold">1. Периметр: TLS, CDN/WAF, rate limit на проксі</text>
+            <rect x="165" y="42" width="520" height="236" rx="12" fill="none" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="185" y="62" fill="var(--accent)" font-weight="bold">2. HTTP: helmet, CORS allowlist, body limits, CSRF, cookies</text>
+            <rect x="190" y="74" width="470" height="192" rx="10" fill="none" stroke="var(--interview)" stroke-width="1.3"/>
+            <text x="210" y="94" fill="var(--interview)" font-weight="bold">3. Вхід: схема (zod), allowlist, нормалізація шляхів/URL</text>
+            <rect x="215" y="106" width="420" height="148" rx="10" fill="none" stroke="var(--warn)" stroke-width="1.3"/>
+            <text x="235" y="126" fill="var(--warn)" font-weight="bold">4. Логіка: authn, authz на кожен ресурс, параметри SQL</text>
+            <rect x="240" y="138" width="370" height="104" rx="10" fill="var(--bg-soft)" stroke="var(--good)" stroke-width="1.3"/>
+            <text x="425" y="160" text-anchor="middle" fill="var(--good)" font-weight="bold">5. Рантайм і ланцюг постачання</text>
+            <text x="425" y="182" text-anchor="middle" fill="currentColor">non-root, read-only FS, --permission</text>
+            <text x="425" y="202" text-anchor="middle" fill="currentColor">секрети з менеджера, лок-файл, audit</text>
+            <text x="425" y="222" text-anchor="middle" fill="currentColor">логи без PII, помилки без stack trace</text>
+
+            <text x="65" y="130" text-anchor="middle" fill="var(--bad)" font-weight="bold">атакувальник</text>
+            <text x="65" y="148" text-anchor="middle" fill="var(--fg-muted)">запит / пакет</text>
+            <line x1="110" y1="160" x2="236" y2="190" stroke="var(--bad)" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#n14d1-arrow)"/>
+          </g>
+        </svg>
+        <figcaption>Жоден шар не ідеальний; мета — щоб помилка в одному (забута валідація, вразлива залежність) не означала компрометацію.</figcaption>
+      </figure>
+
+      <table>
+        <tr><th>Клас загрози</th><th>Типовий Node-приклад</th><th>Розділ</th></tr>
+        <tr><td>Ін'єкції</td><td>SQL-конкатенація, Mongo <code>{ "$ne": null }</code>, <code>exec(`... ${x}`)</code></td><td>2</td></tr>
+        <tr><td>Доступ до файлів</td><td><code>path.join(UPLOADS, req.params.name)</code></td><td>3</td></tr>
+        <tr><td>Зміна поведінки коду даними</td><td>deep merge з <code>__proto__</code></td><td>4</td></tr>
+        <tr><td>DoS однопотокового процесу</td><td>ReDoS, мегабайтний JSON, zip bomb</td><td>5</td></tr>
+        <tr><td>Сервер як проксі атакувальника</td><td>SSRF на 169.254.169.254</td><td>6</td></tr>
+        <tr><td>Атаки через браузер</td><td>XSS у SSR, CSRF, CORS з reflect origin</td><td>7</td></tr>
+        <tr><td>Автентифікація</td><td>sha256 паролів, JWT <code>alg: none</code>, <code>Math.random</code>-токени</td><td>8–10</td></tr>
+        <tr><td>Ланцюг постачання і рантайм</td><td>шкідливий postinstall, root у контейнері, витік секретів у логах</td><td>11</td></tr>
+      </table>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Ін'єкції: SQL, NoSQL operator injection, команди ОС</h2>
+      <p class="section-desc">Спільний корінь усіх ін'єкцій — дані потрапили в позицію коду: у текст SQL, у структуру фільтра, у рядок shell.</p>
+
+      <h3>SQL</h3>
+      <p>Детально (з виконуваним демо на <code>node:sqlite</code>) — у <a href="12-databases-orm.html">туторіалі 12</a>. Коротко:
+      значення — тільки параметрами (<code>$1</code>, <code>?</code>, tagged template), ідентифікатори (колонка сортування, назва таблиці)
+      — тільки через allowlist, а будь-який <code>raw</code>/<code>Unsafe</code>-метод з інтерполяцією — червоний прапорець у рев'ю.</p>
+
+      <h3>NoSQL operator injection (MongoDB)</h3>
+      <p>У Mongo немає рядка запиту, який можна "зламати лапкою", — зате фільтр є <b>об'єктом</b>, і якщо атакувальник
+      передасть об'єкт замість рядка, він впише туди <i>оператор</i>:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">login.js (вразливо)</span></div>
+        <pre><code>app.post('/login', async (req, res) => {
+  // body: { "email": "admin@corp.com", "password": { "$ne": null } }
+  const user = await users.findOne({ email: req.body.email, password: req.body.password });
+  //                                  ↑ { password: { $ne: null } } — "будь-який не-null пароль"
+  if (user) return res.json({ token: issueToken(user) });   // увійшли без пароля
+  res.status(401).end();
+});
+
+// той самий трюк через query-рядок, якщо парсер підтримує вкладені об'єкти (qs, Express 4 "extended"):
+// GET /users?email[$regex]=.*    →  req.query.email = { $regex: '.*' }</code></pre>
+      </div>
+      <ul>
+        <li><b>Головний захист — валідація типів на межі:</b> <code>z.object({ email: z.email(), password: z.string() })</code> — об'єкт замість рядка не пройде
+        (<a href="13-typescript-validation-config.html">туторіал 13</a>).</li>
+        <li>Mongoose: <code>mongoose.set('sanitizeFilter', true)</code> загортає вкладені <code>$</code>-оператори з вводу в <code>$eq</code>; також
+        <code>strictQuery</code>. Для голого драйвера — явний <code>{ email: { $eq: email } }</code> або санітайзер, що видаляє ключі з <code>$</code> і <code>.</code>.</li>
+        <li><code>$where</code> і <code>$function</code> виконують JS на сервері бази — ніколи з вводу користувача.</li>
+        <li>Express 5 за замовчуванням використовує "simple" query parser (без вкладених об'єктів) — але JSON-тіло все одно може містити що завгодно.</li>
+      </ul>
+
+      <h3>Command injection через child_process</h3>
+      <p><code>exec()</code> передає рядок у <code>/bin/sh -c</code>, тож усі метасимволи shell (<code>;</code>, <code>&amp;&amp;</code>, <code>|</code>,
+      <code>$()</code>, бектики) працюють. <code>execFile()</code>/<code>spawn()</code> без <code>shell: true</code> передають аргументи масивом
+      напряму в <code>execve</code> — shell не бере участі:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">cmd.mjs</span></div>
+        <pre><code>import { exec, execFile } from 'node:child_process';
+const input = 'report.pdf; echo PWNED-$(whoami)';
+exec(`echo converting ${input}`, (err, out) => console.log('exec    :', out.trim()));
+execFile('echo', ['converting', input], (err, out) => console.log('execFile:', out.trim()));</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">$ node cmd.mjs</span></div>
+        <pre><code>execFile: converting report.pdf; echo PWNED-$(whoami)
+exec    : converting report.pdf
+PWNED-&lt;user></code></pre>
+      </div>
+      <p>Через <code>exec</code> виконалась друга команда (і підстановка <code>$(whoami)</code>); через <code>execFile</code> увесь рядок
+      лишився одним буквальним аргументом. Порядок рядків тут залежить від того, який дочірній процес завершився першим.</p>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>execFile — не панацея.</b> <i>Argument injection</i>: якщо ввід починається з <code>-</code>, програма сприйме його як прапорець
+        (<code>git</code> з <code>--upload-pack=...</code>, <code>tar --checkpoint-action=exec=...</code>). Ставте <code>--</code> перед позиційними аргументами
+        і валідуйте формат. На Windows <code>.bat</code>/<code>.cmd</code> запускаються через <code>cmd.exe</code> навіть з <code>execFile</code> — відома
+        категорія CVE. І найкраще — взагалі не викликати процеси, а використовувати бібліотеку (sharp замість <code>convert</code>).</div>
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Path traversal: <code>../</code> у назві файлу</h2>
+      <p class="section-desc">Будь-який шлях, зібраний з вводу, має бути доведений як такий, що лежить усередині дозволеної директорії — після нормалізації.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">path.js</span></div>
+        <pre><code>const path = require('node:path');
+const ROOT = path.resolve('/srv/app/uploads');
+
+function naive(name) {
+  return path.join(ROOT, name);
+}
+function safe(name) {
+  const full = path.resolve(ROOT, name);
+  if (full !== ROOT &amp;&amp; !full.startsWith(ROOT + path.sep)) {
+    throw new Error('path traversal: ' + name);
+  }
+  return full;
+}
+const inputs = ['avatar.png', '../../../etc/passwd', '/etc/passwd', 'a/../../uploads-evil/x', '..%2F..%2Fetc%2Fpasswd'];
+for (const i of inputs) {
+  let r;
+  try { r = safe(i); } catch (e) { r = 'BLOCKED'; }
+  console.log(i.padEnd(26), '| naive:', naive(i).padEnd(28), '| safe:', r);
+}
+console.log('bad prefix check:', '/srv/app/uploads-evil/x'.startsWith(ROOT));
+console.log('decoded:', decodeURIComponent('..%2F..%2Fetc%2Fpasswd'));</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">$ node path.js</span></div>
+        <pre><code>avatar.png                 | naive: /srv/app/uploads/avatar.png  | safe: /srv/app/uploads/avatar.png
+../../../etc/passwd        | naive: /etc/passwd                  | safe: BLOCKED
+/etc/passwd                | naive: /srv/app/uploads/etc/passwd  | safe: BLOCKED
+a/../../uploads-evil/x     | naive: /srv/app/uploads-evil/x      | safe: BLOCKED
+..%2F..%2Fetc%2Fpasswd     | naive: /srv/app/uploads/..%2F..%2Fetc%2Fpasswd | safe: /srv/app/uploads/..%2F..%2Fetc%2Fpasswd
+bad prefix check: true
+decoded: ../../etc/passwd</code></pre>
+      </div>
+
+      <h3>Що показало демо</h3>
+      <ul>
+        <li><b><code>path.join</code> не захищає</b> — він лише нормалізує, і <code>../</code> спокійно виходять за межі.</li>
+        <li><b><code>join</code> і <code>resolve</code> по-різному трактують абсолютний шлях:</b> <code>join(ROOT, '/etc/passwd')</code> склеює, а
+        <code>resolve(ROOT, '/etc/passwd')</code> повертає <code>/etc/passwd</code>. Перевірка після <code>resolve</code> ловить обидва випадки.</li>
+        <li><b>Префікс без роздільника — баг:</b> <code>'/srv/app/uploads-evil'.startsWith('/srv/app/uploads')</code> = <code>true</code>. Порівнюйте з
+        <code>ROOT + path.sep</code> (або <code>path.relative</code> і перевірка, що результат не починається з <code>..</code> і не абсолютний).</li>
+        <li><b>Кодування:</b> <code>%2F</code> безпечний, поки його ніхто не декодує, — але фреймворк декодує <code>req.params</code>. Валідуйте
+        <i>після</i> всіх декодувань, безпосередньо перед <code>fs</code>-викликом.</li>
+        <li><b>Симлінки:</b> рядкова перевірка не бачить симлінк усередині ROOT, що веде назовні. Для високих ставок — <code>fs.realpath</code> і повторна перевірка;
+        ще краще — не використовувати ім'я користувача як шлях взагалі: зберігайте файл під UUID, а оригінальну назву — в базі.</li>
+        <li>Також: нульовий байт (<code>\0</code>) Node відхиляє в fs-API помилкою, а <code>express.static</code>/<code>res.sendFile</code> з опцією
+        <code>root</code> мають власний захист — використовуйте їх замість ручного <code>createReadStream</code>.</li>
+      </ul>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Prototype pollution</h2>
+      <p class="section-desc">Атака, специфічна для JS: ключ <code>__proto__</code> у JSON дозволяє дописати властивість у <code>Object.prototype</code> — і вона з'являється в кожному об'єкті процесу.</p>
+
+      <p>Механіка складається з трьох фактів. (1) <code>JSON.parse</code> створює <code>"__proto__"</code> як <b>звичайну власну властивість</b>
+      (не змінює прототип). (2) Наївний deep merge робить <code>target[key]</code> для кожного ключа — а <code>target["__proto__"]</code> через
+      гетер повертає <b><code>Object.prototype</code></b>. (3) Рекурсивний merge записує властивості туди — в спільний прототип усіх об'єктів.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 290" role="img" aria-label="Ланцюг prototype pollution. Крок 1: тіло запиту JSON з ключем __proto__, що містить isAdmin true. Крок 2: JSON.parse створює власну властивість __proto__. Крок 3: наївний merge читає target.__proto__ і отримує Object.prototype. Крок 4: рекурсивний merge записує isAdmin true в Object.prototype. Крок 5: будь-який новий обʼєкт, наприклад user = {}, успадковує isAdmin true, і перевірка if user.isAdmin пропускає атакувальника. Збоку показано ланцюжок прототипів: user, потім Object.prototype з isAdmin, потім null.">
+          <defs><marker id="n14d2-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="20" y="20" width="230" height="44" rx="8" fill="none" stroke="var(--bad)"/>
+            <text x="135" y="38" text-anchor="middle" fill="currentColor">1. body: {"__proto__":</text>
+            <text x="135" y="55" text-anchor="middle" fill="currentColor">{"isAdmin": true}}</text>
+            <rect x="20" y="82" width="230" height="44" rx="8" fill="none" stroke="currentColor"/>
+            <text x="135" y="100" text-anchor="middle" fill="currentColor">2. JSON.parse → власний</text>
+            <text x="135" y="117" text-anchor="middle" fill="currentColor">ключ "__proto__"</text>
+            <rect x="20" y="144" width="230" height="44" rx="8" fill="none" stroke="currentColor"/>
+            <text x="135" y="162" text-anchor="middle" fill="currentColor">3. merge: target["__proto__"]</text>
+            <text x="135" y="179" text-anchor="middle" fill="var(--warn)">=== Object.prototype</text>
+            <rect x="20" y="206" width="230" height="44" rx="8" fill="var(--bg-soft)" stroke="var(--bad)" stroke-width="1.4"/>
+            <text x="135" y="224" text-anchor="middle" fill="currentColor">4. Object.prototype.isAdmin</text>
+            <text x="135" y="241" text-anchor="middle" fill="var(--bad)">= true</text>
+            <line x1="135" y1="64" x2="135" y2="80" stroke="currentColor" marker-end="url(#n14d2-arrow)"/>
+            <line x1="135" y1="126" x2="135" y2="142" stroke="currentColor" marker-end="url(#n14d2-arrow)"/>
+            <line x1="135" y1="188" x2="135" y2="204" stroke="currentColor" marker-end="url(#n14d2-arrow)"/>
+
+            <rect x="330" y="20" width="170" height="50" rx="8" fill="none" stroke="currentColor"/>
+            <text x="415" y="42" text-anchor="middle" fill="currentColor">const user = {}</text>
+            <text x="415" y="60" text-anchor="middle" fill="var(--fg-muted)">власних полів: 0</text>
+            <rect x="330" y="110" width="170" height="60" rx="8" fill="var(--bg-soft)" stroke="var(--bad)" stroke-width="1.4"/>
+            <text x="415" y="132" text-anchor="middle" fill="currentColor">Object.prototype</text>
+            <text x="415" y="150" text-anchor="middle" fill="var(--bad)">isAdmin: true</text>
+            <text x="415" y="164" text-anchor="middle" fill="var(--fg-muted)">toString, valueOf…</text>
+            <rect x="380" y="210" width="70" height="30" rx="6" fill="none" stroke="var(--fg-muted)"/>
+            <text x="415" y="230" text-anchor="middle" fill="var(--fg-muted)">null</text>
+            <line x1="415" y1="70" x2="415" y2="108" stroke="currentColor" marker-end="url(#n14d2-arrow)"/>
+            <text x="425" y="94" fill="var(--fg-muted)">[[Prototype]]</text>
+            <line x1="415" y1="170" x2="415" y2="208" stroke="var(--fg-muted)" marker-end="url(#n14d2-arrow)"/>
+            <line x1="250" y1="228" x2="328" y2="150" stroke="var(--bad)" stroke-dasharray="5 4" marker-end="url(#n14d2-arrow)"/>
+
+            <rect x="540" y="20" width="170" height="70" rx="8" fill="none" stroke="var(--bad)" stroke-width="1.4"/>
+            <text x="625" y="44" text-anchor="middle" fill="currentColor">5. if (user.isAdmin)</text>
+            <text x="625" y="62" text-anchor="middle" fill="var(--bad)">→ true для ВСІХ</text>
+            <text x="625" y="78" text-anchor="middle" fill="var(--bad)">об'єктів процесу</text>
+            <line x1="500" y1="45" x2="538" y2="50" stroke="var(--bad)" marker-end="url(#n14d2-arrow)"/>
+            <rect x="540" y="120" width="170" height="120" rx="8" fill="none" stroke="var(--warn)"/>
+            <text x="625" y="142" text-anchor="middle" fill="var(--warn)" font-weight="bold">гаджети</text>
+            <text x="625" y="164" text-anchor="middle" fill="currentColor">options.shell у spawn</text>
+            <text x="625" y="184" text-anchor="middle" fill="currentColor">шаблонізатори → RCE</text>
+            <text x="625" y="204" text-anchor="middle" fill="currentColor">обхід перевірок ролей</text>
+            <text x="625" y="224" text-anchor="middle" fill="currentColor">DoS (toString = 1)</text>
+          </g>
+        </svg>
+        <figcaption>Один рядок JSON змінює спільний прототип; далі будь-який код, що читає неіснуючу властивість (<code>opts.shell</code>, <code>user.isAdmin</code>), стає "гаджетом" атаки.</figcaption>
+      </figure>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">proto.js</span></div>
+        <pre><code>function merge(target, source) {
+  for (const key in source) {
+    if (typeof source[key] === 'object' &amp;&amp; source[key] !== null) {
+      if (!target[key]) target[key] = {};
+      merge(target[key], source[key]);
+    } else {
+      target[key] = source[key];
+    }
+  }
+  return target;
+}
+const body = JSON.parse('{"name":"x","__proto__":{"isAdmin":true}}');
+console.log('own keys of body:', Object.keys(body));
+merge({}, body);
+const user = {};
+console.log('user.isAdmin =', user.isAdmin);
+console.log('({}).isAdmin =', ({}).isAdmin);
+delete Object.prototype.isAdmin;
+
+const viaLiteral = { __proto__: { isAdmin: true } };
+console.log('literal own keys:', Object.keys(viaLiteral), '| ({}).isAdmin =', ({}).isAdmin);
+
+const body2 = JSON.parse('{"constructor":{"prototype":{"polluted":"yes"}}}');
+merge({}, body2);
+console.log('({}).polluted =', ({}).polluted);
+delete Object.prototype.polluted;
+
+function safeMerge(target, source) {
+  for (const key of Object.keys(source)) {
+    if (key === '__proto__' || key === 'constructor' || key === 'prototype') continue;
+    const v = source[key];
+    if (typeof v === 'object' &amp;&amp; v !== null) {
+      if (!Object.hasOwn(target, key)) target[key] = {};
+      safeMerge(target[key], v);
+    } else target[key] = v;
+  }
+  return target;
+}
+safeMerge({}, JSON.parse('{"__proto__":{"isAdmin":true}}'));
+console.log('after safeMerge ({}).isAdmin =', ({}).isAdmin);
+const dict = Object.create(null);
+console.log('dict.toString =', dict.toString, '| "__proto__" in dict:', '__proto__' in dict);</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">$ node proto.js</span></div>
+        <pre><code>own keys of body: [ 'name', '__proto__' ]
+user.isAdmin = true
+({}).isAdmin = true
+literal own keys: [] | ({}).isAdmin = undefined
+({}).polluted = yes
+after safeMerge ({}).isAdmin = undefined
+dict.toString = undefined | "__proto__" in dict: false</code></pre>
+      </div>
+      <p class="muted">Зверніть увагу на різницю: <code>JSON.parse</code> створює <code>__proto__</code> як власний ключ (небезпечно для merge), а об'єктний літерал
+      <code>{ __proto__: x }</code> встановлює прототип <i>лише цього</i> об'єкта (власних ключів 0, глобально нічого не забруднено). Шлях
+      <code>constructor.prototype</code> працює без <code>__proto__</code> взагалі: <code>{}.constructor === Object</code>, а <code>Object.prototype</code> — той самий спільний прототип.</p>
+
+      <h3>Захист</h3>
+      <table>
+        <tr><th>Захід</th><th>Як</th></tr>
+        <tr><td>Валідація схемою</td><td>zod <code>z.object</code> вирізає невідомі ключі — <code>__proto__</code> і <code>constructor</code> не дійдуть до merge</td></tr>
+        <tr><td>Безпечний merge</td><td>пропускати <code>__proto__</code>/<code>constructor</code>/<code>prototype</code>; ітерувати <code>Object.keys</code>; перевіряти <code>Object.hasOwn</code>; оновлені версії lodash (<code>merge</code>, <code>set</code>, <code>defaultsDeep</code> мали CVE)</td></tr>
+        <tr><td>Структури без прототипу</td><td><code>Object.create(null)</code> для словників з ключами від користувача; ще краще — <code>Map</code></td></tr>
+        <tr><td>Не довіряти успадкованому</td><td><code>Object.hasOwn(opts, 'shell')</code> замість <code>opts.shell</code> у чутливих місцях; деструктуризація з дефолтами</td></tr>
+        <tr><td><code>--disable-proto=delete</code></td><td>прибирає гетер/сетер <code>Object.prototype.__proto__</code> (з <code>=throw</code> — кидає помилку); <code>constructor.prototype</code>-вектор не закриває</td></tr>
+        <tr><td>Заморозка</td><td><code>Object.freeze(Object.prototype)</code> на старті (або експериментальний <code>--frozen-intrinsics</code>) — може зламати залежності, що патчать прототипи; тестуйте</td></tr>
+      </table>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">На співбесіді запитають так</span> "Як prototype pollution може дати RCE?" — забруднена властивість стає
+        "гаджетом" у коді, що читає опції з об'єкта з дефолтами: наприклад, <code>child_process.spawn</code> читає <code>options.shell</code> або
+        <code>options.env</code>, шаблонізатори читають опції компіляції; якщо в прототипі з'явилось <code>shell</code> або шматок шаблону —
+        атакувальник керує виконанням. Публічні ланцюжки таких гаджетів для популярних бібліотек існують.</div>
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> ReDoS і DoS event loop</h2>
+      <p class="section-desc">Кілька десятків символів можуть зайняти процес на секунди — і в Node це секунди простою для всіх запитів одночасно.</p>
+
+      <h3>Катастрофічний backtracking</h3>
+      <p>Рушій регулярних виразів V8 (Irregexp) — <b>backtracking</b>: при невдачі він повертається і пробує інший розподіл символів між
+      групами. Вкладений квантифікатор <code>(a+)+</code> дозволяє розбити рядок з n літер <code>a</code> на групи
+      2<sup>n−1</sup> способами — і коли в кінці стоїть <code>!</code>, що робить збіг неможливим, рушій перебирає <i>всі</i>.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">redos.js</span></div>
+        <pre><code>const evil = /^(a+)+$/;
+for (const n of [20, 22, 24, 26, 28]) {
+  const input = 'a'.repeat(n) + '!';
+  const t = performance.now();
+  evil.test(input);
+  console.log(`n=${n}: ${(performance.now() - t).toFixed(0)} ms`);
+}
+const safe = /^a+$/;
+const t = performance.now();
+safe.test('a'.repeat(100000) + '!');
+console.log(`safe /^a+$/ on 100001 chars: ${(performance.now() - t).toFixed(2)} ms`);</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">$ node redos.js   (два запуски на одній машині)</span></div>
+        <pre><code>n=20: 44 ms        |  n=20: 64 ms
+n=22: 27 ms        |  n=22: 64 ms
+n=24: 119 ms       |  n=24: 200 ms
+n=26: 491 ms       |  n=26: 795 ms
+n=28: 1922 ms      |  n=28: 2878 ms
+safe /^a+$/ on 100001 chars: 0.24 ms</code></pre>
+      </div>
+      <p>Абсолютні числа "шумлять" (JIT-розігрів на малих n, частота CPU), але тренд стабільний: <b>+2 символи ≈ ×4 часу</b>. 30 символів — це вже
+      ~8–12 с заблокованого процесу, 40 — години. Безпечний <code>/^a+$/</code> на 100 тис. символів — частки мілісекунди.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 280" role="img" aria-label="Вибух backtracking. Зліва перелік усіх восьми способів розбити рядок aaaa на групи для виразу (a+)+: aaaa; aaa a; a aaa; aa aa; aa a a; a aa a; a a aa; a a a a. Це 2 у степені n мінус 1 варіантів. Справа стовпчикова діаграма виміряного часу для n рівних 22, 24, 26 і 28: приблизно 64, 200, 795 і 2878 мілісекунд, кожні два символи час зростає приблизно в чотири рази. Внизу: поки рушій перебирає варіанти, event loop заблокований для всіх запитів.">
+          <defs><marker id="n14d3-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="130" y="20" text-anchor="middle" fill="currentColor" font-weight="bold">"aaaa!" і /^(a+)+$/</text>
+            <rect x="20" y="30" width="220" height="190" rx="8" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="40" y="52" fill="currentColor">(aaaa)</text>
+            <text x="40" y="72" fill="currentColor">(aaa)(a)</text>
+            <text x="40" y="92" fill="currentColor">(a)(aaa)</text>
+            <text x="40" y="112" fill="currentColor">(aa)(aa)</text>
+            <text x="40" y="132" fill="currentColor">(aa)(a)(a)</text>
+            <text x="40" y="152" fill="currentColor">(a)(aa)(a)</text>
+            <text x="40" y="172" fill="currentColor">(a)(a)(aa)</text>
+            <text x="40" y="192" fill="currentColor">(a)(a)(a)(a)</text>
+            <text x="225" y="122" text-anchor="end" fill="var(--bad)">кожен → "!" ≠ $</text>
+            <text x="130" y="240" text-anchor="middle" fill="var(--bad)">2^(n−1) спроб: n=4 → 8, n=30 → 5·10⁸</text>
+
+            <line x1="300" y1="220" x2="700" y2="220" stroke="currentColor"/>
+            <line x1="300" y1="220" x2="300" y2="30" stroke="currentColor"/>
+            <text x="295" y="34" text-anchor="end" fill="var(--fg-muted)">ms</text>
+            <rect x="330" y="216" width="60" height="4" fill="var(--warn)"/>
+            <text x="360" y="208" text-anchor="middle" fill="currentColor">64</text>
+            <text x="360" y="238" text-anchor="middle" fill="var(--fg-muted)">n=22</text>
+            <rect x="420" y="208" width="60" height="12" fill="var(--warn)"/>
+            <text x="450" y="200" text-anchor="middle" fill="currentColor">200</text>
+            <text x="450" y="238" text-anchor="middle" fill="var(--fg-muted)">n=24</text>
+            <rect x="510" y="172" width="60" height="48" fill="var(--bad)"/>
+            <text x="540" y="164" text-anchor="middle" fill="currentColor">795</text>
+            <text x="540" y="238" text-anchor="middle" fill="var(--fg-muted)">n=26</text>
+            <rect x="600" y="47" width="60" height="173" fill="var(--bad)"/>
+            <text x="630" y="40" text-anchor="middle" fill="currentColor">2878</text>
+            <text x="630" y="238" text-anchor="middle" fill="var(--fg-muted)">n=28</text>
+            <text x="500" y="266" text-anchor="middle" fill="var(--bad)">весь цей час event loop стоїть: інші запити чекають</text>
+          </g>
+        </svg>
+        <figcaption>Кількість способів розбити рядок між вкладеними групами росте експоненційно; ліве число — комбінаторика, праве — реальні мілісекунди з демо.</figcaption>
+      </figure>
+
+      <h3>Як захищатися від ReDoS</h3>
+      <ul>
+        <li><b>Уникайте шаблонів</b> з вкладеними квантифікаторами (<code>(a+)+</code>, <code>(\w+\s?)*</code>) і альтернаціями, що перетинаються (<code>(a|a)*</code>, <code>(\d+|\d+\.)*</code>).</li>
+        <li><b>Обмежуйте довжину входу до regex</b> (<code>z.string().max(254)</code> для email) — найпростіший і найдієвіший захід.</li>
+        <li><b>Перевірка у CI:</b> <code>eslint-plugin-regexp</code>, <code>safe-regex2</code>, <code>recheck</code> знаходять вразливі шаблони статично.</li>
+        <li><b>Лінійний рушій:</b> пакет <code>re2</code> (біндинг Google RE2, гарантований лінійний час, але без backreferences і lookbehind); у V8 є
+        експериментальний non-backtracking рушій за прапорцем.</li>
+        <li><b>Залежності теж:</b> ReDoS-CVE регулярно знаходять у парсерах (user-agent, дати, markdown, валідатори) — <code>npm audit</code> їх ловить.</li>
+        <li>Важку обробку недовіреного тексту — у <code>worker_threads</code> з таймаутом і <code>worker.terminate()</code> (<a href="08-concurrency-scaling.html">туторіал 8</a>).</li>
+      </ul>
+
+      <h3>Великі payload-и і JSON.parse</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">json-cost.mjs</span></div>
+        <pre><code>const big = JSON.stringify({ items: Array.from({ length: 1_000_000 }, (_, i) => ({ id: i, name: 'item' + i })) });
+console.log('payload MB:', (big.length / 1e6).toFixed(1));
+
+const scheduled = performance.now();
+setTimeout(() => console.log('timer(0) fired after ms:', Math.round(performance.now() - scheduled)), 0);
+
+const t = performance.now();
+JSON.parse(big);                       // синхронно: event loop стоїть
+console.log('JSON.parse ms:', Math.round(performance.now() - t));</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">$ node json-cost.mjs</span></div>
+        <pre><code>payload MB: 33.8
+JSON.parse ms: 285
+timer(0) fired after ms: 285</code></pre>
+      </div>
+      <p>Таймер на 0 мс спрацював через 285 мс — увесь цей час процес не обслуговував нікого. Плюс пам'ять: 34 МБ тексту стають сотнями МБ
+      об'єктів у купі. Тому:</p>
+      <ul>
+        <li><b>Ліміт тіла:</b> <code>express.json({ limit: '100kb' })</code> (це й дефолт Express), Fastify <code>bodyLimit</code> (дефолт 1 MiB). Піднімайте лише
+        на конкретних маршрутах, де потрібно.</li>
+        <li><b>Ліміти структури:</b> довжина масивів і рядків у схемі; глибина вкладеності (глибокий JSON б'є по рекурсивних обробниках).</li>
+        <li><b>Завантаження файлів</b> — стрімінгом на диск/S3 з лімітом розміру (<code>busboy</code>/<code>@fastify/multipart</code> <code>limits</code>), а не в пам'ять.</li>
+        <li><b>Декомпресія:</b> gzip-тіло 1 МБ може розпакуватися в 1 ГБ (zip bomb) — ліміт застосовується до розпакованого розміру.</li>
+        <li><b>Повільні клієнти</b> (slowloris): <code>server.headersTimeout</code>, <code>server.requestTimeout</code>, reverse proxy попереду (<a href="09-http-networking.html">туторіал 9</a>).</li>
+      </ul>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> SSRF: коли ваш сервер ходить туди, куди скаже атакувальник</h2>
+      <p class="section-desc">Будь-яка фіча "завантажити за URL", вебхук або прев'ю посилання робить ваш сервер проксі всередину вашої мережі.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 280" role="img" aria-label="Шлях SSRF-атаки. Атакувальник з інтернету надсилає запит POST /preview з url рівним http://169.254.169.254/latest/meta-data/iam. API-сервер у VPC виконує fetch на цей URL. Запит іде не в інтернет, а всередину: до сервісу метаданих хмари за адресою 169.254.169.254, до внутрішніх сервісів, наприклад Redis на 10.0.0.5:6379 або адмінки, і до localhost. Метадані повертають тимчасові IAM-креденшели, які сервер віддає атакувальнику у відповіді прев'ю.">
+          <defs><marker id="n14d4-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="20" y="100" width="120" height="60" rx="8" fill="none" stroke="var(--bad)" stroke-width="1.4"/>
+            <text x="80" y="125" text-anchor="middle" fill="currentColor">атакувальник</text>
+            <text x="80" y="143" text-anchor="middle" fill="var(--fg-muted)">інтернет</text>
+
+            <rect x="200" y="20" width="500" height="250" rx="12" fill="none" stroke="var(--fg-muted)" stroke-dasharray="5 4"/>
+            <text x="690" y="40" text-anchor="end" fill="var(--fg-muted)">VPC / приватна мережа</text>
+
+            <rect x="230" y="95" width="160" height="70" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="310" y="118" text-anchor="middle" fill="currentColor">API: /preview</text>
+            <text x="310" y="136" text-anchor="middle" fill="currentColor">await fetch(url)</text>
+            <text x="310" y="153" text-anchor="middle" fill="var(--fg-muted)">IAM-роль сервера</text>
+
+            <line x1="140" y1="118" x2="228" y2="118" stroke="var(--bad)" marker-end="url(#n14d4-arrow)"/>
+            <text x="184" y="85" text-anchor="middle" fill="var(--bad)">url=http://</text>
+            <text x="184" y="100" text-anchor="middle" fill="var(--bad)">169.254.169.254/…</text>
+            <line x1="228" y1="145" x2="140" y2="145" stroke="var(--bad)" stroke-dasharray="5 3" marker-end="url(#n14d4-arrow)"/>
+            <text x="184" y="175" text-anchor="middle" fill="var(--bad)">креденшели</text>
+
+            <rect x="460" y="55" width="220" height="44" rx="8" fill="none" stroke="var(--bad)" stroke-width="1.3"/>
+            <text x="570" y="74" text-anchor="middle" fill="currentColor">169.254.169.254 метадані</text>
+            <text x="570" y="90" text-anchor="middle" fill="var(--bad)">IAM-токени, user-data</text>
+            <rect x="460" y="115" width="220" height="34" rx="8" fill="none" stroke="var(--warn)"/>
+            <text x="570" y="137" text-anchor="middle" fill="currentColor">10.0.0.5:6379 Redis без пароля</text>
+            <rect x="460" y="165" width="220" height="34" rx="8" fill="none" stroke="var(--warn)"/>
+            <text x="570" y="187" text-anchor="middle" fill="currentColor">http://admin.internal</text>
+            <rect x="460" y="215" width="220" height="34" rx="8" fill="none" stroke="var(--warn)"/>
+            <text x="570" y="237" text-anchor="middle" fill="currentColor">127.0.0.1:9229 (inspector)</text>
+            <line x1="390" y1="110" x2="458" y2="80" stroke="var(--bad)" marker-end="url(#n14d4-arrow)"/>
+            <line x1="390" y1="128" x2="458" y2="132" stroke="var(--warn)" marker-end="url(#n14d4-arrow)"/>
+            <line x1="390" y1="145" x2="458" y2="180" stroke="var(--warn)" marker-end="url(#n14d4-arrow)"/>
+            <line x1="390" y1="160" x2="458" y2="230" stroke="var(--warn)" marker-end="url(#n14d4-arrow)"/>
+          </g>
+        </svg>
+        <figcaption>Firewall захищає внутрішні сервіси від інтернету, але не від вашого власного сервера — SSRF використовує його мережеву позицію і його IAM-роль.</figcaption>
+      </figure>
+
+      <h3>Чому "заборонити 169.254.169.254 рядком" не працює</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">ssrf.mjs</span></div>
+        <pre><code>for (const u of ['http://169.254.169.254/latest/meta-data/', 'http://2852039166/', 'http://0xA9FEA9FE/', 'http://[::ffff:169.254.169.254]/', 'http://127.1:6379/', 'http://localhost.example.com@169.254.169.254/']) {
+  const p = new URL(u);
+  console.log(u.padEnd(48), '-> hostname', p.hostname);
+}</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">$ node ssrf.mjs</span></div>
+        <pre><code>http://169.254.169.254/latest/meta-data/         -> hostname 169.254.169.254
+http://2852039166/                               -> hostname 169.254.169.254
+http://0xA9FEA9FE/                               -> hostname 169.254.169.254
+http://[::ffff:169.254.169.254]/                 -> hostname [::ffff:a9fe:a9fe]
+http://127.1:6379/                               -> hostname 127.0.0.1
+http://localhost.example.com@169.254.169.254/    -> hostname 169.254.169.254</code></pre>
+      </div>
+      <p>Десяткова, шістнадцяткова, скорочена й IPv4-mapped IPv6 форми, <code>user@host</code>-трюк — і це ще без DNS: домен
+      <code>evil.com</code> може резолвитись у <code>10.0.0.5</code>, або спершу в публічну IP (пройти перевірку), а через секунду — у приватну
+      (<b>DNS rebinding</b>). Ще один обхід — <b>редирект</b>: публічний URL відповідає <code>302 Location: http://169.254.169.254/</code>, а
+      <code>fetch</code> за замовчуванням іде за редиректом.</p>
+
+      <h3>Правильний захист</h3>
+      <ol>
+        <li><b>Allowlist</b> доменів, якщо можливо (вебхуки лише на зареєстровані хости, аватари лише з S3-бакета).</li>
+        <li>Тільки <code>http:</code>/<code>https:</code>, лише стандартні порти.</li>
+        <li><b>Резолвити DNS самостійно і перевіряти IP</b> (приватні, loopback, link-local, CGNAT, IPv6 ULA, IPv4-mapped — бібліотека <code>ipaddr.js</code>),
+        і <b>підключатися саме до перевіреної IP</b> (кастомний <code>lookup</code> в undici <code>Agent</code> або готові <code>request-filtering-agent</code>/<code>ssrf-req-filter</code>) —
+        інакше DNS rebinding.</li>
+        <li><code>redirect: 'manual'</code> і перевірка кожного переходу тим самим фільтром; таймаут і ліміт розміру відповіді.</li>
+        <li><b>Мережа:</b> egress-проксі або окрема підмережа для "fetch за URL"-воркерів; AWS <b>IMDSv2</b> (потрібен PUT-токен, hop limit 1) робить метадані
+        недосяжними для простого GET.</li>
+      </ol>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Через браузер: XSS у SSR, CSRF, CORS, security headers</h2>
+      <p class="section-desc">Бекенд, який рендерить HTML або ставить cookies, відповідає і за те, що браузер зробить з його відповіддю.</p>
+
+      <h3>XSS у серверному рендерингу</h3>
+      <ul>
+        <li>Шаблонізатори екранують за замовчуванням — але мають "сирий" вивід: EJS <code>&lt;%- %&gt;</code> (на відміну від <code>&lt;%= %&gt;</code>), Handlebars
+        <code>{{{ }}}</code>, Pug <code>!=</code>, React <code>dangerouslySetInnerHTML</code>. Кожне використання — з санітайзером (DOMPurify) або не використовувати.</li>
+        <li><b>Класична SSR-пастка — стан у &lt;script&gt;:</b> <code>JSON.stringify</code> не екранує <code>&lt;/script&gt;</code>. Рядок
+        <code>"&lt;/script&gt;&lt;script&gt;alert(1)&lt;/script&gt;"</code> у даних закриє ваш тег. Екрануйте <code>&lt;</code> як <code><</code> (або <code>serialize-javascript</code>).</li>
+        <li>Контекст важливий: екранування для HTML не захищає атрибут <code>href="javascript:..."</code> — URL з вводу перевіряйте на схему.</li>
+        <li><b>Content-Security-Policy</b> з nonce — другий шар: навіть пропущений інлайн-скрипт не виконається.</li>
+      </ul>
+      <div class="codecard">
+        <div class="bar"><span class="path">ssr-state.js</span></div>
+        <pre><code>const safeJson = (data) => JSON.stringify(data)
+  .replace(/&lt;/g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+
+res.send(`&lt;script nonce="${res.locals.nonce}">window.__STATE__ = ${safeJson(state)}&lt;/script>`);</code></pre>
+      </div>
+
+      <h3>CSRF з cookie-сесіями</h3>
+      <p>Браузер автоматично додає cookies до запитів на ваш домен — навіть ініційованих з <code>evil.com</code> (форма з <code>action="https://bank/transfer"</code>).
+      Захист:</p>
+      <ul>
+        <li><code>SameSite=Lax</code> (дефолт у сучасних браузерах для cookies без атрибута) блокує cookies на крос-сайтових POST, але <b>пропускає top-level GET</b> —
+        тому GET ніколи не змінює стан. <code>SameSite=Strict</code> — для особливо чутливих cookies.</li>
+        <li>Перевірка заголовка <code>Origin</code> (або <code>Sec-Fetch-Site</code>) на змінюючих запитах.</li>
+        <li>CSRF-токен (synchronizer або double-submit, напр. <code>csrf-csrf</code>; старий <code>csurf</code> deprecated) — для форм і легасі-браузерів.</li>
+        <li>API з токеном у заголовку <code>Authorization</code> (не в cookie) CSRF не вразливе — браузер сам цей заголовок не додає.</li>
+      </ul>
+
+      <h3>CORS: найпоширеніша мисконфігурація</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">cors.js</span></div>
+        <pre><code>// ❌ "щоб працювало": відображаємо будь-який Origin + дозволяємо cookies
+app.use(cors({ origin: true, credentials: true }));
+// будь-який сайт може зробити fetch('https://api.you.com/me', { credentials: 'include' })
+// і ПРОЧИТАТИ відповідь з даними вашого залогіненого користувача
+
+// ❌ regex без якорів: /example\.com/ пропускає https://example.com.evil.net і https://notexample.com
+
+// ✅ точний allowlist
+const allowed = new Set(['https://app.example.com', 'https://admin.example.com']);
+app.use(cors({
+  origin: (origin, cb) => cb(null, !origin || allowed.has(origin)),  // !origin — серверні клієнти, curl
+  credentials: true,
+}));</code></pre>
+      </div>
+      <p class="muted">CORS — не захист сервера, а дозвіл браузеру <i>читати</i> відповідь. Запит усе одно доходить до сервера (прості запити — без preflight), тож CORS не замінює ні CSRF-захист, ні авторизацію. <code>Origin: null</code> (sandbox iframe, file://) не додавайте в allowlist.</p>
+
+      <h3>Security headers: helmet</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">app.js</span></div>
+        <pre><code>import helmet from 'helmet';
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: { defaultSrc: ["'self'"], scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.nonce}'`] },
+  },
+  strictTransportSecurity: { maxAge: 63072000, includeSubDomains: true, preload: true },
+}));
+app.disable('x-powered-by');</code></pre>
+      </div>
+      <table>
+        <tr><th>Заголовок</th><th>Від чого</th></tr>
+        <tr><td><code>Content-Security-Policy</code></td><td>XSS, інлайн-скрипти, сторонні джерела</td></tr>
+        <tr><td><code>Strict-Transport-Security</code></td><td>downgrade на HTTP, SSL stripping</td></tr>
+        <tr><td><code>X-Content-Type-Options: nosniff</code></td><td>браузер "вгадує" JS у завантаженому файлі</td></tr>
+        <tr><td><code>X-Frame-Options</code> / CSP <code>frame-ancestors</code></td><td>clickjacking</td></tr>
+        <tr><td><code>Referrer-Policy</code></td><td>витік токенів з URL у Referer</td></tr>
+        <tr><td>Cookies: <code>HttpOnly; Secure; SameSite; __Host-</code></td><td>крадіжка через XSS, передача по HTTP, підміна піддоменом</td></tr>
+      </table>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Rate limiting і brute force</h2>
+      <p class="section-desc">Без лімітів будь-який ендпоінт логіну — безкоштовний сервіс перевірки вкрадених паролів, а дорогий ендпоінт — кнопка DoS.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">rate-limit.js</span></div>
+        <pre><code>import { rateLimit } from 'express-rate-limit';
+import { RedisStore } from 'rate-limit-redis';
+
+app.set('trust proxy', 1);   // ОДИН відомий проксі попереду — інакше req.ip = IP балансувальника
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60_000,
+  limit: 10,                                     // 10 спроб за 15 хв
+  keyGenerator: (req) => `${req.ip}:${String(req.body?.email).toLowerCase()}`,
+  standardHeaders: 'draft-8',
+  store: new RedisStore({ sendCommand: (...a) => redis.sendCommand(a) }),  // спільний для всіх інстансів
+});
+app.post('/auth/login', loginLimiter, loginHandler);</code></pre>
+      </div>
+      <ul>
+        <li><b>In-memory лічильник працює лише в одному процесі.</b> При 4 інстансах ліміт фактично ×4, при рестарті скидається. Для горизонтального
+        масштабування — Redis-store (<code>rate-limit-redis</code>, <code>rate-limiter-flexible</code>) або ліміт на рівні проксі/API gateway.</li>
+        <li><b><code>trust proxy</code></b>: без нього всі клієнти мають IP балансувальника (один ліміт на всіх); з <code>true</code> за відсутності проксі —
+        атакувальник підставляє будь-який <code>X-Forwarded-For</code> і обходить ліміт. Вказуйте точну кількість хопів або підмережі.</li>
+        <li><b>Brute force vs credential stuffing:</b> ліміт по IP не зупиняє ботнет (тисячі IP по 2 спроби), ліміт по акаунту — зупиняє, але дає DoS чужого
+        акаунта. Комбінуйте: per-IP, per-account з прогресивною затримкою, CAPTCHA після N невдач, 2FA, перевірка паролів за базою зламаних (HIBP k-anonymity).</li>
+        <li>Однакова відповідь і час для "немає користувача" і "невірний пароль" — щоб не дати перебирати email-и (user enumeration).</li>
+        <li>Ліміти потрібні не лише на логін: реєстрація, скидання пароля, відправка SMS/email (гроші!), пошук, генерація звітів, AI-виклики.</li>
+      </ul>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Паролі, JWT і сесії</h2>
+      <p class="section-desc">Помилки тут не "трохи послаблюють" безпеку — вони дозволяють увійти будь-ким або розшифрувати всю базу паролів за вихідні.</p>
+
+      <h3>Хешування паролів: повільно — це фіча</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">hash.mjs</span></div>
+        <pre><code>import { createHash, randomBytes, argon2Sync, scryptSync, timingSafeEqual } from 'node:crypto';
+
+let t = performance.now(), n = 0;
+while (performance.now() - t &lt; 200) { createHash('sha256').update('password' + n++).digest(); }
+console.log(`sha256: ~${Math.round(n * 5 / 1e3)}k hashes/s on one core`);
+
+const salt = randomBytes(16);
+t = performance.now();
+const tag = argon2Sync('argon2id', { message: 'correct horse', nonce: salt, parallelism: 1, tagLength: 32, memory: 19456, passes: 2 });
+console.log(`argon2id (19 MiB, t=2): ${Math.round(performance.now() - t)} ms, tag ${tag.length} bytes`);
+
+t = performance.now();
+const key = scryptSync('correct horse', salt, 32, { N: 2 ** 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
+console.log(`scrypt (N=2^15): ${Math.round(performance.now() - t)} ms`);
+
+const again = argon2Sync('argon2id', { message: 'correct horse', nonce: salt, parallelism: 1, tagLength: 32, memory: 19456, passes: 2 });
+console.log('verify:', timingSafeEqual(tag, again));</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">$ node hash.mjs   (Node 24.x)</span></div>
+        <pre><code>sha256: ~394k hashes/s on one core
+argon2id (19 MiB, t=2): 43 ms, tag 32 bytes
+scrypt (N=2^15): 92 ms
+verify: true</code></pre>
+      </div>
+      <p>Навіть з накладними витратами JS-циклу одне ядро робить сотні тисяч SHA-256 на секунду; GPU — мільярди. Argon2id з параметрами
+      OWASP (19 MiB, 2 проходи) коштує ~40 мс і 19 МБ пам'яті <b>на кожну спробу</b> — пам'ять і робить його дорогим на GPU.</p>
+      <ul>
+        <li><b>Argon2id</b> — сучасний дефолт. У свіжих Node 24.x з'явився вбудований <code>crypto.argon2</code>; на старших версіях — пакет <code>argon2</code>
+        (нативний, зберігає параметри й сіль у PHC-рядку <code>$argon2id$v=19$m=19456,t=2,p=1$...</code>).</li>
+        <li><b>bcrypt</b> (cost 10–12) — прийнятно; пам'ятайте ліміт 72 байти пароля. <b>scrypt</b> — вбудований у Node давно.</li>
+        <li>Ніколи: MD5/SHA-*, навіть "з сіллю", навіть 1000 разів — це швидкі хеші. Ніколи — шифрування паролів (його можна розшифрувати).</li>
+        <li>Використовуйте <b>асинхронні</b> версії (<code>argon2</code>, <code>scrypt</code> з колбеком) — синхронні 40–100 мс блокують event loop, і логін стає DoS-вектором.</li>
+      </ul>
+
+      <h3>JWT: де ламається</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">jwt-none.mjs</span></div>
+        <pre><code>import { createHmac, timingSafeEqual } from 'node:crypto';
+const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+const SECRET = 'a-32-byte-secret-from-a-secrets-manager';
+
+// ❌ "верифікатор", що довіряє алгоритму з заголовка токена
+function naiveVerify(token) {
+  const [h, p, sig] = token.split('.');
+  const header = JSON.parse(Buffer.from(h, 'base64url'));
+  if (header.alg === 'none') return JSON.parse(Buffer.from(p, 'base64url'));
+  const expected = createHmac('sha256', SECRET).update(`${h}.${p}`).digest('base64url');
+  if (sig !== expected) throw new Error('bad signature');
+  return JSON.parse(Buffer.from(p, 'base64url'));
+}
+
+// ✅ алгоритм фіксує сервер, а не токен; порівняння — за сталий час; exp обов'язковий
+function strictVerify(token) {
+  const [h, p, sig = ''] = token.split('.');
+  const header = JSON.parse(Buffer.from(h, 'base64url'));
+  if (header.alg !== 'HS256') throw new Error(`alg ${header.alg} not allowed`);
+  const expected = createHmac('sha256', SECRET).update(`${h}.${p}`).digest();
+  const given = Buffer.from(sig, 'base64url');
+  if (given.length !== expected.length || !timingSafeEqual(given, expected)) throw new Error('bad signature');
+  const payload = JSON.parse(Buffer.from(p, 'base64url'));
+  if (typeof payload.exp !== 'number' || payload.exp * 1000 &lt; Date.now()) throw new Error('expired or no exp');
+  return payload;
+}
+
+const forged = `${b64({ alg: 'none', typ: 'JWT' })}.${b64({ sub: '1', role: 'admin' })}.`;
+console.log('naive :', naiveVerify(forged));
+try { strictVerify(forged); } catch (e) { console.log('strict:', e.message); }</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">$ node jwt-none.mjs</span></div>
+        <pre><code>naive : { sub: '1', role: 'admin' }
+strict: alg none not allowed</code></pre>
+      </div>
+      <p class="muted">Це навчальна модель; у продакшені — бібліотека (<code>jose</code> або <code>jsonwebtoken</code>), але з тими самими правилами.</p>
+
+      <table>
+        <tr><th>Пастка</th><th>Що відбувається</th><th>Правильно</th></tr>
+        <tr><td><code>alg: none</code> / алгоритм з токена</td><td>підпис "не потрібен"; або <b>key confusion</b>: RS256-сервіс приймає HS256-токен, підписаний <i>публічним</i> ключем як HMAC-секретом</td><td><code>jwt.verify(t, key, { algorithms: ['RS256'] })</code>; у jose — <code>jwtVerify(t, key, { algorithms: [...] })</code></td></tr>
+        <tr><td>Слабкий HS256-секрет</td><td>токен перехоплено → секрет підбирається офлайн (hashcat), далі будь-які токени</td><td>≥ 256 біт випадковості (<code>randomBytes(32)</code>), або асиметричні ключі</td></tr>
+        <tr><td>Немає <code>exp</code></td><td>вкрадений токен живе вічно; JWT не відкликати без denylist</td><td>access 5–15 хв + refresh-токен з ротацією і детекцією повторного використання</td></tr>
+        <tr><td>Не перевіряються <code>iss</code>/<code>aud</code></td><td>токен від іншого сервісу того ж IdP приймається</td><td><code>{ issuer, audience }</code> у verify</td></tr>
+        <tr><td><code>jwt.decode()</code> замість <code>verify()</code></td><td>читання без перевірки підпису</td><td>decode — тільки для дебагу</td></tr>
+        <tr><td>Секрети в payload</td><td>JWT підписаний, а не зашифрований — base64 читає будь-хто</td><td>у payload лише id і мінімум claims</td></tr>
+      </table>
+
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: де браузер зберігає токен сесії</div>
+        <table>
+          <tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>HttpOnly Secure SameSite cookie</b> ✅</td><td>JS (і XSS) не може прочитати токен; браузер керує відправкою</td><td>потрібен CSRF-захист; складніше для крос-доменних API</td></tr>
+          <tr><td><code>localStorage</code> + <code>Authorization</code></td><td>просто, немає CSRF</td><td>будь-який XSS (або скомпрометований npm-пакет фронту) краде токен і використовує його поза браузером</td></tr>
+          <tr><td>Токен у пам'яті + refresh у HttpOnly cookie</td><td>компроміс для SPA: access-токен не персистується</td><td>складніша логіка оновлення</td></tr>
+        </table>
+        <p><b>Коли що:</b> для веб-застосунку на своєму домені — серверна сесія або JWT у HttpOnly cookie. Для мобільних і server-to-server клієнтів cookies не потрібні — <code>Authorization: Bearer</code>. Пам'ятайте: XSS з HttpOnly cookie все одно може робити запити <i>від імені</i> користувача, поки вкладка відкрита, — cookie захищає від крадіжки, не від XSS.</p>
+      </div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Timing attacks і безпечна випадковість</h2>
+      <p class="section-desc">Два тихі баги: порівняння секретів через <code>===</code> і токени з <code>Math.random()</code>.</p>
+
+      <h3>timingSafeEqual</h3>
+      <p><code>a === b</code> для рядків зупиняється на першому розбіжному символі. Час відповіді трохи більший, коли співпадає довший префікс, — і з тисячами
+      вимірів атакувальник підбирає секрет (API-ключ, підпис вебхука) посимвольно. <code>crypto.timingSafeEqual</code> порівнює за час, що не залежить від вмісту:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">webhook.js</span></div>
+        <pre><code>import { createHmac, timingSafeEqual } from 'node:crypto';
+
+export function verifyWebhook(rawBody, signatureHex, secret) {
+  const expected = createHmac('sha256', secret).update(rawBody).digest();  // підписуємо СИРІ байти, не re-stringify
+  const given = Buffer.from(signatureHex ?? '', 'hex');
+  // timingSafeEqual кидає ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH на різній довжині — перевіряємо самі
+  return given.length === expected.length &amp;&amp; timingSafeEqual(given, expected);
+}</code></pre>
+      </div>
+      <p class="muted">Перевірено: <code>timingSafeEqual(Buffer.from('secret-token-1'), Buffer.from('secret-token-2'))</code> → <code>false</code>; буфери різної довжини → помилка
+      <code>ERR_CRYPTO_TIMING_SAFE_EQUAL_LENGTH</code>. Порівнювати HMAC-дайджести фіксованої довжини — найпростіший спосіб уникнути витоку довжини.</p>
+
+      <h3>Випадковість</h3>
+      <table>
+        <tr><th>API</th><th>Для чого</th></tr>
+        <tr><td><code>Math.random()</code></td><td>лише не-безпекові речі (jitter, A/B-розподіл). Генератор V8 (xorshift128+) не криптостійкий: зі спостережуваних виходів відновлюється стан і передбачаються наступні значення</td></tr>
+        <tr><td><code>crypto.randomUUID()</code></td><td>ідентифікатори (UUID v4, 122 біти випадковості)</td></tr>
+        <tr><td><code>crypto.randomBytes(32).toString('base64url')</code></td><td>токени скидання пароля, API-ключі, сесії, CSRF-токени</td></tr>
+        <tr><td><code>crypto.randomInt(0, 1_000_000)</code></td><td>OTP-коди без modulo bias</td></tr>
+        <tr><td><code>crypto.getRandomValues()</code></td><td>Web Crypto API — той самий код у браузері й Node</td></tr>
+      </table>
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Токени в базі — хешуйте.</b> Токен скидання пароля чи API-ключ зберігайте як <code>sha256(token)</code> (тут швидкий хеш доречний: токен має
+        256 біт ентропії, перебір неможливий), порівнюйте хеші. Витік бази тоді не дає робочих токенів. Плюс короткий TTL і одноразовість.</div>
+      </div>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Секрети, ланцюг постачання і hardening рантайму</h2>
+      <p class="section-desc">Ваш застосунок — це 5% вашого коду і 95% чужого; і він працює з правами, які ви йому дали.</p>
+
+      <h3>Секрети</h3>
+      <ul>
+        <li>Не в git, не в Docker-шарах (<code>ARG</code>/<code>ENV</code>/<code>COPY .env</code>), не в логах, не в повідомленнях помилок. Детально про завантаження й
+        валідацію конфігу — <a href="13-typescript-validation-config.html">туторіал 13</a>.</li>
+        <li>Secrets manager з ротацією; короткоживучі креденшели (IAM-ролі, OIDC з CI замість довгих ключів).</li>
+        <li>Витік = ротація, а не "видалили коміт": історія git, форки, кеші CI вже мають копію. Сканери (<code>gitleaks</code>, GitHub secret scanning) у pre-commit і CI.</li>
+      </ul>
+
+      <h3>Supply chain</h3>
+      <table>
+        <tr><th>Захід</th><th>Від чого</th></tr>
+        <tr><td>Лок-файл у git + <code>npm ci</code> (не <code>npm install</code>) у CI</td><td>непомітне оновлення транзитивної залежності на скомпрометовану версію</td></tr>
+        <tr><td><code>--ignore-scripts</code> / <code>ignore-scripts=true</code> у <code>.npmrc</code>; pnpm 10 за замовчуванням не запускає lifecycle-скрипти залежностей (allowlist через <code>onlyBuiltDependencies</code>)</td><td><code>postinstall</code>, що краде токени з CI-середовища і <code>~/.npmrc</code> — основний вектор черв'яків у npm</td></tr>
+        <tr><td><code>npm audit</code> / Dependabot / Renovate; Socket, Snyk</td><td>відомі CVE; підозріла поведінка нових версій (мережа, eval, install-скрипти)</td></tr>
+        <tr><td>Затримка перед оновленням на свіжі версії (cooldown на кілька днів)</td><td>скомпрометовані релізи зазвичай виявляють і знімають за години-дні</td></tr>
+        <tr><td><code>npm publish --provenance</code> / trusted publishing; <code>npm audit signatures</code></td><td>пакет зібраний саме з цього репозиторію і цього CI, а не з ноутбука зламаного мейнтейнера</td></tr>
+        <tr><td>2FA для npm-акаунтів, гранулярні токени</td><td>фішинг мейнтейнерів (саме так у 2025 році були скомпрометовані популярні пакети з мільярдами завантажень)</td></tr>
+        <tr><td>Менше залежностей</td><td>кожен <code>left-pad</code> — ще один мейнтейнер, якому ви довіряєте свій прод</td></tr>
+      </table>
+      <p>Більше про npm, лок-файли й pnpm — <a href="05-npm-packages.html">туторіал 5</a>.</p>
+
+      <h3>Рантайм: мінімум прав</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">Dockerfile</span></div>
+        <pre><code>FROM node:24-slim
+ENV NODE_ENV=production
+WORKDIR /app
+COPY --chown=node:node package*.json ./
+RUN npm ci --omit=dev --ignore-scripts
+COPY --chown=node:node dist ./dist
+USER node                      # офіційний образ має користувача node (uid 1000) — не root
+CMD ["node", "--enable-source-maps", "dist/main.js"]
+# + у рантаймі: read-only root FS, drop ALL capabilities, no-new-privileges</code></pre>
+      </div>
+
+      <h3>Node permission model</h3>
+      <p>Прапорець <code>--permission</code> вмикає модель дозволів: за замовчуванням заборонені файлова система, дочірні процеси, worker-и, нативні аддони;
+      дозволи видаються явно (<code>--allow-fs-read</code>, <code>--allow-fs-write</code>, <code>--allow-child-process</code>, <code>--allow-worker</code>, <code>--allow-addons</code>).</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">perm.cjs</span></div>
+        <pre><code>const fs = require('node:fs');
+console.log('can read cwd:', process.permission.has('fs.read', __dirname));
+try { fs.readFileSync('/etc/passwd'); } catch (e) { console.log(e.code, e.permission, e.resource); }
+try { require('node:child_process').execSync('id'); } catch (e) { console.log(e.code, e.permission); }</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">$ node --permission --allow-fs-read="$PWD" perm.cjs</span></div>
+        <pre><code>can read cwd: true
+ERR_ACCESS_DENIED FileSystemRead /etc/passwd
+ERR_ACCESS_DENIED ChildProcess</code></pre>
+      </div>
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body"><b>Чим permission model не є.</b> Документація Node прямо називає її "ремнем безпеки" для довіреного коду, а не пісочницею для шкідливого:
+        вона обмежує наслідки помилки (path traversal не прочитає <code>/etc</code>), але не гарантує ізоляцію від цілеспрямованого обходу. Ізоляцію дають контейнер,
+        seccomp, окремий процес/VM. Дозвіл на мережу в різних версіях Node реалізований по-різному — перевіряйте документацію вашої версії.</div>
+      </div>
+
+      <h3>Помилки і логи</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">errors.js</span></div>
+        <pre><code>// фінальний error handler Express: деталі — в лог, клієнту — мінімум
+app.use((err, req, res, next) => {
+  const status = err.status ?? 500;
+  req.log.error({ err, reqId: req.id }, 'request failed');
+  res.status(status).json(status &lt; 500
+    ? { error: err.expose ? err.message : 'Bad request' }
+    : { error: 'Internal error', reqId: req.id });           // без stack, без SQL, без шляхів
+});
+
+// pino: маскування PII і секретів на рівні логера
+const logger = pino({ redact: { paths: ['req.headers.authorization', 'req.headers.cookie', '*.password', '*.token', 'user.email'], censor: '[REDACTED]' } });</code></pre>
+      </div>
+      <ul>
+        <li>Дефолтний обробник Express показує stack trace, якщо <code>NODE_ENV !== 'production'</code> — забутий <code>NODE_ENV</code> у контейнері = витік шляхів, версій, SQL.</li>
+        <li>Повідомлення драйвера БД (<code>duplicate key value violates unique constraint "users_email_key"</code>) розкривають схему і дозволяють user enumeration.</li>
+        <li>PII і токени в логах — проблема GDPR і другий шлях витоку (логи читає більше людей, ніж базу). Не логуйте тіла запитів цілком.</li>
+        <li>Інспектор (<code>--inspect</code>) ніколи не слухає <code>0.0.0.0</code> у проді — це віддалене виконання коду.</li>
+      </ul>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Каверзні питання співбесіди</h2>
+      <p class="section-desc">Питання, де очікують не "використовуємо helmet", а механізм атаки.</p>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим <code>exec</code> небезпечніший за <code>execFile</code>?</summary>
+        <div class="a"><code>exec</code> запускає рядок через <code>/bin/sh -c</code>, тож <code>;</code>, <code>|</code>, <code>$()</code> у вводі виконуються як команди. <code>execFile</code>/<code>spawn</code> передають аргументи
+        масивом прямо в <code>execve</code>. Але лишається argument injection (ввід, що починається з <code>-</code>) — ставте <code>--</code>, валідуйте формат.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Як увійти в Mongo-логін без пароля, якщо там немає SQL?</summary>
+        <div class="a">Передати об'єкт замість рядка: <code>{"password": {"$ne": null}}</code> — фільтр стає "будь-який не-null пароль". Захист — схема з <code>z.string()</code>,
+        <code>sanitizeFilter</code> у Mongoose, явний <code>$eq</code>; і, звісно, пароль порівнюють з хешем у коді, а не фільтром у базі.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому <code>path.join(ROOT, name)</code> + <code>startsWith(ROOT)</code> — недостатньо?</summary>
+        <div class="a">Два баги: <code>startsWith('/srv/uploads')</code> пропускає <code>/srv/uploads-evil</code> (потрібен <code>ROOT + path.sep</code>), і перевірка до декодування/без
+        <code>resolve</code> пропускає закодовані й абсолютні шляхи. Плюс симлінки — <code>realpath</code>. Найкраще — зберігати файли під згенерованими ID.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Поясніть prototype pollution за 30 секунд.</summary>
+        <div class="a"><code>JSON.parse</code> дає власний ключ <code>"__proto__"</code>; наївний deep merge читає <code>target["__proto__"]</code> — це <code>Object.prototype</code> — і рекурсивно пише туди дані
+        атакувальника. Тепер кожен об'єкт процесу "має" цю властивість: обхід перевірок (<code>user.isAdmin</code>), DoS, RCE через гаджети. Захист: схема, безпечний merge, <code>Map</code>/<code>Object.create(null)</code>, <code>--disable-proto</code>, freeze.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому ReDoS у Node небезпечніший, ніж у Java-сервері з пулом потоків?</summary>
+        <div class="a">У Java зависає один потік з сотень; у Node regex виконується синхронно в єдиному потоці event loop — зупиняються <i>всі</i> запити процесу, health-check падає, оркестратор
+        вбиває под. Кілька запитів по 30 символів кладуть сервіс.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Як захиститися від SSRF у фічі "завантажити аватар за URL"?</summary>
+        <div class="a">Allowlist доменів, якщо можливо; інакше — лише http/https, резолв DNS і перевірка IP (private, loopback, link-local, mapped IPv6) з підключенням до
+        перевіреної IP (проти DNS rebinding), <code>redirect: 'manual'</code> з повторною перевіркою, таймаут і ліміт розміру, egress-проксі, IMDSv2. Рядкова перевірка хоста не працює:
+        <code>http://2852039166/</code> — це 169.254.169.254.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Що не так з <code>cors({ origin: true, credentials: true })</code>?</summary>
+        <div class="a">Сервер відображає будь-який Origin в <code>Access-Control-Allow-Origin</code> і дозволяє credentials — отже будь-який сайт може зробити запит з cookies жертви і
+        <b>прочитати</b> відповідь. <code>*</code> з credentials браузер не прийме, тому люди "лагодять" відображенням — і відкривають API всім. Потрібен точний allowlist.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чому не можна хешувати паролі SHA-256 з сіллю?</summary>
+        <div class="a">SHA-256 швидкий: сотні тисяч на ядро CPU, мільярди на GPU — вкрадена база з сіллю перебирається словником за години. Потрібна навмисно повільна і
+        memory-hard функція: argon2id (OWASP: 19 MiB, t=2), bcrypt, scrypt. Сіль захищає лише від rainbow tables, не від перебору.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Що таке JWT key confusion (RS256 → HS256)?</summary>
+        <div class="a">Сервіс перевіряє RS256 публічним ключем. Якщо бібліотека бере алгоритм з заголовка токена, атакувальник ставить <code>alg: HS256</code> і підписує токен HMAC-ом,
+        використовуючи <i>публічний ключ</i> як секрет — верифікація "проходить". Захист: явний <code>algorithms: ['RS256']</code> у verify; сучасні бібліотеки також розрізняють типи ключів.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>JWT у localStorage чи в HttpOnly cookie?</summary>
+        <div class="a">HttpOnly cookie: XSS не може вкрасти токен (але може діяти від імені користувача, поки сторінка відкрита); ціна — CSRF-захист (SameSite, Origin-перевірка, токен).
+        localStorage — будь-який XSS або скомпрометований фронтенд-пакет експортує токен назовні, і той працює звідусіль до <code>exp</code>.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Навіщо <code>timingSafeEqual</code>, якщо різниця в часі — наносекунди?</summary>
+        <div class="a">Статистика: тисячі вимірів на кожен символ усереднюють шум мережі, особливо з хоста поруч (та сама хмара). Ранній вихід <code>===</code> на першому розбіжному байті
+        дає посимвольний оракул. Плюс нюанс: <code>timingSafeEqual</code> кидає помилку на буферах різної довжини — порівнюйте дайджести фіксованої довжини.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим небезпечний <code>npm install</code> у CI і що робити?</summary>
+        <div class="a">Може оновити транзитивні залежності поза лок-файлом і запускає <code>postinstall</code>-скрипти сотень пакетів з доступом до секретів CI. <code>npm ci</code> (строго за лок-файлом),
+        <code>ignore-scripts</code> з allowlist для нативних пакетів, мінімальні права токенів у CI, audit/Socket, provenance, cooldown на свіжі версії.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Rate limiter стоїть, але брутфорс логіну все одно проходить. Чому?</summary>
+        <div class="a">Варіанти: in-memory store при кількох інстансах (ліміт ×N, скидається при рестарті); <code>trust proxy: true</code> без проксі — атакувальник змінює <code>X-Forwarded-For</code>;
+        або навпаки, без trust proxy всі мають IP балансувальника. Credential stuffing з ботнету обходить per-IP — потрібен ще per-account ліміт.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чи робить <code>--permission</code> безпечним запуск недовіреного коду?</summary>
+        <div class="a">Ні — це "ремінь безпеки" для власного коду: обмежує наслідки помилок (fs, child_process, workers, addons). Для недовіреного коду потрібна справжня ізоляція: окремий процес у контейнері,
+        seccomp/gVisor, VM, isolated-vm. Модуль <code>vm</code> теж не є механізмом безпеки.</div>
+      </details>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Шпаргалка</h2>
+      <p class="section-desc">Чекліст безпеки Node API.</p>
+      <div class="cheat">
+        <table>
+          <tr><th>Загроза</th><th>Захист</th></tr>
+          <tr><td>SQL injection</td><td>параметри; ідентифікатори — allowlist; рев'ю всіх <code>raw/unsafe</code></td></tr>
+          <tr><td>NoSQL injection</td><td>схема з типами (<code>z.string()</code>), <code>sanitizeFilter</code>, <code>$eq</code>, без <code>$where</code></td></tr>
+          <tr><td>Command injection</td><td><code>execFile/spawn</code> з масивом, без <code>shell</code>, <code>--</code>, краще бібліотека</td></tr>
+          <tr><td>Path traversal</td><td><code>path.resolve</code> + <code>startsWith(ROOT + sep)</code> після декодування, <code>realpath</code>, файли під UUID</td></tr>
+          <tr><td>Prototype pollution</td><td>схема, safe merge, <code>Map</code>/<code>Object.create(null)</code>, <code>Object.hasOwn</code>, <code>--disable-proto=delete</code></td></tr>
+          <tr><td>ReDoS</td><td>без вкладених квантифікаторів, ліміт довжини входу, <code>re2</code>, lint, worker з таймаутом</td></tr>
+          <tr><td>Payload DoS</td><td>body limit, ліміти масивів/глибини, стрім для файлів, ліміт розпакування, таймаути сервера</td></tr>
+          <tr><td>SSRF</td><td>allowlist, перевірка резолвленої IP + pin, no redirects, egress-проксі, IMDSv2</td></tr>
+          <tr><td>XSS / CSRF / CORS</td><td>екранування, CSP з nonce, <code><</code> у SSR-стані; SameSite + Origin-перевірка; точний CORS allowlist</td></tr>
+          <tr><td>Brute force</td><td>спільний store (Redis), per-IP + per-account, правильний <code>trust proxy</code></td></tr>
+          <tr><td>Паролі</td><td>argon2id / bcrypt / scrypt, async; ніколи SHA/MD5</td></tr>
+          <tr><td>JWT</td><td>фіксовані <code>algorithms</code>, сильний ключ, <code>exp</code>/<code>iss</code>/<code>aud</code>, HttpOnly cookie, короткий TTL + refresh rotation</td></tr>
+          <tr><td>Секрети / порівняння</td><td><code>timingSafeEqual</code>, <code>randomBytes/randomUUID/randomInt</code>, хешувати токени в БД</td></tr>
+          <tr><td>Supply chain</td><td>лок-файл + <code>npm ci</code>, ignore-scripts, audit, provenance, 2FA, cooldown</td></tr>
+          <tr><td>Рантайм</td><td><code>USER node</code>, read-only FS, <code>--permission</code>, <code>NODE_ENV=production</code>, без stack у відповідях, redact у логах</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Як запам'ятати</h2>
+      <p class="section-desc">Образи атак, які легко згадати під тиском співбесіди.</p>
+      <div class="flashgrid">
+        <div class="flashcard">
+          <div class="fc-num">1</div>
+          <div class="term">Ін'єкція</div>
+          <div class="def">Дані потрапили в позицію коду: SQL-текст, структуру фільтра, рядок shell.</div>
+          <div class="mnemo"><b>Асоціація:</b> у графі "ім'я" бланка хтось дописав "...і переказати мені всі гроші" — а бланк виконали дослівно.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">2</div>
+          <div class="term">NoSQL operator injection</div>
+          <div class="def">Об'єкт замість рядка вносить у фільтр оператор (<code>$ne</code>, <code>$regex</code>).</div>
+          <div class="mnemo"><b>Асоціація:</b> на питання "який пароль?" відповісти "будь-який, крім порожнього" — і охоронець погодився.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">3</div>
+          <div class="term">Path traversal</div>
+          <div class="def"><code>../</code> у назві файлу виводить за межі дозволеної директорії.</div>
+          <div class="mnemo"><b>Асоціація:</b> у готелі попросити "номер 305/../../сейф".</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">4</div>
+          <div class="term">Prototype pollution</div>
+          <div class="def">Запис через <code>__proto__</code> у спільний <code>Object.prototype</code> змінює всі об'єкти процесу.</div>
+          <div class="mnemo"><b>Асоціація:</b> отруїти міський водогін, а не одну склянку — п'ють усі будинки.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">5</div>
+          <div class="term">ReDoS</div>
+          <div class="def">Вкладені квантифікатори дають експоненційний backtracking і блокують event loop.</div>
+          <div class="mnemo"><b>Асоціація:</b> кодовий замок, де після кожної невдачі треба перепробувати всі попередні комбінації.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">6</div>
+          <div class="term">SSRF</div>
+          <div class="def">Сервер робить запит за URL атакувальника — у внутрішню мережу й до метаданих хмари.</div>
+          <div class="mnemo"><b>Асоціація:</b> попросити секретаря з перепусткою "занести листа" в серверну.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">7</div>
+          <div class="term">CORS reflect + credentials</div>
+          <div class="def">Віддзеркалення будь-якого Origin з cookies дозволяє будь-якому сайту читати дані користувача.</div>
+          <div class="mnemo"><b>Асоціація:</b> вишибала, який пускає кожного, хто назвав будь-яке ім'я.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">8</div>
+          <div class="term">Argon2id / bcrypt</div>
+          <div class="def">Навмисно повільні (і memory-hard) хеші паролів — дорогі для перебору.</div>
+          <div class="mnemo"><b>Асоціація:</b> сейф з годинниковим механізмом: власнику 40 мс не шкода, зломщику мільярд спроб — вічність.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">9</div>
+          <div class="term">JWT alg: none</div>
+          <div class="def">Алгоритм перевірки має задавати сервер, а не сам токен.</div>
+          <div class="mnemo"><b>Асоціація:</b> перепустка, на якій написано "перевіряти мене не треба".</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">10</div>
+          <div class="term">timingSafeEqual</div>
+          <div class="def">Порівняння секретів за сталий час, без раннього виходу.</div>
+          <div class="mnemo"><b>Асоціація:</b> касир, що завжди перераховує всю пачку, а не зупиняється на першій фальшивій купюрі — і по обличчю нічого не видно.</div>
+        </div>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Node.js Doc · частина серії туторіалів AI Delivery Planner. Приклади коду перевірені на Node.js 24.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

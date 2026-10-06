@@ -1,0 +1,1928 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>9. HTTP і мережа в Node.js — Node.js Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🟢 Node.js Doc <span>· AI Delivery Planner</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Node.js Doc · Туторіал 9 з 20</div>
+  <h1>HTTP і мережа в Node.js: від сокета до graceful shutdown</h1>
+  <p class="lead">Що відбувається між <b>TCP accept</b> і вашим handler-ом, чому keep-alive одночасно прискорює сервіс і породжує <b>502 за load balancer</b>, як правильно ставити таймаути клієнту на <code>fetch</code>, де DNS тихо з'їдає thread pool і як вимкнути сервер, не втративши жодного запиту. Усі демо запущені на Node 24 — вивід справжній.</p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="07-fs-process-os.html">7. fs, process, os</a>
+        <a href="08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="09-http-networking.html" class="active">9. HTTP і мережа</a>
+        <a href="10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="12-databases-orm.html">12. БД і ORM</a>
+        <a href="13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="14-security.html">14. Безпека Node</a>
+        <a href="15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="16-testing.html">16. Тестування</a>
+        <a href="17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+  </aside>
+
+    <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Мінімальний сервер: req і res</a></li>
+      <li><a href="#s2">2. Тіло, ліміти, роутинг руками</a></li>
+      <li><a href="#s3">3. Життєвий цикл запиту</a></li>
+      <li><a href="#s4">4. Keep-alive і http.Agent</a></li>
+      <li><a href="#s5">5. Таймаути сервера і 502</a></li>
+      <li><a href="#s6">6. HTTP-клієнт: fetch і undici</a></li>
+      <li><a href="#s7">7. Стрімінг відповідей</a></li>
+      <li><a href="#s8">8. HTTPS і TLS</a></li>
+      <li><a href="#s9">9. HTTP/2</a></li>
+      <li><a href="#s10">10. net і dgram</a></li>
+      <li><a href="#s11">11. DNS: lookup vs resolve</a></li>
+      <li><a href="#s12">12. Проксі, XFF, компресія</a></li>
+      <li><a href="#s13">13. Graceful shutdown</a></li>
+      <li><a href="#s14">14. Каверзні питання співбесіди</a></li>
+      <li><a href="#s15">15. Шпаргалка</a></li>
+      <li><a href="#s16">16. Як запам'ятати</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Мінімальний сервер: що насправді дає node:http</h2>
+      <p class="section-desc">Express, Fastify і Nest — це обгортки над тим самим <code>http.Server</code>. Хто розуміє низ, той дебажить будь-який фреймворк.</p>
+
+      <p>Модуль <code>node:http</code> — це не «фреймворк», а тонкий шар над TCP-сокетом і C-парсером HTTP
+      (<b>llhttp</b>). Він дає вам рівно дві речі: розібраний запит і можливість записати відповідь.
+      Роутинг, парсинг JSON, валідація, cookies, CORS — усе це ви (або фреймворк) робите самі.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">hello.mjs</span></div>
+        <pre><code>import http from 'node:http';
+
+const server = http.createServer((req, res) =&gt; {
+  // req  — http.IncomingMessage  (Readable stream + метадані)
+  // res  — http.ServerResponse   (Writable stream + статус/заголовки)
+  res.statusCode = 200;
+  res.setHeader('content-type', 'text/plain; charset=utf-8');
+  res.end(`Привіт, ${req.method} ${req.url}\n`);
+});
+
+server.listen(3000, () =&gt; console.log('http://localhost:3000'));</code></pre>
+      </div>
+
+      <h3>req — це Readable, res — це Writable</h3>
+      <p>Це головна ментальна модель, яку перевіряють на співбесіді. <code>IncomingMessage</code> успадковує
+      <code>stream.Readable</code>: <b>заголовки вже розібрані</b>, коли викликається ваш handler, а <b>тіло ще ні</b> —
+      воно прийде потоком chunk-ів, і поки ви його не прочитаєте, воно лежить у буферах сокета (і через backpressure
+      клієнт зупиниться). <code>ServerResponse</code> — <code>stream.Writable</code>: ви можете писати шматками
+      (<code>res.write()</code>), і перший <code>write</code> «заморожує» статус і заголовки.</p>
+
+      <table>
+        <tr><th>Об'єкт</th><th>Що є одразу</th><th>Що треба зробити самому</th><th>Типова помилка</th></tr>
+        <tr><td><code>req</code> (Readable)</td><td><code>method</code>, <code>url</code> (сирий рядок!), <code>headers</code> (ключі в lowercase), <code>socket</code>, <code>httpVersion</code></td><td>прочитати тіло, розпарсити URL і query, обмежити розмір</td><td>не дочитати тіло → keep-alive сокет «застряг»</td></tr>
+        <tr><td><code>res</code> (Writable)</td><td><code>statusCode</code>, <code>setHeader</code>, <code>write</code>, <code>end</code>, <code>headersSent</code></td><td>серіалізувати JSON, поставити <code>content-type</code>/<code>content-length</code></td><td><code>setHeader</code> після <code>write</code> → <code>ERR_HTTP_HEADERS_SENT</code></td></tr>
+      </table>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><code>req.url</code> — це не URL, а <b>request-target</b>: зазвичай <code>/users/1?x=2</code>, без хоста.
+        Для розбору використовують <code>new URL(req.url, 'http://localhost')</code> (база потрібна лише як заглушка).
+        Не беріть базу з <code>req.headers.host</code> для чогось безпекового — Host контролює клієнт.</div>
+      </div>
+
+      <h3>Як Node обирає framing відповіді</h3>
+      <p>Якщо ви поставили <code>content-length</code> — Node відправить рівно стільки байтів. Якщо ні, а ви пишете
+      через <code>res.write()</code> — HTTP/1.1 автоматично перейде на <code>Transfer-Encoding: chunked</code>.
+      Якщо ви одразу викликали <code>res.end(body)</code> без <code>write</code>, Node сам порахує довжину.
+      <code>content-length</code> у байтах, не в символах: для кирилиці <code>'Привіт'.length === 6</code>, а
+      <code>Buffer.byteLength('Привіт') === 12</code>.</p>
+
+      <div class="remember"><b>🧠 Запам'ятай:</b> handler викликається, коли розібрані заголовки; тіло — це ще непрочитаний стрім, і відповідальність за нього на вас.</div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Тіло запиту, ліміти й роутинг руками</h2>
+      <p class="section-desc">Те, що <code>express.json()</code> робить за вас, — і чому без ліміту це DoS-вектор.</p>
+
+      <p>Напишімо «справжній» мінісервер без залежностей: читання JSON з лімітом, валідація
+      <code>content-length</code> заздалегідь, роутинг через regex, єдиний обробник помилок. Це рівно те, що всередині
+      роблять body-parser і роутер Express, тільки без магії.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">demo-server.mjs</span></div>
+        <pre><code>import http from 'node:http';
+
+const MAX_BODY = 1024 * 1024; // 1 MB
+
+function readJson(req, limit = MAX_BODY) {
+  return new Promise((resolve, reject) =&gt; {
+    let size = 0;
+    const chunks = [];
+    req.on('data', (chunk) =&gt; {
+      size += chunk.length;
+      if (size &gt; limit) {
+        req.pause();              // перестаємо читати тіло
+        reject(Object.assign(new Error('Payload Too Large'), { status: 413 }));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () =&gt; {
+      try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}')); }
+      catch { reject(Object.assign(new Error('Invalid JSON'), { status: 400 })); }
+    });
+    req.on('error', reject);
+  });
+}
+
+function send(res, status, body) {
+  const json = JSON.stringify(body);
+  res.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    'content-length': Buffer.byteLength(json),
+  });
+  res.end(json);
+}
+
+const users = new Map([['1', { id: '1', name: 'Ada' }]]);
+
+const server = http.createServer(async (req, res) =&gt; {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const sock = `${req.socket.remotePort}`;
+  try {
+    if (req.method === 'GET' &amp;&amp; url.pathname === '/health') {
+      return send(res, 200, { ok: true, sock });
+    }
+    const m = url.pathname.match(/^\/users\/(\w+)$/);
+    if (req.method === 'GET' &amp;&amp; m) {
+      const user = users.get(m[1]);
+      return user ? send(res, 200, { ...user, sock }) : send(res, 404, { error: 'Not Found' });
+    }
+    if (req.method === 'POST' &amp;&amp; url.pathname === '/users') {
+      if (Number(req.headers['content-length']) &gt; MAX_BODY) {
+        res.setHeader('connection', 'close');
+        return send(res, 413, { error: 'Payload Too Large' }); // навіть не читаємо
+      }
+      const body = await readJson(req);
+      const id = String(users.size + 1);
+      users.set(id, { id, name: body.name });
+      return send(res, 201, { id, sock });
+    }
+    send(res, 404, { error: 'Not Found' });
+  } catch (err) {
+    if (err.status === 413) res.setHeader('connection', 'close'); // сокет не перевикористати
+    send(res, err.status ?? 500, { error: err.message });
+  }
+});
+
+server.keepAliveTimeout = 65_000;
+server.headersTimeout = 66_000;
+
+server.listen(3000, () =&gt; console.log('listening on :3000'));
+export default server;</code></pre>
+      </div>
+
+      <p>Клієнт (теж без залежностей — вбудований <code>fetch</code>), який імпортує сервер і проганяє сценарії:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">demo-client.mjs</span></div>
+        <pre><code>import server from './demo-server.mjs';
+import { once } from 'node:events';
+await once(server, 'listening');
+
+const base = 'http://localhost:3000';
+for (let i = 0; i &lt; 3; i++) {
+  const r = await fetch(`${base}/health`);
+  console.log('health', r.status, (await r.json()).sock);
+}
+let r = await fetch(`${base}/users/1`);
+console.log('GET /users/1', r.status, await r.json());
+r = await fetch(`${base}/users/42`);
+console.log('GET /users/42', r.status, await r.json());
+r = await fetch(`${base}/users`, { method: 'POST', body: '{"name":"Linus"}',
+  headers: { 'content-type': 'application/json' } });
+console.log('POST /users', r.status, await r.json());
+r = await fetch(`${base}/users`, { method: 'POST', body: '{oops' });
+console.log('POST bad json', r.status, await r.json());
+try {
+  r = await fetch(`${base}/users`, { method: 'POST', body: 'x'.repeat(2 * 1024 * 1024) });
+  console.log('POST 2MB', r.status, await r.json());
+} catch (e) { console.log('POST 2MB failed:', e.cause?.code ?? e.message); }
+
+server.close(() =&gt; console.log('server closed'));
+server.closeIdleConnections();</code></pre>
+      </div>
+
+      <p>Реальний вивід <code>node demo-client.mjs</code> (Node 24; номери портів змінюються від запуску до запуску):</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal</span></div>
+        <pre><code>listening on :3000
+health 200 51946
+health 200 51947
+health 200 51946
+GET /users/1 200 { id: '1', name: 'Ada', sock: '51947' }
+GET /users/42 404 { error: 'Not Found' }
+POST /users 201 { id: '2', sock: '51947' }
+POST bad json 400 { error: 'Invalid JSON' }
+POST 2MB 413 { error: 'Payload Too Large' }
+server closed</code></pre>
+      </div>
+
+      <p>Що тут видно:</p>
+      <ul>
+        <li><b>Переюз з'єднань.</b> Сім запитів пройшли лише через два TCP-сокети (два remote-порти): вбудований
+        <code>fetch</code> тримає keep-alive pool. Детально — у <a href="#s4">розділі 4</a>.</li>
+        <li><b>Ліміт перевіряється двічі.</b> Спочатку дешево — за заголовком <code>content-length</code> (відмова без
+        читання тіла). Потім — підрахунком байтів у стрімі, бо <code>content-length</code> може бути відсутній
+        (chunked) або брехливим.</li>
+        <li><b>413 + <code>connection: close</code>.</b> Якщо ми не дочитали тіло, сокет у «брудному» стані: наступний
+        запит на ньому почнеться посеред старого тіла. Тому такий сокет треба закрити, а не повертати у keep-alive.</li>
+      </ul>
+
+      <div class="callout bad">
+        <div class="ic">🐛</div>
+        <div class="body">Під час написання цього прикладу перша версія на переповненні робила просто <code>req.destroy()</code>.
+        Результат: клієнт отримав не 413, а <code>EPIPE</code>/<code>ECONNRESET</code> — сокет знищено, поки клієнт ще
+        писав тіло. Навіть з правильним кодом клієнт, що <b>активно заливає</b> великий chunked-body, може побачити
+        reset замість 413 — це нормальна поведінка TCP, тож дешева перевірка за <code>content-length</code> важлива.</div>
+      </div>
+
+      <h3>Чому роутинг «руками» — погана ідея у проді</h3>
+      <ul>
+        <li>Regex на кожен маршрут — O(n) перебір; фреймворки використовують radix tree (find-my-way у Fastify, Hono's RegExpRouter / TrieRouter).</li>
+        <li>Треба пам'ятати про <code>405 Method Not Allowed</code>, <code>HEAD</code>, trailing slash, URL-decoding параметрів, <code>OPTIONS</code> для CORS.</li>
+        <li>Async-помилки: якщо забути <code>try/catch</code> навколо <code>await</code>, отримаєте unhandled rejection і запит, що висить до таймауту.</li>
+      </ul>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">На співбесіді запитають так</span> «Що станеться, якщо в handler-і не прочитати тіло POST-запиту
+        й одразу відповісти?» — Node спробує дочитати/відкинути залишок, щоб зберегти keep-alive, але для великого тіла
+        простіше і безпечніше закрити з'єднання. Неспоживане тіло + backpressure = клієнт зупиняється на запису.</div>
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Життєвий цикл запиту всередині Node</h2>
+      <p class="section-desc">Від SYN до <code>res.end()</code>: де працює ядро ОС, де libuv, де C-парсер, а де ваш JavaScript.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 326" role="img" aria-label="Життєвий цикл HTTP-запиту в Node: ядро ОС приймає TCP-з'єднання, libuv через epoll або kqueue сповіщає про новий сокет, net.Server створює net.Socket і подію connection, байти йдуть у C-парсер llhttp, після заголовків створюються IncomingMessage і ServerResponse та емітиться подія request, викликається ваш handler, тіло читається як стрім, res.end записує відповідь у сокет, після чого сокет повертається в стан keep-alive очікування наступного запиту або закривається за keepAliveTimeout">
+          <defs><marker id="n09d1-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="11.5">
+            <text x="20" y="22" fill="var(--fg-muted)">Ядро ОС</text>
+            <text x="20" y="112" fill="var(--fg-muted)">libuv + C++</text>
+            <text x="20" y="212" fill="var(--fg-muted)">JavaScript (ваш код)</text>
+            <line x1="15" y1="88" x2="725" y2="88" stroke="var(--fg-muted)" stroke-dasharray="3,4" stroke-width="0.8"/>
+            <line x1="15" y1="190" x2="725" y2="190" stroke="var(--fg-muted)" stroke-dasharray="3,4" stroke-width="0.8"/>
+
+            <rect x="20" y="32" width="150" height="44" rx="8" fill="var(--bg-soft)" stroke="currentColor" stroke-width="1.2"/>
+            <text x="95" y="51" text-anchor="middle" fill="currentColor">TCP handshake</text>
+            <text x="95" y="67" text-anchor="middle" fill="currentColor" font-size="10.5">accept queue (backlog)</text>
+
+            <rect x="20" y="118" width="150" height="56" rx="8" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="95" y="139" text-anchor="middle" fill="currentColor">epoll / kqueue</text>
+            <text x="95" y="156" text-anchor="middle" fill="currentColor" font-size="10.5">accept() → новий fd</text>
+
+            <rect x="200" y="118" width="150" height="56" rx="8" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="275" y="139" text-anchor="middle" fill="currentColor">net.Socket</text>
+            <text x="275" y="156" text-anchor="middle" fill="currentColor" font-size="10.5">'connection' event</text>
+
+            <rect x="380" y="118" width="150" height="56" rx="8" fill="none" stroke="var(--accent)" stroke-width="1.5"/>
+            <text x="455" y="139" text-anchor="middle" fill="currentColor">llhttp parser</text>
+            <text x="455" y="156" text-anchor="middle" fill="currentColor" font-size="10.5">старт-рядок + headers</text>
+
+            <rect x="560" y="118" width="160" height="56" rx="8" fill="none" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="640" y="139" text-anchor="middle" fill="currentColor">IncomingMessage +</text>
+            <text x="640" y="156" text-anchor="middle" fill="currentColor">ServerResponse</text>
+
+            <rect x="560" y="222" width="160" height="50" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="640" y="243" text-anchor="middle" fill="currentColor">'request' event</text>
+            <text x="640" y="259" text-anchor="middle" fill="currentColor" font-size="10.5">handler(req, res)</text>
+
+            <rect x="370" y="222" width="160" height="50" rx="8" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            <text x="450" y="243" text-anchor="middle" fill="currentColor">тіло: 'data' / 'end'</text>
+            <text x="450" y="259" text-anchor="middle" fill="currentColor" font-size="10.5">(парсер віддає chunk-и)</text>
+
+            <rect x="180" y="222" width="160" height="50" rx="8" fill="none" stroke="var(--good)" stroke-width="1.3"/>
+            <text x="260" y="243" text-anchor="middle" fill="currentColor">res.end()</text>
+            <text x="260" y="259" text-anchor="middle" fill="currentColor" font-size="10.5">write → сокет → ядро</text>
+
+            <rect x="20" y="222" width="130" height="50" rx="8" fill="none" stroke="var(--warn)" stroke-width="1.3"/>
+            <text x="85" y="243" text-anchor="middle" fill="currentColor">keep-alive idle</text>
+            <text x="85" y="259" text-anchor="middle" fill="currentColor" font-size="10.5">чекає наступний</text>
+
+            <line x1="95" y1="76" x2="95" y2="114" stroke="currentColor" stroke-width="1.2" marker-end="url(#n09d1-arrow)"/>
+            <line x1="170" y1="146" x2="196" y2="146" stroke="currentColor" stroke-width="1.2" marker-end="url(#n09d1-arrow)"/>
+            <line x1="350" y1="146" x2="376" y2="146" stroke="currentColor" stroke-width="1.2" marker-end="url(#n09d1-arrow)"/>
+            <line x1="530" y1="146" x2="556" y2="146" stroke="currentColor" stroke-width="1.2" marker-end="url(#n09d1-arrow)"/>
+            <line x1="640" y1="174" x2="640" y2="218" stroke="currentColor" stroke-width="1.2" marker-end="url(#n09d1-arrow)"/>
+            <line x1="560" y1="247" x2="534" y2="247" stroke="currentColor" stroke-width="1.2" marker-end="url(#n09d1-arrow)"/>
+            <line x1="370" y1="247" x2="344" y2="247" stroke="currentColor" stroke-width="1.2" marker-end="url(#n09d1-arrow)"/>
+            <line x1="180" y1="247" x2="154" y2="247" stroke="currentColor" stroke-width="1.2" marker-end="url(#n09d1-arrow)"/>
+            <path d="M 85 272 L 85 296 L 545 296 L 545 192 L 524 178" fill="none" stroke="var(--warn)" stroke-width="1.2" stroke-dasharray="4,3" marker-end="url(#n09d1-arrow)"/>
+            <text x="300" y="316" text-anchor="middle" fill="var(--warn)" font-size="10.5">наступний запит на тому ж сокеті → знову парсер</text>
+          </g>
+        </svg>
+        <figcaption>Один TCP-сокет може обслужити багато запитів підряд: після відповіді він повертається до парсера, а не закривається.</figcaption>
+      </figure>
+
+      <div class="flow">
+        <div class="step">SYN → accept queue</div><div class="arrow">→</div>
+        <div class="step">libuv: fd готовий</div><div class="arrow">→</div>
+        <div class="step">'connection'</div><div class="arrow">→</div>
+        <div class="step">llhttp: headers</div><div class="arrow">→</div>
+        <div class="step">'request'</div><div class="arrow">→</div>
+        <div class="step">handler</div><div class="arrow">→</div>
+        <div class="step">res.end()</div><div class="arrow">→</div>
+        <div class="step">idle / close</div>
+      </div>
+
+      <h3>Що важливо з цієї картинки</h3>
+      <ul>
+        <li><b>Мережевий I/O не йде в thread pool.</b> Сокети неблокуючі, libuv отримує сповіщення через epoll (Linux) /
+        kqueue (macOS) / IOCP (Windows). Тому 10 000 відкритих з'єднань — це не 10 000 потоків. Деталі — у
+        <a href="01-node-architecture.html">туторіалі 1</a> і <a href="02-event-loop-deep-dive.html">туторіалі 2</a>
+        (події сокетів обробляються у фазі poll).</li>
+        <li><b>Парсер написаний на C</b> (llhttp, згенерований з TypeScript-опису автомата через llparse) — саме він
+        відкидає некоректні запити ще до JS (наприклад, конфліктні <code>Content-Length</code> + <code>Transfer-Encoding</code>,
+        захист від request smuggling) і застосовує ліміт розміру заголовків (<code>--max-http-header-size</code>, за
+        замовчуванням 16 КБ → <code>431</code>).</li>
+        <li><b>Ваш handler синхронний відносно event loop.</b> Поки він рахує щось важке, жоден інший сокет не обробляється —
+        див. <a href="08-concurrency-scaling.html">туторіал 8</a>.</li>
+        <li><b>backlog</b> (<code>server.listen(port, host, backlog)</code>, за замовчуванням 511) — довжина черги вже
+        прийнятих ядром, але ще не забраних процесом з'єднань. Якщо event loop заблокований — черга росте, потім ядро
+        починає відкидати SYN.</li>
+      </ul>
+
+      <div class="callout fun">
+        <div class="ic">🎉</div>
+        <div class="body"><span class="tag">Цікавий факт</span> До Node 12 використовувався <code>http_parser</code> — рукописний C-код,
+        що походить від парсера nginx і який роками боялися чіпати. llhttp — переписаний з нуля автомат, згенерований з
+        опису на TypeScript, і помітно швидший. Автор llhttp — Fedor Indutny, багаторічний контриб'ютор ядра Node (TLS, crypto).</div>
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Keep-alive і http.Agent: пул з'єднань</h2>
+      <p class="section-desc">Найдешевша оптимізація латентності між сервісами — не відкривати TCP (і TLS) на кожен запит.</p>
+
+      <p>Новий TCP-конект коштує 1 RTT на handshake, TLS 1.3 — ще 1 RTT, плюс slow start (перші пакети йдуть повільно).
+      Між двома сервісами в одному регіоні це «лише» мілісекунди, але при 1000 RPS і відсутності keep-alive ви
+      створюєте 1000 сокетів на секунду, кожен потім висить у <code>TIME_WAIT</code> ~60 с на стороні, що закрила першою.
+      Звідси класичне <b>вичерпання ефемерних портів</b> (<code>EADDRNOTAVAIL</code>).</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 280" role="img" aria-label="Порівняння: без keep-alive кожен із трьох запитів відкриває нове TCP-з'єднання з handshake і закриває його, після чого сокет іде в TIME_WAIT; з keep-alive одне з'єднання відкривається один раз і через нього послідовно проходять три запити">
+          <defs><marker id="n09d2-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="11.5">
+            <text x="20" y="24" fill="currentColor" font-weight="600">Без keep-alive (Connection: close)</text>
+            <rect x="20" y="36" width="60" height="28" rx="5" fill="none" stroke="var(--bad)" stroke-width="1.2"/>
+            <text x="50" y="54" text-anchor="middle" fill="currentColor" font-size="10.5">SYN/ACK</text>
+            <rect x="82" y="36" width="70" height="28" rx="5" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="117" y="54" text-anchor="middle" fill="currentColor" font-size="10.5">req 1</text>
+            <rect x="154" y="36" width="40" height="28" rx="5" fill="none" stroke="var(--bad)" stroke-width="1.2"/>
+            <text x="174" y="54" text-anchor="middle" fill="currentColor" font-size="10.5">FIN</text>
+
+            <rect x="210" y="36" width="60" height="28" rx="5" fill="none" stroke="var(--bad)" stroke-width="1.2"/>
+            <text x="240" y="54" text-anchor="middle" fill="currentColor" font-size="10.5">SYN/ACK</text>
+            <rect x="272" y="36" width="70" height="28" rx="5" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="307" y="54" text-anchor="middle" fill="currentColor" font-size="10.5">req 2</text>
+            <rect x="344" y="36" width="40" height="28" rx="5" fill="none" stroke="var(--bad)" stroke-width="1.2"/>
+            <text x="364" y="54" text-anchor="middle" fill="currentColor" font-size="10.5">FIN</text>
+
+            <rect x="400" y="36" width="60" height="28" rx="5" fill="none" stroke="var(--bad)" stroke-width="1.2"/>
+            <text x="430" y="54" text-anchor="middle" fill="currentColor" font-size="10.5">SYN/ACK</text>
+            <rect x="462" y="36" width="70" height="28" rx="5" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="497" y="54" text-anchor="middle" fill="currentColor" font-size="10.5">req 3</text>
+            <rect x="534" y="36" width="40" height="28" rx="5" fill="none" stroke="var(--bad)" stroke-width="1.2"/>
+            <text x="554" y="54" text-anchor="middle" fill="currentColor" font-size="10.5">FIN</text>
+
+            <text x="20" y="90" fill="var(--bad)" font-size="10.5">3 handshake (+3 TLS), 3 сокети в TIME_WAIT, кожен раз slow start</text>
+
+            <text x="20" y="134" fill="currentColor" font-weight="600">З keep-alive (Agent тримає сокет у пулі)</text>
+            <rect x="20" y="146" width="60" height="28" rx="5" fill="none" stroke="var(--bad)" stroke-width="1.2"/>
+            <text x="50" y="164" text-anchor="middle" fill="currentColor" font-size="10.5">SYN/ACK</text>
+            <rect x="82" y="146" width="70" height="28" rx="5" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="117" y="164" text-anchor="middle" fill="currentColor" font-size="10.5">req 1</text>
+            <rect x="154" y="146" width="70" height="28" rx="5" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="189" y="164" text-anchor="middle" fill="currentColor" font-size="10.5">req 2</text>
+            <rect x="226" y="146" width="70" height="28" rx="5" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="261" y="164" text-anchor="middle" fill="currentColor" font-size="10.5">req 3</text>
+            <rect x="298" y="146" width="200" height="28" rx="5" fill="none" stroke="var(--warn)" stroke-width="1.2" stroke-dasharray="4,3"/>
+            <text x="398" y="164" text-anchor="middle" fill="currentColor" font-size="10.5">idle у пулі (до keepAliveTimeout)</text>
+
+            <text x="20" y="200" fill="var(--good)" font-size="10.5">1 handshake, 1 сокет, вікно TCP вже «розігріте»</text>
+
+            <rect x="520" y="120" width="200" height="140" rx="8" fill="var(--bg-soft)" stroke="currentColor" stroke-width="1"/>
+            <text x="620" y="140" text-anchor="middle" fill="currentColor" font-weight="600">http.Agent (на host:port)</text>
+            <text x="532" y="162" fill="currentColor" font-size="10.5">sockets: активні (≤ maxSockets)</text>
+            <text x="532" y="182" fill="currentColor" font-size="10.5">freeSockets: idle, готові</text>
+            <text x="532" y="202" fill="currentColor" font-size="10.5">requests: черга, коли ліміт</text>
+            <text x="532" y="222" fill="currentColor" font-size="10.5">scheduling: 'lifo' (default)</text>
+            <text x="532" y="242" fill="currentColor" font-size="10.5">maxFreeSockets: 256</text>
+          </g>
+        </svg>
+        <figcaption>Keep-alive перетворює «з'єднання на запит» на «пул з'єднань на хост»; Agent — це і є цей пул.</figcaption>
+      </figure>
+
+      <h3>Перевіряємо експериментом</h3>
+      <p>Рахуємо події <code>'connection'</code> на сервері для трьох конфігурацій клієнта:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">agent-demo.mjs</span></div>
+        <pre><code>import http from 'node:http';
+import { once } from 'node:events';
+
+let connections = 0;
+const server = http.createServer((req, res) =&gt; res.end('ok'));
+server.on('connection', () =&gt; connections++);
+server.listen(0);
+await once(server, 'listening');
+const { port } = server.address();
+
+function get(agent) {
+  return new Promise((resolve, reject) =&gt; {
+    http.get({ port, path: '/', agent }, (res) =&gt; {
+      res.resume();               // обов'язково дочитати тіло!
+      res.on('end', resolve);
+    }).on('error', reject);
+  });
+}
+
+async function run(label, opts) {
+  connections = 0;
+  let agent = new http.Agent(opts);
+  for (let i = 0; i &lt; 10; i++) await get(agent);           // послідовно
+  console.log(`${label} послідовно: ${connections} TCP`);
+  agent.destroy();
+  connections = 0;
+  agent = new http.Agent(opts);
+  await Promise.all(Array.from({ length: 10 }, () =&gt; get(agent))); // паралельно
+  console.log(`${label} паралельно: ${connections} TCP`);
+  agent.destroy();
+}
+
+await run('keepAlive:false             ', { keepAlive: false });
+await run('keepAlive:true              ', { keepAlive: true });
+await run('keepAlive:true, maxSockets:2', { keepAlive: true, maxSockets: 2 });
+console.log('globalAgent.keepAlive =', http.globalAgent.options.keepAlive);
+server.closeAllConnections();
+server.close();</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal (node agent-demo.mjs, Node 24)</span></div>
+        <pre><code>keepAlive:false              послідовно: 10 TCP
+keepAlive:false              паралельно: 10 TCP
+keepAlive:true               послідовно: 1 TCP
+keepAlive:true               паралельно: 10 TCP
+keepAlive:true, maxSockets:2 послідовно: 1 TCP
+keepAlive:true, maxSockets:2 паралельно: 2 TCP
+globalAgent.keepAlive = true</code></pre>
+      </div>
+
+      <ul>
+        <li><b>Keep-alive не обмежує паралелізм.</b> 10 одночасних запитів без <code>maxSockets</code> → 10 сокетів
+        (за замовчуванням <code>maxSockets: Infinity</code>). Keep-alive лише дозволяє <i>перевикористати</i> сокет.</li>
+        <li><b><code>maxSockets</code></b> — це ліміт паралельних з'єднань на origin; зайві запити стають у чергу
+        Agent-а. Це і захист downstream-сервісу, і джерело прихованої латентності (час у черзі не видно в метриках сервера).</li>
+        <li><b>З Node 19 <code>http.globalAgent</code> має <code>keepAlive: true</code></b> (раніше було <code>false</code>, і
+        це був класичний «чому мій сервіс робить тисячі TIME_WAIT»).</li>
+        <li><b><code>res.resume()</code> обов'язковий</b>, якщо тіло відповіді вам не потрібне: доки тіло не спожите,
+        сокет не повернеться в пул, і з <code>maxSockets</code> ви отримаєте «зависання» на N+1-му запиті.</li>
+      </ul>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Stale socket.</b> Агент тримає idle-сокет, а сервер уже закрив його по своєму
+        <code>keepAliveTimeout</code>. Якщо клієнт відправить запит саме в цей момент — отримає <code>ECONNRESET</code> /
+        «socket hang up». Тому клієнтський idle-timeout має бути <b>меншим</b>, ніж серверний. Undici за замовчуванням
+        враховує заголовок <code>Keep-Alive: timeout=N</code>, який Node-сервер надсилає у відповідях.</div>
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Таймаути сервера і класичний 502 за load balancer</h2>
+      <p class="section-desc">Найвідоміший продакшн-баг Node за AWS ALB/nginx: рідкісні 502 без жодної помилки в логах сервісу.</p>
+
+      <p>У <code>http.Server</code> кілька різних таймаутів, і їх постійно плутають. Дефолти в Node 24 (перевірено
+      <code>node -e</code> на <code>http.createServer()</code>):</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal</span></div>
+        <pre><code>{
+  keepAliveTimeout: 5000,
+  headersTimeout: 60000,
+  requestTimeout: 300000,
+  timeout: 0,
+  maxHeadersCount: null,
+  maxHeaderSize: 16384
+}</code></pre>
+      </div>
+
+      <table>
+        <tr><th>Параметр</th><th>Що обмежує</th><th>Навіщо</th></tr>
+        <tr><td><code>headersTimeout</code> (60 с)</td><td>скільки чекати повних заголовків від клієнта</td><td>захист від Slowloris (клієнт шле заголовок по байту)</td></tr>
+        <tr><td><code>requestTimeout</code> (300 с)</td><td>весь запит, включно з тілом, від першого байта</td><td>захист від повільного заливання тіла; <code>0</code> = вимкнено</td></tr>
+        <tr><td><code>keepAliveTimeout</code> (5 с)</td><td>скільки idle-сокет чекає наступного запиту</td><td>звільняти ресурси від мовчазних клієнтів</td></tr>
+        <tr><td><code>timeout</code> / <code>setTimeout()</code> (0)</td><td>неактивність сокета (нема байтів у жодному напрямку)</td><td>загальний socket idle; за замовчуванням вимкнено</td></tr>
+        <tr><td><code>keepAliveTimeoutBuffer</code></td><td>додатковий запас до <code>keepAliveTimeout</code> (у Node 24 — 1000 мс)</td><td>зменшити гонку з клієнтами, що орієнтуються на заголовок <code>Keep-Alive</code></td></tr>
+      </table>
+
+      <h3>Анатомія 502</h3>
+      <p>Load balancer (AWS ALB, GCP LB, nginx з <code>keepalive</code> в upstream) теж тримає пул з'єднань до ваших
+      інстансів. У ALB idle timeout за замовчуванням <b>60 секунд</b>. Node закриває idle-сокет через <b>5 секунд</b>.
+      Отже, LB вважає сокет живим ще 55 секунд після того, як Node його закрив. Більшість часу LB помічає FIN і не
+      використовує сокет, але якщо запит від LB і FIN від Node «розминаються в дорозі» — LB пише в напівзакритий сокет,
+      отримує RST і віддає клієнту <b>502 Bad Gateway</b>. У логах Node — нічого, бо запит до нього так і не дійшов.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 300" role="img" aria-label="Діаграма гонки таймаутів: load balancer з idle timeout 60 секунд і Node з keepAliveTimeout 5 секунд. На позначці 5 секунд Node надсилає FIN, у той самий момент LB відправляє новий запит у той самий сокет, отримує RST і повертає клієнту 502. Виправлення: keepAliveTimeout Node більший за idle timeout LB, тоді сокет завжди закриває LB першим">
+          <defs><marker id="n09d3-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="11.5">
+            <text x="110" y="24" text-anchor="middle" fill="currentColor" font-weight="600">Клієнт</text>
+            <text x="370" y="24" text-anchor="middle" fill="currentColor" font-weight="600">Load balancer (idle 60 с)</text>
+            <text x="630" y="24" text-anchor="middle" fill="currentColor" font-weight="600">Node (keepAlive 5 с)</text>
+            <line x1="110" y1="34" x2="110" y2="200" stroke="var(--fg-muted)" stroke-width="1"/>
+            <line x1="370" y1="34" x2="370" y2="200" stroke="var(--fg-muted)" stroke-width="1"/>
+            <line x1="630" y1="34" x2="630" y2="200" stroke="var(--fg-muted)" stroke-width="1"/>
+
+            <line x1="374" y1="52" x2="626" y2="52" stroke="currentColor" stroke-width="1.2" marker-end="url(#n09d3-arrow)"/>
+            <text x="500" y="46" text-anchor="middle" fill="currentColor" font-size="10.5">запит A (t = 0)</text>
+            <line x1="626" y1="72" x2="374" y2="72" stroke="var(--good)" stroke-width="1.2" marker-end="url(#n09d3-arrow)"/>
+            <text x="500" y="88" text-anchor="middle" fill="var(--good)" font-size="10.5">200, сокет → idle в обох</text>
+
+            <rect x="636" y="96" width="96" height="40" rx="6" fill="none" stroke="var(--warn)" stroke-width="1.2" stroke-dasharray="3,3"/>
+            <text x="684" y="113" text-anchor="middle" fill="currentColor" font-size="10">idle 5 с минуло</text>
+            <text x="684" y="127" text-anchor="middle" fill="currentColor" font-size="10">→ FIN</text>
+
+            <line x1="114" y1="126" x2="366" y2="126" stroke="currentColor" stroke-width="1.2" marker-end="url(#n09d3-arrow)"/>
+            <text x="240" y="120" text-anchor="middle" fill="currentColor" font-size="10.5">запит B (t ≈ 5 с)</text>
+            <line x1="374" y1="140" x2="600" y2="152" stroke="var(--bad)" stroke-width="1.3" marker-end="url(#n09d3-arrow)"/>
+            <line x1="626" y1="140" x2="420" y2="152" stroke="var(--warn)" stroke-width="1.3" stroke-dasharray="4,3" marker-end="url(#n09d3-arrow)"/>
+            <text x="500" y="172" text-anchor="middle" fill="var(--bad)" font-size="10.5">запит і FIN розминулися → RST</text>
+            <line x1="366" y1="190" x2="114" y2="190" stroke="var(--bad)" stroke-width="1.5" marker-end="url(#n09d3-arrow)"/>
+            <text x="240" y="184" text-anchor="middle" fill="var(--bad)" font-size="11" font-weight="600">502 Bad Gateway</text>
+
+            <rect x="20" y="218" width="700" height="66" rx="8" fill="var(--bg-soft)" stroke="var(--good)" stroke-width="1.2"/>
+            <text x="370" y="240" text-anchor="middle" fill="var(--good)" font-weight="600">Правило: idle timeout upstream-сервера &gt; idle timeout того, хто перед ним</text>
+            <text x="370" y="260" text-anchor="middle" fill="currentColor" font-size="10.5">Node keepAliveTimeout = 65 с, headersTimeout = 66 с при ALB idle = 60 с →</text>
+            <text x="370" y="276" text-anchor="middle" fill="currentColor" font-size="10.5">сокет завжди закриває LB першим, а він ніколи не пише в закритий сокет</text>
+          </g>
+        </svg>
+        <figcaption>502 виникає не через помилку в коді, а через те, що бекенд закриває keep-alive сокет раніше, ніж проксі перед ним.</figcaption>
+      </figure>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">server.js — налаштування за ALB (idle 60 с)</span></div>
+        <pre><code>const server = http.createServer(app);
+server.keepAliveTimeout = 65_000;  // більше за idle timeout LB
+server.headersTimeout = 66_000;    // історично мав бути &gt; keepAliveTimeout
+server.requestTimeout = 30_000;    // жоден легітимний API-запит не триває 5 хв
+server.listen(process.env.PORT ?? 3000);</code></pre>
+      </div>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body">Чому <code>headersTimeout &gt; keepAliveTimeout</code>? У старих версіях (до Node ~18) таймер заголовків
+        стартував у момент, коли сокет ставав idle, і при <code>headersTimeout &lt; keepAliveTimeout</code> Node сам рвав
+        «живі» keep-alive сокети. У сучасних версіях логіку переписано, але правило досі живе в усіх гайдах — дотримуватися
+        його нічого не коштує. Те саме стосується nginx: <code>keepalive_timeout</code> у upstream-блоці має бути меншим
+        за <code>keepAliveTimeout</code> Node.</div>
+      </div>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">На співбесіді запитають так</span> «У нас 0.1% 502 від ALB, у логах сервісу чисто. Що
+        перевірите першим?» — співвідношення keep-alive таймаутів (Node vs LB), потім — чи не вбиває оркестратор поди
+        без graceful shutdown (<a href="#s13">розділ 13</a>), потім — чи не падає процес (OOM, unhandled rejection).</div>
+      </div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> HTTP-клієнт: fetch, undici, таймаути</h2>
+      <p class="section-desc">Сервіс у мікросервісній архітектурі — це передусім HTTP-клієнт. Без таймаутів один повільний downstream кладе всіх.</p>
+
+      <p>З Node 18 глобальний <code>fetch</code> — стабільний (з Node 21 без experimental-позначки) і реалізований
+      бібліотекою <b>undici</b>, яка вшита в Node (у Node 24.18 — <code>process.versions.undici === '7.28.0'</code>).
+      Undici — це <b>окремий</b> HTTP/1.1-клієнт, написаний з нуля, він <b>не використовує</b> <code>http.Agent</code>
+      і <code>http.request</code>. Тому налаштування <code>http.globalAgent</code> на <code>fetch</code> не впливають.</p>
+
+      <table>
+        <tr><th>Клієнт</th><th>Пул</th><th>Плюси</th><th>Мінуси</th></tr>
+        <tr><td><code>http.request</code> / <code>http.get</code></td><td><code>http.Agent</code></td><td>без залежностей, повний контроль сокета</td><td>низькорівневий, багатослівний, callback/event API</td></tr>
+        <tr><td>глобальний <code>fetch</code></td><td>undici global dispatcher</td><td>Web-стандарт, той самий код у браузері/Edge/Bun/Deno</td><td>немає таймауту за замовчуванням на весь запит; не кидає на 4xx/5xx</td></tr>
+        <tr><td><code>undici.request</code></td><td><code>Pool</code> / <code>Agent</code></td><td>найшвидший у Node, тонкі налаштування пулу, pipelining</td><td>Node-специфічний API (<code>npm i undici</code>)</td></tr>
+        <tr><td>axios / got / ky</td><td>залежить</td><td>інтерсептори, ретраї, зручний API</td><td>зайва залежність; axios у Node працює через <code>http</code></td></tr>
+      </table>
+
+      <h3>Таймаути: AbortSignal.timeout</h3>
+      <p><code>fetch</code> не має опції <code>timeout</code>. Правильний спосіб — сигнал скасування. Реальний запуск:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">timeout-demo.mjs (фрагмент) і вивід</span></div>
+        <pre><code>try {
+  await fetch(`${base}/slow`, { signal: AbortSignal.timeout(500) }); // сервер відповідає за 2 с
+} catch (e) {
+  console.log('slow:', e.name, '-', e.message);
+}
+// slow: TimeoutError - The operation was aborted due to timeout</code></pre>
+      </div>
+
+      <ul>
+        <li><code>AbortSignal.timeout(ms)</code> кидає <code>TimeoutError</code>, а ручний <code>controller.abort()</code> —
+        <code>AbortError</code>. Розрізняйте їх у метриках: це різні причини.</li>
+        <li><code>AbortSignal.any([userSignal, AbortSignal.timeout(2000)])</code> — скасувати, якщо клієнт пішов
+        <b>або</b> минув дедлайн. Корисно прокидати <code>req</code>-скасування вниз: якщо користувач закрив вкладку, нема
+        сенсу чекати downstream.</li>
+        <li>Таймаут має покривати і <b>читання тіла</b>: сигнал діє, поки ви читаєте <code>res.body</code>, — тому
+        <code>await res.json()</code> також може кинути <code>TimeoutError</code>.</li>
+        <li><code>fetch</code> <b>не кидає</b> на 500. Перевіряйте <code>res.ok</code>. І завжди споживайте або скасовуйте
+        тіло (<code>await res.body?.cancel()</code>), інакше з'єднання не повернеться в пул.</li>
+      </ul>
+
+      <h3>Undici Pool і Agent напряму</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">client.mjs (npm i undici)</span></div>
+        <pre><code>import { Agent, Pool, setGlobalDispatcher, request } from 'undici';
+
+// 1) Налаштувати пул для ВСІХ fetch у процесі
+setGlobalDispatcher(new Agent({
+  connections: 50,          // макс. сокетів на origin
+  keepAliveTimeout: 4_000,  // idle у пулі (менше, ніж у сервера!)
+  connectTimeout: 2_000,
+  headersTimeout: 5_000,    // час до отримання заголовків відповіді
+  bodyTimeout: 10_000,      // макс. пауза між chunk-ами тіла
+}));
+
+// 2) Виділений пул для одного downstream-сервісу
+const users = new Pool('http://users.internal:8080', { connections: 20 });
+
+const { statusCode, body } = await request('http://users.internal:8080/users/1', {
+  dispatcher: users,
+  signal: AbortSignal.timeout(3_000),
+});
+if (statusCode !== 200) { await body.dump(); throw new Error(`users: ${statusCode}`); }
+const user = await body.json();</code></pre>
+      </div>
+
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: яким клієнтом ходити в інші сервіси</div>
+        <table><tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>fetch + налаштований global dispatcher</b> ✅</td><td>стандартний API, ізоморфний код, пул і таймаути налаштовуються в одному місці</td><td>треба пам'ятати про <code>res.ok</code> і споживання тіла</td></tr>
+          <tr><td><code>undici.request</code> + <code>Pool</code></td><td>максимальна пропускна здатність, мінімум алокацій</td><td>Node-only API, ще одна залежність</td></tr>
+          <tr><td>axios</td><td>знайомий команді, інтерсептори</td><td>повільніший, стара модель таймаутів, вага</td></tr>
+        </table>
+        <p><b>Коли що:</b> у новому коді — <code>fetch</code> з обгорткою (таймаут + ретраї з jitter + перевірка статусу); для
+        гарячого внутрішнього шляху з тисячами RPS — <code>undici.request</code> з окремим <code>Pool</code> на сервіс.</p>
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Стрімінг відповідей</h2>
+      <p class="section-desc">Віддати 2 ГБ CSV, не тримаючи їх у пам'яті, — і не вбити сервер, коли клієнт повільний.</p>
+
+      <p>Оскільки <code>res</code> — Writable, будь-який Readable можна «влити» в нього через <code>pipeline</code>, і
+      backpressure спрацює автоматично: якщо клієнт читає повільно, буфер сокета заповнюється, <code>res.write()</code>
+      повертає <code>false</code>, <code>pipeline</code> ставить джерело на паузу. Механіку backpressure розібрано в
+      <a href="06-events-streams-buffers.html">туторіалі 6</a>.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">download.mjs</span></div>
+        <pre><code>import http from 'node:http';
+import { createReadStream } from 'node:fs';
+import { stat } from 'node:fs/promises';
+import { pipeline } from 'node:stream/promises';
+
+http.createServer(async (req, res) =&gt; {
+  try {
+    const { size } = await stat('./big.csv');
+    res.writeHead(200, { 'content-type': 'text/csv', 'content-length': size });
+    // pipeline: backpressure + знищення обох стрімів при помилці/обриві клієнта
+    await pipeline(createReadStream('./big.csv'), res);
+  } catch (err) {
+    if (err.code === 'ERR_STREAM_PREMATURE_CLOSE') return;  // клієнт пішов — це нормально
+    if (!res.headersSent) { res.statusCode = 500; res.end(); }
+    else res.destroy(err);  // заголовки вже пішли — статус не змінити, рвемо з'єднання
+  }
+}).listen(3000);</code></pre>
+      </div>
+
+      <div class="callout bad">
+        <div class="ic">🐛</div>
+        <div class="body"><code>readStream.pipe(res)</code> замість <code>pipeline</code> — витік дескрипторів: якщо клієнт обірвав
+        з'єднання, <code>.pipe()</code> не закриває джерело, файл лишається відкритим. Після тижня роботи —
+        <code>EMFILE: too many open files</code>.</div>
+      </div>
+
+      <h3>Інкрементальна відповідь і клієнт, що читає стрім</h3>
+      <p>Сервер пише chunk кожні 100 мс (без <code>content-length</code> → chunked), клієнт читає <code>res.body</code>
+      через <code>for await</code>. Реальний вивід:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">timeout-demo.mjs</span></div>
+        <pre><code>import http from 'node:http';
+import { once } from 'node:events';
+
+const server = http.createServer((req, res) =&gt; {
+  if (req.url === '/slow') return setTimeout(() =&gt; res.end('finally'), 2000);
+  if (req.url === '/stream') {
+    res.writeHead(200, { 'content-type': 'text/plain' });
+    let i = 0;
+    const t = setInterval(() =&gt; {
+      res.write(`chunk ${++i}\n`);
+      if (i === 3) { clearInterval(t); res.end(); }
+    }, 100);
+    req.on('close', () =&gt; clearInterval(t)); // клієнт пішов — прибираємо таймер
+    return;
+  }
+  res.end('ok');
+});
+server.listen(0);
+await once(server, 'listening');
+const base = `http://localhost:${server.address().port}`;
+
+try {
+  await fetch(`${base}/slow`, { signal: AbortSignal.timeout(500) });
+} catch (e) {
+  console.log('slow:', e.name, '-', e.message);
+}
+
+const res = await fetch(`${base}/stream`);
+const t0 = Date.now();
+for await (const chunk of res.body) {
+  console.log(`+${Math.round((Date.now() - t0) / 100) * 100}ms`, JSON.stringify(Buffer.from(chunk).toString()));
+}
+server.closeAllConnections();
+server.close();</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal</span></div>
+        <pre><code>slow: TimeoutError - The operation was aborted due to timeout
++0ms "chunk 1\n"
++100ms "chunk 2\n"
++200ms "chunk 3\n"</code></pre>
+      </div>
+      <p>Зверніть увагу на <code>req.on('close', ...)</code>: коли клієнт іде, треба зупиняти генерацію (таймери, курсори БД),
+      інакше сервер продовжує працювати «в порожнечу». Це основа для SSE і стрімінгу відповідей LLM — див.
+      <a href="18-realtime-queues.html">туторіал 18</a>.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body">Проксі можуть буферизувати стрім: nginx за замовчуванням має <code>proxy_buffering on</code>, і клієнт
+        отримає все одним шматком у кінці. Для SSE — заголовок <code>X-Accel-Buffering: no</code> або
+        <code>proxy_buffering off</code> на локації. Компресія теж буферизує — див. <a href="#s12">розділ 12</a>.</div>
+      </div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> HTTPS і TLS: що треба знати бекендеру</h2>
+      <p class="section-desc">Зазвичай TLS термінується на LB, але всередині кластерів (mTLS, сервіс-меш) і в клієнтах — він ваш.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">https-server.mjs</span></div>
+        <pre><code>import https from 'node:https';
+import { readFileSync } from 'node:fs';
+
+https.createServer({
+  key: readFileSync('./certs/server.key'),
+  cert: readFileSync('./certs/server.crt'),   // ланцюжок: leaf + intermediate
+  minVersion: 'TLSv1.2',
+  // mTLS: вимагати сертифікат клієнта, підписаний нашим CA
+  ca: readFileSync('./certs/internal-ca.crt'),
+  requestCert: true,
+  rejectUnauthorized: true,
+}, (req, res) =&gt; {
+  const peer = req.socket.getPeerCertificate();
+  res.end(`hello, ${peer.subject?.CN}\n`);
+}).listen(8443);</code></pre>
+      </div>
+
+      <ul>
+        <li><b>TLS-криптографія — CPU-робота в головному потоці</b> (OpenSSL викликається синхронно з event loop). Handshake
+        з RSA-ключем помітно дорожчий за ECDSA. Тому TLS часто термінують на LB/ingress, а Node слухає plain HTTP у
+        приватній мережі.</li>
+        <li><b>Keep-alive ще важливіший з TLS</b>: без нього кожен запит платить за handshake. Сесійні тікети / resumption
+        частково рятують.</li>
+        <li><b><code>NODE_TLS_REJECT_UNAUTHORIZED=0</code></b> — вимикає перевірку сертифікатів для всього процесу. Node
+        друкує попередження. Ніколи у проді; для внутрішнього CA використовуйте <code>NODE_EXTRA_CA_CERTS=/path/ca.pem</code>
+        або (у новіших версіях) <code>--use-system-ca</code>, щоб довіряти системному сховищу сертифікатів.</li>
+        <li><b>SNI</b> — <code>SNICallback</code> дозволяє віддавати різні сертифікати для різних доменів на одному порту
+        (мультитенантні кастомні домени).</li>
+      </ul>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body">Для локальної розробки з HTTPS найпростіше — <code>mkcert</code> (створює локальний CA і додає його в
+        систему). Самопідписаний сертифікат з <code>openssl req -x509</code> змусить вимикати перевірку, і ця звичка
+        потім просочується в продакшн-код.</div>
+      </div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> HTTP/2 у Node: мультиплексування і коли воно справді потрібне</h2>
+      <p class="section-desc">HTTP/2 вирішує head-of-line blocking на рівні HTTP, але не TCP — і для API за LB часто нічого не дає.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 290" role="img" aria-label="Порівняння HTTP/1.1 і HTTP/2. У HTTP/1.1 на одному з'єднанні запити йдуть строго по черзі, тому браузер відкриває до шести з'єднань, і повільна відповідь блокує наступні на своєму з'єднанні. У HTTP/2 одне TCP-з'єднання несе кілька потоків, кадри потоків 1, 3 і 5 перемежовуються, і повільний потік не блокує інші на рівні HTTP, але втрата TCP-пакета все ще затримує всі потоки">
+          <defs><marker id="n09d4-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="11.5">
+            <text x="20" y="22" fill="currentColor" font-weight="600">HTTP/1.1: один запит за раз на з'єднання</text>
+            <text x="20" y="50" fill="var(--fg-muted)" font-size="10.5">TCP #1</text>
+            <rect x="80" y="36" width="220" height="22" rx="4" fill="none" stroke="var(--bad)" stroke-width="1.2"/>
+            <text x="190" y="51" text-anchor="middle" fill="currentColor" font-size="10.5">GET /slow (повільна відповідь)</text>
+            <rect x="304" y="36" width="70" height="22" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.1"/>
+            <text x="339" y="51" text-anchor="middle" fill="currentColor" font-size="10.5">GET /a</text>
+            <text x="390" y="51" fill="var(--bad)" font-size="10.5">← /a чекає (HOL blocking)</text>
+            <text x="20" y="80" fill="var(--fg-muted)" font-size="10.5">TCP #2</text>
+            <rect x="80" y="66" width="70" height="22" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.1"/>
+            <text x="115" y="81" text-anchor="middle" fill="currentColor" font-size="10.5">GET /b</text>
+            <rect x="154" y="66" width="70" height="22" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.1"/>
+            <text x="189" y="81" text-anchor="middle" fill="currentColor" font-size="10.5">GET /c</text>
+            <text x="20" y="110" fill="var(--fg-muted)" font-size="10.5">… до 6 з'єднань на origin у браузері, кожне — свій handshake</text>
+
+            <text x="20" y="150" fill="currentColor" font-weight="600">HTTP/2: одне з'єднання, багато потоків (streams), кадри перемежовуються</text>
+            <text x="20" y="182" fill="var(--fg-muted)" font-size="10.5">TCP #1</text>
+            <rect x="80" y="166" width="640" height="26" rx="4" fill="none" stroke="currentColor" stroke-width="1"/>
+            <rect x="84" y="170" width="40" height="18" rx="3" fill="none" stroke="var(--bad)" stroke-width="1.1"/>
+            <text x="104" y="183" text-anchor="middle" fill="currentColor" font-size="10">s1</text>
+            <rect x="128" y="170" width="40" height="18" rx="3" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.1"/>
+            <text x="148" y="183" text-anchor="middle" fill="currentColor" font-size="10">s3</text>
+            <rect x="172" y="170" width="40" height="18" rx="3" fill="var(--bg-soft)" stroke="var(--good)" stroke-width="1.1"/>
+            <text x="192" y="183" text-anchor="middle" fill="currentColor" font-size="10">s5</text>
+            <rect x="216" y="170" width="40" height="18" rx="3" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.1"/>
+            <text x="236" y="183" text-anchor="middle" fill="currentColor" font-size="10">s3 ✓</text>
+            <rect x="260" y="170" width="40" height="18" rx="3" fill="var(--bg-soft)" stroke="var(--good)" stroke-width="1.1"/>
+            <text x="280" y="183" text-anchor="middle" fill="currentColor" font-size="10">s5 ✓</text>
+            <rect x="304" y="170" width="40" height="18" rx="3" fill="none" stroke="var(--bad)" stroke-width="1.1"/>
+            <text x="324" y="183" text-anchor="middle" fill="currentColor" font-size="10">s1</text>
+            <rect x="348" y="170" width="40" height="18" rx="3" fill="none" stroke="var(--bad)" stroke-width="1.1"/>
+            <text x="368" y="183" text-anchor="middle" fill="currentColor" font-size="10">s1 ✓</text>
+            <text x="400" y="183" fill="var(--good)" font-size="10.5">швидкі s3, s5 не чекають на s1</text>
+
+            <rect x="20" y="214" width="340" height="62" rx="8" fill="var(--bg-soft)" stroke="var(--good)" stroke-width="1"/>
+            <text x="32" y="234" fill="var(--good)" font-size="10.5">+ один handshake, HPACK стискає заголовки</text>
+            <text x="32" y="251" fill="var(--good)" font-size="10.5">+ немає HOL blocking на рівні HTTP</text>
+            <text x="32" y="268" fill="var(--good)" font-size="10.5">+ двонаправлені стріми (основа gRPC)</text>
+            <rect x="380" y="214" width="340" height="62" rx="8" fill="var(--bg-soft)" stroke="var(--warn)" stroke-width="1"/>
+            <text x="392" y="234" fill="var(--warn)" font-size="10.5">− втрата TCP-пакета гальмує ВСІ стріми</text>
+            <text x="392" y="251" fill="var(--warn)" font-size="10.5">  (це вирішує лише HTTP/3 поверх QUIC/UDP)</text>
+            <text x="392" y="268" fill="var(--warn)" font-size="10.5">− одне з'єднання = погане балансування L4</text>
+          </g>
+        </svg>
+        <figcaption>HTTP/2 мультиплексує потоки в одному TCP-з'єднанні; виграш великий для браузера з десятками ресурсів і для gRPC, малий для одного API-запиту за LB.</figcaption>
+      </figure>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">h2-server.mjs</span></div>
+        <pre><code>import http2 from 'node:http2';
+import { readFileSync } from 'node:fs';
+
+// Браузери підтримують HTTP/2 лише поверх TLS (h2); allowHTTP1 — fallback через ALPN
+const server = http2.createSecureServer({
+  key: readFileSync('key.pem'), cert: readFileSync('cert.pem'), allowHTTP1: true,
+});
+
+// Core API: подія 'stream' замість 'request'
+server.on('stream', (stream, headers) =&gt; {
+  stream.respond({ ':status': 200, 'content-type': 'application/json' });
+  stream.end(JSON.stringify({ path: headers[':path'] }));
+});
+server.listen(8443);</code></pre>
+      </div>
+
+      <ul>
+        <li>Є також <b>Compatibility API</b> (<code>server.on('request', (req, res) =&gt; ...)</code>) — майже як <code>http</code>,
+        тому Fastify вміє <code>http2: true</code>. Express 4 офіційно HTTP/2 не підтримував.</li>
+        <li>Псевдозаголовки <code>:method</code>, <code>:path</code>, <code>:authority</code>, <code>:status</code> замість
+        стартового рядка; заголовка <code>Connection</code> і <code>Transfer-Encoding</code> немає.</li>
+        <li><b>Server Push</b> фактично мертвий — Chrome його вимкнув. Не будуйте на ньому архітектуру.</li>
+        <li>Як <b>клієнт</b> HTTP/2 потрібен для gRPC (<code>@grpc/grpc-js</code> працює поверх <code>node:http2</code>) і APNs.
+        Undici теж уміє HTTP/2 (опція <code>allowH2</code>).</li>
+      </ul>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">На співбесіді запитають так</span> «Чи варто вмикати HTTP/2 у Node-сервісі за ALB?» —
+        Зазвичай ні: LB термінує HTTP/2 від браузера і ходить до таргетів по HTTP/1.1 з keep-alive-пулом. HTTP/2 до бекенду
+        має сенс для gRPC або коли клієнт довгоживучий і робить багато паралельних запитів. Мінус — одне довге з'єднання
+        «прилипає» до одного інстансу, балансування стає нерівномірним.</div>
+      </div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> net і dgram: TCP і UDP без HTTP</h2>
+      <p class="section-desc">Під кожним HTTP-сервером — <code>net.Server</code>. Коли пишете протокол (Redis-клієнт, власний бінарний обмін) — працюєте саме з ним.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">net-demo.mjs</span></div>
+        <pre><code>import net from 'node:net';
+import dgram from 'node:dgram';
+import { once } from 'node:events';
+
+// TCP: потік байтів, межі повідомлень не зберігаються
+const tcp = net.createServer((socket) =&gt; {
+  socket.setEncoding('utf8');
+  socket.on('data', (data) =&gt; socket.write(`echo:${data}`));
+});
+tcp.listen(0);
+await once(tcp, 'listening');
+const client = net.connect(tcp.address().port);
+client.setEncoding('utf8');
+client.write('a');
+client.write('b');
+client.write('c');
+const [reply] = await once(client, 'data');
+console.log('tcp reply:', JSON.stringify(reply));
+client.end();
+tcp.close();
+
+// UDP: окремі датаграми, межі збережені, доставка не гарантована
+const udp = dgram.createSocket('udp4');
+udp.bind(0, '127.0.0.1');
+await once(udp, 'listening');
+const got = [];
+udp.on('message', (msg, rinfo) =&gt; {
+  got.push(msg.toString());
+  if (got.length === 3) { console.log('udp got:', got); udp.close(); }
+});
+const sender = dgram.createSocket('udp4');
+for (const m of ['a', 'b', 'c']) sender.send(m, udp.address().port, '127.0.0.1');
+setTimeout(() =&gt; sender.close(), 100);</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal (типовий вивід)</span></div>
+        <pre><code>tcp reply: "echo:abc"
+udp got: [ 'a', 'b', 'c' ]</code></pre>
+      </div>
+
+      <p>Три <code>client.write()</code> прийшли на сервер <b>одним</b> <code>'data'</code>-подією <code>"abc"</code>. Це не баг —
+      <b>TCP це потік байтів, а не повідомлень</b>: ядро може склеїти кілька записів (алгоритм Нейгла, буферизація) або
+      розрізати один запис на кілька chunk-ів. На localhost найчастіше буде саме склеювання, але це не гарантовано — тому
+      будь-який протокол поверх TCP потребує <b>framing</b>: роздільник (<code>\n</code> у RESP/SMTP), префікс довжини
+      (Postgres wire protocol, gRPC) або фіксований розмір.</p>
+
+      <table>
+        <tr><th></th><th>TCP (<code>node:net</code>)</th><th>UDP (<code>node:dgram</code>)</th></tr>
+        <tr><td>Модель</td><td>з'єднання, Duplex stream</td><td>без з'єднання, окремі датаграми</td></tr>
+        <tr><td>Межі повідомлень</td><td>не зберігаються — потрібен framing</td><td>зберігаються (одна <code>send</code> = одна <code>'message'</code>)</td></tr>
+        <tr><td>Гарантії</td><td>порядок, доставка, контроль перевантаження</td><td>жодних: втрата, дублювання, перестановка</td></tr>
+        <tr><td>Де в Node-світі</td><td>HTTP, драйвери БД, Redis, WebSocket</td><td>StatsD-метрики, DNS, syslog, QUIC, ігри</td></tr>
+      </table>
+
+      <h3>Корисні дрібниці net.Socket</h3>
+      <ul>
+        <li><code>socket.setNoDelay(true)</code> — вимкнути Нейгла для інтерактивних протоколів (HTTP-сервер Node робить це
+        сам за замовчуванням — опція <code>noDelay</code>).</li>
+        <li><code>socket.setKeepAlive(true, 30_000)</code> — <b>TCP keepalive</b> (проби ядра на мертві з'єднання). Не плутати з
+        <b>HTTP keep-alive</b> (перевикористання з'єднання для кількох запитів) — це зовсім різні речі з однаковою назвою.</li>
+        <li><code>allowHalfOpen</code> — чи закривати свою сторону, коли peer надіслав FIN.</li>
+        <li>Unix domain sockets: <code>server.listen('/tmp/app.sock')</code> — швидше за TCP на тій самій машині (nginx → Node).</li>
+      </ul>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> DNS: lookup vs resolve і невидимий thread pool</h2>
+      <p class="section-desc">Найнеочевидніше місце, де «асинхронний» мережевий Node раптом впирається в 4 потоки libuv.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">dns-demo.mjs</span></div>
+        <pre><code>import dns from 'node:dns/promises';
+
+console.log('lookup  :', await dns.lookup('localhost', { all: true }));
+try {
+  console.log('resolve4:', await dns.resolve4('localhost'));
+} catch (e) {
+  console.log('resolve4: error', e.code);
+}</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal (macOS, Node 24)</span></div>
+        <pre><code>lookup  : [ { address: '127.0.0.1', family: 4 }, { address: '::1', family: 6 } ]
+resolve4: error ENOTFOUND</code></pre>
+      </div>
+
+      <p>Одне ім'я — два різні результати. Бо це <b>два різні механізми</b>:</p>
+      <table>
+        <tr><th></th><th><code>dns.lookup()</code></th><th><code>dns.resolve*()</code></th></tr>
+        <tr><td>Реалізація</td><td>системний <code>getaddrinfo(3)</code></td><td>c-ares, пряма DNS-розмова по мережі</td></tr>
+        <tr><td>Де виконується</td><td><b>libuv thread pool</b> (блокуючий виклик)</td><td>неблокуючі сокети, без thread pool</td></tr>
+        <tr><td><code>/etc/hosts</code>, nsswitch, mDNS</td><td>так — тому <code>localhost</code> знайдено</td><td>ні — тому <code>ENOTFOUND</code></td></tr>
+        <tr><td>Хто використовує</td><td><code>http</code>, <code>net.connect</code>, <code>fetch</code> за замовчуванням</td><td>лише якщо ви викликали явно</td></tr>
+        <tr><td>Кешування</td><td>як налаштовано ОС (часто ніяк у контейнері)</td><td>немає; TTL доступний (<code>{ ttl: true }</code>)</td></tr>
+      </table>
+
+      <div class="callout bad">
+        <div class="ic">🐛</div>
+        <div class="body"><b>Класичний інцидент.</b> Сервіс робить сотні вихідних HTTP-запитів на секунду до різних хостів. DNS-сервер
+        у кластері трохи пригальмував (100 мс замість 1 мс). Кожен <code>getaddrinfo</code> займає потік пулу, у пулі їх
+        <b>4</b> за замовчуванням → черга. А в тому ж пулі живуть <code>fs.*</code>, <code>crypto.pbkdf2</code>,
+        <code>zlib</code>. Результат: «повис» навіть читання файлів і хешування паролів. Ліки: keep-alive (менше
+        lookup-ів), кеш DNS у процесі, <code>UV_THREADPOOL_SIZE</code> більше (до 1024, задається до старту пулу), node-local
+        DNS cache у Kubernetes.</div>
+      </div>
+
+      <h3>Кешування DNS у процесі</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">dns-cache.mjs</span></div>
+        <pre><code>import { Agent, setGlobalDispatcher, interceptors } from 'undici';
+
+// undici 7: інтерсептор DNS з кешем (поважає TTL, round-robin по адресах)
+setGlobalDispatcher(new Agent().compose(interceptors.dns({ maxTTL: 30_000 })));
+
+// для http.Agent — опція lookup приймає свою функцію (наприклад, з пакета cacheable-lookup)
+// new http.Agent({ keepAlive: true, lookup: cachedLookup })</code></pre>
+      </div>
+
+      <ul>
+        <li><b>Порядок адрес.</b> З Node 17 <code>lookup</code> повертає адреси в порядку ОС (<code>verbatim</code>), а не
+        «IPv4 першим». Звідси хвиля <code>ECONNREFUSED ::1:5432</code> після оновлень: <code>localhost</code> → <code>::1</code>,
+        а Postgres слухає лише IPv4. Лікується <code>127.0.0.1</code> замість <code>localhost</code> або
+        <code>dns.setDefaultResultOrder('ipv4first')</code>.</li>
+        <li><b>Happy Eyeballs</b>: з Node 20 <code>net.connect</code> за замовчуванням має <code>autoSelectFamily: true</code> —
+        пробує IPv6 і IPv4 майже паралельно, що прибрало значну частину цих проблем.</li>
+        <li>Кеш DNS треба поважати з TTL: при blue/green-перемиканні через DNS «вічний» кеш тримає старі IP.</li>
+      </ul>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Проксі, X-Forwarded-For, trust proxy і компресія</h2>
+      <p class="section-desc">За LB <code>req.socket.remoteAddress</code> — це IP балансувальника. Справжній IP клієнта — у заголовку, якому не можна сліпо вірити.</p>
+
+      <p>Проксі додає заголовки: <code>X-Forwarded-For: client, proxy1, proxy2</code> (кожен хоп дописує <b>справа</b>
+      адресу того, хто до нього прийшов), <code>X-Forwarded-Proto: https</code>, <code>X-Forwarded-Host</code>, або
+      стандартизований <code>Forwarded: for=...;proto=...</code> (RFC 7239). Клієнт може сам надіслати
+      <code>X-Forwarded-For: 1.2.3.4</code>, і проксі просто допише справа. Тому <b>ліва частина ланцюжка — під контролем
+      атакуючого</b>.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">client-ip.mjs</span></div>
+        <pre><code>// Довіряємо рівно N проксі, які ми контролюємо (наприклад, CloudFront + ALB = 2)
+function clientIp(req, trustedHops = 1) {
+  const xff = (req.headers['x-forwarded-for'] ?? '')
+    .split(',').map((s) =&gt; s.trim()).filter(Boolean);
+  const chain = [...xff, req.socket.remoteAddress]; // останній — безпосередній peer
+  // Йдемо справа наліво, пропускаючи trustedHops наших проксі
+  return chain[Math.max(0, chain.length - 1 - trustedHops)];
+}
+// XFF: "6.6.6.6, 203.0.113.7", peer = ALB (10.0.0.5), trustedHops = 1
+// chain = [6.6.6.6, 203.0.113.7, 10.0.0.5] → 203.0.113.7  (6.6.6.6 — підробка клієнта)</code></pre>
+      </div>
+
+      <p>Express робить те саме через <code>app.set('trust proxy', 1)</code> (кількість хопів, CIDR-и або функція) — тоді
+      <code>req.ip</code>, <code>req.protocol</code> і <code>req.secure</code> беруться із заголовків. Fastify —
+      <code>trustProxy</code> в опціях. Наслідки помилки: <code>trust proxy: true</code> («довіряти всьому») + rate limiter по
+      <code>req.ip</code> = атакуючий обходить ліміт, міняючи заголовок на кожному запиті. Детальніше — у
+      <a href="14-security.html">туторіалі 14</a>.</p>
+
+      <h3>Компресія: zlib-стріми і чому її часто роблять на проксі</h3>
+      <p>Реальний вимір на JSON із 2000 користувачів:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">zlib-demo.mjs → вивід</span></div>
+        <pre><code>const json = JSON.stringify(Array.from({ length: 2000 }, (_, i) =&gt;
+  ({ id: i, name: `user-${i}`, active: i % 2 === 0 })));
+console.log({ raw: Buffer.byteLength(json),
+  gzip: zlib.gzipSync(json).length, brotli: zlib.brotliCompressSync(json).length });
+// { raw: 88781, gzip: 10494, brotli: 4406 }</code></pre>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">gzip-stream.mjs</span></div>
+        <pre><code>import zlib from 'node:zlib';
+import { pipeline } from 'node:stream';
+
+function sendCompressed(req, res, readable) {
+  const accepts = req.headers['accept-encoding'] ?? '';
+  res.setHeader('vary', 'accept-encoding');           // для CDN/кешів
+  if (!/\bgzip\b/.test(accepts)) return pipeline(readable, res, () =&gt; {});
+  res.setHeader('content-encoding', 'gzip');          // content-length тепер невідомий → chunked
+  pipeline(readable, zlib.createGzip({ level: 6 }), res, (err) =&gt; {
+    if (err) res.destroy(err);
+  });
+}</code></pre>
+      </div>
+
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: де стискати відповіді</div>
+        <table><tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>На проксі / CDN (nginx, Cloudflare, ALB → CloudFront)</b> ✅</td><td>CPU не з'їдається в event loop Node; кеш стиснутих версій; brotli «з коробки»</td><td>ще одна конфігурація; між LB і Node трафік не стиснутий (зазвичай не проблема)</td></tr>
+          <tr><td>У Node (<code>compression</code> middleware, <code>@fastify/compress</code>)</td><td>працює без інфраструктури, контроль на рівні маршруту</td><td>zlib працює в thread pool, але алокації, буфери й координація — на вашому процесі; brotli на високих рівнях дуже дорогий</td></tr>
+          <tr><td>Не стискати</td><td>нуль CPU</td><td>у 8–20 разів більше байтів для JSON</td></tr>
+        </table>
+        <p><b>Коли що:</b> є CDN або nginx — стискайте там. Node-компресію вмикайте для сервісів, що віддають напряму, і з
+        порогом (наприклад, тільки тіла більші за 1 КБ). Не стискайте вже стиснуте (JPEG, ZIP) і пам'ятайте про BREACH для
+        відповідей, що змішують секрети з введенням користувача.</p>
+      </div>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Graceful shutdown: як не втрачати запити при деплої</h2>
+      <p class="section-desc">Кожен rolling deploy — це SIGTERM. Від того, як ви його обробите, залежить, чи бачать користувачі 502.</p>
+
+      <p>Kubernetes/ECS/Fly надсилають SIGTERM, чекають grace period (у k8s за замовчуванням 30 с) і потім SIGKILL.
+      Ваше завдання за цей час: перестати приймати нові з'єднання, <b>дочекатися in-flight запитів</b>, закрити
+      idle keep-alive сокети, закрити пули БД і вийти.</p>
+
+      <table>
+        <tr><th>Метод</th><th>Що робить</th></tr>
+        <tr><td><code>server.close(cb)</code></td><td>перестає приймати нові з'єднання; <code>cb</code> — коли закриються <b>всі</b> існуючі. З Node 19 також закриває idle-з'єднання</td></tr>
+        <tr><td><code>server.closeIdleConnections()</code></td><td>закрити сокети, на яких зараз немає запиту (keep-alive idle)</td></tr>
+        <tr><td><code>server.closeAllConnections()</code></td><td>жорстко закрити все, включно з активними запитами — останній крок за таймаутом</td></tr>
+      </table>
+
+      <h3>Пастка, знайдена експериментом: keep-alive сокет «переживає» close</h3>
+      <p>Перша версія демо: запит <code>/in-flight</code> обробляється 300 мс, на 100-й мс приходить SIGTERM, ми робимо
+      <code>server.close()</code> + <code>closeIdleConnections()</code>. Після відповіді той самий клієнт з keep-alive
+      агентом надсилає <code>/late</code>. Реальний вивід:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal — наївна версія</span></div>
+        <pre><code>[  31ms] start /in-flight
+[ 119ms] SIGTERM: stop accepting, drain in-flight
+[ 335ms] finish /in-flight
+[ 340ms] client got: 200 done
+[ 391ms] start /late
+[ 692ms] finish /late
+[ 693ms] new request after close: 200 done
+[5120ms] force close
+[5121ms] all connections closed -> exit</code></pre>
+      </div>
+      <p>Сервер «закритий», але <b>прийняв і обробив новий запит</b> — бо той прийшов по вже відкритому keep-alive сокету.
+      <code>closeIdleConnections()</code> спрацював у момент, коли сокет був активний, а після відповіді сокет знову став
+      idle і продовжив жити. Колбек <code>close</code> спрацював лише через 5 с на страховому таймері. У проді з LB, що
+      тримає пул, це означає: процес може не завершитися до SIGKILL, а запити, що прийшли в останню мить, обірвуться.</p>
+
+      <p>Виправлення: під час shutdown додавати до кожної відповіді <code>Connection: close</code> — тоді Node закриє сокет
+      одразу після відповіді, а клієнт знатиме, що його не можна перевикористати.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">shutdown-fixed.mjs</span></div>
+        <pre><code>import http from 'node:http';
+import { once } from 'node:events';
+
+const log = (m) =&gt; console.log(`[${String(Date.now() - t0).padStart(4)}ms] ${m}`);
+const t0 = Date.now();
+
+let shuttingDown = false;
+const server = http.createServer((req, res) =&gt; {
+  log(`start ${req.url}`);
+  setTimeout(() =&gt; {
+    if (shuttingDown) res.setHeader('connection', 'close'); // FIX
+    res.end('done'); log(`finish ${req.url}`); }, 300);
+});
+server.listen(0);
+await once(server, 'listening');
+const { port } = server.address();
+
+process.on('SIGTERM', () =&gt; {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  log('SIGTERM: stop accepting, drain in-flight');
+  server.close(() =&gt; { log('all connections closed'); /* у проді тут process.exit(0) */ });
+  server.closeIdleConnections();            // idle keep-alive сокети — одразу
+  setTimeout(() =&gt; {                         // страховка, якщо щось зависло
+    log('force close'); server.closeAllConnections();
+  }, 5000).unref();
+});
+
+const agent = new http.Agent({ keepAlive: true });
+const req = (path) =&gt; new Promise((resolve) =&gt; {
+  http.get({ port, path, agent }, (res) =&gt; {
+    let b = ''; res.on('data', (c) =&gt; (b += c)); res.on('end', () =&gt; resolve(`${res.statusCode} ${b}`));
+  }).on('error', (e) =&gt; resolve(`error ${e.code}`));
+});
+
+const inflight = req('/in-flight');
+setTimeout(() =&gt; process.kill(process.pid, 'SIGTERM'), 100);
+log(`client got: ${await inflight}`);
+await new Promise((r) =&gt; setTimeout(r, 50));
+log(`new request after close: ${await req('/late')}`);</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal — виправлена версія</span></div>
+        <pre><code>[  18ms] start /in-flight
+[ 113ms] SIGTERM: stop accepting, drain in-flight
+[ 321ms] finish /in-flight
+[ 323ms] all connections closed
+[ 324ms] client got: 200 done
+[ 377ms] new request after close: error ECONNREFUSED</code></pre>
+      </div>
+
+      <h3>Повний рецепт для продакшну</h3>
+      <div class="flow">
+        <div class="step">SIGTERM</div><div class="arrow">→</div>
+        <div class="step">readiness = 503</div><div class="arrow">→</div>
+        <div class="step">почекати ~5 с (LB зняв з ротації)</div><div class="arrow">→</div>
+        <div class="step">server.close + Connection: close</div><div class="arrow">→</div>
+        <div class="step">дренаж in-flight</div><div class="arrow">→</div>
+        <div class="step">закрити БД / черги</div><div class="arrow">→</div>
+        <div class="step">exit(0) або force за таймаутом</div>
+      </div>
+      <ul>
+        <li><b>Затримка перед close.</b> Видалення пода з Endpoints у k8s і SIGTERM відбуваються <b>паралельно</b>; LB може
+        ще кілька секунд слати нові з'єднання. Тому спершу віддаємо 503 на readiness і чекаємо (або <code>preStop: sleep 5</code>).</li>
+        <li><b>Не запускайте Node через <code>npm start</code> у контейнері</b>: npm не завжди коректно прокидає сигнали, і
+        Node як PID 1 не має дефолтних обробників SIGTERM. Використовуйте <code>CMD ["node", "server.js"]</code> або
+        <code>--init</code>/tini. Детально — у <a href="17-production-observability.html">туторіалі 17</a>.</li>
+        <li><b>Страховий таймер</b> завжди з <code>.unref()</code>, менший за grace period оркестратора.</li>
+        <li>Фреймворки мають готові хуки: <code>fastify.close()</code> (+ <code>onClose</code>), Nest
+        <code>app.enableShutdownHooks()</code>; бібліотеки <code>close-with-grace</code>, <code>@godaddy/terminus</code>.</li>
+      </ul>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Каверзні питання співбесіди</h2>
+      <p class="section-desc">Питання, на яких видно різницю між «писав на Express» і «розумію, як працює HTTP у Node».</p>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чому <code>req</code> — це стрім і що з цього випливає?</summary>
+        <div class="a"><code>IncomingMessage</code> — <b>Readable</b>: заголовки розібрані до виклику handler-а, а тіло надходить
+        chunk-ами. Наслідки: тіло треба явно прочитати (або відкинути), обмежувати його розмір, а backpressure зупиняє
+        клієнта, якщо ви не читаєте. Body-parser-и — це просто «прочитати стрім до кінця з лімітом і розпарсити».</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Ми бачимо рідкісні 502 від ALB, у логах Node — нічого. Причина?</summary>
+        <div class="a">Найімовірніше, <b><code>keepAliveTimeout</code> Node (5 с) менший за idle timeout LB (60 с)</b>: Node
+        закриває idle-сокет, а LB саме в цей момент шле туди запит і отримує RST. Фікс: <code>keepAliveTimeout = 65_000</code>,
+        <code>headersTimeout = 66_000</code>. Друга причина — відсутність graceful shutdown при деплоях.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим HTTP keep-alive відрізняється від TCP keepalive?</summary>
+        <div class="a"><b>HTTP keep-alive</b> — перевикористання одного з'єднання для кількох запитів (пул в Agent-і,
+        <code>keepAliveTimeout</code>). <b>TCP keepalive</b> — проби рівня ядра для виявлення мертвого peer-а на тихому
+        з'єднанні (<code>socket.setKeepAlive</code>). Назва одна, механізми різні.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Ми налаштували <code>http.globalAgent.maxSockets = 50</code>, а <code>fetch</code> все одно відкриває сотні з'єднань. Чому?</summary>
+        <div class="a">Глобальний <code>fetch</code> реалізований <b>undici</b>, який не використовує <code>http.Agent</code>.
+        Налаштовувати треба undici: <code>setGlobalDispatcher(new Agent({ connections: 50 }))</code> або передавати
+        <code>dispatcher</code> у виклик.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому HTTP-клієнт «зависає» на 6-му запиті при <code>maxSockets: 5</code>?</summary>
+        <div class="a">Попередні відповіді не <b>спожиті</b>: поки тіло не прочитане (<code>res.resume()</code>,
+        <code>await res.text()</code>, <code>body.dump()</code>), сокет вважається зайнятим і не повертається в пул. Шостий
+        запит назавжди стоїть у черзі Agent-а.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Мережевий I/O в Node не використовує thread pool. Чи все одно HTTP-запит може в нього впертися?</summary>
+        <div class="a">Так — через <b>DNS</b>. <code>dns.lookup</code> (за замовчуванням у <code>http</code>, <code>net</code>,
+        <code>fetch</code>) викликає блокуючий <code>getaddrinfo</code> у пулі з 4 потоків. Повільний DNS + багато нових
+        з'єднань = черга в пулі, яка гальмує ще й <code>fs</code>, <code>crypto</code>, <code>zlib</code>. <code>dns.resolve*</code>
+        працює через c-ares без пулу, але ігнорує <code>/etc/hosts</code>.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Як правильно зробити таймаут для <code>fetch</code>?</summary>
+        <div class="a"><code>fetch(url, { signal: AbortSignal.timeout(3000) })</code>; кидає <code>TimeoutError</code>.
+        Комбінувати з іншим сигналом — <code>AbortSignal.any([...])</code>. Таймаут діє і на читання тіла. Додатково на рівні
+        undici-Agent: <code>connectTimeout</code>, <code>headersTimeout</code>, <code>bodyTimeout</code>.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Клієнт тричі викликав <code>socket.write()</code>, а сервер отримав одну подію <code>'data'</code>. Баг?</summary>
+        <div class="a">Ні. <b>TCP — потік байтів без меж повідомлень</b>; записи можуть склеюватися або розрізатися. Будь-який
+        протокол поверх TCP потребує framing-у (роздільник, префікс довжини). UDP межі зберігає, але не гарантує доставку.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Що не так з <code>app.set('trust proxy', true)</code> і rate limiting по IP?</summary>
+        <div class="a"><code>true</code> означає «довіряти будь-якому <code>X-Forwarded-For</code>», і <code>req.ip</code> стає
+        найлівішою адресою — яку контролює клієнт. Атакуючий підставляє випадковий IP у кожен запит і обходить ліміт. Треба
+        вказати точну кількість своїх проксі або їхні CIDR-и.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що дає HTTP/2 і чи вирішує він head-of-line blocking?</summary>
+        <div class="a">Мультиплексування потоків в одному з'єднанні, стиснення заголовків (HPACK), двонаправлені стріми.
+        HOL blocking прибирається на рівні <b>HTTP</b>, але не на рівні <b>TCP</b>: втрата пакета затримує всі стріми.
+        Повністю — тільки HTTP/3 (QUIC поверх UDP).</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Викликали <code>server.close()</code>, а процес не завершується ще хвилину. Чому?</summary>
+        <div class="a"><code>close()</code> чекає закриття <b>всіх</b> з'єднань. Keep-alive сокети від LB або клієнтів можуть
+        продовжувати приносити нові запити (ми бачили це в демо). Ліки: <code>closeIdleConnections()</code>,
+        <code>Connection: close</code> у відповідях під час shutdown, страховий <code>closeAllConnections()</code> за таймером;
+        також перевірити інші ref-нуті хендли (таймери, пули БД).</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Як віддати великий файл і чому <code>pipeline</code>, а не <code>.pipe()</code>?</summary>
+        <div class="a"><code>await pipeline(createReadStream(path), res)</code> — backpressure автоматично, і при обриві
+        клієнта або помилці <b>обидва</b> стріми знищуються. <code>.pipe()</code> не пропагує помилки й не закриває джерело,
+        коли закрився приймач → витік файлових дескрипторів.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Після оновлення Node підключення до <code>localhost:5432</code> почало падати з <code>ECONNREFUSED ::1</code>. Що сталося?</summary>
+        <div class="a">З Node 17 <code>dns.lookup</code> повертає адреси в порядку ОС (verbatim), і <code>localhost</code>
+        резолвиться в <code>::1</code> першим, а БД слухає лише IPv4. Рішення: <code>127.0.0.1</code>,
+        <code>dns.setDefaultResultOrder('ipv4first')</code> або змусити сервіс слухати і IPv6. Happy Eyeballs
+        (<code>autoSelectFamily</code>, дефолт з Node 20) частково це пом'якшує.</div>
+      </details>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Шпаргалка</h2>
+      <p class="section-desc">Усе, що треба налаштувати в HTTP-сервісі на Node, на одному екрані.</p>
+      <div class="cheat">
+        <table>
+          <tr><th>Задача</th><th>Як</th></tr>
+          <tr><td>Розібрати URL</td><td><code>new URL(req.url, 'http://localhost')</code>, <code>url.searchParams</code></td></tr>
+          <tr><td>Прочитати тіло</td><td>перевірити <code>content-length</code>, рахувати байти в <code>'data'</code>, ліміт → 413 + <code>connection: close</code></td></tr>
+          <tr><td>Пул з'єднань (http)</td><td><code>new http.Agent({ keepAlive: true, maxSockets: N })</code>; дефолтний globalAgent уже keep-alive (Node 19+)</td></tr>
+          <tr><td>Пул з'єднань (fetch)</td><td><code>setGlobalDispatcher(new Agent({ connections, keepAliveTimeout }))</code> з undici</td></tr>
+          <tr><td>Таймаут клієнта</td><td><code>signal: AbortSignal.timeout(ms)</code>; <code>AbortSignal.any</code> для комбінації</td></tr>
+          <tr><td>Не «підвісити» пул</td><td>завжди споживати тіло: <code>res.resume()</code> / <code>body.dump()</code> / <code>res.body.cancel()</code></td></tr>
+          <tr><td>За LB (idle 60 с)</td><td><code>keepAliveTimeout = 65_000</code>, <code>headersTimeout = 66_000</code></td></tr>
+          <tr><td>Захист від повільних клієнтів</td><td><code>headersTimeout</code>, <code>requestTimeout</code> (дефолт 300 с — зменшити)</td></tr>
+          <tr><td>Стрім файлу</td><td><code>await pipeline(createReadStream(p), res)</code></td></tr>
+          <tr><td>DNS у thread pool</td><td><code>dns.lookup</code> = getaddrinfo у пулі; кеш (<code>interceptors.dns</code>), keep-alive, <code>UV_THREADPOOL_SIZE</code></td></tr>
+          <tr><td>IP клієнта</td><td>XFF справа наліво, пропустити N довірених хопів; <code>trust proxy: N</code></td></tr>
+          <tr><td>Компресія</td><td>краще на проксі/CDN; у Node — <code>zlib.createGzip()</code> у <code>pipeline</code>, <code>Vary: Accept-Encoding</code></td></tr>
+          <tr><td>HTTP/2</td><td><code>http2.createSecureServer({ allowHTTP1: true })</code>; корисний для gRPC/браузера, рідко — за LB</td></tr>
+          <tr><td>Graceful shutdown</td><td>readiness 503 → пауза → <code>server.close()</code> + <code>closeIdleConnections()</code> + <code>Connection: close</code> → таймер <code>closeAllConnections()</code></td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section id="s16">
+      <h2><span class="num">16</span> Як запам'ятати</h2>
+      <p class="section-desc">Асоціації, які спливають у голові, коли на співбесіді питають про мережу в Node.</p>
+      <div class="flashgrid">
+        <div class="flashcard">
+          <div class="fc-num">1</div>
+          <div class="term">req / res</div>
+          <div class="def">req — Readable з уже розібраними заголовками; res — Writable, перший write фіксує статус.</div>
+          <div class="mnemo"><b>Асоціація:</b> лист у конверті — адресу (заголовки) прочитали одразу, а сам лист (тіло) ще треба розгорнути.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">2</div>
+          <div class="term">http.Agent</div>
+          <div class="def">Пул сокетів на host:port: sockets, freeSockets, черга requests, ліміт maxSockets.</div>
+          <div class="mnemo"><b>Асоціація:</b> стоянка таксі — машини чекають пасажирів замість того, щоб щоразу їхати з гаража.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">3</div>
+          <div class="term">502 за LB</div>
+          <div class="def">Node закриває idle-сокет раніше, ніж LB; запит і FIN розминаються → RST → 502.</div>
+          <div class="mnemo"><b>Асоціація:</b> хто йде з вечірки першим, той має попрощатися — бекенд має «сидіти» довше за проксі.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">4</div>
+          <div class="term">fetch = undici</div>
+          <div class="def">Вбудований fetch не використовує http.Agent; пул налаштовується через dispatcher.</div>
+          <div class="mnemo"><b>Асоціація:</b> undici — «одинадцять» італійською: HTTP/1.1, окрема команда, свої правила.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">5</div>
+          <div class="term">AbortSignal.timeout</div>
+          <div class="def">Єдиний правильний таймаут для fetch; кидає TimeoutError і діє на читання тіла.</div>
+          <div class="mnemo"><b>Асоціація:</b> пісочний годинник на столі — коли пісок висипався, розмову обривають.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">6</div>
+          <div class="term">dns.lookup</div>
+          <div class="def">getaddrinfo у libuv thread pool, бачить /etc/hosts; resolve — c-ares по мережі.</div>
+          <div class="mnemo"><b>Асоціація:</b> lookup питає сусіда (ОС), resolve дзвонить у довідкову (DNS-сервер).</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">7</div>
+          <div class="term">TCP — потік байтів</div>
+          <div class="def">Межі write-ів не зберігаються; протоколу потрібен framing.</div>
+          <div class="mnemo"><b>Асоціація:</b> вода в трубі — три склянки, вилиті у воронку, на виході не розрізнити.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">8</div>
+          <div class="term">HTTP/2</div>
+          <div class="def">Багато потоків в одному TCP; немає HOL на рівні HTTP, але є на рівні TCP.</div>
+          <div class="mnemo"><b>Асоціація:</b> багатосмугова дорога в одному тунелі — аварія в тунелі зупиняє всі смуги.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">9</div>
+          <div class="term">X-Forwarded-For</div>
+          <div class="def">Ланцюжок IP; довіряти лише правій частині, доданій вашими проксі.</div>
+          <div class="mnemo"><b>Асоціація:</b> підписи в листі-естафеті — перші можна підробити, останні ставили ваші люди.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">10</div>
+          <div class="term">Graceful shutdown</div>
+          <div class="def">Зняти з ротації, close + Connection: close, дренаж, force за таймером.</div>
+          <div class="mnemo"><b>Асоціація:</b> кафе перед закриттям — вивіску «зачинено» повісили, але тих, хто вже їсть, не виганяють.</div>
+        </div>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Node.js Doc · частина серії туторіалів AI Delivery Planner. Приклади коду перевірені на Node.js 24.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

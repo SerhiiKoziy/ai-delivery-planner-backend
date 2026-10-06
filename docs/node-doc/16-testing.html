@@ -1,0 +1,1605 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>16. Тестування Node.js — Node.js Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🟢 Node.js Doc <span>· AI Delivery Planner</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Node.js Doc · Туторіал 16 з 20</div>
+  <h1>Тестування Node.js: node:test, Jest/Vitest, моки, HTTP, БД і CI</h1>
+  <p class="lead">Як побудувати тестовий набір бекенду, якому довіряють: вбудований <b>node:test</b> з моками й fake timers, вибір між Jest, Vitest і Mocha, тестування HTTP, часу, стрімів і бази даних, контрактні тести, межі coverage, боротьба з flaky-тестами та швидкий CI.</p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="07-fs-process-os.html">7. fs, process, os</a>
+        <a href="08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="09-http-networking.html">9. HTTP і мережа</a>
+        <a href="10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="12-databases-orm.html">12. БД і ORM</a>
+        <a href="13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="14-security.html">14. Безпека Node</a>
+        <a href="15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="16-testing.html" class="active">16. Тестування</a>
+        <a href="17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+  </aside>
+
+    <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Піраміда, трофей і що тестувати</a></li>
+      <li><a href="#s2">2. node:test + node:assert</a></li>
+      <li><a href="#s3">3. Моки в node:test</a></li>
+      <li><a href="#s4">4. Jest vs Vitest vs Mocha</a></li>
+      <li><a href="#s5">5. Таксономія test doubles</a></li>
+      <li><a href="#s6">6. Шви: DI vs module mocking, HTTP-моки</a></li>
+      <li><a href="#s7">7. Час, async, події, стріми, помилки</a></li>
+      <li><a href="#s8">8. HTTP-тести: supertest, inject, Nest</a></li>
+      <li><a href="#s9">9. Тести з базою даних</a></li>
+      <li><a href="#s10">10. Контрактні та e2e-тести</a></li>
+      <li><a href="#s11">11. Coverage і його межі</a></li>
+      <li><a href="#s12">12. Flaky-тести</a></li>
+      <li><a href="#s13">13. Тести в CI</a></li>
+      <li><a href="#s14">14. Каверзні питання співбесіди</a></li>
+      <li><a href="#s15">15. Шпаргалка</a></li>
+      <li><a href="#s16">16. Як запам'ятати</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+<section id="s1">
+  <h2><span class="num">01</span> Піраміда, трофей і що тестувати</h2>
+  <p class="section-desc">Форма тестового набору визначає, чи ловить він реальні баги — і чи не стане він гальмом для кожного рефакторингу.</p>
+
+  <p><b>Класична піраміда</b> (Mike Cohn): багато швидких юніт-тестів, менше інтеграційних, мало e2e. <b>Testing trophy</b> (Kent C. Dodds) зміщує вагу до інтеграційних: «чим більше тест схожий на те, як систему використовують, тим більше впевненості він дає». Для бекенду це особливо доречно: більшість багів живе на стиках — SQL, серіалізація, валідація, middleware, — а не в чистих функціях.</p>
+
+  <figure class="diagram">
+    <svg viewBox="0 0 740 290" role="img" aria-label="Ліворуч піраміда тестів: широкий низ — unit, середина — integration, вузька верхівка — e2e. Праворуч testing trophy: основа — статичний аналіз (TypeScript, ESLint), невеликий шар unit, найширший шар — integration, верхівка — e2e. Збоку стрілка: вгору — повільніше, дорожче, більше впевненості; вниз — швидше, дешевше, ізольованіше">
+      <defs><marker id="n16d1-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <text x="160" y="20" text-anchor="middle" font-weight="700" fill="currentColor">Піраміда</text>
+        <polygon points="160,36 205,96 115,96" fill="var(--bad)" fill-opacity="0.15" stroke="var(--bad)"/>
+        <text x="160" y="84" text-anchor="middle" fill="var(--bad)">e2e</text>
+        <polygon points="115,100 205,100 250,160 70,160" fill="var(--warn)" fill-opacity="0.15" stroke="var(--warn)"/>
+        <text x="160" y="136" text-anchor="middle" fill="var(--warn)">integration</text>
+        <polygon points="68,164 252,164 300,240 20,240" fill="var(--good)" fill-opacity="0.15" stroke="var(--good)"/>
+        <text x="160" y="208" text-anchor="middle" fill="var(--good)">unit (більшість)</text>
+
+        <text x="520" y="20" text-anchor="middle" font-weight="700" fill="currentColor">Trophy</text>
+        <rect x="490" y="36" width="60" height="34" rx="6" fill="var(--bad)" fill-opacity="0.15" stroke="var(--bad)"/>
+        <text x="520" y="58" text-anchor="middle" fill="var(--bad)">e2e</text>
+        <rect x="420" y="74" width="200" height="74" rx="10" fill="var(--warn)" fill-opacity="0.15" stroke="var(--warn)"/>
+        <text x="520" y="108" text-anchor="middle" fill="var(--warn)" font-weight="700">integration</text>
+        <text x="520" y="126" text-anchor="middle" fill="var(--warn)" font-size="11">HTTP + справжня БД</text>
+        <rect x="465" y="152" width="110" height="34" rx="6" fill="var(--good)" fill-opacity="0.15" stroke="var(--good)"/>
+        <text x="520" y="174" text-anchor="middle" fill="var(--good)">unit</text>
+        <rect x="440" y="190" width="160" height="50" rx="6" fill="var(--info)" fill-opacity="0.12" stroke="var(--info)"/>
+        <text x="520" y="212" text-anchor="middle" fill="var(--info)">static</text>
+        <text x="520" y="228" text-anchor="middle" fill="var(--info)" font-size="11">TypeScript, ESLint</text>
+
+        <path d="M690,240 L690,40" stroke="currentColor" stroke-width="1.2" marker-end="url(#n16d1-arrow)"/>
+        <text x="680" y="34" text-anchor="end" fill="var(--fg-muted)" font-size="11">повільніше, дорожче,</text>
+        <text x="680" y="48" text-anchor="end" fill="var(--fg-muted)" font-size="11">більше впевненості</text>
+        <text x="680" y="258" text-anchor="end" fill="var(--fg-muted)" font-size="11">швидше, дешевше,</text>
+        <text x="680" y="272" text-anchor="end" fill="var(--fg-muted)" font-size="11">точніше локалізує баг</text>
+      </g>
+    </svg>
+    <figcaption>Піраміда оптимізує швидкість і локалізацію помилок, трофей — впевненість; для API-бекенду центр ваги зазвичай в інтеграційних тестах через HTTP зі справжньою БД.</figcaption>
+  </figure>
+
+  <h3>Що тестувати на кожному рівні</h3>
+  <table>
+    <tr><th>Рівень</th><th>Приклад у Node-бекенді</th><th>Залежності</th></tr>
+    <tr><td><b>Unit</b></td><td>Розрахунок ціни, валідатор, мапер DTO, алгоритм ретраїв</td><td>Усе зовнішнє — fake/stub, без I/O</td></tr>
+    <tr><td><b>Integration</b></td><td>POST /orders → валідація → сервіс → Postgres → відповідь</td><td>Справжня БД (testcontainers), зовнішні HTTP — моки</td></tr>
+    <tr><td><b>Contract</b></td><td>Відповідь нашого API відповідає очікуванням фронтенду/іншого сервісу</td><td>Pact broker або OpenAPI-схема</td></tr>
+    <tr><td><b>E2E</b></td><td>Логін → створити маршрут → побачити його в UI</td><td>Розгорнута система</td></tr>
+  </table>
+
+  <div class="callout info"><div class="ic">💡</div><div class="body"><b>Тестуйте поведінку, а не реалізацію.</b> Тест, що перевіряє «сервіс викликав <code>repo.save</code> рівно з такими аргументами», ламається при кожному рефакторингу. Тест «після POST /orders запит GET /orders/:id повертає замовлення» переживе заміну ORM. Моки взаємодій — для справжніх побічних ефектів на межі системи (відправка email, оплата), а не для кожного внутрішнього виклику.</div></div>
+</section>
+
+<section id="s2">
+  <h2><span class="num">02</span> node:test + node:assert</h2>
+  <p class="section-desc">З Node 20 у вас є повноцінний test runner без жодної залежності: describe/it, хуки, моки, fake timers, snapshot'и, coverage, watch.</p>
+
+  <p>Модуль, який тестуємо, отримує залежності параметрами — це робить його тестованим без магії:</p>
+  <div class="codecard">
+    <div class="bar"><span class="path">price.js</span></div>
+    <pre><code>// price.js — модуль із залежностями, переданими через параметри (DI)
+export function createPriceService({ rates, clock = () => new Date() }) {
+  return {
+    async quote(amountUsd, currency) {
+      if (amountUsd &lt; 0) throw new RangeError('amount must be >= 0');
+      const rate = await rates.get(currency);
+      if (!rate) throw new Error(`unknown currency ${currency}`);
+      const isNight = clock().getUTCHours() &lt; 6;
+      const total = amountUsd * rate * (isNight ? 1.2 : 1);
+      return { currency, total: Math.round(total * 100) / 100 };
+    },
+  };
+}</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">price.test.js</span></div>
+    <pre><code>import { describe, it, mock, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { createPriceService } from './price.js';
+
+describe('PriceService.quote', () => {
+  let rates;
+  beforeEach(() => {
+    rates = { get: mock.fn(async (c) => ({ EUR: 0.9, UAH: 41 })[c]) };   // stub + spy
+  });
+
+  it('конвертує за курсом удень', async () => {
+    const svc = createPriceService({ rates, clock: () => new Date('2026-01-01T12:00:00Z') });
+    assert.deepEqual(await svc.quote(10, 'EUR'), { currency: 'EUR', total: 9 });
+    assert.equal(rates.get.mock.callCount(), 1);
+    assert.deepEqual(rates.get.mock.calls[0].arguments, ['EUR']);
+  });
+
+  it('нічна надбавка 20%', async () => {
+    const svc = createPriceService({ rates, clock: () => new Date('2026-01-01T03:00:00Z') });
+    assert.equal((await svc.quote(10, 'UAH')).total, 492);
+  });
+
+  it('відхиляє невідому валюту', async () => {
+    const svc = createPriceService({ rates });
+    await assert.rejects(svc.quote(1, 'XXX'), { message: /unknown currency XXX/ });
+  });
+
+  it('відхиляє відʼємну суму типом помилки', async () => {
+    const svc = createPriceService({ rates });
+    await assert.rejects(() => svc.quote(-1, 'EUR'), RangeError);
+    assert.equal(rates.get.mock.callCount(), 0);   // до залежності навіть не дійшло
+  });
+});</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">термінал — node --test (Node 24)</span></div>
+    <pre><code>▶ PriceService.quote
+  ✔ конвертує за курсом удень (47.810715ms)
+  ✔ нічна надбавка 20% (15.738191ms)
+  ✔ відхиляє невідому валюту (1.703531ms)
+  ✔ відхиляє відʼємну суму типом помилки (0.540619ms)
+✔ PriceService.quote (71.054214ms)
+ℹ tests 4
+ℹ suites 1
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 305.070082</code></pre>
+  </div>
+
+  <h3>Що варто знати про runner</h3>
+  <ul>
+    <li><b>Пошук файлів.</b> <code>node --test</code> без аргументів шукає <code>*.test.js</code>, <code>*-test.js</code>, <code>*_test.js</code>, <code>test-*.js</code>, файли в директоріях <code>test/</code> (і варіанти <code>.mjs</code>/<code>.cjs</code>, а з type stripping — і <code>.ts</code>). Можна передати glob: <code>node --test "src/**/*.test.js"</code>.</li>
+    <li><b>Ізоляція.</b> Кожен файл за замовчуванням запускається в окремому підпроцесі, файли — паралельно (<code>--test-concurrency</code>). Тести <i>всередині</i> файлу — послідовно, якщо не вказати <code>{ concurrency: true }</code>.</li>
+    <li><b>Фільтри:</b> <code>--test-name-pattern="нічна"</code>, <code>--test-skip-pattern</code>, <code>it.only</code> + <code>--test-only</code>, <code>it.skip</code>, <code>it.todo</code>.</li>
+    <li><b>Watch:</b> <code>node --test --watch</code> перезапускає тести, що залежать від змінених файлів.</li>
+    <li><b>Репортери:</b> <code>spec</code> (дефолт у терміналі), <code>tap</code>, <code>dot</code>, <code>junit</code>, <code>lcov</code>; кілька одночасно: <code>--test-reporter=spec --test-reporter=junit --test-reporter-destination=stdout --test-reporter-destination=junit.xml</code>.</li>
+    <li><b>Strict assert.</b> Імпортуйте <code>node:assert/strict</code>: <code>equal</code> там — це <code>===</code>, <code>deepEqual</code> — строгий (з урахуванням типів і прототипів). Нестрогий <code>assert.equal('1', 1)</code> проходить — типова пастка.</li>
+  </ul>
+
+  <p>Падіння показує зрозумілий diff:</p>
+  <div class="codecard">
+    <div class="bar"><span class="path">вивід падіння assert.deepEqual</span></div>
+    <pre><code>  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    {
+      id: 1,
+  +   status: 'new',
+  -   status: 'paid',
+      total: 9
+    }</code></pre>
+  </div>
+
+  <h3>Snapshot-тести</h3>
+  <div class="codecard">
+    <div class="bar"><span class="path">snapshot.test.js</span></div>
+    <pre><code>test('snapshot відповіді API', (t) => {
+  const body = { id: 1, status: 'planned', stops: [{ seq: 1, addr: 'Kyiv' }] };
+  t.assert.snapshot(body);
+});
+// перший запуск / оновлення:  node --test --test-update-snapshots
+// створює поруч файл async.test.js.snapshot з exports[`snapshot відповіді API 1`] = `{ ... }`</code></pre>
+  </div>
+  <p>Snapshot'и зручні для великих стабільних структур (згенерований SQL, OpenAPI-документ, повідомлення помилок), але небезпечні як «замінник думання»: якщо команда звикла запускати <code>--test-update-snapshots</code> не дивлячись на diff, тест нічого не перевіряє. Динамічні поля (дати, uuid) нормалізуйте перед snapshot'ом.</p>
+
+  <div class="remember"><b>🧠 Запам'ятай:</b> <code>node --test</code> + <code>node:assert/strict</code> — нуль залежностей, файли паралельно в підпроцесах.</div>
+</section>
+
+<section id="s3">
+  <h2><span class="num">03</span> Моки в node:test</h2>
+  <p class="section-desc">Вбудований <code>mock</code> покриває 90% потреб: шпигунські функції, підміну методів, фейковий час і (експериментально) підміну модулів.</p>
+
+  <table>
+    <tr><th>API</th><th>Що робить</th></tr>
+    <tr><td><code>mock.fn(impl?)</code></td><td>Функція-шпигун: записує <code>calls</code> (arguments, result, error, this), <code>callCount()</code>; <code>mockImplementation</code>, <code>mockImplementationOnce</code></td></tr>
+    <tr><td><code>mock.method(obj, 'name', impl?)</code></td><td>Підміняє метод об'єкта (або getter/setter), зберігає оригінал; <code>.mock.restore()</code></td></tr>
+    <tr><td><code>mock.timers.enable({ apis, now })</code></td><td>Фейкові <code>setTimeout</code>/<code>setInterval</code>/<code>setImmediate</code>/<code>Date</code>; <code>tick(ms)</code>, <code>runAll()</code></td></tr>
+    <tr><td><code>mock.module(specifier, opts)</code></td><td>Підміна імпортованого модуля (ESM і CJS); потребує <code>--experimental-test-module-mocks</code></td></tr>
+    <tr><td><code>t.mock</code> vs <code>mock</code></td><td><code>t.mock.*</code> автоматично відновлюється після тесту; глобальний <code>mock</code> — вручну через <code>mock.restoreAll()</code>/<code>mock.reset()</code></td></tr>
+  </table>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">retry.js</span></div>
+    <pre><code>// retry з експоненційною затримкою — класичний "залежний від часу" код
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export async function retry(fn, { attempts = 3, baseMs = 100 } = {}) {
+  for (let i = 0; ; i++) {
+    try { return await fn(); }
+    catch (err) {
+      if (i + 1 >= attempts) throw err;
+      await sleep(baseMs * 2 ** i);          // 100, 200, 400...
+    }
+  }
+}
+
+export function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">time.test.js — node --test time.test.js</span></div>
+    <pre><code>import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { debounce, retry } from './retry.js';
+
+test('debounce викликає fn один раз після тиші', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const fn = t.mock.fn();
+  const d = debounce(fn, 300);
+  d('a'); t.mock.timers.tick(200);
+  d('b'); t.mock.timers.tick(299);
+  assert.equal(fn.mock.callCount(), 0);
+  t.mock.timers.tick(1);
+  assert.equal(fn.mock.callCount(), 1);
+  assert.deepEqual(fn.mock.calls[0].arguments, ['b']);
+});
+
+test('Date теж можна заморозити', (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-03-01T00:00:00Z') });
+  assert.equal(new Date().toISOString(), '2026-03-01T00:00:00.000Z');
+  t.mock.timers.tick(60_000);
+  assert.equal(new Date().toISOString(), '2026-03-01T00:01:00.000Z');
+});
+
+test('mock.method підміняє метод обʼєкта і відновлюється', (t) => {
+  const mailer = { send: (to) => `real send to ${to}` };
+  t.mock.method(mailer, 'send', () => 'fake');
+  assert.equal(mailer.send('a@b.c'), 'fake');
+  assert.equal(mailer.send.mock.calls.length, 1);
+  mailer.send.mock.restore();                 // або автоматично після тесту (t.mock)
+  assert.equal(mailer.send('a@b.c'), 'real send to a@b.c');
+});
+
+test('retry: 3 спроби з backoff 100 → 200 мс без реального очікування', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  let n = 0;
+  const fn = t.mock.fn(async () => { if (++n &lt; 3) throw new Error('boom'); return 'ok'; });
+  const flush = () => new Promise(setImmediate);   // дати промісам дійти до setTimeout
+
+  const p = retry(fn, { attempts: 3, baseMs: 100 });
+  await flush(); assert.equal(fn.mock.callCount(), 1);
+  t.mock.timers.tick(99);  await flush(); assert.equal(fn.mock.callCount(), 1);
+  t.mock.timers.tick(1);   await flush(); assert.equal(fn.mock.callCount(), 2);
+  t.mock.timers.tick(200); await flush();
+  assert.equal(await p, 'ok');
+  assert.equal(fn.mock.callCount(), 3);
+});</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">вивід</span></div>
+    <pre><code>✔ debounce викликає fn один раз після тиші (2.495964ms)
+✔ Date теж можна заморозити (1.472447ms)
+✔ mock.method підміняє метод обʼєкта і відновлюється (0.458891ms)
+✔ retry: 3 спроби з backoff 100 → 200 мс без реального очікування (6.360178ms)</code></pre>
+  </div>
+  <p>Тест ретраїв зайняв 6 мс замість 300. Головна тонкість — <b>фейкові таймери + проміси</b>: <code>tick()</code> синхронно запускає колбеки таймерів, але <code>await</code> після них виконується в мікрозадачах. Тому між тіками потрібно «промити» чергу (<code>flush</code> через <i>справжній</i> <code>setImmediate</code> — ми його не мокали). Якщо замокати всі API, flush доведеться робити інакше — це найчастіша причина «тест з fake timers висить».</p>
+
+  <h3>mock.module</h3>
+  <div class="codecard">
+    <div class="bar"><span class="path">checkout.test.js — node --test --experimental-test-module-mocks</span></div>
+    <pre><code>import { test, mock } from 'node:test';
+import assert from 'node:assert/strict';
+
+test('module mock: підміняємо rates-client цілком', async () => {
+  const getRate = mock.fn(async () => 2);
+  mock.module('./rates-client.js', { exports: { getRate } });
+  const { totalIn } = await import('./checkout.js');   // імпорт ПІСЛЯ mock.module
+  assert.equal(await totalIn('EUR', 10), 20);
+  assert.equal(getRate.mock.callCount(), 1);
+});</code></pre>
+  </div>
+  <p class="muted">Перевірено на Node 24: старіша опція <code>namedExports</code> там уже видає DeprecationWarning на користь <code>exports</code>; на старіших релізах навпаки працює лише <code>namedExports</code>. API експериментальне — це аргумент на користь DI (розділ 6).</p>
+</section>
+
+<section id="s4">
+  <h2><span class="num">04</span> Jest vs Vitest vs Mocha</h2>
+  <p class="section-desc">Вибір раннера — це насамперед вибір того, як він дружить з ESM і TypeScript вашого проєкту.</p>
+
+  <h3>Jest</h3>
+  <p>Довго був стандартом: «батарейки» (assert'и <code>expect</code>, моки, snapshot'и, coverage, паралельні воркери, watch). Модульні моки <code>jest.mock('./x')</code> автоматично піднімаються (hoisting) над імпортами через babel-трансформацію. Біль — <b>ESM</b>: нативний ESM вимагає <code>NODE_OPTIONS=--experimental-vm-modules</code>, а <code>jest.mock</code> там не працює — потрібен <code>jest.unstable_mockModule</code> + динамічний <code>await import()</code> після нього. TypeScript — через <code>ts-jest</code> (з type-check, повільніше) або <code>babel-jest</code>/<code>@swc/jest</code> (лише видаляє типи, швидко). Кожен тестовий файл живе в окремому <code>vm</code>-контексті: ізоляція добра, але <code>instanceof</code> між контекстами іноді дивує, а холодний старт повільний.</p>
+
+  <h3>Vitest</h3>
+  <p>Побудований на Vite/esbuild: ESM і TypeScript «з коробки», API майже повністю Jest-сумісний (<code>describe/it/expect</code>, <code>vi.fn</code>, <code>vi.mock</code> з hoisting, <code>vi.useFakeTimers</code>), швидкий watch з розумінням графа залежностей, coverage через V8 або istanbul. Для нових TS/ESM-проєктів — дефолтний вибір; міграція з Jest часто зводиться до заміни <code>jest.</code> на <code>vi.</code>.</p>
+
+  <h3>Mocha + Chai + Sinon</h3>
+  <p>Legacy-стек: Mocha — лише runner, Chai — assertions (<code>expect(x).to.equal</code>), Sinon — spies/stubs/fake timers, nyc/c8 — coverage. Гнучко, але все збираєте самі. Зустрічається в старих кодових базах; нові проєкти рідко його обирають.</p>
+
+  <div class="decision">
+    <div class="decision-title">🔀 Вузол вибору: test runner для Node-бекенду</div>
+    <table><tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+      <tr><td><b>node:test</b></td><td>Нуль залежностей, швидкий старт, стабільний API, той самий рантайм що в проді</td><td>Скромніший екосистемний «цукор» (matchers, UI), module mocks експериментальні</td></tr>
+      <tr class="chosen"><td><b>Vitest</b> ✅</td><td>ESM/TS нативно, Jest-сумісний API, швидкий watch, гарні моки</td><td>Ще одна залежність; трансформація коду через Vite може відрізнятися від того, як Node виконує код у проді</td></tr>
+      <tr><td>Jest</td><td>Величезна екосистема, знайомий усім, NestJS-шаблон за замовчуванням</td><td>ESM — болісно, повільний холодний старт, потребує трансформера для TS</td></tr>
+      <tr><td>Mocha + Chai + Sinon</td><td>Гнучкість, зрілість</td><td>Збираєш пазл сам, повільний розвиток</td></tr>
+    </table>
+    <p><b>Коли що:</b> бібліотека або невеликий сервіс без бандлера → <code>node:test</code>; TS/ESM-застосунок, команда звикла до Jest API → Vitest; існуючий Nest-проєкт на Jest, що працює, → не мігрувати заради моди; legacy на Mocha → лишити, нові тести можна писати в тому ж стилі.</p>
+  </div>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">price.vitest.test.ts — той самий тест на Vitest</span></div>
+    <pre><code>import { describe, it, expect, vi } from 'vitest';
+import { createPriceService } from './price';
+
+describe('PriceService.quote', () => {
+  it('нічна надбавка 20%', async () => {
+    const rates = { get: vi.fn().mockResolvedValue(41) };
+    const svc = createPriceService({ rates, clock: () => new Date('2026-01-01T03:00:00Z') });
+    await expect(svc.quote(10, 'UAH')).resolves.toEqual({ currency: 'UAH', total: 492 });
+    expect(rates.get).toHaveBeenCalledWith('UAH');
+  });
+});</code></pre>
+  </div>
+
+  <div class="callout warn"><div class="ic">⚠️</div><div class="body"><b>Пастка з <code>expect(...).rejects</code>.</b> Без <code>await</code> (або <code>return</code>) асинхронна перевірка не чекається, тест проходить «зеленим» навіть коли проміс не відхилено. У node:test те саме з <code>assert.rejects</code> — завжди <code>await assert.rejects(...)</code>.</div></div>
+</section>
+
+<section id="s5">
+  <h2><span class="num">05</span> Таксономія test doubles</h2>
+  <p class="section-desc">«Мок» у розмовній мові означає що завгодно; на співбесіді очікують, що ви розрізняєте п'ять видів дублерів за Мезаросом/Фаулером.</p>
+
+  <figure class="diagram">
+    <svg viewBox="0 0 740 260" role="img" aria-label="П'ять видів test doubles: dummy — передається, але не використовується; stub — повертає заготовлені відповіді; spy — stub, що записує виклики для перевірки після; mock — заздалегідь запрограмовані очікування, сам перевіряє взаємодію; fake — робоча спрощена реалізація, наприклад in-memory репозиторій. Ліва група перевіряє стан, mock — поведінку">
+      <defs><marker id="n16d2-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <rect x="10" y="40" width="130" height="110" rx="10" fill="none" stroke="var(--fg-muted)" stroke-width="1.2"/>
+        <text x="75" y="64" text-anchor="middle" font-weight="700" fill="currentColor">Dummy</text>
+        <text x="75" y="88" text-anchor="middle" fill="var(--fg-muted)" font-size="11">заповнює параметр,</text>
+        <text x="75" y="103" text-anchor="middle" fill="var(--fg-muted)" font-size="11">ніколи не</text>
+        <text x="75" y="118" text-anchor="middle" fill="var(--fg-muted)" font-size="11">викликається</text>
+        <text x="75" y="140" text-anchor="middle" fill="var(--accent)" font-size="11">logger: {}</text>
+
+        <rect x="155" y="40" width="130" height="110" rx="10" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+        <text x="220" y="64" text-anchor="middle" font-weight="700" fill="var(--info)">Stub</text>
+        <text x="220" y="88" text-anchor="middle" fill="var(--fg-muted)" font-size="11">повертає</text>
+        <text x="220" y="103" text-anchor="middle" fill="var(--fg-muted)" font-size="11">заготовлені</text>
+        <text x="220" y="118" text-anchor="middle" fill="var(--fg-muted)" font-size="11">відповіді</text>
+        <text x="220" y="140" text-anchor="middle" fill="var(--accent)" font-size="11">get → 0.9</text>
+
+        <rect x="300" y="40" width="130" height="110" rx="10" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+        <text x="365" y="64" text-anchor="middle" font-weight="700" fill="var(--info)">Spy</text>
+        <text x="365" y="88" text-anchor="middle" fill="var(--fg-muted)" font-size="11">stub + записує</text>
+        <text x="365" y="103" text-anchor="middle" fill="var(--fg-muted)" font-size="11">виклики; перевірка</text>
+        <text x="365" y="118" text-anchor="middle" fill="var(--fg-muted)" font-size="11">ПІСЛЯ дії</text>
+        <text x="365" y="140" text-anchor="middle" fill="var(--accent)" font-size="11">mock.fn().calls</text>
+
+        <rect x="445" y="40" width="130" height="110" rx="10" fill="none" stroke="var(--warn)" stroke-width="1.5"/>
+        <text x="510" y="64" text-anchor="middle" font-weight="700" fill="var(--warn)">Mock</text>
+        <text x="510" y="88" text-anchor="middle" fill="var(--fg-muted)" font-size="11">очікування задано</text>
+        <text x="510" y="103" text-anchor="middle" fill="var(--fg-muted)" font-size="11">НАПЕРЕД, сам</text>
+        <text x="510" y="118" text-anchor="middle" fill="var(--fg-muted)" font-size="11">перевіряє взаємодію</text>
+        <text x="510" y="140" text-anchor="middle" fill="var(--accent)" font-size="11">sinon.mock().verify()</text>
+
+        <rect x="590" y="40" width="140" height="110" rx="10" fill="var(--good)" fill-opacity="0.12" stroke="var(--good)" stroke-width="1.5"/>
+        <text x="660" y="64" text-anchor="middle" font-weight="700" fill="var(--good)">Fake</text>
+        <text x="660" y="88" text-anchor="middle" fill="var(--fg-muted)" font-size="11">робоча спрощена</text>
+        <text x="660" y="103" text-anchor="middle" fill="var(--fg-muted)" font-size="11">реалізація</text>
+        <text x="660" y="118" text-anchor="middle" fill="var(--fg-muted)" font-size="11">з власною логікою</text>
+        <text x="660" y="140" text-anchor="middle" fill="var(--accent)" font-size="11">InMemoryOrderRepo</text>
+
+        <path d="M10,180 L430,180" stroke="var(--info)" stroke-width="1.3" marker-start="url(#n16d2-arrow)" marker-end="url(#n16d2-arrow)"/>
+        <text x="220" y="200" text-anchor="middle" fill="var(--info)">state verification: перевіряємо результат</text>
+        <path d="M445,180 L575,180" stroke="var(--warn)" stroke-width="1.3" marker-start="url(#n16d2-arrow)" marker-end="url(#n16d2-arrow)"/>
+        <text x="510" y="200" text-anchor="middle" fill="var(--warn)">behavior verification</text>
+        <path d="M590,180 L730,180" stroke="var(--good)" stroke-width="1.3" marker-start="url(#n16d2-arrow)" marker-end="url(#n16d2-arrow)"/>
+        <text x="660" y="200" text-anchor="middle" fill="var(--good)">поводиться як справжнє</text>
+        <text x="370" y="236" text-anchor="middle" fill="var(--fg-muted)" font-size="11">зліва направо: від найпростішого до найближчого до реальної залежності; більше «розуму» — дорожче підтримувати</text>
+      </g>
+    </svg>
+    <figcaption>Stub і spy відповідають на «що повернути» і «як мене викликали»; mock сам знає, яких викликів чекати; fake — це вже маленька робоча реалізація.</figcaption>
+  </figure>
+
+  <ul>
+    <li><b>Spy vs mock.</b> У Jest/Vitest/node:test <code>fn()</code> — технічно spy (перевірка після: <code>toHaveBeenCalledWith</code>). Класичний mock (Sinon <code>mock().expects(...)</code>) програмується наперед і падає сам. У розмові обидва звуть «моками» — на співбесіді покажіть, що розумієте різницю.</li>
+    <li><b>Fake найкращий для репозиторіїв.</b> <code>InMemoryOrderRepo</code> з <code>Map</code> дозволяє тестувати сервіс через стан («після create є findById»), а не через виклики. Але fake може розійтися з реальною БД (унікальні індекси, транзакції) — тому інтеграційні тести зі справжньою БД все одно потрібні.</li>
+    <li><b>Не мокайте те, чим не володієте</b> (don't mock what you don't own): замість мока SDK Stripe напишіть свій тонкий адаптер <code>PaymentsGateway</code>, мокайте його в юніт-тестах, а сам адаптер перевірте інтеграційно (з HTTP-моком або sandbox).</li>
+  </ul>
+</section>
+
+<section id="s6">
+  <h2><span class="num">06</span> Шви: DI vs module mocking, HTTP-моки</h2>
+  <p class="section-desc">«Шов» (seam) — місце, де тест може підмінити поведінку без зміни коду; від вибору шва залежить, наскільки тести крихкі.</p>
+
+  <figure class="diagram">
+    <svg viewBox="0 0 740 300" role="img" aria-label="Три шви для підміни залежностей: 1) dependency injection — тест передає fake у фабрику сервісу через параметри; 2) module mocking — тест підміняє модуль у кеші завантажувача, і сервіс при import отримує мок; 3) мережевий шов — сервіс робить справжній fetch, а MockAgent, nock або msw перехоплюють запит до виходу в мережу">
+      <defs><marker id="n16d3-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <text x="10" y="22" font-weight="700" fill="var(--good)">① DI — явний шов</text>
+        <rect x="10" y="34" width="110" height="40" rx="8" fill="none" stroke="currentColor"/>
+        <text x="65" y="59" text-anchor="middle" fill="currentColor">test</text>
+        <rect x="170" y="34" width="250" height="40" rx="8" fill="var(--good)" fill-opacity="0.12" stroke="var(--good)"/>
+        <text x="295" y="59" text-anchor="middle" fill="var(--good)">createService({ rates: fakeRates })</text>
+        <rect x="470" y="34" width="120" height="40" rx="8" fill="none" stroke="currentColor"/>
+        <text x="530" y="59" text-anchor="middle" fill="currentColor">service</text>
+        <path d="M120,54 L168,54" stroke="currentColor" stroke-width="1.3" marker-end="url(#n16d3-arrow)"/>
+        <path d="M420,54 L468,54" stroke="currentColor" stroke-width="1.3" marker-end="url(#n16d3-arrow)"/>
+        <text x="610" y="50" fill="var(--fg-muted)" font-size="11">без магії,</text>
+        <text x="610" y="64" fill="var(--fg-muted)" font-size="11">типобезпечно</text>
+
+        <text x="10" y="112" font-weight="700" fill="var(--warn)">② Module mocking — шов у завантажувачі</text>
+        <rect x="10" y="124" width="110" height="40" rx="8" fill="none" stroke="currentColor"/>
+        <text x="65" y="149" text-anchor="middle" fill="currentColor">test</text>
+        <rect x="170" y="124" width="250" height="40" rx="8" fill="var(--warn)" fill-opacity="0.12" stroke="var(--warn)"/>
+        <text x="295" y="141" text-anchor="middle" fill="var(--warn)">module cache / loader hook</text>
+        <text x="295" y="157" text-anchor="middle" fill="var(--warn)" font-size="11">'./rates.js' → mock</text>
+        <rect x="470" y="124" width="120" height="40" rx="8" fill="none" stroke="currentColor"/>
+        <text x="530" y="149" text-anchor="middle" fill="currentColor">service</text>
+        <path d="M120,144 L168,144" stroke="currentColor" stroke-width="1.3" marker-end="url(#n16d3-arrow)"/>
+        <path d="M468,144 L422,144" stroke="currentColor" stroke-width="1.3" marker-end="url(#n16d3-arrow)"/>
+        <text x="445" y="182" text-anchor="middle" fill="var(--fg-muted)" font-size="11">import</text>
+        <text x="610" y="140" fill="var(--fg-muted)" font-size="11">порядок імпортів,</text>
+        <text x="610" y="154" fill="var(--fg-muted)" font-size="11">hoisting, ESM-біль</text>
+
+        <text x="10" y="210" font-weight="700" fill="var(--info)">③ Мережевий шов — підміна на рівні HTTP</text>
+        <rect x="10" y="222" width="110" height="40" rx="8" fill="none" stroke="currentColor"/>
+        <text x="65" y="247" text-anchor="middle" fill="currentColor">service</text>
+        <rect x="170" y="222" width="140" height="40" rx="8" fill="none" stroke="currentColor"/>
+        <text x="240" y="247" text-anchor="middle" fill="currentColor">справжній fetch</text>
+        <rect x="360" y="222" width="230" height="40" rx="8" fill="var(--info)" fill-opacity="0.12" stroke="var(--info)"/>
+        <text x="475" y="239" text-anchor="middle" fill="var(--info)">MockAgent / nock / msw</text>
+        <text x="475" y="255" text-anchor="middle" fill="var(--info)" font-size="11">перехоплення до мережі</text>
+        <path d="M120,242 L168,242" stroke="currentColor" stroke-width="1.3" marker-end="url(#n16d3-arrow)"/>
+        <path d="M310,242 L358,242" stroke="currentColor" stroke-width="1.3" marker-end="url(#n16d3-arrow)"/>
+        <path d="M590,242 L615,242" stroke="var(--bad)" stroke-width="1.3" stroke-dasharray="4,3"/>
+        <text x="620" y="238" fill="var(--bad)" font-size="11">✕ інтернет</text>
+        <text x="620" y="252" fill="var(--fg-muted)" font-size="11">(disableNetConnect)</text>
+        <text x="370" y="290" text-anchor="middle" fill="var(--fg-muted)" font-size="11">③ перевіряє також URL, заголовки, серіалізацію й обробку статусів — те, що ① і ② пропускають</text>
+      </g>
+    </svg>
+    <figcaption>DI — найпростіший і найстабільніший шов; module mocking — коли код не дає DI; мережевий шов — щоб протестувати сам HTTP-клієнт.</figcaption>
+  </figure>
+
+  <div class="decision">
+    <div class="decision-title">🔀 Вузол вибору: як підміняти залежність</div>
+    <table><tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+      <tr class="chosen"><td><b>Dependency injection</b> ✅</td><td>Явно, типобезпечно, працює в будь-якому раннері, змушує до чистої архітектури</td><td>Треба прокидати залежності (фабрики, контейнер Nest)</td></tr>
+      <tr><td>Module mocking (<code>vi.mock</code>, <code>jest.mock</code>, <code>mock.module</code>)</td><td>Працює з кодом, що імпортує залежності напряму</td><td>Прив'язка до шляхів файлів, магія hoisting, ESM-обмеження, протікання між тестами</td></tr>
+      <tr><td>Мережеві моки (MockAgent, nock, msw)</td><td>Тестують реальний HTTP-клієнт, не залежать від структури коду</td><td>Повільніше за stub, треба стежити за «незадіяними» інтерсепторами</td></tr>
+    </table>
+    <p><b>Коли що:</b> бізнес-логіка → DI з fake/stub; адаптер до зовнішнього API → мережевий мок; legacy без DI → module mock як тимчасовий компроміс.</p>
+  </div>
+
+  <h3>Мережевий шов: три інструменти</h3>
+  <div class="codecard">
+    <div class="bar"><span class="path">undici MockAgent — для вбудованого fetch</span></div>
+    <pre><code>import { MockAgent, setGlobalDispatcher, getGlobalDispatcher } from 'undici';
+
+const original = getGlobalDispatcher();
+const agent = new MockAgent();
+agent.disableNetConnect();                     // будь-який незамоканий запит — помилка
+setGlobalDispatcher(agent);
+
+agent.get('https://api.rates.example')
+  .intercept({ path: '/v1/EUR', method: 'GET' })
+  .reply(200, { rate: 0.9 }, { headers: { 'content-type': 'application/json' } });
+
+// ... викликати код, що робить fetch('https://api.rates.example/v1/EUR')
+
+agent.assertNoPendingInterceptors();           // усі очікувані запити справді відбулися
+setGlobalDispatcher(original);</code></pre>
+  </div>
+  <p class="muted">Глобальний <code>fetch</code> використовує вбудовану копію undici; npm-пакет <code>undici</code> ставить dispatcher через спільний глобальний символ, тож працює з ним — але тримайте мажорну версію пакета сумісною з версією Node.</p>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">msw — однакові хендлери для браузера і Node</span></div>
+    <pre><code>import { setupServer } from 'msw/node';
+import { http, HttpResponse } from 'msw';
+
+const server = setupServer(
+  http.get('https://api.rates.example/v1/:cur', ({ params }) =>
+    HttpResponse.json({ rate: params.cur === 'EUR' ? 0.9 : 1 })),
+);
+before(() => server.listen({ onUnhandledRequest: 'error' }));
+afterEach(() => server.resetHandlers());       // скинути перевизначення з окремих тестів
+after(() => server.close());
+
+it('upstream 503 → наш сервіс віддає fallback', async () => {
+  server.use(http.get('https://api.rates.example/v1/:cur', () => new HttpResponse(null, { status: 503 })));
+  // ...
+});</code></pre>
+  </div>
+  <p><b>nock</b> — класика для <code>http</code>/<code>https</code>-модулів (axios, got); новіші мажорні версії перехоплюють і <code>fetch</code>. Для швидкого юніт-тесту часто вистачає й простого <code>t.mock.method(globalThis, 'fetch', async () => Response.json({ rate: 0.9 }))</code> — перевірено на Node 24, працює.</p>
+
+  <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають так</span> «Як протестувати код, що ходить у зовнішній API?» — Розділити: бізнес-логіка отримує адаптер через DI (тест зі stub); сам адаптер тестується з мережевим моком (MockAgent/msw/nock) зі <code>disableNetConnect</code>/<code>onUnhandledRequest: 'error'</code>, включно з таймаутами, 5xx, некоректним JSON; відповідність реальному API — контрактним тестом або періодичним smoke-тестом проти sandbox.</div></div>
+</section>
+
+<section id="s7">
+  <h2><span class="num">07</span> Час, async, події, стріми, помилки</h2>
+  <p class="section-desc">Найпідступніші тести — асинхронні: вони можуть «пройти», нічого не перевіривши, або висіти до таймауту.</p>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">async.test.js — node --test async.test.js</span></div>
+    <pre><code>import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { EventEmitter, once } from 'node:events';
+import { Readable, Transform } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
+
+test('подія: чекаємо через events.once з таймаутом', async () => {
+  const job = new EventEmitter();
+  setImmediate(() => job.emit('done', { id: 42 }));
+  const [payload] = await once(job, 'done', { signal: AbortSignal.timeout(1000) });
+  assert.deepEqual(payload, { id: 42 });
+});
+
+test('подія error відхиляє once', async () => {
+  const job = new EventEmitter();
+  setImmediate(() => job.emit('error', new Error('disk full')));
+  await assert.rejects(once(job, 'done'), /disk full/);
+});
+
+test('стрім: Transform у верхній регістр', async () => {
+  const upper = new Transform({
+    transform(chunk, _enc, cb) { cb(null, chunk.toString().toUpperCase()); },
+  });
+  const chunks = [];
+  await pipeline(Readable.from(['a', 'b', 'c']), upper, async function (source) {
+    for await (const c of source) chunks.push(c.toString());
+  });
+  assert.equal(chunks.join(''), 'ABC');   // межі чанків не гарантовані — порівнюємо склеєне
+});
+
+test('синхронний throw: assert.throws', () => {
+  assert.throws(() => JSON.parse('{bad'), SyntaxError);
+});</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">вивід</span></div>
+    <pre><code>✔ подія: чекаємо через events.once з таймаутом (5.361267ms)
+✔ подія error відхиляє once (1.424762ms)
+✔ стрім: Transform у верхній регістр (5.634608ms)
+✔ синхронний throw: assert.throws (0.389743ms)</code></pre>
+  </div>
+
+  <div class="callout fun"><div class="ic">🎉</div><div class="body"><span class="tag">Цікавий факт</span> Перша версія тесту стрімів порівнювала масив <code>['A','B','C']</code> і впала: не-objectMode Transform склеює рядки з <code>Readable.from</code> у буфер, і чанки прийшли інакше. Мораль — у тестах стрімів перевіряйте <b>зміст</b>, а не межі чанків, якщо межі не є частиною контракту.</div></div>
+
+  <h3>Правила асинхронних тестів</h3>
+  <ul>
+    <li><b>Завжди <code>await</code> або <code>return</code></b> проміс у тесті. Тест, що не дочекався, «зелений» назавжди, а помилка вилетить як unhandled rejection в іншому тесті.</li>
+    <li><b>Події</b> чекайте через <code>events.once</code> з <code>AbortSignal.timeout</code> — інакше тест, у якому подія не настала, висить до глобального таймауту.</li>
+    <li><b>Помилки</b> — <code>assert.rejects</code>/<code>assert.throws</code> з перевіркою типу або повідомлення, а не порожній <code>try/catch</code> (який пройде, якщо помилки не було взагалі).</li>
+    <li><b>Час</b> — інжектити <code>clock</code> (як <code>createPriceService</code>) або <code>mock.timers</code>. Ніколи <code>await sleep(1000)</code> «щоб встигло» — це і повільно, і flaky.</li>
+    <li><b>Таймаут на тест</b>: <code>it('...', { timeout: 2000 }, fn)</code> або <code>--test-timeout</code>.</li>
+    <li><b>Ресурси</b>: закривати сервери, пули, таймери в <code>after</code>/<code>afterEach</code>. Відкритий handle тримає процес тесту живим — runner «висить» після останнього тесту (Jest пише «did not exit one second after the test run»).</li>
+  </ul>
+</section>
+
+<section id="s8">
+  <h2><span class="num">08</span> HTTP-тести: supertest, inject, Nest</h2>
+  <p class="section-desc">Інтеграційний тест через HTTP перевіряє маршрутизацію, валідацію, серіалізацію, коди статусів і middleware — усе, що юніт-тести пропускають.</p>
+
+  <h3>Без бібліотек: справжній сервер на порту 0</h3>
+  <div class="codecard">
+    <div class="bar"><span class="path">app.js</span></div>
+    <pre><code>import http from 'node:http';
+export function createApp({ repo }) {
+  return http.createServer(async (req, res) => {
+    const m = req.url.match(/^\/orders\/(\d+)$/);
+    const order = m &amp;&amp; await repo.findById(Number(m[1]));
+    res.writeHead(order ? 200 : 404, { 'content-type': 'application/json' });
+    res.end(JSON.stringify(order ?? { error: 'not found' }));
+  });
+}</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">app.test.js — node --test app.test.js</span></div>
+    <pre><code>import { describe, it, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { once } from 'node:events';
+import { createApp } from './app.js';
+
+describe('GET /orders/:id', () => {
+  let server, base;
+  before(async () => {
+    const repo = { findById: async (id) => (id === 1 ? { id: 1, status: 'new' } : null) }; // fake
+    server = createApp({ repo }).listen(0);          // порт 0 = ОС видасть вільний
+    await once(server, 'listening');
+    base = `http://127.0.0.1:${server.address().port}`;
+  });
+  after(() => server.close());
+
+  it('200 для існуючого', async () => {
+    const res = await fetch(`${base}/orders/1`);
+    assert.equal(res.status, 200);
+    assert.deepEqual(await res.json(), { id: 1, status: 'new' });
+  });
+
+  it('404 для відсутнього', async () => {
+    const res = await fetch(`${base}/orders/999`);
+    assert.equal(res.status, 404);
+  });
+});</code></pre>
+  </div>
+  <div class="codecard">
+    <div class="bar"><span class="path">вивід</span></div>
+    <pre><code>▶ GET /orders/:id
+  ✔ 200 для існуючого (42.814603ms)
+  ✔ 404 для відсутнього (3.782279ms)
+✔ GET /orders/:id (56.007758ms)</code></pre>
+  </div>
+  <p>Два важливі прийоми: <b>фабрика застосунку</b> (<code>createApp</code>) окремо від <code>listen</code> у <code>main.js</code> — щоб тест сам вирішував, як запускати; і <b>порт 0</b> — паралельні тестові файли ніколи не конфліктують за порт.</p>
+
+  <h3>Express + supertest</h3>
+  <div class="codecard">
+    <div class="bar"><span class="path">orders.e2e.test.js</span></div>
+    <pre><code>import request from 'supertest';
+import { buildApp } from '../src/app.js';     // повертає express() без listen
+
+const app = buildApp({ repo: new InMemoryOrderRepo() });
+
+it('POST /orders валідує тіло', async () => {
+  await request(app)
+    .post('/orders')
+    .send({ stops: [] })
+    .set('authorization', 'Bearer test-token')
+    .expect('content-type', /json/)
+    .expect(422);
+});</code></pre>
+  </div>
+  <p>supertest сам піднімає застосунок на ефемерному порту для кожного запиту і закриває його — порт 0 «під капотом».</p>
+
+  <h3>Fastify: inject без мережі</h3>
+  <div class="codecard">
+    <div class="bar"><span class="path">fastify.test.js</span></div>
+    <pre><code>import { buildServer } from '../src/server.js';
+
+it('GET /health', async (t) => {
+  const app = await buildServer({ logger: false });
+  t.after(() => app.close());
+  const res = await app.inject({ method: 'GET', url: '/health' });   // light-my-request, без сокета
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.json(), { status: 'ok' });
+});</code></pre>
+  </div>
+  <p><code>inject()</code> проганяє запит через увесь життєвий цикл Fastify (хуки, валідація, серіалізація), але без TCP — дуже швидко і без портів. Плагіни завантажуються ліниво — <code>inject</code> сам дочекається <code>ready()</code>.</p>
+
+  <h3>NestJS: Test.createTestingModule</h3>
+  <div class="codecard">
+    <div class="bar"><span class="path">orders.e2e-spec.ts</span></div>
+    <pre><code>import { Test } from '@nestjs/testing';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import request from 'supertest';
+import { AppModule } from '../src/app.module';
+import { PaymentsGateway } from '../src/payments/payments.gateway';
+
+describe('Orders (e2e)', () => {
+  let app: INestApplication;
+  const payments = { charge: jest.fn().mockResolvedValue({ id: 'ch_1' }) };
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(PaymentsGateway).useValue(payments)   // DI-шов Nest
+      .compile();
+    app = moduleRef.createNestApplication();
+    app.useGlobalPipes(new ValidationPipe({ whitelist: true })); // ті самі пайпи, що в main.ts!
+    await app.init();
+  });
+  afterAll(() => app.close());
+
+  it('POST /orders → 201', () =>
+    request(app.getHttpServer()).post('/orders').send({ stops: [{ addr: 'Kyiv' }] }).expect(201));
+});</code></pre>
+  </div>
+  <div class="callout warn"><div class="ic">⚠️</div><div class="body">Класична Nest-пастка: глобальні пайпи, фільтри та інтерсептори, налаштовані в <code>main.ts</code>, <b>не</b> застосовуються в <code>createNestApplication()</code> тесту. Винесіть конфігурацію в спільну функцію <code>configureApp(app)</code> і викликайте її і в <code>main.ts</code>, і в тесті — або реєструйте їх через провайдери <code>APP_PIPE</code>/<code>APP_FILTER</code> у модулі. Детальніше про DI Nest — <a href="11-nestjs-architecture.html">туторіал 11</a>.</div></div>
+</section>
+
+<section id="s9">
+  <h2><span class="num">09</span> Тести з базою даних</h2>
+  <p class="section-desc">Мок репозиторію не знайде помилку в SQL, міграції чи унікальному індексі — для цього потрібна справжня БД того ж типу і версії, що в проді.</p>
+
+  <h3>Testcontainers: справжній Postgres на тест-ран</h3>
+  <div class="codecard">
+    <div class="bar"><span class="path">test/global-setup.js</span></div>
+    <pre><code>import { PostgreSqlContainer } from '@testcontainers/postgresql';
+import { execSync } from 'node:child_process';
+
+let container;
+export async function globalSetup() {
+  container = await new PostgreSqlContainer('postgres:16-alpine').start();   // та сама major-версія, що в проді
+  process.env.DATABASE_URL = container.getConnectionUri();
+  execSync('npx prisma migrate deploy', { stdio: 'inherit' });              // або knex/typeorm migrations
+}
+export async function globalTeardown() {
+  await container?.stop();
+}</code></pre>
+  </div>
+  <p>Testcontainers запускає Docker-контейнер з випадковим портом і чекає готовності. Один контейнер на весь прогін (global setup — <code>--test-global-setup</code> у node:test, <code>globalSetup</code> у Vitest/Jest), а не на кожен тест — інакше прогін триватиме хвилини. SQLite в пам'яті замість Postgres — економія, що бреше: інші типи, інші блокування, немає <code>jsonb</code>, <code>ON CONFLICT</code> поводиться інакше.</p>
+
+  <h3>Ізоляція між тестами</h3>
+  <table>
+    <tr><th>Стратегія</th><th>Як</th><th>Плюси / мінуси</th></tr>
+    <tr><td><b>Transaction-per-test rollback</b></td><td><code>BEGIN</code> у <code>beforeEach</code>, усі запити тесту через це з'єднання, <code>ROLLBACK</code> в <code>afterEach</code></td><td>Найшвидше; але код, що сам відкриває транзакції або використовує інший конекшн з пулу, «не бачить» даних; не тестує commit-поведінку</td></tr>
+    <tr><td><b>Truncate між тестами</b></td><td><code>TRUNCATE ... RESTART IDENTITY CASCADE</code> у <code>beforeEach</code></td><td>Просто і реалістично; повільніше на великій схемі</td></tr>
+    <tr><td><b>Схема/БД на воркер</b></td><td>Кожен паралельний воркер отримує свою схему або БД (<code>test_1</code>, <code>test_2</code>)</td><td>Дозволяє паралелізм файлів без конфліктів</td></tr>
+    <tr><td><b>Унікальні дані</b></td><td>Кожен тест створює свого tenant/користувача з випадковим id і не залежить від чужих рядків</td><td>Найстійкіше до паралелізму, але асерти типу «count = 3» стають неможливими</td></tr>
+  </table>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">test/db.js — транзакція на тест (pg)</span></div>
+    <pre><code>import pg from 'pg';
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+export let tx;                                  // клієнт, який тести передають у репозиторії
+
+beforeEach(async () => { tx = await pool.connect(); await tx.query('BEGIN'); });
+afterEach(async () => { await tx.query('ROLLBACK'); tx.release(); });
+after(() => pool.end());</code></pre>
+  </div>
+
+  <h3>Seed і фабрики</h3>
+  <p>Замість гігантського спільного <code>seed.sql</code>, від якого неявно залежать усі тести, — <b>фабрики</b>: функції, що створюють валідний об'єкт з розумними дефолтами і дозволяють перевизначити лише важливе для тесту поле.</p>
+  <div class="codecard">
+    <div class="bar"><span class="path">test/factories.js</span></div>
+    <pre><code>import { randomUUID } from 'node:crypto';
+let seq = 0;
+export function buildOrder(overrides = {}) {
+  seq++;
+  return { id: randomUUID(), number: `ORD-${seq}`, status: 'new', stops: [{ addr: 'Kyiv' }], ...overrides };
+}
+export async function createOrder(db, overrides) {
+  const o = buildOrder(overrides);
+  await db.query('insert into orders (id, number, status) values ($1, $2, $3)', [o.id, o.number, o.status]);
+  return o;
+}
+// у тесті видно лише суттєве:
+// const paid = await createOrder(tx, { status: 'paid' });</code></pre>
+  </div>
+  <p class="muted">Детальніше про пули з'єднань, транзакції і ORM — <a href="12-databases-orm.html">туторіал 12</a>.</p>
+</section>
+
+<section id="s10">
+  <h2><span class="num">10</span> Контрактні та e2e-тести</h2>
+  <p class="section-desc">Коли сервісів кілька, найдорожчі баги — розбіжність очікувань між ними; контрактні тести ловлять її без розгортання всього світу.</p>
+
+  <h3>Consumer-driven contracts (Pact)</h3>
+  <div class="flow">
+    <div class="step">Consumer-тест (фронт / сервіс A) описує очікувані запити й відповіді</div><div class="arrow">→</div>
+    <div class="step">Pact-файл (JSON-контракт)</div><div class="arrow">→</div>
+    <div class="step">Pact Broker</div><div class="arrow">→</div>
+    <div class="step">Provider verification: справжній API сервісу B проганяє контракт</div><div class="arrow">→</div>
+    <div class="step">can-i-deploy перед релізом</div>
+  </div>
+  <ul>
+    <li>Consumer-тест працює проти mock-сервера Pact і водночас записує контракт. Провайдер у своєму CI відтворює кожну взаємодію проти себе (з <i>provider states</i> — «замовлення 42 існує» — які налаштовують дані).</li>
+    <li>Перевіряється лише те, що consumer реально використовує: провайдер може додавати поля, не ламаючи нікого, але видалити поле, яке хтось читає, — CI не дасть.</li>
+    <li>Альтернатива для одного API з багатьма клієнтами — <b>schema-first</b>: OpenAPI як контракт, валідація відповідей у тестах (наприклад, через згенеровані zod/ajv-схеми) і diff схеми на breaking changes у CI.</li>
+  </ul>
+
+  <h3>E2E</h3>
+  <p>Наскрізні тести (Playwright для UI+API, або чисто API-сценарії на k6/Postman/власних скриптах проти preview-оточення) — найповільніші й найкрихкіші. Тримайте їх мало: 5–20 критичних шляхів (логін, оплата, створення головної сутності), запускайте на preview-оточенні перед merge або після deploy як smoke. Кожна перевірка, яку можна опустити на інтеграційний рівень, має туди переїхати.</p>
+
+  <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають так</span> «Чим контрактний тест відрізняється від інтеграційного?» — Інтеграційний перевіряє, що <i>наш</i> сервіс працює зі <i>своїми</i> залежностями (БД). Контрактний перевіряє, що два незалежно розгорнуті сервіси однаково розуміють спільний інтерфейс, при цьому кожна сторона тестується окремо у своєму CI.</div></div>
+</section>
+
+<section id="s11">
+  <h2><span class="num">11</span> Coverage і його межі</h2>
+  <p class="section-desc">Coverage показує, який код <i>не</i> виконувався тестами; він нічого не каже про те, чи перевіряли ви результат.</p>
+
+  <p>Сучасний спосіб — <b>V8 coverage</b>: рушій сам рахує виконані блоки, без інструментування коду (на відміну від istanbul/nyc, що переписує код лічильниками). Варіанти: <code>node --test --experimental-test-coverage</code>, <code>c8 node --test</code> (обгортка над V8 coverage з istanbul-звітами html/lcov), <code>vitest --coverage</code> з провайдером <code>v8</code>.</p>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">термінал — node --test --experimental-test-coverage (на прикладах цього туторіалу)</span></div>
+    <pre><code>ℹ start of coverage report
+ℹ ----------------------------------------------------------
+ℹ file      | line % | branch % | funcs % | uncovered lines
+ℹ ----------------------------------------------------------
+ℹ price.js  | 100.00 |   100.00 |   66.67 |
+ℹ retry.js  | 100.00 |    81.82 |  100.00 |
+ℹ ----------------------------------------------------------
+ℹ all files | 100.00 |    90.00 |   88.89 |
+ℹ ----------------------------------------------------------
+ℹ end of coverage report</code></pre>
+  </div>
+  <p>Цей звіт — готовий урок. <b>100% рядків</b> у <code>price.js</code>, але функцій 66.67%: дефолтний <code>clock = () =&gt; new Date()</code> не викликався жодного разу — усі тести передавали свій годинник або падали раніше. У <code>retry.js</code> 100% рядків, але гілки 81.82%: серед непокритих — саме сценарій, коли спроби вичерпано і помилка має прокинутись нагору (<code>if (i + 1 &gt;= attempts) throw err</code> — рядок виконувався, але гілка «true» — ні). Додавши один тест на вичерпання спроб, ми підняли branches до 90% (решта — невикористані дефолтні параметри). Тобто баг у найважливішому сценарії ретраїв пройшов би непоміченим при «100% line coverage».</p>
+
+  <h3>Чого coverage не каже</h3>
+  <ul>
+    <li><b>Наявність асертів.</b> Тест без жодного <code>assert</code> дає таке саме покриття, як і хороший.</li>
+    <li><b>Комбінації.</b> Кожна гілка окремо покрита ≠ покриті всі комбінації гілок (path coverage).</li>
+    <li><b>Відсутній код.</b> Забута перевірка прав доступу не може бути «непокритою» — її просто немає.</li>
+    <li><b>Інтеграцію.</b> 100% юніт-покриття з моками не доводить, що SQL правильний.</li>
+  </ul>
+  <p>Корисні практики: поріг як «не падати нижче» (<code>--test-coverage-lines=80 --test-coverage-branches=70</code> у node:test, <code>thresholds</code> у Vitest), дивитися coverage <b>diff у PR</b> (нові рядки без тестів), а для оцінки якості асертів — <b>mutation testing</b> (Stryker): він змінює код (<code>&lt;</code> на <code>&lt;=</code>, видаляє виклики) і перевіряє, чи впаде хоч один тест.</p>
+
+  <div class="remember"><b>🧠 Запам'ятай:</b> coverage — це карта неперевіреного, а не сертифікат якості; дивіться на branches, а не лише на lines.</div>
+</section>
+
+<section id="s12">
+  <h2><span class="num">12</span> Flaky-тести</h2>
+  <p class="section-desc">Тест, що іноді падає без змін у коді, гірший за відсутній: команда вчиться ігнорувати червоний CI.</p>
+
+  <table>
+    <tr><th>Причина</th><th>Симптом</th><th>Виправлення</th></tr>
+    <tr><td><b>Спільний стан</b></td><td>Тест падає лише разом з іншими; модульна змінна, синглтон-кеш, незакритий мок</td><td><code>t.mock</code>/<code>restoreAllMocks</code> в afterEach, свіжа фабрика на тест, без глобальних мутацій</td></tr>
+    <tr><td><b>Порядок виконання</b></td><td>Проходить у повному прогоні, падає при <code>--test-name-pattern</code> (або навпаки)</td><td>Кожен тест сам готує дані; перевірити <code>node --test --test-randomize</code> (або <code>--sequence.shuffle</code> у Vitest)</td></tr>
+    <tr><td><b>Реальний час</b></td><td>Падає біля півночі, у кінці місяця, в іншому часовому поясі CI, на повільній машині</td><td>Інжектити clock, <code>mock.timers</code>, фіксувати <code>TZ=UTC</code> у тестовому оточенні</td></tr>
+    <tr><td><b>Sleep замість очікування</b></td><td><code>await sleep(100)</code> «щоб подія встигла» — на завантаженому CI не встигає</td><td>Чекати конкретну подію/умову (<code>once</code>, polling з таймаутом)</td></tr>
+    <tr><td><b>Порти</b></td><td><code>EADDRINUSE</code> при паралельному запуску</td><td><code>listen(0)</code>, <code>inject()</code>, supertest</td></tr>
+    <tr><td><b>Спільна БД</b></td><td>Паралельні файли бачать дані одне одного</td><td>Схема на воркер, транзакції, унікальні дані</td></tr>
+    <tr><td><b>Мережа</b></td><td>Тест ходить у справжній зовнішній API</td><td><code>disableNetConnect</code> / <code>onUnhandledRequest: 'error'</code></td></tr>
+    <tr><td><b>Недетермінований порядок</b></td><td>Асерт на порядок рядків без <code>ORDER BY</code>, на порядок <code>Promise.all</code>-побічних ефектів</td><td>Сортувати перед порівнянням або явний ORDER BY</td></tr>
+    <tr><td><b>Випадковість</b></td><td>Faker згенерував дані, що порушують валідацію</td><td>Фіксований seed, друкувати seed при падінні</td></tr>
+  </table>
+
+  <div class="callout good"><div class="ic">✅</div><div class="body"><b>Процес, а не лише код.</b> Автоматичні ретраї в CI (<code>--test-rerun-failures</code>, <code>retry</code> у Vitest) — пластир, а не ліки: вони приховують справжні гонки в продакшн-коді. Правильна політика: flaky-тест одразу в карантин з тікетом і власником, виправити або видалити за тиждень, вести статистику нестабільних тестів.</div></div>
+</section>
+
+<section id="s13">
+  <h2><span class="num">13</span> Тести в CI</h2>
+  <p class="section-desc">Швидкий фідбек у PR — це паралелізм, кешування та правильний порядок кроків: дешеві й найчастіше падаючі перевірки — першими.</p>
+
+  <figure class="diagram">
+    <svg viewBox="0 0 740 300" role="img" aria-label="CI-пайплайн тестів: checkout, npm ci з кешем, далі паралельно lint, typecheck і юніт-тести, розділені на три шарди; потім інтеграційні тести з Postgres у testcontainers або services; потім перевірка контрактів і e2e на preview-оточенні; наприкінці збір coverage і JUnit-звітів з усіх шардів">
+      <defs><marker id="n16d4-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-size="12">
+        <rect x="10" y="120" width="90" height="50" rx="8" fill="none" stroke="currentColor"/>
+        <text x="55" y="142" text-anchor="middle" fill="currentColor">checkout</text>
+        <text x="55" y="158" text-anchor="middle" fill="var(--fg-muted)" font-size="11">git</text>
+        <rect x="120" y="120" width="100" height="50" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="170" y="142" text-anchor="middle" fill="currentColor">npm ci</text>
+        <text x="170" y="158" text-anchor="middle" fill="var(--accent)" font-size="11">кеш ~/.npm</text>
+        <path d="M100,145 L118,145" stroke="currentColor" stroke-width="1.3" marker-end="url(#n16d4-arrow)"/>
+
+        <rect x="250" y="20" width="120" height="36" rx="8" fill="none" stroke="var(--info)"/>
+        <text x="310" y="43" text-anchor="middle" fill="var(--info)">lint</text>
+        <rect x="250" y="64" width="120" height="36" rx="8" fill="none" stroke="var(--info)"/>
+        <text x="310" y="87" text-anchor="middle" fill="var(--info)">typecheck</text>
+        <rect x="250" y="112" width="120" height="30" rx="6" fill="var(--good)" fill-opacity="0.12" stroke="var(--good)"/>
+        <text x="310" y="132" text-anchor="middle" fill="var(--good)">unit shard 1/3</text>
+        <rect x="250" y="148" width="120" height="30" rx="6" fill="var(--good)" fill-opacity="0.12" stroke="var(--good)"/>
+        <text x="310" y="168" text-anchor="middle" fill="var(--good)">unit shard 2/3</text>
+        <rect x="250" y="184" width="120" height="30" rx="6" fill="var(--good)" fill-opacity="0.12" stroke="var(--good)"/>
+        <text x="310" y="204" text-anchor="middle" fill="var(--good)">unit shard 3/3</text>
+        <path d="M220,140 L248,38" stroke="currentColor" stroke-width="1" marker-end="url(#n16d4-arrow)"/>
+        <path d="M220,143 L248,82" stroke="currentColor" stroke-width="1" marker-end="url(#n16d4-arrow)"/>
+        <path d="M220,145 L248,127" stroke="currentColor" stroke-width="1" marker-end="url(#n16d4-arrow)"/>
+        <path d="M220,147 L248,163" stroke="currentColor" stroke-width="1" marker-end="url(#n16d4-arrow)"/>
+        <path d="M220,150 L248,199" stroke="currentColor" stroke-width="1" marker-end="url(#n16d4-arrow)"/>
+        <text x="310" y="240" text-anchor="middle" fill="var(--fg-muted)" font-size="11">паралельні jobs, fail-fast</text>
+
+        <rect x="400" y="110" width="140" height="70" rx="8" fill="var(--warn)" fill-opacity="0.12" stroke="var(--warn)"/>
+        <text x="470" y="134" text-anchor="middle" fill="var(--warn)">integration</text>
+        <text x="470" y="152" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Postgres/Redis:</text>
+        <text x="470" y="167" text-anchor="middle" fill="var(--fg-muted)" font-size="11">testcontainers</text>
+        <path d="M370,145 L398,145" stroke="currentColor" stroke-width="1.3" marker-end="url(#n16d4-arrow)"/>
+
+        <rect x="570" y="70" width="160" height="50" rx="8" fill="none" stroke="var(--interview)"/>
+        <text x="650" y="92" text-anchor="middle" fill="var(--interview)">contract verify</text>
+        <text x="650" y="108" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Pact / OpenAPI diff</text>
+        <rect x="570" y="130" width="160" height="50" rx="8" fill="var(--bad)" fill-opacity="0.1" stroke="var(--bad)"/>
+        <text x="650" y="152" text-anchor="middle" fill="var(--bad)">e2e smoke</text>
+        <text x="650" y="168" text-anchor="middle" fill="var(--fg-muted)" font-size="11">preview env</text>
+        <path d="M540,135 L568,100" stroke="currentColor" stroke-width="1.1" marker-end="url(#n16d4-arrow)"/>
+        <path d="M540,150 L568,155" stroke="currentColor" stroke-width="1.1" marker-end="url(#n16d4-arrow)"/>
+
+        <rect x="570" y="220" width="160" height="50" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+        <text x="650" y="242" text-anchor="middle" fill="currentColor">merge reports</text>
+        <text x="650" y="258" text-anchor="middle" fill="var(--fg-muted)" font-size="11">lcov + JUnit → PR</text>
+        <path d="M650,180 L650,218" stroke="currentColor" stroke-width="1.1" marker-end="url(#n16d4-arrow)"/>
+        <path d="M370,199 C450,230 500,245 568,245" stroke="var(--fg-muted)" stroke-width="1" stroke-dasharray="4,3" fill="none" marker-end="url(#n16d4-arrow)"/>
+      </g>
+    </svg>
+    <figcaption>Спершу дешеві перевірки й шардовані юніт-тести паралельно, далі інтеграційні з контейнерами, наприкінці — контракти, e2e і зведення звітів з усіх шардів.</figcaption>
+  </figure>
+
+  <div class="codecard">
+    <div class="bar"><span class="path">.github/workflows/test.yml (фрагмент)</span></div>
+    <pre><code>jobs:
+  unit:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }          # кеш ~/.npm за package-lock.json
+      - run: npm ci
+      - run: >
+          node --test --test-shard=${{ matrix.shard }}/3
+          --experimental-test-coverage
+          --test-reporter=spec --test-reporter-destination=stdout
+          --test-reporter=junit --test-reporter-destination=junit-${{ matrix.shard }}.xml
+        env: { TZ: UTC, NODE_ENV: test }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: junit-${{ matrix.shard }}, path: junit-*.xml }</code></pre>
+  </div>
+
+  <ul>
+    <li><b>Паралелізм на двох рівнях:</b> всередині машини (воркери раннера — node:test запускає файли паралельно) і між машинами (шарди: <code>--test-shard</code>, <code>vitest --shard=1/3</code>, <code>jest --shard=1/3</code>). Шарди ділять файли, тож один гігантський тестовий файл не розпаралелиться.</li>
+    <li><b>Кешування:</b> <code>~/.npm</code> за хешем lockfile (не <code>node_modules</code> — <code>npm ci</code> однаково його видаляє), Docker-образи для testcontainers, кеш трансформацій Vitest/Jest. Turborepo/Nx у монорепо запускають лише тести змінених пакетів.</li>
+    <li><b>Оточення:</b> <code>TZ=UTC</code>, фіксована локаль, та сама major-версія Node, що в проді (matrix по 2 версіях для бібліотек).</li>
+    <li><b>Звіти:</b> JUnit XML — щоб CI показував, <i>який</i> тест упав, без читання логів; lcov з усіх шардів зливається для coverage-коментаря в PR.</li>
+    <li><b>Порядок:</b> lint і typecheck за секунди відсікають більшість помилок; інтеграційні й e2e — після них. Детальніше про пайплайни деплою — <a href="17-production-observability.html">туторіал 17</a>.</li>
+  </ul>
+</section>
+
+<section id="s14">
+  <h2><span class="num">14</span> Каверзні питання співбесіди</h2>
+  <p class="section-desc">Питання, що відрізняють «пишу тести, бо треба» від «проєктую тестову стратегію».</p>
+
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Піраміда чи трофей — що обрати для REST-бекенду?</summary>
+    <div class="a">Для бекенду, де більшість логіки — оркестрація БД і зовнішніх сервісів, — ближче до <b>трофея</b>: основа статичний аналіз (TS, ESLint), багато інтеграційних тестів через HTTP зі справжньою БД, юніт-тести для чистої складної логіки (ціни, алгоритми), мінімум e2e. Піраміда доречна, коли домен багатий на чисту логіку.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Чим stub відрізняється від mock і spy?</summary>
+    <div class="a"><b>Stub</b> повертає заготовлені відповіді (state verification). <b>Spy</b> — stub, що ще й записує виклики, перевірка після дії. <b>Mock</b> заздалегідь знає очікувані виклики і сам їх верифікує (behavior verification). <b>Fake</b> — робоча спрощена реалізація (in-memory repo). <b>Dummy</b> — заглушка параметра.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>Тест з <code>expect(promise).rejects.toThrow()</code> проходить, хоча функція не кидає. Чому?</summary>
+    <div class="a">Немає <code>await</code>/<code>return</code> — тест завершився синхронно до перевірки, а відхилення (або його відсутність) нікого не цікавить. Те саме з <code>assert.rejects</code> без <code>await</code>. Лікується <code>await</code> і правилом ESLint <code>@typescript-eslint/no-floating-promises</code> / <code>jest/valid-expect</code>.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>Чому <code>jest.mock('./db')</code> не працює в нативному ESM-проєкті?</summary>
+    <div class="a">ESM-імпорти статичні й зв'язуються до виконання коду, тому трюк з hoisting <code>jest.mock</code> над <code>require</code> не спрацьовує. Потрібно <code>jest.unstable_mockModule('./db', factory)</code> і потім <code>await import('./service.js')</code> — динамічний імпорт <b>після</b> реєстрації мока (і <code>--experimental-vm-modules</code>). Vitest вирішує це своїм трансформером, node:test — <code>mock.module</code> + динамічний import.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Як протестувати код із <code>setTimeout</code>/<code>Date.now()</code> без очікування?</summary>
+    <div class="a">Інжектити годинник (<code>clock</code> параметром) або fake timers: <code>t.mock.timers.enable({ apis: ['setTimeout', 'Date'] })</code> + <code>tick(ms)</code> у node:test, <code>vi.useFakeTimers()</code> + <code>vi.advanceTimersByTimeAsync</code> у Vitest. Пастка: між тіками треба «промивати» мікрозадачі, інакше код після <code>await</code> не дійде до наступного таймера.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>100% line coverage — чи достатньо?</summary>
+    <div class="a">Ні. Coverage не перевіряє наявність асертів, комбінації гілок і відсутній код. Рядок <code>if (i + 1 &gt;= attempts) throw err</code> може бути «покритим», хоча гілка з <code>throw</code> не виконувалась жодного разу (branch coverage &lt; 100%). Для якості асертів — mutation testing (Stryker).</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Як ізолювати тести, що працюють зі спільною БД?</summary>
+    <div class="a">Testcontainers (одна БД на прогін) + одна зі стратегій: транзакція на тест з rollback (швидко, але не для коду з власними транзакціями), TRUNCATE в beforeEach, окрема схема/БД на паралельного воркера, або унікальні дані (свій tenant на тест). Плюс фабрики замість спільного seed.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>Transaction-per-test rollback — у чому підступ?</summary>
+    <div class="a">Код під тестом має використовувати <b>те саме з'єднання</b>, де відкрито транзакцію. Якщо сервіс бере інший клієнт з пулу — він не бачить незакомічених даних тесту. Код, що сам робить <code>BEGIN/COMMIT</code>, конфліктує (потрібні savepoints). І не тестуються ефекти commit: тригери deferred constraints, LISTEN/NOTIFY, видимість для інших з'єднань.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Навіщо відокремлювати <code>buildApp()</code> від <code>listen()</code>?</summary>
+    <div class="a">Щоб тест створював застосунок з тестовими залежностями і сам вирішував, як його запускати: <code>supertest(app)</code>, <code>fastify.inject()</code> без мережі або <code>listen(0)</code> на випадковому порту. Інакше імпорт модуля застосунку піднімає сервер на фіксованому порту — <code>EADDRINUSE</code> при паралельних тестах.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>Тестовий процес не завершується після проходження всіх тестів. Причини?</summary>
+    <div class="a">Відкриті handles: незакритий HTTP-сервер, пул БД (<code>pool.end()</code>), Redis-клієнт, <code>setInterval</code>, keep-alive сокети. Лікувати закриттям в <code>after</code>, а не <code>--test-force-exit</code>/<code>--forceExit</code> — ті ховають витоки ресурсів, які в проді заважатимуть graceful shutdown.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Що таке контрактний тест і коли він кращий за e2e?</summary>
+    <div class="a">Consumer записує очікувані взаємодії (Pact), provider у своєму CI перевіряє їх проти реального коду. Кожна сторона тестується окремо, без розгортання обох — швидше й стабільніше за e2e, і точно показує, яка зміна ламає якого споживача (<code>can-i-deploy</code>).</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty trick">Пастка</span>Чому вмикати автоматичні ретраї flaky-тестів у CI — погана довгострокова стратегія?</summary>
+    <div class="a">Ретраї ховають симптом. Частина «flaky» тестів ловить справжні гонки в продакшн-коді (порядок промісів, відсутність ORDER BY, спільний стан). Краще: карантин з тікетом і власником, <code>--test-randomize</code> для виявлення залежності від порядку, fake timers замість sleep.</div>
+  </details>
+  <details class="qa">
+    <summary><span class="difficulty core">База</span>Чим шардинг відрізняється від паралельних воркерів?</summary>
+    <div class="a">Воркери паралелять файли всередині однієї машини (обмежені її ядрами й спільними ресурсами). Шардинг (<code>--test-shard=2/3</code>) ділить набір файлів між кількома CI-машинами. Обидва працюють на рівні файлів — великий файл не розіб'ється, тому тести краще тримати в багатьох помірних файлах.</div>
+  </details>
+</section>
+
+<section id="s15">
+  <h2><span class="num">15</span> Шпаргалка</h2>
+  <p class="section-desc">Команди й API, які потрібні щодня.</p>
+  <div class="cheat"><table>
+    <tr><th>Задача</th><th>node:test</th><th>Vitest / Jest</th></tr>
+    <tr><td>Запуск / watch</td><td><code>node --test</code>, <code>--watch</code></td><td><code>vitest</code> (watch за замовчуванням), <code>jest --watch</code></td></tr>
+    <tr><td>Фільтр</td><td><code>--test-name-pattern</code>, <code>it.only</code> + <code>--test-only</code></td><td><code>-t "name"</code>, <code>it.only</code></td></tr>
+    <tr><td>Spy / stub</td><td><code>mock.fn()</code>, <code>.mock.calls</code>, <code>.mock.callCount()</code></td><td><code>vi.fn()</code> / <code>jest.fn()</code>, <code>toHaveBeenCalledWith</code></td></tr>
+    <tr><td>Підміна методу</td><td><code>t.mock.method(obj, 'm', impl)</code></td><td><code>vi.spyOn(obj, 'm').mockImplementation()</code></td></tr>
+    <tr><td>Модуль</td><td><code>mock.module(spec, { exports })</code> + прапорець</td><td><code>vi.mock()</code>; ESM-Jest: <code>jest.unstable_mockModule</code></td></tr>
+    <tr><td>Час</td><td><code>t.mock.timers.enable({ apis })</code>, <code>tick</code>, <code>runAll</code></td><td><code>vi.useFakeTimers()</code>, <code>advanceTimersByTimeAsync</code></td></tr>
+    <tr><td>Помилки</td><td><code>await assert.rejects(p, ErrType)</code>, <code>assert.throws</code></td><td><code>await expect(p).rejects.toThrow()</code></td></tr>
+    <tr><td>Snapshot</td><td><code>t.assert.snapshot(v)</code>, <code>--test-update-snapshots</code></td><td><code>toMatchSnapshot()</code>, <code>-u</code></td></tr>
+    <tr><td>Coverage</td><td><code>--experimental-test-coverage</code>, <code>--test-coverage-lines=80</code>; <code>c8</code></td><td><code>vitest --coverage</code> (v8), <code>jest --coverage</code></td></tr>
+    <tr><td>CI</td><td><code>--test-shard=1/3</code>, <code>--test-reporter=junit</code>, <code>--test-randomize</code></td><td><code>--shard=1/3</code>, reporters junit</td></tr>
+    <tr><td>HTTP</td><td colspan="2"><code>listen(0)</code> + fetch; supertest (Express/Nest); <code>fastify.inject()</code>; Nest <code>Test.createTestingModule().overrideProvider()</code></td></tr>
+    <tr><td>Мережеві моки</td><td colspan="2">undici <code>MockAgent</code> + <code>disableNetConnect()</code>; msw <code>setupServer</code> + <code>onUnhandledRequest: 'error'</code>; nock</td></tr>
+    <tr><td>БД</td><td colspan="2">testcontainers (одна на прогін), транзакція/rollback або TRUNCATE, фабрики</td></tr>
+  </table></div>
+</section>
+
+<section id="s16">
+  <h2><span class="num">16</span> Як запам'ятати</h2>
+  <p class="section-desc">Вісім образів для швидкого пригадування.</p>
+  <div class="flashgrid">
+    <div class="flashcard">
+      <div class="fc-num">1</div>
+      <div class="term">Testing trophy</div>
+      <div class="def">Основа — статичний аналіз, центр ваги — інтеграційні тести, мало e2e.</div>
+      <div class="mnemo"><b>Асоціація:</b> кубок — найширша частина посередині, а не внизу.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">2</div>
+      <div class="term">Stub</div>
+      <div class="def">Дублер, що повертає заготовлені відповіді.</div>
+      <div class="mnemo"><b>Асоціація:</b> автовідповідач: «залиште повідомлення» — завжди однаково.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">3</div>
+      <div class="term">Spy</div>
+      <div class="def">Записує, як його викликали, щоб перевірити після дії.</div>
+      <div class="mnemo"><b>Асоціація:</b> відеореєстратор — нічого не вирішує, але все записує.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">4</div>
+      <div class="term">Fake</div>
+      <div class="def">Робоча спрощена реалізація, напр. in-memory репозиторій.</div>
+      <div class="mnemo"><b>Асоціація:</b> тренажер-симулятор польоту — літає по-справжньому, але без неба.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">5</div>
+      <div class="term">Seam (шов)</div>
+      <div class="def">Місце, де тест підміняє поведінку: DI, завантажувач модулів, мережа.</div>
+      <div class="mnemo"><b>Асоціація:</b> розетка — прилад можна замінити, не розбираючи стіну.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">6</div>
+      <div class="term">Fake timers + flush</div>
+      <div class="def">tick() запускає таймери, але await після них чекає мікрозадач — промивайте чергу.</div>
+      <div class="mnemo"><b>Асоціація:</b> перемотати годинник уперед не означає, що кур'єр уже доніс посилку до дверей.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">7</div>
+      <div class="term">Branch coverage</div>
+      <div class="def">Чи виконувалась кожна гілка умови; суворіше за line coverage.</div>
+      <div class="mnemo"><b>Асоціація:</b> проїхати перехрестя ≠ проїхати кожен поворот з нього.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">8</div>
+      <div class="term">Contract test</div>
+      <div class="def">Consumer записує очікування, provider перевіряє їх у своєму CI.</div>
+      <div class="mnemo"><b>Асоціація:</b> договір оренди — кожна сторона перевіряє свої зобов'язання окремо, без спільного переїзду.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">9</div>
+      <div class="term">Flaky test</div>
+      <div class="def">Падає без змін у коді: спільний стан, час, порядок, порти, мережа.</div>
+      <div class="mnemo"><b>Асоціація:</b> пожежна сигналізація, що спрацьовує від тостера — скоро її перестануть чути.</div>
+    </div>
+    <div class="flashcard">
+      <div class="fc-num">10</div>
+      <div class="term">Port 0</div>
+      <div class="def">listen(0) — ОС видає вільний порт, паралельні тести не конфліктують.</div>
+      <div class="mnemo"><b>Асоціація:</b> «посадіть мене куди завгодно» в ресторані — ніколи не чекаєш на конкретний столик.</div>
+    </div>
+  </div>
+</section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Node.js Doc · частина серії туторіалів AI Delivery Planner. Приклади коду перевірені на Node.js 24.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>

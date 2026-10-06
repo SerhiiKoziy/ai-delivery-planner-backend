@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>19. Deno, Bun, edge і serverless — Node.js Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">🟢 Node.js Doc <span>· AI Delivery Planner</span></div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Node.js Doc · Туторіал 19 з 20</div>
+  <h1>Поза Node: Deno, Bun, edge-рантайми і serverless</h1>
+  <p class="lead">JavaScript на сервері — це вже не лише Node. Розбираємо, <b>чим насправді відрізняються</b> Deno, Bun і edge-ізоляти, як живе Node-код у <b>AWS Lambda</b> від init до shutdown, і як писати код, що <b>переїжджає</b> між рантаймами без переписування.</p>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="07-fs-process-os.html">7. fs, process, os</a>
+        <a href="08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="09-http-networking.html">9. HTTP і мережа</a>
+        <a href="10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="12-databases-orm.html">12. БД і ORM</a>
+        <a href="13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="14-security.html">14. Безпека Node</a>
+        <a href="15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="16-testing.html">16. Тестування</a>
+        <a href="17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="19-runtimes-serverless.html" class="active">19. Deno, Bun, serverless</a>
+        <a href="20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+  </aside>
+
+    <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s1">1. Чому з'явились альтернативи</a></li>
+      <li><a href="#s2">2. Архітектура трьох рантаймів</a></li>
+      <li><a href="#s3">3. Deno</a></li>
+      <li><a href="#s4">4. Bun</a></li>
+      <li><a href="#s5">5. Як відповів Node</a></li>
+      <li><a href="#s6">6. WinterTC: спільний знаменник</a></li>
+      <li><a href="#s7">7. Edge-рантайми та ізоляти</a></li>
+      <li><a href="#s8">8. Serverless: життєвий цикл Lambda</a></li>
+      <li><a href="#s9">9. Cold start: анатомія і ліки</a></li>
+      <li><a href="#s10">10. Бази даних і з'єднання в serverless</a></li>
+      <li><a href="#s11">11. Коли serverless — погана ідея</a></li>
+      <li><a href="#s12">12. Порівняння: Node, Deno, Bun, Workers</a></li>
+      <li><a href="#s13">13. Портабельний код: Request/Response і Hono</a></li>
+      <li><a href="#s14">14. Каверзні питання співбесіди</a></li>
+      <li><a href="#s15">15. Шпаргалка</a></li>
+      <li><a href="#s16">16. Як запам'ятати</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Чому з'явились альтернативи</h2>
+      <p class="section-desc">Node вирішив задачу "JS на сервері" у 2009-му; за 15 років накопичились рішення, які автор сам назвав помилками, — і нові вимоги, яких тоді не було.</p>
+
+      <p>У 2018 році Ryan Dahl, автор Node, виступив з доповіддю <b>"10 Things I Regret About Node.js"</b> і того ж вечора показав
+      прототип Deno. Серед "жалів": відмова від Promise у ранніх API (звідси callback-епоха), відсутність моделі безпеки
+      (будь-який npm-пакет може читати <code>~/.ssh</code> і ходити в мережу), <code>node_modules</code> з його алгоритмом
+      резолву, <code>package.json</code> як централізований реєстр модулів, <code>index.js</code>-магія, GYP для нативних аддонів.</p>
+
+      <p>Паралельно змінився світ:</p>
+      <ul>
+        <li><b>TypeScript став мейнстрімом</b> — а в Node він вимагав ланцюжка tsc/ts-node/babel/esbuild і конфігів.</li>
+        <li><b>Браузерні стандарти дозріли</b>: <code>fetch</code>, <code>Request/Response</code>, Web Streams, <code>URL</code>,
+        <code>crypto.subtle</code>, ES-модулі. Node мав власні аналоги (<code>http</code>, <code>stream</code>, CJS) — код не переносився між браузером і сервером.</li>
+        <li><b>Інструментальна втома</b>: окремо npm/yarn/pnpm, jest/vitest, webpack/esbuild, prettier/eslint, nodemon, dotenv.</li>
+        <li><b>Edge і serverless</b>: оплата за мілісекунди і запуск у сотнях точок світу вимагають старту за мілісекунди, а не секунди.</li>
+        <li><b>Supply-chain атаки</b> на npm (event-stream, ua-parser-js, шкідливі postinstall) зробили безпеку за замовчуванням реальною вимогою.</li>
+      </ul>
+
+      <div class="remember"><b>🧠 Запам'ятай:</b> Deno відповідав на "безпеку і стандарти", Bun — на "швидкість і all-in-one", edge — на "мілісекундний старт"; Node відповів, забравши найкраще собі.</div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Архітектура трьох рантаймів</h2>
+      <p class="section-desc">Усі три — "JS-рушій + асинхронний I/O + системні API", але кожен шар зроблено з різних матеріалів.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 360" role="img" aria-label="Порівняння архітектури. Node: ваш JS, Node API у JavaScript, C++ bindings, рушій V8 і libuv з event loop та thread pool, мова C і C++. Deno: ваш TS або JS, Deno API і node-сумісність, ops на Rust через deno_core, V8 через rusty_v8 і Tokio як асинхронний рантайм, мова Rust. Bun: ваш TS або JS, Bun API і node-сумісність, нативний код на Zig і C++, рушій JavaScriptCore і власний event loop поверх epoll або kqueue, мова Zig.">
+          <defs><marker id="n19d1-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="120" y="22" text-anchor="middle" fill="currentColor" font-weight="bold">Node.js</text>
+            <text x="360" y="22" text-anchor="middle" fill="currentColor" font-weight="bold">Deno</text>
+            <text x="600" y="22" text-anchor="middle" fill="currentColor" font-weight="bold">Bun</text>
+
+            <rect x="20" y="35" width="200" height="38" rx="6" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="120" y="58" text-anchor="middle" fill="currentColor">ваш JS (TS — type stripping)</text>
+            <rect x="260" y="35" width="200" height="38" rx="6" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="360" y="58" text-anchor="middle" fill="currentColor">ваш TS / JS (TS нативно)</text>
+            <rect x="500" y="35" width="200" height="38" rx="6" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="600" y="58" text-anchor="middle" fill="currentColor">ваш TS / JS / JSX нативно</text>
+
+            <rect x="20" y="83" width="200" height="38" rx="6" fill="none" stroke="currentColor"/>
+            <text x="120" y="106" text-anchor="middle" fill="currentColor">node:* API (lib/ на JS)</text>
+            <rect x="260" y="83" width="200" height="38" rx="6" fill="none" stroke="currentColor"/>
+            <text x="360" y="100" text-anchor="middle" fill="currentColor">Deno.* + Web API</text>
+            <text x="360" y="114" text-anchor="middle" fill="var(--fg-muted)" font-size="11">+ шар node:* сумісності</text>
+            <rect x="500" y="83" width="200" height="38" rx="6" fill="none" stroke="currentColor"/>
+            <text x="600" y="100" text-anchor="middle" fill="currentColor">Bun.* + Web API</text>
+            <text x="600" y="114" text-anchor="middle" fill="var(--fg-muted)" font-size="11">+ node:* сумісність</text>
+
+            <rect x="20" y="131" width="200" height="38" rx="6" fill="none" stroke="currentColor"/>
+            <text x="120" y="154" text-anchor="middle" fill="currentColor">C++ bindings</text>
+            <rect x="260" y="131" width="200" height="38" rx="6" fill="none" stroke="currentColor"/>
+            <text x="360" y="154" text-anchor="middle" fill="currentColor">ops на Rust (deno_core)</text>
+            <rect x="500" y="131" width="200" height="38" rx="6" fill="none" stroke="currentColor"/>
+            <text x="600" y="154" text-anchor="middle" fill="currentColor">нативний код Zig + C++</text>
+
+            <rect x="20" y="179" width="95" height="70" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="67" y="210" text-anchor="middle" fill="currentColor" font-weight="bold">V8</text>
+            <text x="67" y="228" text-anchor="middle" fill="var(--fg-muted)" font-size="11">JIT</text>
+            <rect x="125" y="179" width="95" height="70" rx="6" fill="var(--accent-soft)" stroke="var(--good)" stroke-width="1.4"/>
+            <text x="172" y="205" text-anchor="middle" fill="currentColor" font-weight="bold">libuv</text>
+            <text x="172" y="222" text-anchor="middle" fill="var(--fg-muted)" font-size="11">event loop</text>
+            <text x="172" y="237" text-anchor="middle" fill="var(--fg-muted)" font-size="11">+ thread pool</text>
+
+            <rect x="260" y="179" width="95" height="70" rx="6" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="307" y="210" text-anchor="middle" fill="currentColor" font-weight="bold">V8</text>
+            <text x="307" y="228" text-anchor="middle" fill="var(--fg-muted)" font-size="11">rusty_v8</text>
+            <rect x="365" y="179" width="95" height="70" rx="6" fill="var(--accent-soft)" stroke="var(--good)" stroke-width="1.4"/>
+            <text x="412" y="205" text-anchor="middle" fill="currentColor" font-weight="bold">Tokio</text>
+            <text x="412" y="222" text-anchor="middle" fill="var(--fg-muted)" font-size="11">async Rust,</text>
+            <text x="412" y="237" text-anchor="middle" fill="var(--fg-muted)" font-size="11">work-stealing</text>
+
+            <rect x="500" y="179" width="95" height="70" rx="6" fill="var(--accent-soft)" stroke="var(--fun)" stroke-width="1.4"/>
+            <text x="547" y="205" text-anchor="middle" fill="currentColor" font-weight="bold">JSC</text>
+            <text x="547" y="222" text-anchor="middle" fill="var(--fg-muted)" font-size="11">JavaScript-</text>
+            <text x="547" y="237" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Core (Safari)</text>
+            <rect x="605" y="179" width="95" height="70" rx="6" fill="var(--accent-soft)" stroke="var(--good)" stroke-width="1.4"/>
+            <text x="652" y="205" text-anchor="middle" fill="currentColor" font-weight="bold">свій loop</text>
+            <text x="652" y="222" text-anchor="middle" fill="var(--fg-muted)" font-size="11">epoll /</text>
+            <text x="652" y="237" text-anchor="middle" fill="var(--fg-muted)" font-size="11">kqueue</text>
+
+            <rect x="20" y="259" width="200" height="34" rx="6" fill="none" stroke="var(--fg-muted)" stroke-dasharray="4 3"/>
+            <text x="120" y="281" text-anchor="middle" fill="var(--fg-muted)">мова ядра: C / C++</text>
+            <rect x="260" y="259" width="200" height="34" rx="6" fill="none" stroke="var(--fg-muted)" stroke-dasharray="4 3"/>
+            <text x="360" y="281" text-anchor="middle" fill="var(--fg-muted)">мова ядра: Rust</text>
+            <rect x="500" y="259" width="200" height="34" rx="6" fill="none" stroke="var(--fg-muted)" stroke-dasharray="4 3"/>
+            <text x="600" y="281" text-anchor="middle" fill="var(--fg-muted)">мова ядра: Zig (+ C++)</text>
+
+            <text x="120" y="318" text-anchor="middle" fill="currentColor">безпека: усе дозволено</text>
+            <text x="120" y="336" text-anchor="middle" fill="var(--fg-muted)" font-size="11">(opt-in --permission)</text>
+            <text x="360" y="318" text-anchor="middle" fill="currentColor">безпека: усе заборонено</text>
+            <text x="360" y="336" text-anchor="middle" fill="var(--fg-muted)" font-size="11">(--allow-net, --allow-read...)</text>
+            <text x="600" y="318" text-anchor="middle" fill="currentColor">безпека: як у Node</text>
+            <text x="600" y="336" text-anchor="middle" fill="var(--fg-muted)" font-size="11">(без sandbox)</text>
+          </g>
+        </svg>
+        <figcaption>Deno ділить з Node рушій V8, але не libuv; Bun міняє навіть рушій — тому відмінності в продуктивності й сумісності йдуть з самого низу стеку.</figcaption>
+      </figure>
+
+      <p>Наслідки для практики:</p>
+      <ul>
+        <li><b>JavaScriptCore vs V8</b>: JSC має чотири рівні виконання (LLInt → Baseline → DFG → FTL) і зазвичай швидше
+        стартує, V8 (Ignition → Sparkplug → Maglev → TurboFan) — більш "прогріваний" на довгих навантаженнях. На мікробенчмарках
+        старту Bun часто виграє; на довгоживучому сервері з реальною БД різниця зазвичай малопомітна.</li>
+        <li>Deno і Node на V8 → однакова поведінка мови, однаковий формат heap-snapshot, схожі прапорці <code>--v8-options</code>.</li>
+        <li>Нативні аддони: Node-API (N-API) — це C ABI, тому його можна реалізувати в іншому рантаймі; Bun і Deno це роблять.
+        А от аддони, що лізуть у V8 API напряму (старий NAN-стиль), у Bun працювати не можуть принципово — там немає V8.</li>
+      </ul>
+      <p class="muted">Детально про V8 і libuv у Node — <a href="01-node-architecture.html">туторіал 1</a>.</p>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Deno</h2>
+      <p class="section-desc">"Node, зроблений заново з урахуванням помилок": безпека за замовчуванням, TypeScript без налаштувань, веб-стандарти як основний API.</p>
+
+      <h3>Secure by default: дозволи</h3>
+      <p>Скрипт у Deno за замовчуванням <b>не може</b> читати файли, ходити в мережу, читати env чи запускати процеси. Кожен доступ — явний прапорець, причому з гранулярністю до хоста чи шляху:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal</span></div>
+        <pre><code>deno run main.ts                                   # доступ до мережі -&gt; інтерактивний запит / помилка
+deno run --allow-net=api.stripe.com:443 --allow-env=STRIPE_KEY --allow-read=./data main.ts
+deno run -A main.ts                                # allow all (так роблять усі на практиці... і даремно)
+deno run --allow-net --deny-net=169.254.169.254 main.ts   # deny-* має пріоритет (блок metadata-сервісу хмари)</code></pre>
+      </div>
+      <p>Чому це важливо: залежність, що раптом почала відправляти <code>process.env</code> на чужий сервер, у Deno впаде
+      з помилкою дозволу. Обмеження: дозволи — на <b>весь процес</b>, а не на окремий пакет; якщо застосунку потрібна мережа,
+      вона є і в усіх його залежностей.</p>
+
+      <h3>TypeScript, Web API, std</h3>
+      <ul>
+        <li>TS/JSX/TSX запускаються напряму (транспіляція на Rust через swc); <code>deno check</code> — перевірка типів.</li>
+        <li>API — веб-стандарти: <code>fetch</code>, <code>Request/Response</code>, Web Streams, <code>WebSocket</code>, <code>crypto.subtle</code>,
+        <code>localStorage</code>, <code>BroadcastChannel</code>. Сервер — <code>Deno.serve((req) =&gt; new Response('hi'))</code>.</li>
+        <li><b>Стандартна бібліотека</b> <code>@std/*</code> (path, fs, http, assert, csv, testing...) — аудитовані модулі, що публікуються в <b>JSR</b>
+        (новий реєстр від команди Deno: публікація TS без збірки, працює і для Node/Bun).</li>
+        <li>Вбудований тулінг: <code>deno fmt</code>, <code>deno lint</code>, <code>deno test</code>, <code>deno bench</code>, <code>deno doc</code>,
+        <code>deno compile</code> (один виконуваний файл), <code>deno task</code>, <code>deno jupyter</code>.</li>
+      </ul>
+
+      <h3>Deno 2: розворот до сумісності</h3>
+      <p>Deno 1.x вимагав імпортів за URL і погано дружив з npm — і це гальмувало adoption. Deno 2 (жовтень 2024) зробив
+      прагматичний поворот: специфікатори <code>npm:</code> і <code>node:</code>, підтримка <code>package.json</code> і
+      <code>node_modules</code>, запуск багатьох Node-фреймворків (Express, Next.js, Astro), робота з приватними npm-реєстрами,
+      LTS-гілка.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">main.ts</span></div>
+        <pre><code>import express from 'npm:express@4';          // npm-пакет без npm install
+import { readFile } from 'node:fs/promises';    // Node built-in через сумісний шар
+import { join } from 'jsr:@std/path';           // JSR
+
+const app = express();
+app.get('/', async (_req, res) =&gt; res.send(await readFile(join('.', 'hello.txt'), 'utf8')));
+app.listen(3000);</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">deno.json</span></div>
+        <pre><code>{
+  "tasks": { "dev": "deno run --watch --allow-net --allow-read main.ts" },
+  "imports": {
+    "@std/path": "jsr:@std/path@^1",
+    "express": "npm:express@^4"
+  },
+  "compilerOptions": { "strict": true },
+  "fmt": { "lineWidth": 100 },
+  "lint": { "rules": { "exclude": ["no-explicit-any"] } }
+}</code></pre>
+      </div>
+      <p><code>deno.json</code> — один файл замість <code>package.json</code> + <code>tsconfig.json</code> + <code>.prettierrc</code> +
+      <code>.eslintrc</code>, а <code>imports</code> — це стандартна <b>import map</b>.</p>
+
+      <h3>Deno Deploy та екосистема</h3>
+      <p>Deno Deploy — хостинг від авторів Deno, що запускає код на V8-ізолятах по всьому світу (див. розділ 7), з вбудованими
+      сервісами на кшталт <b>Deno KV</b> (key-value сховище з транзакціями). Це аналог Cloudflare Workers, але з Deno API.</p>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body"><b>Чесна оцінка.</b> Технічно Deno дуже якісний, але більшість продакшн-бекендів лишаються на Node:
+        екосистема, найм, APM-агенти, хмарні рантайми та "ніхто не звільнений за вибір Node". Deno найчастіше беруть для
+        скриптів/CLI (дозволи + один файл), edge-функцій (Supabase Edge Functions працюють на Deno) і нових сервісів, де команда готова.</div>
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Bun</h2>
+      <p class="section-desc">Ставка на швидкість і "один бінарник замість десяти інструментів" — і на сумісність з Node як drop-in заміна.</p>
+
+      <h3>Що всередині</h3>
+      <p>Bun написаний на <b>Zig</b> (мова системного рівня з ручним керуванням пам'яттю, без прихованих алокацій) і використовує
+      <b>JavaScriptCore</b> — рушій Safari — замість V8. HTTP-сервер побудований на uWebSockets, багато "гарячих" шляхів
+      (читання файлів, парсинг, серіалізація) реалізовані нативно.</p>
+
+      <h3>All-in-one</h3>
+      <table>
+        <tr><th>Задача</th><th>У світі Node</th><th>У Bun</th></tr>
+        <tr><td>Запуск TS/JSX</td><td>type stripping / tsx / ts-node</td><td><code>bun run app.ts</code></td></tr>
+        <tr><td>Пакетний менеджер</td><td>npm / pnpm / yarn</td><td><code>bun install</code> (читає package.json, текстовий <code>bun.lock</code>)</td></tr>
+        <tr><td>Тести</td><td>node:test / jest / vitest</td><td><code>bun test</code> (Jest-сумісний API)</td></tr>
+        <tr><td>Бандлер</td><td>esbuild / webpack / rollup</td><td><code>bun build</code></td></tr>
+        <tr><td>Watch</td><td><code>node --watch</code> / nodemon</td><td><code>bun --watch</code> / <code>--hot</code></td></tr>
+        <tr><td>.env</td><td><code>--env-file</code> / dotenv</td><td>автоматично</td></tr>
+        <tr><td>Вбудовані клієнти</td><td>пакети</td><td>SQLite (<code>bun:sqlite</code>), Postgres (<code>Bun.sql</code>), S3, Redis-клієнт у новіших версіях</td></tr>
+        <tr><td>Один бінарник</td><td>SEA (single executable applications)</td><td><code>bun build --compile</code></td></tr>
+      </table>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">server.ts (Bun)</span></div>
+        <pre><code>Bun.serve({
+  port: 3000,
+  fetch(req) {                                   // той самий Request -&gt; Response контракт
+    const url = new URL(req.url);
+    if (url.pathname === '/health') return Response.json({ ok: true });
+    return new Response('Not found', { status: 404 });
+  },
+});</code></pre>
+      </div>
+
+      <h3>Швидкість: заяви vs реальність</h3>
+      <ul>
+        <li><b>Реально швидше</b>: <code>bun install</code> (глобальний кеш, hardlinks/clonefile, паралельність — часто в рази швидше
+        за npm), старт процесу, запуск TS без компіляції, <code>bun test</code> на великих наборах.</li>
+        <li><b>"Hello world" бенчмарки HTTP</b> показують великі цифри, але реальний сервіс упирається в БД, мережу, JSON,
+        бізнес-логіку. Коли ендпоінт чекає Postgres 20 мс, різниця рантаймів у 50 мкс на запит не видна.</li>
+        <li>Довгоживучі CPU-навантаження: V8 TurboFan і JSC FTL — обидва топові оптимізуючі компілятори; переможець залежить від
+        коду. Міряйте <i>свій</i> навантажувальний профіль (див. <a href="15-performance-memory.html">туторіал 15</a>).</li>
+      </ul>
+
+      <h3>Прогалини сумісності</h3>
+      <p>Bun позиціонується як drop-in заміна Node і проходить значну частину тестів Node, але "майже" — ключове слово:</p>
+      <ul>
+        <li>Аддони, що використовують V8 API напряму (не Node-API), — не працюють принципово.</li>
+        <li>Частина <code>node:*</code> модулів реалізована неповністю або з відмінностями в краях (історично — <code>vm</code>, <code>inspector</code>,
+        <code>worker_threads</code>, <code>http2</code>, тонкощі <code>child_process</code> і стрімів). Список змінюється з кожним релізом — перевіряйте сторінку сумісності.</li>
+        <li>APM/профайлери, що спираються на V8 inspector і async_hooks, можуть не працювати або давати неповні дані.</li>
+        <li>Інша семантика деяких дрібниць (порядок мікрозадач у краях, точність таймерів, поведінка GC) — тести, що спираються на них, падають.</li>
+      </ul>
+
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: як використовувати Bun у Node-команді</div>
+        <table><tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr class="chosen"><td><b>Bun як інструмент</b> (install, test, скрипти) ✅</td><td>швидший CI і DX, ризик мінімальний — прод лишається на Node</td><td>дві реалізації в CI (тести на Bun, прод на Node) можуть розходитись</td></tr>
+          <tr><td>Bun як прод-рантайм нового сервісу</td><td>швидкість старту, вбудовані SQL/S3, простий стек</td><td>молодша екосистема, APM, менше досвіду в команді з інцидентами</td></tr>
+          <tr><td>Міграція існуючого великого Node-моноліту</td><td>можливий приріст старту/тестів</td><td>прогалини сумісності вилазять у проді; виграш часто непомітний на I/O-bound</td></tr></table>
+        <p><b>Коли що:</b> почніть з <code>bun install</code>/<code>bun test</code> у dev-циклі; прод-рантайм — тільки для нового сервісу
+        з вимірюваним виграшем і без критичних нативних залежностей.</p>
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Як відповів Node</h2>
+      <p class="section-desc">Конкуренція зробила Node кращим: за кілька релізів він вбудував більшість фіч, заради яких люди дивились на Deno і Bun.</p>
+
+      <table>
+        <tr><th>Фіча</th><th>Що замінює</th><th>Статус (приблизно)</th></tr>
+        <tr><td>глобальний <code>fetch</code>, <code>Request/Response</code>, Web Streams (undici)</td><td>node-fetch, axios для простих випадків</td><td>стабільно з Node 21; доступно з 18</td></tr>
+        <tr><td><code>node:test</code> + <code>node:assert</code>, mocks, coverage</td><td>jest/mocha для простих проєктів</td><td>стабільно з Node 20</td></tr>
+        <tr><td><code>--watch</code></td><td>nodemon</td><td>стабільно з Node 22</td></tr>
+        <tr><td><code>--env-file</code>, <code>process.loadEnvFile()</code></td><td>dotenv</td><td>з Node 20.6 / 21.7</td></tr>
+        <tr><td><b>Type stripping</b> (запуск <code>.ts</code>)</td><td>ts-node / tsx для запуску</td><td>з прапорцем у 22.6, за замовчуванням з 23.6 (бекпорт у 22.x)</td></tr>
+        <tr><td><b>Permission model</b> <code>--permission</code></td><td>(Deno-дозволи)</td><td>експериментально в 20, стабільний у новіших релізах</td></tr>
+        <tr><td><code>require(esm)</code></td><td>біль CJS ↔ ESM</td><td>без прапорця з 22.12 / 20.19</td></tr>
+        <tr><td>глобальний <code>WebSocket</code> (клієнт)</td><td>пакет ws як клієнт</td><td>за замовчуванням з Node 22</td></tr>
+        <tr><td><code>node:sqlite</code>, <code>fs.glob</code>, <code>URLPattern</code>, <code>styleText</code></td><td>better-sqlite3, glob, chalk</td><td>новіші релізи 22–24</td></tr>
+        <tr><td>Single executable applications (SEA)</td><td>pkg, nexe</td><td>доступно, з ручними кроками</td></tr>
+      </table>
+
+      <h3>Перевірено на Node 24</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">greet.ts</span></div>
+        <pre><code>interface User { name: string; roles: string[] }
+const u: User = { name: 'Olena', roles: ['admin'] };
+export function greet(user: User): string {
+  return `Hi, ${user.name} (${user.roles.join(', ')})`;
+}
+console.log(greet(u));</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal</span></div>
+        <pre><code>$ node greet.ts
+Hi, Olena (admin)
+
+$ node enum.ts          # enum Status { Active, Blocked }
+SyntaxError [ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX]: TypeScript enum is not supported in strip-only mode
+
+$ node --experimental-transform-types enum.ts
+0</code></pre>
+      </div>
+      <p><b>Type stripping</b> буквально замінює анотації типів пробілами (номери рядків і колонок у stack trace не зсуваються,
+      source maps не потрібні). Тому синтаксис, що <i>генерує код</i> — <code>enum</code>, <code>namespace</code> з кодом,
+      parameter properties у конструкторі — не підтримується без <code>--experimental-transform-types</code>. Типи <b>не перевіряються</b>:
+      <code>tsc --noEmit</code> лишається в CI. У <code>tsconfig</code> варто ввімкнути <code>erasableSyntaxOnly</code> і
+      <code>verbatimModuleSyntax</code>, а імпорти писати з розширенням <code>.ts</code>. Також type stripping не працює для файлів у <code>node_modules</code>.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">perm.mjs</span></div>
+        <pre><code>import { readFileSync } from 'node:fs';
+console.log('read allowed?', process.permission.has('fs.read', '/etc/hosts'));
+try {
+  readFileSync('/etc/hosts', 'utf8');
+} catch (e) {
+  console.log(e.code, e.permission, e.resource);
+}</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal</span></div>
+        <pre><code>$ node --permission --allow-fs-read="$PWD/*" perm.mjs
+read allowed? false
+ERR_ACCESS_DENIED FileSystemRead /etc/hosts
+
+$ node --env-file=.env env.mjs        # .env: PORT=3000, DB_URL=postgres://localhost/app
+3000 postgres://localhost/app
+
+$ node main.cjs                       # const lib = require('./lib.mjs')  (ESM-файл!)
+5 default-export [ '__esModule', 'default', 'sum' ]</code></pre>
+      </div>
+      <p class="muted">Permission model у Node — це "ремінь безпеки" від випадкових помилок і вразливостей застосунку, а <b>не</b>
+      sandbox проти шкідливого коду: документація прямо каже, що він не захищає від коду, який свідомо намагається обійти обмеження
+      (наприклад, через нативні аддони). <code>require(esm)</code> працює лише для ESM-графа без top-level <code>await</code>
+      (інакше <code>ERR_REQUIRE_ASYNC_MODULE</code>) — деталі в <a href="04-modules-cjs-esm.html">туторіалі 4</a>.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Дрібна пастка node:test:</b> <code>node --test t/</code> (каталог як аргумент) у Node 24 сприймається як шлях до
+        файлу і падає; передавайте glob: <code>node --test 't/**/*.test.mjs'</code> або просто <code>node --test</code> — тоді рантайм сам знайде
+        файли за стандартними патернами (<code>*.test.*</code>, <code>test/</code> тощо). Перевірено на Node 24.</div>
+      </div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> WinterTC: спільний знаменник</h2>
+      <p class="section-desc">Щоб бібліотека працювала в Node, Deno, Bun, Workers і браузері, потрібна домовленість, які API "точно є" скрізь.</p>
+
+      <p><b>WinterCG</b> (Web-interoperable Runtimes Community Group, 2022) — спільнота Cloudflare, Deno, Vercel, Shopify, Node
+      та інших, яка визначала, яку частину веб-платформи мають підтримувати серверні рантайми. Наприкінці 2024 року робота
+      переїхала в Ecma як технічний комітет <b>TC55 — WinterTC</b>, щоб публікувати формальні стандарти.</p>
+
+      <p>Головний документ — <b>Minimum Common Web Platform API</b>: список глобалів, які має кожен сумісний рантайм:</p>
+      <table>
+        <tr><th>Категорія</th><th>API</th></tr>
+        <tr><td>Мережа</td><td><code>fetch</code>, <code>Request</code>, <code>Response</code>, <code>Headers</code>, <code>FormData</code>, <code>AbortController</code>/<code>AbortSignal</code></td></tr>
+        <tr><td>URL і кодування</td><td><code>URL</code>, <code>URLSearchParams</code>, <code>TextEncoder</code>/<code>TextDecoder</code>, <code>atob</code>/<code>btoa</code></td></tr>
+        <tr><td>Потоки</td><td><code>ReadableStream</code>, <code>WritableStream</code>, <code>TransformStream</code>, <code>CompressionStream</code></td></tr>
+        <tr><td>Криптографія</td><td><code>crypto.getRandomValues</code>, <code>crypto.randomUUID</code>, <code>crypto.subtle</code></td></tr>
+        <tr><td>Події й таймери</td><td><code>EventTarget</code>, <code>Event</code>, <code>setTimeout</code>, <code>queueMicrotask</code>, <code>structuredClone</code></td></tr>
+        <tr><td>Інше</td><td><code>Blob</code>, <code>File</code>, <code>performance.now</code>, <code>console</code>, <code>navigator.userAgent</code>, <code>WebAssembly</code></td></tr>
+      </table>
+      <p>Чого там <b>немає</b>: файлової системи, процесів, TCP-сокетів, <code>process</code>, <code>Buffer</code>, <code>require</code>.
+      Тобто бібліотека, яка хоче працювати всюди, будується на <code>fetch</code> + Web Streams + Web Crypto, а не на
+      <code>http</code> + <code>stream</code> + <code>crypto</code> з Node. Приклади таких бібліотек: Hono, jose (JWT), Drizzle з HTTP-драйверами, офіційні SDK багатьох API.</p>
+
+      <div class="callout fun">
+        <div class="ic">🎉</div>
+        <div class="body"><span class="tag">Цікавий факт</span> <code>navigator.userAgent</code> у Node 21+ повертає
+        <code>"Node.js/24"</code> (на Node 24) — саме заради WinterCG-сумісного способу визначити рантайм без <code>process.versions</code>.</div>
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Edge-рантайми та ізоляти</h2>
+      <p class="section-desc">Edge — це не "Node ближче до користувача", а принципово інша модель виконання з жорсткими обмеженнями.</p>
+
+      <p>Cloudflare Workers, Vercel Edge Runtime, Deno Deploy, Fastly Compute (на Wasm), Netlify Edge Functions (на Deno)
+      запускають ваш код у сотнях дата-центрів. Щоб це було економічно, кожен запит не може мати свій контейнер — замість
+      цього використовуються <b>V8 isolates</b>: окремі "всесвіти" JS (власний heap, глобали, GC) усередині <i>одного</i>
+      процесу рантайму.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 340" role="img" aria-label="Три моделі ізоляції. Віртуальні машини: залізо, гіпервізор, на кожну VM власне ядро ОС, рантайм і застосунок; старт секунди, сотні мегабайт пам'яті. Контейнери: залізо, одне ядро хоста, контейнерний рантайм, у кожному контейнері бібліотеки, Node і застосунок; старт від сотень мілісекунд, десятки мегабайт. Ізоляти: залізо, ОС, один процес рантайму з V8, усередині багато ізолятів з власним heap; старт мілісекунди, мегабайти пам'яті.">
+          <defs><marker id="n19d2-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="120" y="20" text-anchor="middle" fill="currentColor" font-weight="bold">VM / microVM</text>
+            <text x="360" y="20" text-anchor="middle" fill="currentColor" font-weight="bold">Контейнери</text>
+            <text x="600" y="20" text-anchor="middle" fill="currentColor" font-weight="bold">V8 isolates</text>
+
+            <rect x="30" y="35" width="85" height="30" rx="5" fill="var(--accent-soft)" stroke="currentColor"/>
+            <text x="72" y="55" text-anchor="middle" fill="currentColor" font-size="11">app + Node</text>
+            <rect x="125" y="35" width="85" height="30" rx="5" fill="var(--accent-soft)" stroke="currentColor"/>
+            <text x="167" y="55" text-anchor="middle" fill="currentColor" font-size="11">app + Node</text>
+            <rect x="30" y="70" width="85" height="30" rx="5" fill="none" stroke="currentColor"/>
+            <text x="72" y="90" text-anchor="middle" fill="currentColor" font-size="11">guest OS</text>
+            <rect x="125" y="70" width="85" height="30" rx="5" fill="none" stroke="currentColor"/>
+            <text x="167" y="90" text-anchor="middle" fill="currentColor" font-size="11">guest OS</text>
+            <rect x="30" y="105" width="85" height="30" rx="5" fill="none" stroke="var(--warn)"/>
+            <text x="72" y="125" text-anchor="middle" fill="currentColor" font-size="11">ядро</text>
+            <rect x="125" y="105" width="85" height="30" rx="5" fill="none" stroke="var(--warn)"/>
+            <text x="167" y="125" text-anchor="middle" fill="currentColor" font-size="11">ядро</text>
+            <rect x="30" y="145" width="180" height="30" rx="5" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="120" y="165" text-anchor="middle" fill="currentColor">гіпервізор (Firecracker)</text>
+
+            <rect x="270" y="35" width="85" height="30" rx="5" fill="var(--accent-soft)" stroke="currentColor"/>
+            <text x="312" y="55" text-anchor="middle" fill="currentColor" font-size="11">app + Node</text>
+            <rect x="365" y="35" width="85" height="30" rx="5" fill="var(--accent-soft)" stroke="currentColor"/>
+            <text x="407" y="55" text-anchor="middle" fill="currentColor" font-size="11">app + Node</text>
+            <rect x="270" y="70" width="85" height="30" rx="5" fill="none" stroke="currentColor"/>
+            <text x="312" y="90" text-anchor="middle" fill="currentColor" font-size="11">libs / image</text>
+            <rect x="365" y="70" width="85" height="30" rx="5" fill="none" stroke="currentColor"/>
+            <text x="407" y="90" text-anchor="middle" fill="currentColor" font-size="11">libs / image</text>
+            <rect x="270" y="105" width="180" height="30" rx="5" fill="none" stroke="currentColor"/>
+            <text x="360" y="125" text-anchor="middle" fill="currentColor" font-size="11">container runtime</text>
+            <rect x="270" y="145" width="180" height="30" rx="5" fill="var(--bg-soft)" stroke="var(--warn)"/>
+            <text x="360" y="165" text-anchor="middle" fill="currentColor">спільне ядро хоста</text>
+
+            <rect x="510" y="35" width="55" height="30" rx="5" fill="var(--accent-soft)" stroke="currentColor"/>
+            <text x="537" y="55" text-anchor="middle" fill="currentColor" font-size="11">iso A</text>
+            <rect x="572" y="35" width="55" height="30" rx="5" fill="var(--accent-soft)" stroke="currentColor"/>
+            <text x="599" y="55" text-anchor="middle" fill="currentColor" font-size="11">iso B</text>
+            <rect x="634" y="35" width="56" height="30" rx="5" fill="var(--accent-soft)" stroke="currentColor"/>
+            <text x="662" y="55" text-anchor="middle" fill="currentColor" font-size="11">iso C</text>
+            <rect x="510" y="70" width="180" height="65" rx="5" fill="none" stroke="currentColor"/>
+            <text x="600" y="95" text-anchor="middle" fill="currentColor" font-size="11">ОДИН процес рантайму</text>
+            <text x="600" y="112" text-anchor="middle" fill="var(--fg-muted)" font-size="11">(V8 + workerd)</text>
+            <rect x="510" y="145" width="180" height="30" rx="5" fill="var(--bg-soft)" stroke="var(--warn)"/>
+            <text x="600" y="165" text-anchor="middle" fill="currentColor">ОС хоста</text>
+
+            <line x1="20" y1="195" x2="700" y2="195" stroke="var(--fg-muted)" stroke-dasharray="3 3"/>
+            <text x="20" y="220" fill="var(--fg-muted)">старт</text>
+            <text x="145" y="220" text-anchor="middle" fill="var(--bad)">~100 мс – секунди</text>
+            <text x="360" y="220" text-anchor="middle" fill="var(--warn)">~сотні мс – секунди</text>
+            <text x="600" y="220" text-anchor="middle" fill="var(--good)">~мілісекунди</text>
+            <text x="20" y="245" fill="var(--fg-muted)">пам'ять</text>
+            <text x="145" y="245" text-anchor="middle" fill="currentColor">окрема ОС на VM</text>
+            <text x="360" y="245" text-anchor="middle" fill="currentColor">десятки МБ + процес Node</text>
+            <text x="600" y="245" text-anchor="middle" fill="currentColor">мегабайти на ізолят</text>
+            <text x="20" y="270" fill="var(--fg-muted)">межа</text>
+            <text x="145" y="270" text-anchor="middle" fill="currentColor">апаратна віртуалізація</text>
+            <text x="360" y="270" text-anchor="middle" fill="currentColor">namespaces + cgroups</text>
+            <text x="600" y="270" text-anchor="middle" fill="currentColor">V8 heap + sandbox</text>
+            <text x="20" y="295" fill="var(--fg-muted)">API</text>
+            <text x="145" y="295" text-anchor="middle" fill="currentColor">повна ОС, будь-що</text>
+            <text x="360" y="295" text-anchor="middle" fill="currentColor">повний Node</text>
+            <text x="600" y="295" text-anchor="middle" fill="currentColor">Web API (+ частина node:*)</text>
+            <text x="120" y="325" text-anchor="middle" fill="var(--fg-muted)" font-size="11">AWS Lambda, Fargate</text>
+            <text x="360" y="325" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Cloud Run, K8s, ECS</text>
+            <text x="600" y="325" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Workers, Deno Deploy</text>
+          </g>
+        </svg>
+        <figcaption>Чим тонша межа ізоляції, тим дешевший і швидший старт — і тим менше API вам дозволено.</figcaption>
+      </figure>
+
+      <h3>Обмеження edge-рантаймів (на прикладі Cloudflare Workers)</h3>
+      <ul>
+        <li><b>Немає справжньої файлової системи</b> і процесів: ні <code>child_process</code>, ні запису на диск. Статичні дані — через бандл, KV, R2.</li>
+        <li><b>Ліміт CPU-часу</b> на запит (не wall-clock!): очікування <code>fetch</code> не рахується, а цикл по мільйону елементів — так.
+        На безкоштовному плані — мілісекунди, на платних — секунди-хвилини (конфігурується).</li>
+        <li><b>Пам'ять ~128 MB на ізолят</b>, ліміт розміру бандла (одиниці–десяток MB після стиснення).</li>
+        <li><b>Node API — частково</b>: з прапорцем <code>nodejs_compat</code> доступні <code>Buffer</code>, <code>node:crypto</code>,
+        <code>node:stream</code>, <code>AsyncLocalStorage</code> та багато іншого, але не все. Пакети з нативними аддонами не працюють узагалі.</li>
+        <li><b>Немає TCP-драйверів "як у Node"</b> історично — для БД використовують HTTP/WebSocket-драйвери або сокети через
+        <code>connect()</code> API Cloudflare і Hyperdrive (пул з'єднань до Postgres з боку платформи).</li>
+        <li><b>Глобальний стан ненадійний</b>: змінна в module scope живе, доки живе ізолят, але запити одного користувача можуть
+        потрапити в різні ізоляти й різні дата-центри. Кеш у пам'яті — лише як оптимізація.</li>
+        <li><b>Безпека між тенантами</b>: деякі API свідомо "загрублені" (наприклад, <code>Date.now()</code> не рухається під час
+        синхронного виконання) — захист від timing side-channel атак на зразок Spectre.</li>
+      </ul>
+
+      <h3>Стан на edge: KV, Durable Objects</h3>
+      <table>
+        <tr><th>Сервіс</th><th>Модель</th><th>Для чого</th></tr>
+        <tr><td><b>Workers KV</b></td><td>глобальне key-value, eventually consistent (поширення змін — до хвилини)</td><td>конфіги, feature flags, кеш, редіректи — багато читань, мало записів</td></tr>
+        <tr><td><b>Durable Objects</b></td><td>об'єкт з унікальним id, що живе в одному місці, <b>однопотоковий</b>, зі своїм транзакційним сховищем</td><td>координація: лічильники, rate limit, чат-кімната (WebSocket Hibernation), колаборативний документ</td></tr>
+        <tr><td><b>D1 / R2 / Queues</b></td><td>SQLite-подібна БД / S3-сумісне сховище / черги</td><td>звичайні дані, файли, фонова робота</td></tr>
+        <tr><td><b>Deno KV</b></td><td>KV з атомарними транзакціями</td><td>стан застосунків на Deno Deploy</td></tr>
+      </table>
+      <p>Durable Objects — елегантна відповідь на проблему "WebSocket на кількох інстансах" з <a href="18-realtime-queues.html">туторіалу 18</a>:
+      усі учасники кімнати підключаються до <i>одного</i> об'єкта, тож pub/sub-шина не потрібна.</p>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body"><b>Тренд.</b> Vercel після кількох років Edge Functions рекомендує для більшості випадків звичайний
+        Node.js-рантайм (з оптимізованим "fluid compute"), бо реальні застосунки ходять у БД в одному регіоні — і функція "на краю"
+        лише додає мережеві round-trip-и до цієї БД. Edge виграє, коли робота локальна: auth-перевірка, редірект, A/B, персоналізація кешу, геороутинг.</div>
+      </div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Serverless: життєвий цикл Lambda</h2>
+      <p class="section-desc">Більшість проблем Node у Lambda зникає, коли розумієш одне: між викликами процес не вмирає, а заморожується.</p>
+
+      <p>AWS Lambda запускає функцію в <b>execution environment</b> — Firecracker microVM з вашим кодом і рантаймом Node.
+      Одне середовище обробляє <b>один запит одночасно</b> (паралельні запити → нові середовища). Середовище переживає
+      багато викликів поспіль і проходить три фази.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 300" role="img" aria-label="Життєвий цикл середовища виконання Lambda на часовій шкалі. Фаза INIT складається з init розширень, init рантайму Node і init функції, тобто виконання коду module scope: імпорти, клієнти SDK, підключення до БД. Далі INVOKE 1 виконує handler. Потім середовище заморожене: таймери і фонові задачі зупинені. Далі INVOKE 2 — теплий виклик, лише handler. Знову заморозка, INVOKE 3. Після періоду бездіяльності — SHUTDOWN, процес знищено.">
+          <defs><marker id="n19d3-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <line x1="20" y1="150" x2="705" y2="150" stroke="var(--fg-muted)" marker-end="url(#n19d3-arrow)"/>
+            <text x="690" y="170" text-anchor="end" fill="var(--fg-muted)">час</text>
+
+            <rect x="20" y="90" width="210" height="50" rx="6" fill="var(--accent-soft)" stroke="var(--warn)" stroke-width="1.5"/>
+            <text x="125" y="110" text-anchor="middle" fill="currentColor" font-weight="bold">INIT</text>
+            <text x="125" y="128" text-anchor="middle" fill="var(--fg-muted)" font-size="11">extensions → runtime → function</text>
+            <rect x="20" y="40" width="70" height="38" rx="5" fill="none" stroke="currentColor"/>
+            <text x="55" y="63" text-anchor="middle" fill="currentColor" font-size="11">extensions</text>
+            <rect x="95" y="40" width="60" height="38" rx="5" fill="none" stroke="currentColor"/>
+            <text x="125" y="63" text-anchor="middle" fill="currentColor" font-size="11">Node</text>
+            <rect x="160" y="40" width="70" height="38" rx="5" fill="none" stroke="var(--accent)"/>
+            <text x="195" y="57" text-anchor="middle" fill="currentColor" font-size="11">module</text>
+            <text x="195" y="71" text-anchor="middle" fill="currentColor" font-size="11">scope</text>
+
+            <rect x="235" y="90" width="80" height="50" rx="6" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+            <text x="275" y="112" text-anchor="middle" fill="currentColor" font-weight="bold">INVOKE 1</text>
+            <text x="275" y="128" text-anchor="middle" fill="var(--fg-muted)" font-size="11">handler</text>
+
+            <rect x="320" y="100" width="95" height="30" rx="4" fill="var(--bg-soft)" stroke="var(--fg-muted)" stroke-dasharray="4 3"/>
+            <text x="367" y="119" text-anchor="middle" fill="var(--fg-muted)" font-size="11">❄ freeze</text>
+
+            <rect x="420" y="90" width="80" height="50" rx="6" fill="none" stroke="var(--good)" stroke-width="1.6"/>
+            <text x="460" y="112" text-anchor="middle" fill="currentColor" font-weight="bold">INVOKE 2</text>
+            <text x="460" y="128" text-anchor="middle" fill="var(--good)" font-size="11">warm</text>
+
+            <rect x="505" y="100" width="45" height="30" rx="4" fill="var(--bg-soft)" stroke="var(--fg-muted)" stroke-dasharray="4 3"/>
+            <text x="527" y="119" text-anchor="middle" fill="var(--fg-muted)" font-size="11">❄</text>
+
+            <rect x="555" y="90" width="70" height="50" rx="6" fill="none" stroke="var(--good)" stroke-width="1.6"/>
+            <text x="590" y="112" text-anchor="middle" fill="currentColor" font-weight="bold">INVOKE 3</text>
+            <text x="590" y="128" text-anchor="middle" fill="var(--good)" font-size="11">warm</text>
+
+            <rect x="630" y="90" width="75" height="50" rx="6" fill="none" stroke="var(--bad)" stroke-width="1.5"/>
+            <text x="667" y="112" text-anchor="middle" fill="var(--bad)" font-weight="bold">SHUT-</text>
+            <text x="667" y="128" text-anchor="middle" fill="var(--bad)" font-weight="bold">DOWN</text>
+
+            <text x="20" y="195" fill="currentColor">• INIT: виконується код поза handler — <tspan fill="var(--accent)">тут створюйте клієнти і з'єднання</tspan></text>
+            <text x="20" y="218" fill="currentColor">• INVOKE: лише handler(event, context); module scope уже в пам'яті</text>
+            <text x="20" y="241" fill="currentColor">• FREEZE: процес зупинено — таймери, setInterval, фонові Promise НЕ виконуються</text>
+            <text x="20" y="264" fill="currentColor">• SHUTDOWN: після простою або оновлення; process.on('SIGTERM') — лише з extension</text>
+            <text x="20" y="287" fill="var(--fg-muted)">Cold start = INIT + перший INVOKE; warm = лише INVOKE</text>
+          </g>
+        </svg>
+        <figcaption>Module scope виконується один раз на середовище, handler — на кожен запит, а між ними світ зупиняється.</figcaption>
+      </figure>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">handler.mjs</span></div>
+        <pre><code>import { DynamoDBClient } from '@aws-sdk/client-dynamodb';   // AWS SDK v3, модульні клієнти
+import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
+
+// INIT-фаза: один раз на execution environment, перевикористовується теплими викликами
+const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const config = await loadConfig();          // top-level await в ESM — теж у INIT
+
+export const handler = async (event, context) =&gt; {
+  // INVOKE-фаза: тільки робота запиту
+  const id = event.pathParameters?.id;
+  const { Item } = await ddb.send(new GetCommand({ TableName: config.table, Key: { id } }));
+  if (!Item) return { statusCode: 404, body: 'not found' };
+  return { statusCode: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify(Item) };
+};</code></pre>
+      </div>
+
+      <h3>Різниця видна в цифрах (симуляція, запущено)</h3>
+      <p>Модуль завантажується раз, handler викликається тричі в тому самому процесі — як три виклики в одному теплому середовищі:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">lambda-sim.mjs</span></div>
+        <pre><code>const sleep = (ms) =&gt; new Promise((r) =&gt; setTimeout(r, ms));
+let connects = 0;
+
+async function connectDb() { connects++; await sleep(150); return { query: async () =&gt; 'row' }; }
+
+// ПОГАНО: підключення всередині handler -&gt; платимо на КОЖЕН виклик
+async function badHandler() {
+  const db = await connectDb();
+  return db.query();
+}
+
+// ДОБРЕ: lazy-singleton у module scope -&gt; платимо раз на execution environment
+let dbPromise;
+async function goodHandler() {
+  dbPromise ??= connectDb();          // зберігаємо Promise, а не результат: без гонки
+  const db = await dbPromise;
+  return db.query();
+}
+
+async function invoke(name, handler) {
+  const t = performance.now();
+  await handler();
+  return `${name}: ${Math.round(performance.now() - t)}ms`;
+}
+
+for (const [name, h] of [['bad', badHandler], ['good', goodHandler]]) {
+  connects = 0;
+  const runs = [];
+  for (let i = 0; i &lt; 3; i++) runs.push(await invoke(`${name}#${i + 1}`, h));
+  console.log(runs.join(' | '), `| connects=${connects}`);
+}</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">output (мілісекунди можуть відрізнятися на ±1–2)</span></div>
+        <pre><code>bad#1: 151ms | bad#2: 150ms | bad#3: 151ms | connects=3
+good#1: 150ms | good#2: 0ms | good#3: 0ms | connects=1</code></pre>
+      </div>
+
+      <h3>Що ламається через freeze</h3>
+      <ul>
+        <li><b>"Fire-and-forget" після відповіді</b>: <code>sendAnalytics()</code> без await — Promise заморозиться і, можливо,
+        доїде при <i>наступному</i> виклику (або ніколи). Завжди <code>await</code> до return, або Lambda extension, або черга.</li>
+        <li><b>Буферизовані логери/метрики</b> (батчинг кожні 5 с) — flush до завершення handler.</li>
+        <li><b>Протухлі з'єднання</b>: TCP-з'єднання з БД, заморожене на 10 хвилин, сервер міг закрити — перший запит після паузи отримає
+        <code>ECONNRESET</code>. Потрібні retry і перевірка з'єднання.</li>
+        <li>Для callback-стилю історично існував <code>context.callbackWaitsForEmptyEventLoop = false</code> — щоб не чекати відкриті
+        сокети пулу; в async-handler відповідь повертається, щойно Promise резолвиться.</li>
+        <li>Стан у module scope — <b>кеш, а не сховище</b>: середовищ може бути 300, і кожне має свою копію.</li>
+      </ul>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Cold start: анатомія і ліки</h2>
+      <p class="section-desc">Cold start — це не одна цифра, а сума кроків, і більшість із них під вашим контролем.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 300" role="img" aria-label="Часова шкала холодного старту. Cold start Lambda: завантаження коду і створення microVM, старт рантайму Node, ініціалізація модулів — парсинг бандла, імпорти, SDK, підключення до БД — і лише потім handler. Warm: тільки handler. Provisioned concurrency: усі кроки ініціалізації виконані заздалегідь, запит одразу потрапляє в handler. Edge-ізолят: старт ізолята за мілісекунди, часто приховано під TLS-рукостисканням, потім handler.">
+          <defs><marker id="n19d4-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="20" y="44" fill="currentColor" font-weight="bold">Lambda cold</text>
+            <rect x="150" y="28" width="120" height="26" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="210" y="45" text-anchor="middle" fill="currentColor" font-size="11">код + microVM</text>
+            <rect x="270" y="28" width="70" height="26" fill="var(--bg-soft)" stroke="currentColor"/>
+            <text x="305" y="45" text-anchor="middle" fill="currentColor" font-size="11">Node start</text>
+            <rect x="340" y="28" width="200" height="26" fill="var(--accent-soft)" stroke="var(--warn)" stroke-width="1.4"/>
+            <text x="440" y="45" text-anchor="middle" fill="currentColor" font-size="11">module init: parse, imports, SDK, DB</text>
+            <rect x="540" y="28" width="60" height="26" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+            <text x="570" y="45" text-anchor="middle" fill="currentColor" font-size="11">handler</text>
+            <text x="150" y="72" fill="var(--fg-muted)" font-size="11">платформа (мало контролю)</text>
+            <text x="340" y="72" fill="var(--warn)" font-size="11">ВАШ код — найбільший важіль</text>
+
+            <text x="20" y="114" fill="currentColor" font-weight="bold">Lambda warm</text>
+            <rect x="150" y="98" width="60" height="26" fill="none" stroke="var(--good)" stroke-width="1.6"/>
+            <text x="180" y="115" text-anchor="middle" fill="currentColor" font-size="11">handler</text>
+
+            <text x="20" y="164" fill="currentColor" font-weight="bold">Provisioned</text>
+            <rect x="40" y="176" width="100" height="18" fill="var(--bg-soft)" stroke="var(--fg-muted)" stroke-dasharray="3 3"/>
+            <text x="90" y="189" text-anchor="middle" fill="var(--fg-muted)" font-size="11">init заздалегідь</text>
+            <rect x="150" y="148" width="60" height="26" fill="none" stroke="var(--good)" stroke-width="1.6"/>
+            <text x="180" y="165" text-anchor="middle" fill="currentColor" font-size="11">handler</text>
+            <text x="220" y="165" fill="var(--fg-muted)" font-size="11">платите за "теплі" середовища постійно</text>
+
+            <text x="20" y="232" fill="currentColor" font-weight="bold">Edge isolate</text>
+            <rect x="150" y="216" width="20" height="26" fill="var(--accent-soft)" stroke="currentColor"/>
+            <rect x="170" y="216" width="60" height="26" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+            <text x="200" y="233" text-anchor="middle" fill="currentColor" font-size="11">handler</text>
+            <text x="240" y="233" fill="var(--fg-muted)" font-size="11">старт ізолята ~мс, часто під час TLS handshake</text>
+
+            <line x1="150" y1="270" x2="700" y2="270" stroke="var(--fg-muted)" marker-end="url(#n19d4-arrow)"/>
+            <text x="150" y="290" fill="var(--fg-muted)" font-size="11">0</text>
+            <text x="690" y="290" text-anchor="end" fill="var(--fg-muted)" font-size="11">латентність першого запиту →</text>
+          </g>
+        </svg>
+        <figcaption>Платформа відповідає за microVM і старт Node, а module init — найдовший і найконтрольованіший відрізок — повністю ваш.</figcaption>
+      </figure>
+
+      <h3>Що збільшує cold start у Node</h3>
+      <ul>
+        <li><b>Розмір і кількість модулів</b>: Node парсить і компілює кожен файл; тисячі файлів з <code>node_modules</code> — тисячі
+        звернень до ФС у resolve. Бандл (esbuild/rollup) з tree-shaking і мініфікацією — одна з найефективніших оптимізацій.</li>
+        <li><b>Важкі залежності на старті</b>: монолітний AWS SDK v2 замість модульних клієнтів v3, ORM з великим рушієм,
+        "importиш усе — використовуєш 5%".</li>
+        <li><b>Мережа в init</b>: завантаження секретів, підключення до БД, прогрів кешів.</li>
+        <li><b>Пам'ять функції</b>: CPU в Lambda виділяється пропорційно до memory — 128 MB = частка ядра; 1024+ MB часто
+        дають і швидший init, і нижчу ціну за рахунок коротшого виконання.</li>
+        <li><b>VPC</b> історично додавала секунди (створення ENI); зараз це суттєво оптимізовано, але мережеві налаштування все ще впливають.</li>
+      </ul>
+
+      <h3>Ліки</h3>
+      <table>
+        <tr><th>Техніка</th><th>Ефект</th><th>Ціна</th></tr>
+        <tr><td>Бандлінг + tree-shaking, <code>--minify</code>, без source maps у рантаймі (або лише за потреби)</td><td>менше парсингу та I/O</td><td>складніший дебаг, обережно з динамічними require</td></tr>
+        <tr><td>Lazy <code>await import()</code> рідко потрібних модулів</td><td>холодний шлях не платить за рідкісні гілки</td><td>перший виклик гілки повільніший</td></tr>
+        <tr><td>Ініціалізація в module scope, lazy singleton</td><td>теплі виклики не платять за init</td><td>—</td></tr>
+        <tr><td><b>Provisioned concurrency</b></td><td>N середовищ завжди прогріті</td><td>оплата 24/7, треба автоскейлінг за розкладом</td></tr>
+        <tr><td>Більше пам'яті (= більше CPU)</td><td>швидший init і виконання</td><td>ціна за ГБ-с</td></tr>
+        <tr><td>"Warmer"-пінги кожні 5 хв</td><td>тримає 1 середовище теплим</td><td>хак: не допомагає при сплеску паралельних запитів</td></tr>
+        <tr><td>SnapStart</td><td>знімок пам'яті після init</td><td>доступний для Java/Python/.NET; для Node основні важелі — бандл і provisioned concurrency</td></tr>
+      </table>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">На співбесіді запитають так</span>
+        "Користувачі скаржаться на повільний перший запит після ночі". Сильна відповідь: виміряти <code>Init Duration</code> у
+        REPORT-логах / X-Ray, подивитися, що виконується в module scope; потім бандл, модульний SDK, lazy imports, пам'ять;
+        якщо SLA жорсткий — provisioned concurrency на робочі години. І чесно: якщо трафік постійний, можливо, контейнер дешевший і передбачуваніший.</div>
+      </div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Бази даних і з'єднання в serverless</h2>
+      <p class="section-desc">Пул з'єднань у Node — це оптимізація для одного довгоживучого процесу; serverless перетворює її на атаку на власну БД.</p>
+
+      <p>Звичайний Node-сервер: 4 процеси × пул 10 = 40 з'єднань до Postgres. Lambda: сплеск трафіку → 500 паралельних
+      середовищ × пул 10 = <b>5 000 з'єднань</b>. Postgres кожне з'єднання обслуговує окремим процесом (кілька MB пам'яті),
+      <code>max_connections</code> зазвичай сотні — БД відмовляє з <code>too many connections</code>, і падає вже все, включно з
+      "нормальними" сервісами. Плюс заморожені середовища тримають з'єднання відкритими, нічого не роблячи.</p>
+
+      <div class="decision">
+        <div class="decision-title">🔀 Вузол вибору: БД з serverless-функцій</div>
+        <table><tr><th>Варіант</th><th>Плюси</th><th>Мінуси</th></tr>
+          <tr><td><b>Пул = 1 у кожній функції</b> (<code>max: 1</code>) + обмежити reserved concurrency</td><td>просто, контрольовано</td><td>ліміт паралельності = ліміт трафіку</td></tr>
+          <tr class="chosen"><td><b>RDS Proxy / PgBouncer</b> ✅</td><td>мультиплексує тисячі клієнтських з'єднань у десятки до БД; переживає failover</td><td>додаткова вартість; transaction pooling ламає session-фічі (prepared statements, <code>SET</code>, advisory locks)</td></tr>
+          <tr><td><b>HTTP/WebSocket драйвери</b> (Neon serverless driver, PlanetScale, Aurora Data API, Prisma Accelerate)</td><td>немає довгих TCP; працюють і на edge</td><td>прив'язка до провайдера; latency HTTP на запит; обмеження інтерактивних транзакцій</td></tr>
+          <tr><td>Serverless-native БД (DynamoDB)</td><td>HTTP API, немає з'єднань як таких, скейлиться разом</td><td>інша модель даних (access patterns, без JOIN)</td></tr></table>
+        <p><b>Коли що:</b> Postgres + Lambda у проді — RDS Proxy (або PgBouncer) і малий пул у функції; edge-функції —
+        HTTP-драйвери; нова система, повністю на Lambda — розгляньте DynamoDB. Загальна тема пулів — <a href="12-databases-orm.html">туторіал 12</a>.</p>
+      </div>
+
+      <h3>Таймаути — ланцюжок, що має зменшуватись</h3>
+      <ul>
+        <li>Lambda: максимум 15 хвилин виконання.</li>
+        <li>API Gateway перед Lambda: ~29–30 секунд за замовчуванням — функція з таймаутом 60 с за API Gateway все одно "відповість" клієнту 504 через 30 с, продовжуючи працювати (і витрачати гроші).</li>
+        <li>Правило: <b>timeout клієнта БД &lt; timeout функції &lt; timeout шлюзу</b>, і використовуйте <code>context.getRemainingTimeInMillis()</code>, щоб завершитись коректно.</li>
+        <li>Ретраї асинхронних викликів (SQS, EventBridge): Lambda повторить подію — обробник має бути ідемпотентним (див. <a href="18-realtime-queues.html">туторіал 18</a>).</li>
+      </ul>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Коли serverless — погана ідея</h2>
+      <p class="section-desc">"Не треба керувати серверами" не означає "дешевше і простіше" — для частини навантажень це навпаки.</p>
+
+      <table>
+        <tr><th>Навантаження</th><th>Чому serverless погано підходить</th><th>Краще</th></tr>
+        <tr><td><b>WebSocket / довгі з'єднання</b></td><td>функція живе лише під час виклику; API Gateway WebSocket робить кожне повідомлення окремим викликом, стан — у DynamoDB</td><td>контейнери з ws/Socket.IO, Durable Objects, керовані сервіси (Ably)</td></tr>
+        <tr><td><b>Довгі задачі</b> (&gt; 15 хв, відеообробка, ML)</td><td>жорсткий ліміт часу, оплата за кожну мс очікування</td><td>Fargate/ECS tasks, Batch, Step Functions для оркестрації</td></tr>
+        <tr><td><b>Стабільно високе навантаження</b></td><td>за постійних 1000 RPS ціна за виклик стає дорожчою за кілька зарезервованих інстансів</td><td>контейнери з автоскейлінгом</td></tr>
+        <tr><td><b>Жорсткий p99 latency</b></td><td>cold starts на сплесках</td><td>довгоживучі процеси, provisioned concurrency</td></tr>
+        <tr><td><b>In-memory стан/кеш</b>, локальні rate limiter-и</td><td>сотні ізольованих копій, заморожування</td><td>Redis / окремий сервіс</td></tr>
+        <tr><td>Важкі нативні залежності, GPU</td><td>ліміти розміру пакета, архітектура, немає GPU</td><td>контейнери</td></tr>
+      </table>
+      <p>Де serverless — найкращий вибір: нерівномірний або непередбачуваний трафік, event-driven обробка (S3 upload → ресайз, SQS-консюмери,
+      вебхуки), cron-задачі, внутрішні інструменти з майже нульовим трафіком, швидкі прототипи.</p>
+      <div class="remember"><b>🧠 Запам'ятай:</b> serverless оптимізує вартість простою, контейнери — вартість постійної роботи; довгі з'єднання й довгі задачі — сигнал на контейнери.</div>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Порівняння: Node, Deno, Bun, Workers</h2>
+      <p class="section-desc">Одна таблиця, яку варто вміти відтворити на дошці.</p>
+      <table>
+        <tr><th></th><th>Node.js</th><th>Deno</th><th>Bun</th><th>Cloudflare Workers</th></tr>
+        <tr><td>Рушій</td><td>V8</td><td>V8</td><td>JavaScriptCore</td><td>V8 (isolates, workerd)</td></tr>
+        <tr><td>Мова ядра / I/O</td><td>C++ / libuv</td><td>Rust / Tokio</td><td>Zig / власний loop</td><td>C++ (workerd)</td></tr>
+        <tr><td>TypeScript</td><td>type stripping (без enum і т.п.)</td><td>нативно + <code>deno check</code></td><td>нативно</td><td>через бандлер (wrangler)</td></tr>
+        <tr><td>Модулі</td><td>CJS + ESM</td><td>ESM; npm:, node:, jsr:</td><td>CJS + ESM, змішано в одному файлі</td><td>ESM-бандл</td></tr>
+        <tr><td>Безпека</td><td>усе дозволено; opt-in <code>--permission</code></td><td>deny-by-default</td><td>усе дозволено</td><td>sandbox платформи</td></tr>
+        <tr><td>Пакети</td><td>npm/pnpm/yarn</td><td>npm-сумісний + JSR</td><td><code>bun install</code></td><td>npm у бандлі (без нативних)</td></tr>
+        <tr><td>Тулінг</td><td>node:test, --watch; решта — сторонні</td><td>fmt, lint, test, bench, compile</td><td>test, build, compile, install</td><td>wrangler</td></tr>
+        <tr><td>Node API</td><td>100%</td><td>високий рівень сумісності</td><td>високий, з прогалинами</td><td>частково (<code>nodejs_compat</code>)</td></tr>
+        <tr><td>Сервер</td><td><code>http.createServer</code></td><td><code>Deno.serve</code></td><td><code>Bun.serve</code></td><td><code>export default { fetch }</code></td></tr>
+        <tr><td>Сильна сторона</td><td>екосистема, стабільність, APM</td><td>безпека, стандарти, DX</td><td>швидкість, all-in-one</td><td>глобальний старт за мс</td></tr>
+        <tr><td>Слабка сторона</td><td>історичний багаж, тулінг окремо</td><td>менша екосистема "нативних" Deno-рішень</td><td>сумісність, зрілість</td><td>ліміти CPU/пам'яті/API</td></tr>
+      </table>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Портабельний код: Request/Response і Hono</h2>
+      <p class="section-desc">Найкращий захист від vendor lock-in — писати бізнес-логіку проти Web-стандартів, а рантайм-специфіку тримати в тонкому адаптері.</p>
+
+      <p>Ключова ідея: <b>handler = функція <code>(Request) =&gt; Promise&lt;Response&gt;</code></b>. Workers, Deno, Bun, Vercel,
+      Netlify приймають саме таку функцію. Node <code>http</code> історично використовує <code>(req, res)</code> з власними
+      класами, тож для нього потрібен адаптер. Ось він — і він запущений на Node 24:</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">portable.mjs</span></div>
+        <pre><code>import http from 'node:http';
+import { Readable } from 'node:stream';
+
+// 1) Портабельний хендлер: тільки Web-стандарти (Request -&gt; Response)
+const app = {
+  async fetch(request) {
+    const url = new URL(request.url);
+    if (url.pathname === '/hello') {
+      return Response.json({ hello: url.searchParams.get('name') ?? 'world' });
+    }
+    if (request.method === 'POST' &amp;&amp; url.pathname === '/echo') {
+      const body = await request.json();
+      return new Response(JSON.stringify({ got: body }), {
+        status: 201, headers: { 'content-type': 'application/json' },
+      });
+    }
+    return new Response('not found', { status: 404 });
+  },
+};
+
+// 2) Тонкий адаптер під node:http (Workers/Deno/Bun викликають app.fetch напряму)
+function toNodeHandler(app) {
+  return async (req, res) =&gt; {
+    const url = `http://${req.headers.host}${req.url}`;
+    const hasBody = req.method !== 'GET' &amp;&amp; req.method !== 'HEAD';
+    const request = new Request(url, {
+      method: req.method,
+      headers: req.headers,
+      body: hasBody ? Readable.toWeb(req) : undefined,
+      duplex: 'half',                    // обов'язково для стрімінгового body в Node
+    });
+    const response = await app.fetch(request);
+    res.writeHead(response.status, Object.fromEntries(response.headers));
+    if (response.body) Readable.fromWeb(response.body).pipe(res);
+    else res.end();
+  };
+}
+
+const server = http.createServer(toNodeHandler(app)).listen(0, async () =&gt; {
+  const base = `http://localhost:${server.address().port}`;
+  const a = await fetch(`${base}/hello?name=Node`);
+  console.log(a.status, await a.json());
+  const b = await fetch(`${base}/echo`, { method: 'POST', body: JSON.stringify({ x: 1 }) });
+  console.log(b.status, await b.text());
+  const c = await fetch(`${base}/nope`);
+  console.log(c.status, await c.text());
+  server.close();
+});</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">output</span></div>
+        <pre><code>200 { hello: 'Node' }
+201 {"got":{"x":1}}
+404 not found</code></pre>
+      </div>
+
+      <p>Той самий <code>app</code> без змін: у Deno — <code>Deno.serve(app.fetch)</code>; у Bun — <code>Bun.serve({ fetch: app.fetch })</code>
+      або <code>export default app</code>; у Workers — <code>export default app</code>.</p>
+
+      <h3>Hono — це саме цей підхід, але з роутером і middleware</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">app.ts</span></div>
+        <pre><code>import { Hono } from 'hono';
+import { logger } from 'hono/logger';
+import { jwt } from 'hono/jwt';
+
+export const app = new Hono();
+app.use('*', logger());
+app.use('/api/*', jwt({ secret: process.env.JWT_SECRET!, alg: 'HS256' })); // на Workers — з c.env
+app.get('/api/orders/:id', async (c) =&gt; {
+  const order = await repo.find(c.req.param('id'));   // repo — інжектований, без прив'язки до рантайму
+  return order ? c.json(order) : c.notFound();
+});</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">entrypoints</span></div>
+        <pre><code>// node.ts — Node
+import { serve } from '@hono/node-server';
+import { app } from './app';
+serve({ fetch: app.fetch, port: 3000 });
+
+// lambda.ts — AWS Lambda
+import { handle } from 'hono/aws-lambda';
+import { app } from './app';
+export const handler = handle(app);
+
+// worker.ts — Cloudflare Workers / Bun / Deno
+import { app } from './app';
+export default app;</code></pre>
+      </div>
+
+      <h3>Правила портабельного коду</h3>
+      <ul>
+        <li>Бізнес-логіка не імпортує <code>node:*</code>, <code>Deno.*</code>, <code>Bun.*</code> — тільки Web API і чисті функції.</li>
+        <li>Конфіг і секрети передаються параметром (у Workers env приходить в аргументі <code>fetch(req, env)</code>, а не через <code>process.env</code>).</li>
+        <li><code>Uint8Array</code> замість <code>Buffer</code>, <code>crypto.subtle</code> замість <code>node:crypto</code>, Web Streams замість Node streams.</li>
+        <li>Доступ до БД — через інтерфейс репозиторію з окремими реалізаціями (TCP-драйвер для Node, HTTP-драйвер для edge).</li>
+        <li>У <code>package.json</code> — умовні <code>exports</code> (<code>"workerd"</code>, <code>"deno"</code>, <code>"bun"</code>, <code>"node"</code>), якщо бібліотеці потрібна рантайм-специфіка.</li>
+      </ul>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Каверзні питання співбесіди</h2>
+      <p class="section-desc">Перевіряють, чи розумієте ви моделі виконання, а не чи читали маркетингові бенчмарки.</p>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим Deno принципово відрізняється від Node?</summary>
+        <div class="a"><b>Deny-by-default дозволи</b> (<code>--allow-net</code>, <code>--allow-read</code>...), TS із коробки, Web API як основний
+        інтерфейс, вбудований тулінг (fmt/lint/test/compile), ядро на Rust + Tokio замість C++ + libuv. Рушій той самий — V8. З Deno 2 —
+        сумісність з npm і <code>node:</code> модулями, тому "не можна використовувати npm" вже неправда.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Bun швидший за Node — переводимо прод?</summary>
+        <div class="a">Залежить від того, що саме повільне. Bun суттєво швидший у <code>install</code>, старті й тестах; на I/O-bound сервісі,
+        що чекає БД, приріст часто непомітний. Ризики: прогалини в <code>node:*</code>, V8-специфічні аддони не працюють, APM/профайлинг.
+        Правильний шлях — виміряти свій сервіс під навантаженням, почати з Bun як інструменту в dev/CI.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що таке V8 isolate і чому edge-функції стартують за мілісекунди?</summary>
+        <div class="a">Isolate — окремий екземпляр JS-середовища (свій heap, глобали, GC) в одному процесі рантайму. Не треба створювати VM чи
+        контейнер і запускати Node — лише новий контекст у вже теплому процесі. Ціна: немає ФС і процесів, ліміти CPU-часу та пам'яті, частковий Node API.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чому <code>setInterval</code>, який шле метрики кожні 10 с, "губить" дані в Lambda?</summary>
+        <div class="a">Між викликами середовище <b>заморожене</b>: таймери не тікають, фонові Promise не виконуються. Дані відправляться при
+        наступному виклику або зникнуть із shutdown. Flush до завершення handler, Lambda extensions або EMF-метрики через логи.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Де ініціалізувати клієнт БД у Lambda і чому?</summary>
+        <div class="a">У <b>module scope</b> (або lazy singleton, що кешує Promise) — виконується в INIT один раз на execution environment і
+        перевикористовується теплими викликами. Усередині handler — новий connect на кожен запит. Плюс обробка протухлих з'єднань після freeze.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Трафік виріс, і Postgres упав з "too many connections", хоча код не мінявся. Що сталося?</summary>
+        <div class="a">Lambda масштабується горизонтально: кожне паралельне середовище має свій пул. 500 середовищ × пул 10 = 5000 з'єднань.
+        Рішення: RDS Proxy/PgBouncer, <code>max: 1</code> у функції, reserved concurrency як запобіжник, HTTP-драйвери, або DynamoDB.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span><code>node app.ts</code> працює — значить, Node перевіряє типи?</summary>
+        <div class="a">Ні. Type stripping лише <b>стирає</b> анотації (заміна пробілами), без перевірки. Синтаксис, що генерує код (<code>enum</code>,
+        <code>namespace</code>, parameter properties), падає з <code>ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX</code> без <code>--experimental-transform-types</code>.
+        <code>tsc --noEmit</code> лишається в CI.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Що таке WinterTC/WinterCG і навіщо воно бекенд-розробнику?</summary>
+        <div class="a">Група (тепер Ecma TC55), що стандартизує <b>Minimum Common Web Platform API</b> для серверних рантаймів: fetch, Request/Response,
+        Web Streams, Web Crypto, URL, TextEncoder тощо. Код, що спирається тільки на нього, працює в Node, Deno, Bun, Workers без змін.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Чи робить <code>--permission</code> у Node безпечним запуск недовіреного коду?</summary>
+        <div class="a">Ні. Це механізм обмеження для <i>довіреного</i> коду (захист від помилок і частини вразливостей), а не sandbox: документація
+        не гарантує захист від свідомих обхідних шляхів (нативні аддони тощо). Для недовіреного коду — окремі процеси/контейнери/VM, ізоляти з жорсткою ізоляцією.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Коли ви НЕ оберете serverless?</summary>
+        <div class="a">WebSocket і довгі з'єднання, задачі довші за ліміт (15 хв у Lambda), стабільно високе навантаження (дорожче за контейнери),
+        жорсткі p99 без бюджету на provisioned concurrency, потреба в локальному стані/кеші, GPU або важкі нативні залежності.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty trick">Пастка</span>Перенесли API на edge — і він став повільнішим. Як так?</summary>
+        <div class="a">Функція стала ближче до користувача, але <b>далі від БД</b>: кожен із 5 запитів до Postgres у us-east тепер іде через
+        океан. Edge виграє для локальної роботи (auth, редіректи, кеш, персоналізація), а data-heavy логіку краще тримати поруч із даними — або реплікувати дані на edge.</div>
+      </details>
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Як зробити код переносимим між Node, Lambda і Workers?</summary>
+        <div class="a">Писати handler як <code>(Request) =&gt; Response</code> на Web API (Hono, власний тонкий адаптер), тримати рантайм-специфіку в
+        entrypoint-файлах, передавати env/залежності параметрами, абстрагувати доступ до БД, уникати <code>Buffer</code>/<code>node:*</code> у доменному коді.</div>
+      </details>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Шпаргалка</h2>
+      <p class="section-desc">Коротко про все.</p>
+      <div class="cheat">
+        <table>
+          <tr><th>Тема</th><th>Головне</th></tr>
+          <tr><td>Deno</td><td>V8 + Rust/Tokio; deny-by-default дозволи; TS нативно; Web API; <code>deno.json</code>; JSR, <code>npm:</code>, <code>node:</code> (Deno 2)</td></tr>
+          <tr><td>Bun</td><td>JSC + Zig; runtime + install + test + build; швидкий старт/інсталяція; прогалини node:* і V8-аддонів</td></tr>
+          <tr><td>Node відповів</td><td>fetch, node:test, --watch, --env-file, type stripping, --permission, require(esm), WebSocket-клієнт, node:sqlite</td></tr>
+          <tr><td>Type stripping</td><td>стирає типи, не перевіряє; enum/namespace — лише з <code>--experimental-transform-types</code></td></tr>
+          <tr><td>WinterTC</td><td>Ecma TC55, Minimum Common Web Platform API: fetch, Streams, Crypto, URL, Encoding</td></tr>
+          <tr><td>Isolates</td><td>багато JS-контекстів в одному процесі; старт ~мс; ліміти CPU-часу, ~128 MB, без ФС</td></tr>
+          <tr><td>KV / Durable Objects</td><td>eventually consistent KV для читань; DO — однопотоковий стейтфул-об'єкт для координації</td></tr>
+          <tr><td>Lambda lifecycle</td><td>INIT (module scope) → INVOKE (handler) → freeze → ... → SHUTDOWN; 1 запит на середовище</td></tr>
+          <tr><td>Cold start</td><td>microVM + Node start + module init (ваш); бандл, модульний SDK, lazy import, пам'ять, provisioned concurrency</td></tr>
+          <tr><td>БД</td><td>середовища × пул = вибух з'єднань → RDS Proxy/PgBouncer, max 1, HTTP-драйвери</td></tr>
+          <tr><td>Таймаути</td><td>БД &lt; функція (≤15 хв) &lt; шлюз (~29–30 с)</td></tr>
+          <tr><td>Не serverless</td><td>WebSocket, довгі задачі, стабільне високе навантаження, жорсткий p99, локальний стан</td></tr>
+          <tr><td>Портабельність</td><td><code>(Request) =&gt; Response</code>, Hono, адаптери в entrypoint-ах, env параметром</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section id="s16">
+      <h2><span class="num">16</span> Як запам'ятати</h2>
+      <p class="section-desc">Асоціації для кожного ключового поняття.</p>
+      <div class="flashgrid">
+        <div class="flashcard">
+          <div class="fc-num">1</div>
+          <div class="term">Deno permissions</div>
+          <div class="def">Процес не має доступу до мережі, ФС, env без явного прапорця.</div>
+          <div class="mnemo"><b>Асоціація:</b> готель, де картка відкриває лише ваш номер, а не всі двері поверху (Node).</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">2</div>
+          <div class="term">Bun</div>
+          <div class="def">Рантайм на JSC і Zig, що об'єднує runtime, пакетний менеджер, тести й бандлер.</div>
+          <div class="mnemo"><b>Асоціація:</b> швейцарський ніж — швидко і все в одному, але кожне лезо трохи коротше за спеціалізований інструмент.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">3</div>
+          <div class="term">Type stripping</div>
+          <div class="def">Node стирає анотації TS пробілами й виконує JS, не перевіряючи типів.</div>
+          <div class="mnemo"><b>Асоціація:</b> коректор "замазує" нотатки на полях — текст той самий, ніхто його не перевіряв.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">4</div>
+          <div class="term">WinterTC</div>
+          <div class="def">Стандарт мінімального спільного набору Web API для серверних рантаймів.</div>
+          <div class="mnemo"><b>Асоціація:</b> євророзетка — один штекер підходить у всіх країнах.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">5</div>
+          <div class="term">V8 isolate</div>
+          <div class="def">Ізольований JS-світ (heap, глобали) всередині спільного процесу рантайму.</div>
+          <div class="mnemo"><b>Асоціація:</b> кабінки в коворкінгу: окремий стіл за секунду, а не окремий офіс (контейнер) чи будинок (VM).</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">6</div>
+          <div class="term">Cold start</div>
+          <div class="def">Перший виклик у новому середовищі: створення, старт рантайму, module init.</div>
+          <div class="mnemo"><b>Асоціація:</b> машина взимку — спочатку прогріти двигун, потім їхати; теплу заводиш і одразу їдеш.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">7</div>
+          <div class="term">Freeze між викликами</div>
+          <div class="def">Після відповіді процес Lambda зупинено — таймери й фонові задачі стоять.</div>
+          <div class="mnemo"><b>Асоціація:</b> гра на паузі: персонажі завмерли посеред кроку і продовжать, тільки коли натиснете "грати".</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">8</div>
+          <div class="term">RDS Proxy</div>
+          <div class="def">Мультиплексор, що зводить тисячі з'єднань функцій до десятків з'єднань з БД.</div>
+          <div class="mnemo"><b>Асоціація:</b> диспетчер таксі: сотні дзвінків — кілька водіїв.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">9</div>
+          <div class="term">Durable Object</div>
+          <div class="def">Однопотоковий об'єкт з унікальним id і власним сховищем на edge.</div>
+          <div class="mnemo"><b>Асоціація:</b> одна дошка в переговорці: всі пишуть на ній, тож немає копій, що розходяться.</div>
+        </div>
+        <div class="flashcard">
+          <div class="fc-num">10</div>
+          <div class="term">Hono / Request→Response</div>
+          <div class="def">Фреймворк на Web-стандартах, що запускається в будь-якому рантаймі через адаптер.</div>
+          <div class="mnemo"><b>Асоціація:</b> USB-C: один кабель, а в коробці — перехідники під кожну розетку.</div>
+        </div>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Node.js Doc · частина серії туторіалів AI Delivery Planner. Приклади коду перевірені на Node.js 24.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`\\])*`)|('(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*")|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?n?\b)|(\bfunction\s*\*?\s+)([A-Za-z_$][\w$]*)|(\bclass\s+)([A-Za-z_$][\w$]*)|((?<!\.)\b(?:function|return|if|else|for|while|do|break|continue|switch|case|default|class|extends|super|new|delete|typeof|instanceof|in|of|try|catch|finally|throw|async|await|yield|import|export|from|as|static|get|set|void|let|const|var|null|undefined|true|false|this)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-com">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-str">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-num">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-kw">'+esc(m[10])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+</body>
+</html>
