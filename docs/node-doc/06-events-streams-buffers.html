@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>6. EventEmitter, Streams і Buffer — Node.js Doc</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<script>
+(function(){
+  try{ var t = localStorage.getItem('docs-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){}
+})();
+</script>
 <style>
   :root{
     --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
@@ -21,7 +26,7 @@
     --radius:12px;
   }
   @media (prefers-color-scheme: dark){
-    :root{
+    :root:not([data-theme="light"]){
       --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
       --fg:#e7eaf2; --fg-muted:#9aa2b4;
       --accent:#6d9bff; --accent-soft:#1c2740;
@@ -33,7 +38,22 @@
       --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
       --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
       --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+      color-scheme:dark;
     }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+    --fg:#e7eaf2; --fg-muted:#9aa2b4;
+    --accent:#6d9bff; --accent-soft:#1c2740;
+    --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+    --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+    --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+    --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+    --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+    --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    color-scheme:dark;
   }
   *{box-sizing:border-box;}
   body{
@@ -123,7 +143,8 @@
   #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
   #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
   #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
-  #tab-node:checked ~ .nav-tabbar label[for="tab-node"]{
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"],
+  #tab-quantum:checked ~ .nav-tabbar label[for="tab-quantum"]{
     background:var(--accent); color:#fff; border-color:var(--accent);
   }
   .nav-links{display:none; flex-direction:column; gap:2px;}
@@ -131,6 +152,7 @@
   #tab-interview:checked ~ .nav-links.interview{display:flex;}
   #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
   #tab-node:checked ~ .nav-links.node{display:flex;}
+  #tab-quantum:checked ~ .nav-links.quantum{display:flex;}
   .nav-links a{
     text-decoration:none; color:var(--fg-muted); font-size:13px;
     padding:6px 10px; border-radius:7px; line-height:1.3;
@@ -391,13 +413,28 @@
   .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
   article table{display:block; overflow-x:auto;}
   @media (min-width:700px){ article table{display:table;} }
+
+  /* --- theme switch --- */
+  :root{color-scheme:light;}
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .theme-toggle{
+    cursor:pointer; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+    background:var(--bg-soft); color:var(--fg); font:inherit; font-size:12.5px; font-weight:600;
+    transition:background .15s, border-color .15s;
+  }
+  .theme-toggle:hover{background:var(--card); border-color:var(--accent);}
+  .theme-toggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
 </style>
 </head>
 <body>
 
 <header class="top">
   <div class="top-inner">
-    <div class="brand">🟢 Node.js Doc <span>· AI Delivery Planner</span></div>
+    <div class="top-row">
+      <div class="brand">🟢 Node.js Doc <span>· AI Delivery Planner</span></div>
+      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Темна тема</button>
+    </div>
   </div>
 </header>
 
@@ -413,11 +450,13 @@
     <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
     <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
     <input type="radio" name="topgroup" id="tab-node" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-quantum" class="tab-radio">
     <div class="nav-tabbar">
       <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
       <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
       <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
       <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+      <label for="tab-quantum" class="nav-tabbtn">⚛️ Квантове</label>
     </div>
       <nav class="nav-links proj">
         <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
@@ -492,6 +531,13 @@
         <a href="18-realtime-queues.html">18. Real-time і черги</a>
         <a href="19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
         <a href="20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+      <nav class="nav-links quantum">
+        <a href="../quantum-doc/01-quanta-and-quantum-computing.html">1. Кванти й обчислення</a>
+        <a href="../quantum-doc/02-quantum-engineering-history.html">2. Квантова інженерія</a>
+        <a href="../quantum-doc/03-quantum-backend-python-ibm.html">3. Бекенд + IBM Quantum</a>
+        <a href="../quantum-doc/04-pet-project-quantum-routing.html">4. Пет-проєкт: маршрути</a>
+        <a href="../quantum-doc/05-quantum-engineer-roadmap.html">5. Шлях інженера: ресурси</a>
       </nav>
   </aside>
 
@@ -1719,6 +1765,30 @@ const server = http.createServer(async (req, res) =&gt; {
   for(var i=0;i<blocks.length;i++){
     blocks[i].innerHTML = hl(blocks[i].textContent);
   }
+})();
+</script>
+<script>
+(function(){
+  var root = document.documentElement, btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function current(){
+    var t = root.getAttribute('data-theme');
+    return t === 'light' || t === 'dark' ? t : (mq && mq.matches ? 'dark' : 'light');
+  }
+  function render(){
+    var dark = current() === 'dark';
+    btn.textContent = dark ? '☀️ Світла тема' : '🌙 Темна тема';
+    btn.setAttribute('aria-label', dark ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('docs-theme', next); }catch(e){}
+    render();
+  });
+  if(mq && mq.addEventListener) mq.addEventListener('change', render);
+  render();
 })();
 </script>
 </body>

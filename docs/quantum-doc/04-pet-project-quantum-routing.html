@@ -1,0 +1,2196 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4. Пет-проєкт: маршрути — Quantum Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<script>
+(function(){
+  try{ var t = localStorage.getItem('docs-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --bg:#fcfbff; --bg-soft:#f3f2fa; --card:#ffffff; --border:#e0e0ec;
+    --fg:#1c1c2a; --fg-muted:#5c6176;
+    --accent:#3a5ee8; --accent-soft:#ebedff;
+    --code-bg:#212338; --code-fg:#e8e8f4; --code-muted:#8d92ab;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#3a5ee8; --info-bg:#ebedff; --info-border:#c7cffc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#171822; --bg-soft:#1e1f2b; --card:#1e1f2b; --border:#2e3041;
+      --fg:#e6e7f3; --fg-muted:#9ba0b7;
+      --accent:#7a8eff; --accent-soft:#1f2344;
+      --code-bg:#11111b; --code-fg:#e6e7f3; --code-muted:#7e8399;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#8a9dff; --info-bg:#161a36; --info-border:#2c356e;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#171822; --bg-soft:#1e1f2b; --card:#1e1f2b; --border:#2e3041;
+    --fg:#e6e7f3; --fg-muted:#9ba0b7;
+    --accent:#7a8eff; --accent-soft:#1f2344;
+    --code-bg:#11111b; --code-fg:#e6e7f3; --code-muted:#7e8399;
+    --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+    --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+    --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+    --info:#8a9dff; --info-bg:#161a36; --info-border:#2c356e;
+    --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"],
+  #tab-quantum:checked ~ .nav-tabbar label[for="tab-quantum"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  #tab-quantum:checked ~ .nav-links.quantum{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+
+  /* --- python-doc extras --- */
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider:first-child{margin-top:8px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+  .qa summary .qnum{color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700; margin-right:8px;}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  /* --- quantum-doc extras --- */
+  .res{border:1px solid var(--border); border-radius:var(--radius); background:var(--card); padding:14px 16px; margin:12px 0;}
+  .res .res-head{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:4px;}
+  .res .res-title{font-weight:700; font-size:15px;}
+  .res .res-meta{font-size:12.5px; color:var(--fg-muted);}
+  .res p{margin:6px 0 0; font-size:14.3px;}
+  .lvl{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap;}
+  .lvl.l1{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .lvl.l2{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .lvl.l3{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .lvl.type{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .timeline{border-left:2px solid var(--accent); margin:20px 0 20px 8px; padding-left:20px;}
+  .timeline .ev{position:relative; margin:0 0 18px;}
+  .timeline .ev::before{content:""; position:absolute; left:-27px; top:6px; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid var(--bg);}
+  .timeline .yr{font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; font-size:14px;}
+  .timeline .ev-t{font-weight:700;}
+  .timeline .ev p{margin:4px 0 0; font-size:14.3px; color:var(--fg-muted);}
+  .math{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:1.05em; white-space:nowrap;}
+  .math-block{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:18px; text-align:center; padding:14px; margin:14px 0; border:1px dashed var(--border); border-radius:var(--radius); background:var(--bg-soft); overflow-x:auto;}
+
+  /* --- theme switch --- */
+  :root{color-scheme:light;}
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .theme-toggle{
+    cursor:pointer; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+    background:var(--bg-soft); color:var(--fg); font:inherit; font-size:12.5px; font-weight:600;
+    transition:background .15s, border-color .15s;
+  }
+  .theme-toggle:hover{background:var(--card); border-color:var(--accent);}
+  .theme-toggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="top-row">
+      <div class="brand">⚛️ Квантове програмування <span>· AI Delivery Planner</span></div>
+      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Темна тема</button>
+    </div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Туторіал 4 · Перший пет-проєкт · Python + IBM Quantum</div>
+  <h1>Пет-проєкт: оптимізація маршрутів на квантовому комп'ютері IBM через Python-бекенд</h1>
+  <p class="lead">Будуємо гібридний сервіс: FastAPI приймає задачу маршрутизації, Celery-воркер перетворює її на QUBO → гамільтоніан Ізінга → схему QAOA, запускає на симуляторі Aer або на реальному QPU IBM, декодує бітрядки в маршрут і чесно порівнює з класичним OR-Tools. Вся математика, підрахунок кубітів, архітектура, перевірений код і план розвитку проєкту. Головна мета не обіграти класику (сьогодні це неможливо), а навчитися будувати й вимірювати гібридні квантово-класичні системи.</p>
+  <div class="pills">
+    <span class="pill">🧮 TSP → QUBO → Ising → QAOA</span>
+    <span class="pill">🏗️ FastAPI + Celery + Strategy-солвери</span>
+    <span class="pill">✅ Код перевірено на Qiskit 2.5 + Aer</span>
+    <span class="pill">📊 Чесний бенчмарк проти OR-Tools</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-quantum" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+      <label for="tab-quantum" class="nav-tabbtn">⚛️ Квантове</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="../node-doc/01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="../node-doc/02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="../node-doc/03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="../node-doc/04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="../node-doc/05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="../node-doc/06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="../node-doc/07-fs-process-os.html">7. fs, process, os</a>
+        <a href="../node-doc/08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="../node-doc/09-http-networking.html">9. HTTP і мережа</a>
+        <a href="../node-doc/10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="../node-doc/11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="../node-doc/12-databases-orm.html">12. БД і ORM</a>
+        <a href="../node-doc/13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="../node-doc/14-security.html">14. Безпека Node</a>
+        <a href="../node-doc/15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="../node-doc/16-testing.html">16. Тестування</a>
+        <a href="../node-doc/17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="../node-doc/18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="../node-doc/19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="../node-doc/20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+      <nav class="nav-links quantum">
+        <a href="01-quanta-and-quantum-computing.html">1. Кванти й обчислення</a>
+        <a href="02-quantum-engineering-history.html">2. Квантова інженерія</a>
+        <a href="03-quantum-backend-python-ibm.html">3. Бекенд + IBM Quantum</a>
+        <a href="04-pet-project-quantum-routing.html" class="active">4. Пет-проєкт: маршрути</a>
+        <a href="05-quantum-engineer-roadmap.html">5. Шлях інженера: ресурси</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — Ідея та очікування</div>
+    <ol>
+      <li><a href="#s1">1. Що будуємо і навіщо</a></li>
+      <li><a href="#s2">2. Які задачі підходять QPU</a></li>
+    </ol>
+    <div class="toc-group">Частина II — Від маршруту до кубітів</div>
+    <ol>
+      <li><a href="#s3">3. TSP як бінарні змінні</a></li>
+      <li><a href="#s4">4. QUBO і коефіцієнт штрафу</a></li>
+      <li><a href="#s5">5. QUBO → Ising → Pauli</a></li>
+      <li><a href="#s6">6. Скільки кубітів потрібно</a></li>
+      <li><a href="#s7">7. QAOA: шари, γ і β</a></li>
+      <li><a href="#s8">8. Альтернативи QAOA</a></li>
+      <li><a href="#s9">9. Декомпозиція великих задач</a></li>
+      <li><a href="#s10">10. Постобробка семплів</a></li>
+    </ol>
+    <div class="toc-group">Частина III — Архітектура бекенду</div>
+    <ol>
+      <li><a href="#s11">11. Принципи бекенду</a></li>
+      <li><a href="#s12">12. Загальна архітектура</a></li>
+      <li><a href="#s13">13. Структура репозиторію</a></li>
+      <li><a href="#s14">14. Pydantic-моделі та API</a></li>
+      <li><a href="#s15">15. Стратегії і роутер солверів</a></li>
+      <li><a href="#s16">16. Життєвий цикл задачі</a></li>
+      <li><a href="#s17">17. Бюджет, прапорці, моніторинг</a></li>
+    </ol>
+    <div class="toc-group">Частина IV — Код</div>
+    <ol>
+      <li><a href="#s18">18. QUBO для TSP на NumPy</a></li>
+      <li><a href="#s19">19. Ising → SparsePauliOp</a></li>
+      <li><a href="#s20">20. QAOA: Estimator + COBYLA</a></li>
+      <li><a href="#s21">21. Семплінг і декодування</a></li>
+      <li><a href="#s22">22. Солвери: Aer і IBM QPU</a></li>
+      <li><a href="#s23">23. Бенчмарк і результати</a></li>
+    </ol>
+    <div class="toc-group">Частина V — Розвиток проєкту</div>
+    <ol>
+      <li><a href="#s24">24. Roadmap по етапах</a></li>
+      <li><a href="#s25">25. Портфоліо та резюме</a></li>
+      <li><a href="#s26">26. Типові помилки</a></li>
+      <li><a href="#s27">27. Самоперевірка <span class="toc-count">8</span></a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Ідея та очікування</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Що будуємо і навіщо</h2>
+      <p class="section-desc">Невеликий, але "справжній" бекенд, у якому квантовий комп'ютер лише один зі змінних солверів.</p>
+
+      <p>У цьому репозиторії вже є робочий класичний оптимізатор маршрутів: <code>app/services/route_optimizer/</code>
+      будує <code>RoutingProblem</code> з доставок, водіїв і депо, рахує матрицю відстаней (haversine у
+      <code>distance.py</code>) і віддає задачу OR-Tools (<code>solver.py</code>). Як він працює, детально розібрано в
+      <a href="../python-tutorials/21-route-optimization-or-tools.html">туторіалі 21 про OR-Tools і VRP</a>. Пет-проєкт
+      бере ту саму предметну область і додає поруч з OR-Tools ще два солвери: <b>QAOA на симуляторі</b> (Qiskit Aer) і
+      <b>QAOA на реальному QPU IBM</b> (через Qiskit Runtime). Бекенд сам вирішує, куди відправити задачу, завжди
+      паралельно рахує класичний результат і зберігає порівняльний звіт.</p>
+
+      <div class="stat-row">
+        <div class="stat"><div class="k">Розмір задачі для QPU</div><div class="v">3–4 зупинки</div></div>
+        <div class="stat"><div class="k">Кубітів на 3 зупинки</div><div class="v">9</div></div>
+        <div class="stat"><div class="k">Хто виграє сьогодні</div><div class="v">OR-Tools</div></div>
+      </div>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Чесні очікування.</b> На задачах маршрутизації квантовий комп'ютер сьогодні <b>не</b> перемагає класичні
+        алгоритми ні за якістю, ні за швидкістю, ні за ціною. OR-Tools розв'язує TSP на 4 точках за мілісекунди
+        і точно, а QAOA на 9 кубітах повертає розподіл, де оптимальний маршрут лише один з багатьох варіантів.
+        Пет-проєкт цінний іншим: ви навчитесь перетворювати бізнес-задачу на гамільтоніан, будувати асинхронний
+        гібридний пайплайн, рахувати кубіти й глибину схеми, працювати з чергою QPU і бюджетом, і головне
+        <b>чесно вимірювати</b>. Саме ці навички потрібні інженеру, який буде на місці, коли квантова перевага
+        для оптимізації з'явиться (якщо з'явиться).
+      </div></div>
+
+      <h3>Що вміє готовий сервіс</h3>
+      <ul>
+        <li><code>POST /api/v1/quantum/routes/optimize?solver=auto|classical|qaoa_sim|qaoa_ibm</code> приймає депо й зупинки, відразу повертає <code>202</code> і <code>job_id</code>.</li>
+        <li>Celery-воркер будує матрицю відстаней, QUBO, гамільтоніан, запускає QAOA і класичний baseline.</li>
+        <li><code>GET /api/v1/quantum/jobs/{id}</code> показує статус, маршрут і звіт: вартість, розрив з класикою, кількість кубітів і двокубітних гейтів, частку валідних семплів, час на QPU.</li>
+        <li>Роутер солверів враховує розмір задачі, feature flag, місячний бюджет QPU-секунд і дедлайн (SLA). Якщо квантовий шлях недоступний або впав, повертається класичний результат з поясненням.</li>
+      </ul>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Які задачі оптимізації взагалі підходять квантовому комп'ютеру</h2>
+      <p class="section-desc">Маршрутизація найпопулярніша в демо, але далеко не найзручніша для QPU.</p>
+
+      <p>Квантові алгоритми оптимізації (QAOA, квантовий відпал) працюють з задачами, які можна записати як мінімізацію
+      квадратичної функції від бінарних змінних (<b>QUBO</b>). У таку форму лягає багато логістичних задач, але
+      ціною різною: десь одна змінна на об'єкт, а десь n² змінних плюс купа штрафів за обмеження.</p>
+
+      <table>
+        <tr><th>Задача (логістика / бізнес)</th><th>Кубітів</th><th>Сьогодні (NISQ)</th><th>Чому</th></tr>
+        <tr><td><b>MaxCut / розбиття графа</b>: поділити зони доставки на дві групи з мінімумом "зв'язків" між ними</td><td>1 на вершину</td><td><span class="lvl l1">найкращий кандидат</span></td><td>Немає обмежень, гамільтоніан природно складається з ZZ; саме на MaxCut IBM демонструє QAOA на 100+ кубітах</td></tr>
+        <tr><td><b>Призначення</b>: водій ↔ зона, авто ↔ замовлення</td><td>n×k</td><td><span class="lvl l2">тільки малі інстанси</span></td><td>One-hot обмеження через штрафи, але структура проста</td></tr>
+        <tr><td><b>Розміщення</b> депо / поштоматів (facility location, max independent set)</td><td>1 на локацію + slack</td><td><span class="lvl l2">експерименти</span></td><td>Нерівності вимагають slack-кубітів</td></tr>
+        <tr><td><b>Портфель</b> (Markowitz з бюджетом)</td><td>1 на актив (+ бітність ваг)</td><td><span class="lvl l2">популярне демо</span></td><td>Квадратична функція є природно, бюджет через штраф</td></tr>
+        <tr><td><b>Розклад</b> (зміни водіїв, job-shop)</td><td>задачі × слоти</td><td><span class="lvl l3">важко</span></td><td>Багато обмежень, кубіти ростуть швидко</td></tr>
+        <tr><td><b>TSP / VRP</b> (наш пет-проєкт)</td><td>n² (×k авто, + slack на місткість)</td><td><span class="lvl l3">тільки навчання</span></td><td>Щільні обмеження-перестановки, глибокі схеми, OR-Tools дуже сильний</td></tr>
+        <tr><td><b>Monte Carlo ризику / попиту</b> (amplitude estimation)</td><td>багато + глибина</td><td><span class="lvl l3">після fault tolerance</span></td><td>Квадратичне прискорення потребує коригування помилок</td></tr>
+      </table>
+
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        Чому тоді маршрути? Бо в цьому репозиторії вже є готовий домен, дані і класичний baseline, а TSP найнаочніше
+        показує всі складнощі: кодування обмежень, вибух кількості кубітів, невалідні семпли, декомпозицію. Коли
+        ви пройдете цей шлях на TSP, MaxCut для розбиття зон (етап 5 у <a href="#s24">roadmap</a>) здасться простим.
+      </div></div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · Від маршруту до кубітів</div><div class="line"></div></div>
+
+    <section id="s3">
+      <h2><span class="num">03</span> TSP як матриця бінарних змінних x<sub>i,t</sub></h2>
+      <p class="section-desc">Квантовий комп'ютер не знає, що таке "маршрут". Він знає лише бітрядки.</p>
+
+      <p>Маємо депо (вузол 0) і <b>m</b> зупинок. Вводимо бінарну змінну <span class="math">x<sub>i,t</sub> ∈ {0, 1}</span>:
+      "зупинку i відвідуємо на позиції t". Депо фіксуємо на початку й у кінці маршруту, тому змінних
+      <span class="math">m × m</span>. Будь-який маршрут це матриця перестановки: у кожному рядку рівно одна одиниця
+      (зупинку відвідано один раз) і в кожному стовпці рівно одна одиниця (на кожній позиції одна зупинка).
+      Кожна змінна стає одним кубітом.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 290" role="img" aria-label="Матриця 3 на 3 бінарних змінних x i t для маршруту депо, зупинка 1, зупинка 3, зупинка 2, депо. Одиниці стоять у клітинках зупинка 1 позиція 0, зупинка 3 позиція 1, зупинка 2 позиція 2. Сума кожного рядка і кожного стовпця дорівнює одиниці. Праворуч показано, що змінна x i t стає кубітом номер i помножити на 3 плюс t, а бітрядок Qiskit читається справа наліво: 010100001">
+          <g font-size="12">
+            <text x="200" y="22" text-anchor="middle" fill="var(--fg-muted)">позиція t у маршруті →</text>
+            <text x="150" y="48" text-anchor="middle" fill="currentColor">t = 0</text>
+            <text x="210" y="48" text-anchor="middle" fill="currentColor">t = 1</text>
+            <text x="270" y="48" text-anchor="middle" fill="currentColor">t = 2</text>
+            <text x="70" y="90" text-anchor="middle" fill="currentColor">Stop 1</text>
+            <text x="70" y="140" text-anchor="middle" fill="currentColor">Stop 2</text>
+            <text x="70" y="190" text-anchor="middle" fill="currentColor">Stop 3</text>
+            <text x="22" y="140" text-anchor="middle" fill="var(--fg-muted)" transform="rotate(-90 22 140)">зупинка i ↓</text>
+
+            <rect x="120" y="60" width="60" height="50" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+            <rect x="180" y="60" width="60" height="50" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+            <rect x="240" y="60" width="60" height="50" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+            <rect x="120" y="110" width="60" height="50" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+            <rect x="180" y="110" width="60" height="50" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+            <rect x="240" y="110" width="60" height="50" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+            <rect x="120" y="160" width="60" height="50" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+            <rect x="180" y="160" width="60" height="50" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+            <rect x="240" y="160" width="60" height="50" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+
+            <g font-size="16" font-weight="bold" text-anchor="middle">
+              <text x="150" y="91" fill="var(--accent)">1</text><text x="210" y="91" fill="var(--fg-muted)">0</text><text x="270" y="91" fill="var(--fg-muted)">0</text>
+              <text x="150" y="141" fill="var(--fg-muted)">0</text><text x="210" y="141" fill="var(--fg-muted)">0</text><text x="270" y="141" fill="var(--accent)">1</text>
+              <text x="150" y="191" fill="var(--fg-muted)">0</text><text x="210" y="191" fill="var(--accent)">1</text><text x="270" y="191" fill="var(--fg-muted)">0</text>
+            </g>
+            <g font-size="9.5" text-anchor="middle" fill="var(--fg-muted)">
+              <text x="132" y="72">q0</text><text x="192" y="72">q1</text><text x="252" y="72">q2</text>
+              <text x="132" y="122">q3</text><text x="192" y="122">q4</text><text x="252" y="122">q5</text>
+              <text x="132" y="172">q6</text><text x="192" y="172">q7</text><text x="252" y="172">q8</text>
+            </g>
+            <text x="318" y="90" fill="var(--good)">Σₜ = 1</text>
+            <text x="318" y="140" fill="var(--good)">Σₜ = 1</text>
+            <text x="318" y="190" fill="var(--good)">Σₜ = 1</text>
+            <text x="150" y="232" text-anchor="middle" fill="var(--good)">Σᵢ = 1</text>
+            <text x="210" y="232" text-anchor="middle" fill="var(--good)">Σᵢ = 1</text>
+            <text x="270" y="232" text-anchor="middle" fill="var(--good)">Σᵢ = 1</text>
+            <text x="210" y="262" text-anchor="middle" fill="currentColor" font-weight="bold">Депо → Stop 1 → Stop 3 → Stop 2 → Депо</text>
+
+            <rect x="395" y="55" width="310" height="190" rx="10" fill="none" stroke="currentColor" stroke-opacity=".5"/>
+            <text x="410" y="80" fill="currentColor" font-weight="bold">Від матриці до кубітів</text>
+            <text x="410" y="104" fill="currentColor">кубіт k = i · m + t  (m = 3)</text>
+            <text x="410" y="126" fill="currentColor">рядки: кожну зупинку відвідано 1 раз</text>
+            <text x="410" y="146" fill="currentColor">стовпці: на кожній позиції 1 зупинка</text>
+            <text x="410" y="170" fill="var(--fg-muted)">Qiskit друкує бітрядок справа наліво:</text>
+            <text x="410" y="194" fill="var(--fg-muted)" font-size="11">q8 q7 q6 q5 q4 q3 q2 q1 q0</text>
+            <text x="410" y="218" fill="var(--accent)" font-size="15" font-weight="bold" letter-spacing="3.2">0 1 0 1 0 0 0 0 1</text>
+            <text x="410" y="236" fill="var(--fg-muted)" font-size="11">з 2⁹ = 512 бітрядків валідні лише 3! = 6</text>
+          </g>
+        </svg>
+        <figcaption>Маршрут як матриця перестановки 3×3. Кожна клітинка є кубітом. Валідних бітрядків мізерна частка:
+        6 з 512. Усі інші порушують обмеження, і їх треба "відштовхнути" штрафами.</figcaption>
+      </figure>
+
+      <div class="callout bad"><div class="ic">🐞</div><div class="body">
+        <b>Найчастіший баг новачків:</b> Qiskit little-endian. У рядку <code>"010100001"</code> крайній <b>правий</b>
+        символ це кубіт 0. Якщо прочитати зліва направо, ви отримаєте "валідний" маршрут, який насправді інший, і
+        будете тиждень шукати помилку в QUBO. У коді декодування завжди є <code>reversed(bitstring)</code>.
+      </div></div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> QUBO: вартість маршруту плюс штрафи за обмеження</h2>
+      <p class="section-desc">Обмеження перетворюються на доданки, які "дорого коштують", коли їх порушено.</p>
+
+      <p>QUBO (Quadratic Unconstrained Binary Optimization) це задача "мінімізуй <span class="math">xᵀQx</span>" без жодних
+      обмежень. Тому обмеження-перестановку ми не "забороняємо", а робимо невигідною: додаємо штраф
+      <span class="math">A·(1 − Σ x)²</span>, який дорівнює нулю тільки тоді, коли в групі рівно одна одиниця.</p>
+
+      <div class="math-block">
+        E(x) = A·Σᵢ (1 − Σₜ xᵢ,ₜ)² + A·Σₜ (1 − Σᵢ xᵢ,ₜ)² + Σ<sub>i≠j</sub> dᵢⱼ Σₜ xᵢ,ₜ·xⱼ,ₜ₊₁ + Σᵢ ( d₀ᵢ·xᵢ,₀ + dᵢ₀·xᵢ,ₘ₋₁ )
+      </div>
+
+      <ul>
+        <li><b>Перші два доданки</b>: штрафи "кожна зупинка один раз" і "одна зупинка на позицію".</li>
+        <li><b>Третій</b>: відстань між сусідніми позиціями маршруту. Добуток <span class="math">xᵢ,ₜ·xⱼ,ₜ₊₁</span> дорівнює 1 лише коли ми їдемо з i в j.</li>
+        <li><b>Четвертий</b>: виїзд з депо до першої зупинки і повернення з останньої. Вони лінійні, бо депо зафіксоване.</li>
+      </ul>
+
+      <p>Розкриваємо квадрат, користуючись тим, що для бітів <span class="math">x² = x</span>:
+      <span class="math">(1 − Σx)² = 1 − Σx + 2·Σ<sub>a&lt;b</sub> xₐx_b</span>. Тому кожна група one-hot дає <b>−A</b> на діагональ
+      матриці Q, <b>+2A</b> на кожну пару в групі і <b>+A</b> у константу. Саме так і написаний код у <a href="#s18">розділі 18</a>.</p>
+
+      <div class="decision">
+        <div class="decision-title">Як вибрати коефіцієнт штрафу A</div>
+        <table>
+          <tr><th>Варіант</th><th>Що відбувається</th></tr>
+          <tr><td>A замалий (менший за max dᵢⱼ)</td><td>Порушити обмеження "вигідніше", ніж їхати далеко: мінімум енергії стає невалідним бітрядком (наприклад, усі нулі або пропущена зупинка)</td></tr>
+          <tr class="chosen"><td>A ≈ 1.5–3 × max dᵢⱼ (у нас 2 × max)</td><td>Будь-яке порушення дорожче за найдовше ребро; відмінності між валідними маршрутами ще помітні</td></tr>
+          <tr><td>A величезний (×100)</td><td>Математично коректно, але енергетичний ландшафт QAOA стає "пласким" для корисної частини: оптимізатор бачить лише штрафи, а різниця 18 км проти 21 км тоне в шумі</td></tr>
+        </table>
+        <p>Правило з класичної роботи Лукаса (Lucas, "Ising formulations of many NP problems", 2014): штраф має
+        бути більшим за максимальну "вигоду" від порушення, тобто <span class="math">A &gt; max dᵢⱼ</span>. Далі його
+        підбирають емпірично, дивлячись на частку валідних семплів.</p>
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> QUBO → гамільтоніан Ізінга → SparsePauliOp → схема</h2>
+      <p class="section-desc">Увесь конвеєр від бізнес-задачі до бітрядків і назад.</p>
+
+      <p>Кубіт вимірюється в базисі Z з власними значеннями <span class="math">z = +1</span> для |0⟩ і
+      <span class="math">z = −1</span> для |1⟩. Підставляємо <span class="math">x = (1 − z) / 2</span> і отримуємо
+      гамільтоніан Ізінга:</p>
+      <div class="math-block">H = Σᵢ hᵢ·Zᵢ + Σ<sub>i&lt;j</sub> Jᵢⱼ·ZᵢZⱼ + const,  де  Jᵢⱼ = Qᵢⱼ / 4,  hᵢ = −Qᵢᵢ/2 − Σⱼ Qᵢⱼ/4</div>
+      <p>У Qiskit це об'єкт <code>SparsePauliOp</code>: список рядків Паулі (<code>"ZZ"</code> на кубітах [i, j],
+      <code>"Z"</code> на [i]) з коефіцієнтами. Енергія бітрядка в цьому операторі плюс константа дорівнює
+      значенню QUBO. Ми це перевіряємо тестом: валідний маршрут 0→1→3→2→0 дає 18.0 і в QUBO, і в Ізінгу.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 270" role="img" aria-label="Конвеєр з дев'яти кроків. Верхній ряд зліва направо: VRP задача, декомпозиція на TSP по 3-4 точки, QUBO матриця, гамільтоніан Ізінга як SparsePauliOp, схема QAOA. Нижній ряд справа наліво: транспіляція в ISA-схему під конкретний QPU, виконання на QPU або Aer з отриманням бітрядків, декодування і ремонт 2-opt, маршрут і звіт. Класичні кроки виконуються на CPU, лише виконання схеми відбувається на квантовому процесорі">
+          <defs><marker id="q4p-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12" text-anchor="middle">
+            <rect x="10" y="30" width="124" height="60" rx="9" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="72" y="55" fill="currentColor" font-weight="bold">VRP</text>
+            <text x="72" y="73" fill="var(--fg-muted)" font-size="11">N точок, K авто</text>
+            <rect x="154" y="30" width="124" height="60" rx="9" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="216" y="55" fill="currentColor" font-weight="bold">Декомпозиція</text>
+            <text x="216" y="73" fill="var(--fg-muted)" font-size="11">TSP по 3–4 точки</text>
+            <rect x="298" y="30" width="124" height="60" rx="9" fill="none" stroke="var(--accent)" stroke-width="1.3" stroke-dasharray="5,3"/>
+            <text x="360" y="55" fill="currentColor" font-weight="bold">QUBO</text>
+            <text x="360" y="73" fill="var(--fg-muted)" font-size="11">min xᵀQx</text>
+            <rect x="442" y="30" width="124" height="60" rx="9" fill="none" stroke="var(--accent)" stroke-width="1.3" stroke-dasharray="5,3"/>
+            <text x="504" y="55" fill="currentColor" font-weight="bold">Ising H</text>
+            <text x="504" y="73" fill="var(--fg-muted)" font-size="11">SparsePauliOp</text>
+            <rect x="586" y="30" width="144" height="60" rx="9" fill="none" stroke="var(--accent)" stroke-width="1.3" stroke-dasharray="5,3"/>
+            <text x="658" y="55" fill="currentColor" font-weight="bold">QAOA-схема</text>
+            <text x="658" y="73" fill="var(--fg-muted)" font-size="11">QAOAAnsatz(H, reps=p)</text>
+
+            <rect x="586" y="160" width="144" height="60" rx="9" fill="none" stroke="var(--accent)" stroke-width="1.3" stroke-dasharray="5,3"/>
+            <text x="658" y="185" fill="currentColor" font-weight="bold">Транспіляція</text>
+            <text x="658" y="203" fill="var(--fg-muted)" font-size="11">ISA під топологію QPU</text>
+            <rect x="442" y="160" width="124" height="60" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+            <text x="504" y="185" fill="currentColor" font-weight="bold">QPU / Aer</text>
+            <text x="504" y="203" fill="var(--fg-muted)" font-size="11">бітрядки + частоти</text>
+            <rect x="298" y="160" width="124" height="60" rx="9" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="360" y="185" fill="currentColor" font-weight="bold">Декодування</text>
+            <text x="360" y="203" fill="var(--fg-muted)" font-size="11">валідація + 2-opt</text>
+            <rect x="154" y="160" width="124" height="60" rx="9" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="216" y="185" fill="currentColor" font-weight="bold">Маршрут</text>
+            <text x="216" y="203" fill="var(--fg-muted)" font-size="11">+ звіт vs OR-Tools</text>
+          </g>
+          <g stroke="currentColor" stroke-width="1.3" fill="none">
+            <line x1="134" y1="60" x2="152" y2="60" marker-end="url(#q4p-arrow)"/>
+            <line x1="278" y1="60" x2="296" y2="60" marker-end="url(#q4p-arrow)"/>
+            <line x1="422" y1="60" x2="440" y2="60" marker-end="url(#q4p-arrow)"/>
+            <line x1="566" y1="60" x2="584" y2="60" marker-end="url(#q4p-arrow)"/>
+            <line x1="658" y1="90" x2="658" y2="158" marker-end="url(#q4p-arrow)"/>
+            <line x1="586" y1="190" x2="568" y2="190" marker-end="url(#q4p-arrow)"/>
+            <line x1="442" y1="190" x2="424" y2="190" marker-end="url(#q4p-arrow)"/>
+            <line x1="298" y1="190" x2="280" y2="190" marker-end="url(#q4p-arrow)"/>
+          </g>
+          <g font-size="11">
+            <rect x="12" y="240" width="14" height="10" rx="2" fill="none" stroke="currentColor"/>
+            <text x="32" y="249" fill="var(--fg-muted)">класика (CPU)</text>
+            <rect x="132" y="240" width="14" height="10" rx="2" fill="none" stroke="var(--accent)" stroke-dasharray="3,2"/>
+            <text x="152" y="249" fill="var(--fg-muted)">квантове представлення (будується на CPU)</text>
+            <rect x="412" y="240" width="14" height="10" rx="2" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="432" y="249" fill="var(--fg-muted)">єдиний крок на квантовому процесорі</text>
+          </g>
+        </svg>
+        <figcaption>Квантовий процесор виконує лише один крок конвеєра. Усе інше це звичайний Python на воркері, і саме там
+        живе більшість інженерної роботи.</figcaption>
+      </figure>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Скільки кубітів і гейтів: чому NISQ закінчується дуже швидко</h2>
+      <p class="section-desc">Числа нижче не з голови: їх отримано транспіляцією нашої схеми під 156-кубітний IBM Heron (FakeFez).</p>
+
+      <p>Кількість кубітів росте як <span class="math">m²</span>, а кількість ZZ-доданків як
+      <span class="math">m·(m−1)·(2m−1)</span>, тобто приблизно <span class="math">2m³</span>. Кожен ZZ-доданок це щонайменше
+      два CZ-гейти, а оскільки кубіти в чипі з'єднані лише з сусідами, транспілятор ще й додає SWAP-и.</p>
+
+      <table>
+        <tr><th>Зупинок m</th><th>Кубітів m²</th><th>ZZ-доданків</th><th>CZ після транспіляції (p = 1)</th><th>Глибина (p = 1)</th></tr>
+        <tr><td>3</td><td>9</td><td>30</td><td>126</td><td>258</td></tr>
+        <tr><td>4</td><td>16</td><td>84</td><td>410</td><td>535</td></tr>
+        <tr><td>5</td><td>25</td><td>180</td><td>986</td><td>985</td></tr>
+        <tr><td>6</td><td>36</td><td>330</td><td>2 006</td><td>1 801</td></tr>
+        <tr><td>10</td><td>100</td><td>1 710</td><td>≈ десятки тисяч</td><td>—</td></tr>
+        <tr><td>12</td><td>144 (майже весь Heron)</td><td>3 036</td><td>—</td><td>—</td></tr>
+      </table>
+      <p class="muted">Вимірювання: Qiskit 2.5, <code>generate_preset_pass_manager(optimization_level=3, backend=FakeFez())</code>, випадкові точки. На реальному бекенді й з іншим seed числа трохи інші, порядок той самий.</p>
+
+      <p>Тепер груба оцінка шуму. Помилка двокубітного гейта на сучасних процесорах IBM порядку
+      <span class="math">10⁻³</span>. Ймовірність, що схема з N такими гейтами відпрацює без жодної помилки, приблизно
+      <span class="math">e<sup>−N·0.001</sup></span>: для 126 CZ це ≈ 0.88, для 986 це ≈ 0.37, для 2 006 вже ≈ 0.13,
+      і це без урахування декогеренції під час простою і помилок вимірювання. А QAOA з p = 1 зазвичай
+      замалий; p = 3 множить усе на три.</p>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Висновок для архітектури:</b> одна QAOA-схема для TSP реалістична лише на 3–4 зупинках. Будь-що більше
+        або декомпозиція (<a href="#s9">розділ 9</a>), або класичний солвер. Тому в роутері є жорсткі ліміти
+        <code>MAX_STOPS_SIM</code> і <code>MAX_STOPS_QPU</code>, а VRP з кількома авто (ще множник K, плюс slack-кубіти на
+        місткість) на QPU ми не відправляємо взагалі.
+      </div></div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> QAOA: шари cost і mixer, параметри γ і β, класичний оптимізатор</h2>
+      <p class="section-desc">Quantum Approximate Optimization Algorithm (Farhi, Goldstone, Gutmann, 2014).</p>
+
+      <p>QAOA готує стан, у якому "добрі" бітрядки мають більшу ймовірність. Старт: рівномірна суперпозиція всіх
+      бітрядків (Адамар на кожному кубіті). Далі <b>p</b> разів повторюємо пару шарів:</p>
+      <ul>
+        <li><b>Cost-шар</b> <span class="math">e<sup>−iγ·H<sub>C</sub></sup></span>: RZ для кожного Z-доданка і RZZ для кожного ZZ. Він додає кожному бітрядку фазу, пропорційну його енергії.</li>
+        <li><b>Mixer-шар</b> <span class="math">e<sup>−iβ·H<sub>M</sub></sup></span>, де <span class="math">H<sub>M</sub> = ΣXᵢ</span>: RX(2β) на кожному кубіті. Він "перемішує" амплітуди так, що фази перетворюються на зміну ймовірностей.</li>
+      </ul>
+      <p>Кути <span class="math">γ₁…γₚ, β₁…βₚ</span> підбирає <b>класичний</b> оптимізатор: мінімізує очікувану енергію
+      <span class="math">⟨ψ(γ,β)|H|ψ(γ,β)⟩</span>, яку оцінює примітив Estimator. Після збіжності примітив Sampler
+      знімає тисячі бітрядків з оптимальним станом.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 250" role="img" aria-label="Схема QAOA на кубітах q0, q1, q2 і так далі до q8. Спершу гейти Адамара на всіх кубітах. Потім шар 1: блок cost з параметром гамма 1, що складається з RZ і RZZ гейтів, і блок mixer з параметром бета 1 з гейтів RX. Далі три крапки, і останній шар p з гамма p та бета p. В кінці вимірювання всіх кубітів">
+          <g font-size="12">
+            <g fill="currentColor" text-anchor="end">
+              <text x="48" y="54">q0 |0⟩</text><text x="48" y="94">q1 |0⟩</text><text x="48" y="134">q2 |0⟩</text>
+              <text x="48" y="168" fill="var(--fg-muted)">⋮</text><text x="48" y="204">q8 |0⟩</text>
+            </g>
+            <g stroke="currentColor" stroke-opacity=".55" stroke-width="1.2">
+              <line x1="55" y1="50" x2="700" y2="50"/><line x1="55" y1="90" x2="700" y2="90"/>
+              <line x1="55" y1="130" x2="700" y2="130"/><line x1="55" y1="200" x2="700" y2="200"/>
+            </g>
+            <g fill="var(--bg-soft)" stroke="currentColor" stroke-width="1.2">
+              <rect x="68" y="38" width="26" height="24" rx="4"/><rect x="68" y="78" width="26" height="24" rx="4"/>
+              <rect x="68" y="118" width="26" height="24" rx="4"/><rect x="68" y="188" width="26" height="24" rx="4"/>
+            </g>
+            <g fill="currentColor" text-anchor="middle" font-weight="bold">
+              <text x="81" y="55">H</text><text x="81" y="95">H</text><text x="81" y="135">H</text><text x="81" y="205">H</text>
+            </g>
+
+            <rect x="118" y="30" width="130" height="190" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="183" y="110" text-anchor="middle" fill="currentColor" font-weight="bold">Cost(γ₁)</text>
+            <text x="183" y="128" text-anchor="middle" fill="var(--fg-muted)" font-size="11">e^(−iγ₁·H_C)</text>
+            <text x="183" y="146" text-anchor="middle" fill="var(--fg-muted)" font-size="11">RZ + RZZ</text>
+            <rect x="262" y="30" width="96" height="190" rx="8" fill="none" stroke="var(--interview)" stroke-width="1.4"/>
+            <text x="310" y="110" text-anchor="middle" fill="currentColor" font-weight="bold">Mixer(β₁)</text>
+            <text x="310" y="128" text-anchor="middle" fill="var(--fg-muted)" font-size="11">RX(2β₁)</text>
+            <text x="310" y="146" text-anchor="middle" fill="var(--fg-muted)" font-size="11">на кожному</text>
+
+            <text x="392" y="130" text-anchor="middle" fill="var(--fg-muted)" font-size="20">…</text>
+
+            <rect x="425" y="30" width="130" height="190" rx="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="490" y="110" text-anchor="middle" fill="currentColor" font-weight="bold">Cost(γₚ)</text>
+            <text x="490" y="128" text-anchor="middle" fill="var(--fg-muted)" font-size="11">e^(−iγₚ·H_C)</text>
+            <rect x="569" y="30" width="96" height="190" rx="8" fill="none" stroke="var(--interview)" stroke-width="1.4"/>
+            <text x="617" y="110" text-anchor="middle" fill="currentColor" font-weight="bold">Mixer(βₚ)</text>
+            <text x="617" y="128" text-anchor="middle" fill="var(--fg-muted)" font-size="11">RX(2βₚ)</text>
+
+            <g fill="var(--bg-soft)" stroke="currentColor"><rect x="676" y="38" width="24" height="24" rx="4"/><rect x="676" y="78" width="24" height="24" rx="4"/><rect x="676" y="118" width="24" height="24" rx="4"/><rect x="676" y="188" width="24" height="24" rx="4"/></g>
+            <g fill="none" stroke="currentColor" stroke-width="1"><path d="M681,56 A7,7 0 0 1 695,56"/><path d="M681,96 A7,7 0 0 1 695,96"/><path d="M681,136 A7,7 0 0 1 695,136"/><path d="M681,206 A7,7 0 0 1 695,206"/></g>
+
+            <g stroke="var(--fg-muted)" fill="none"><path d="M118,232 L118,238 L358,238 L358,232"/><path d="M425,232 L425,238 L665,238 L665,232"/></g>
+            <text x="238" y="250" text-anchor="middle" fill="var(--fg-muted)" font-size="11">шар 1</text>
+            <text x="545" y="250" text-anchor="middle" fill="var(--fg-muted)" font-size="11">шар p</text>
+            <text x="81" y="250" text-anchor="middle" fill="var(--fg-muted)" font-size="11">суперпозиція</text>
+          </g>
+        </svg>
+        <figcaption>QAOA з p шарів має лише 2p параметрів незалежно від кількості кубітів. Глибина ж росте з кількістю
+        ZZ-доданків у H<sub>C</sub>: саме cost-шар є "дорогою" частиною схеми.</figcaption>
+      </figure>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 230" role="img" aria-label="Гібридний цикл. Ліворуч класичний оптимізатор COBYLA на CPU. Він передає параметри гамма і бета на квантову сторону праворуч, де Estimator виконує схему і повертає оцінку енергії. Цикл повторюється 40-80 разів. Після збіжності Sampler один раз знімає 10 тисяч бітрядків, які йдуть на декодування">
+          <defs><marker id="q4l-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12" text-anchor="middle">
+            <rect x="30" y="40" width="220" height="90" rx="10" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <text x="140" y="70" fill="currentColor" font-weight="bold">Класичний оптимізатор</text>
+            <text x="140" y="90" fill="var(--fg-muted)">scipy COBYLA (без градієнтів)</text>
+            <text x="140" y="110" fill="var(--fg-muted)">CPU воркера</text>
+            <rect x="490" y="40" width="220" height="90" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="600" y="70" fill="currentColor" font-weight="bold">Estimator</text>
+            <text x="600" y="90" fill="var(--fg-muted)">⟨ψ(γ,β)| H |ψ(γ,β)⟩</text>
+            <text x="600" y="110" fill="var(--fg-muted)">QPU або Aer</text>
+            <line x1="250" y1="65" x2="488" y2="65" stroke="currentColor" stroke-width="1.4" marker-end="url(#q4l-arrow)"/>
+            <text x="369" y="57" fill="currentColor">параметри (β₁..βₚ, γ₁..γₚ)</text>
+            <line x1="490" y1="108" x2="252" y2="108" stroke="var(--accent)" stroke-width="1.4" marker-end="url(#q4l-arrow)"/>
+            <text x="369" y="126" fill="var(--accent)">енергія E (≈ 40–80 ітерацій)</text>
+
+            <line x1="140" y1="130" x2="140" y2="170" stroke="currentColor" stroke-width="1.3" stroke-dasharray="4,3" marker-end="url(#q4l-arrow)"/>
+            <rect x="30" y="172" width="220" height="44" rx="9" fill="none" stroke="currentColor"/>
+            <text x="140" y="198" fill="currentColor">оптимальні γ*, β*</text>
+            <line x1="250" y1="194" x2="488" y2="194" stroke="currentColor" stroke-width="1.3" marker-end="url(#q4l-arrow)"/>
+            <text x="369" y="186" fill="var(--fg-muted)" font-size="11">один запуск</text>
+            <rect x="490" y="172" width="220" height="44" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="600" y="198" fill="currentColor">Sampler: 10 000 бітрядків</text>
+          </g>
+        </svg>
+        <figcaption>Варіаційний цикл. На реальному QPU кожна стрілка "параметри → енергія" це окремий виклик примітиву. У режимі
+        job кожен з них стоїть у черзі окремо, тому ітерації або тримають у Session, або оптимізують параметри на симуляторі.</figcaption>
+      </figure>
+
+      <div class="decision">
+        <div class="decision-title">Технічні вибори в нашому QAOA</div>
+        <table>
+          <tr><th>Питання</th><th>Вибір</th><th>Чому</th></tr>
+          <tr class="chosen"><td>Оптимізатор</td><td>COBYLA</td><td>Без градієнтів, мало викликів, стійкий до шуму в розумних межах; альтернативи: SPSA (краще на шумному QPU), Nelder–Mead</td></tr>
+          <tr class="chosen"><td>Кількість шарів p</td><td>2–3</td><td>p = 1 надто грубий, p ≥ 4 на QPU дає більше шуму, ніж користі, а на симуляторі з COBYLA часто застрягає (див. результати в <a href="#s23">розділі 23</a>)</td></tr>
+          <tr class="chosen"><td>Нормалізація H</td><td>ділимо на max |коеф.|</td><td>Кути γ стають порядку 1, ландшафт менш "рваний"</td></tr>
+          <tr><td>Цільова функція</td><td>середня енергія або CVaR</td><td>CVaR(α) усереднює лише найкращі α·100% семплів (Barkoutsos et al., 2020): нам потрібен один хороший маршрут, а не хороше середнє</td></tr>
+          <tr><td>Старт параметрів</td><td>випадковий з seed або warm-start</td><td>Кілька рестартів з різними seed дають помітно різні результати; warm-start від класичного розв'язку (Egger et al., 2021) стабілізує</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Альтернативи QAOA: що ще можна спробувати</h2>
+      <p class="section-desc">Для порівняння в бенчмарку і для розділу "що я досліджував" у README.</p>
+
+      <table>
+        <tr><th>Підхід</th><th>Ідея</th><th>Плюси</th><th>Мінуси сьогодні</th></tr>
+        <tr><td><b>QAOA</b> (наш)</td><td>Чергування cost/mixer шарів на gate-based QPU</td><td>Працює на IBM, зрозуміла теорія, 2p параметрів</td><td>Глибина росте з кількістю ZZ, штрафи "з'їдають" ймовірність</td></tr>
+        <tr><td><b>QAOA з XY-mixer</b> (Quantum Alternating Operator Ansatz, Hadfield et al., 2019)</td><td>Mixer, що не виходить з простору валідних перестановок</td><td>Не потрібні штрафи, усі семпли валідні</td><td>Значно більше гейтів у mixer, складніший стартовий стан</td></tr>
+        <tr><td><b>Квантовий відпал</b> (D-Wave Advantage/Advantage2)</td><td>Аналоговий процес, природно мінімізує Ising/QUBO</td><td>Тисячі кубітів, гібридні солвери на великі QUBO</td><td>Інша платформа (не IBM), обмежена зв'язність (embedding), перевага над класикою дискусійна</td></tr>
+        <tr><td><b>VQE</b> з hardware-efficient ansatz</td><td>Довільна параметризована схема мінімізує ⟨H⟩</td><td>Схема пристосована до топології чипа, менше SWAP</td><td>Багато параметрів, barren plateaus (зникають градієнти)</td></tr>
+        <tr><td><b>Grover Adaptive Search</b></td><td>Пошук Гровера по порогу вартості</td><td>Доведене квадратичне прискорення перебору</td><td>Потрібні глибокі схеми з оракулами, реально лише з коригуванням помилок</td></tr>
+        <tr><td><b>Готові Qiskit Functions</b> від партнерів IBM</td><td>Хмарні "чорні скриньки" для оптимізації</td><td>Мінімум коду, вбудоване пом'якшення помилок (error mitigation)</td><td>Платні плани; перевіряйте актуальний каталог і умови доступу</td></tr>
+      </table>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Декомпозиція: cluster-first, route-second</h2>
+      <p class="section-desc">Єдиний спосіб "доторкнутися" QPU на задачі розміром більше 4 точок.</p>
+
+      <p>Класичний підхід з логістики: спершу розбити точки на кластери (за географією й місткістю авто), потім
+      маршрутизувати кожен кластер окремо. Ми робимо кластеризацію класично (k-means по координатах або
+      розподіл по авто через OR-Tools), а <b>кожен маленький кластер</b> (3–4 зупинки) перетворюємо на TSP і
+      відправляємо в QAOA. Кластери незалежні, тож їх можна запускати паралельно в одному Batch.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 310" role="img" aria-label="Карта з депо в центрі і 11 точками доставки, розбитими на три кластери. Кластер A ліворуч угорі має 4 точки і потребує 16 кубітів. Кластер B праворуч угорі має 3 точки і 9 кубітів. Кластер C унизу має 4 точки і 16 кубітів. Кожен кластер має свій маршрут, що починається і закінчується в депо">
+          <text x="370" y="20" text-anchor="middle" font-size="10.5" fill="var(--fg-muted)">Крок 1 (CPU): кластеризація  ·  Крок 2 (QPU): TSP-QAOA на кожен кластер  ·  Крок 3 (CPU): склеювання + 2-opt</text>
+          <g fill="none" stroke-dasharray="6,4" stroke-width="1.3">
+            <ellipse cx="160" cy="105" rx="95" ry="62" stroke="var(--accent)"/>
+            <ellipse cx="590" cy="105" rx="80" ry="62" stroke="var(--interview)"/>
+            <ellipse cx="380" cy="245" rx="135" ry="45" stroke="var(--fun)"/>
+          </g>
+          <g fill="none" stroke-width="1.6">
+            <polyline points="370,150 205,75 125,65 100,120 175,135 370,150" stroke="var(--accent)"/>
+            <polyline points="370,150 545,75 630,85 600,140 370,150" stroke="var(--interview)"/>
+            <polyline points="370,150 290,225 330,265 420,270 475,235 370,150" stroke="var(--fun)"/>
+          </g>
+          <g fill="var(--bg)" stroke-width="1.6">
+            <circle cx="205" cy="75" r="6" stroke="var(--accent)"/><circle cx="125" cy="65" r="6" stroke="var(--accent)"/>
+            <circle cx="100" cy="120" r="6" stroke="var(--accent)"/><circle cx="175" cy="135" r="6" stroke="var(--accent)"/>
+            <circle cx="545" cy="75" r="6" stroke="var(--interview)"/><circle cx="630" cy="85" r="6" stroke="var(--interview)"/>
+            <circle cx="600" cy="140" r="6" stroke="var(--interview)"/>
+            <circle cx="290" cy="225" r="6" stroke="var(--fun)"/><circle cx="330" cy="265" r="6" stroke="var(--fun)"/>
+            <circle cx="420" cy="270" r="6" stroke="var(--fun)"/><circle cx="475" cy="235" r="6" stroke="var(--fun)"/>
+          </g>
+          <rect x="356" y="136" width="28" height="28" rx="5" fill="currentColor"/>
+          <text x="370" y="155" text-anchor="middle" font-size="11" fill="var(--bg)" font-weight="bold">D</text>
+          <text x="370" y="182" text-anchor="middle" font-size="11" fill="currentColor">депо</text>
+          <g font-size="12" font-weight="bold">
+            <text x="160" y="185" text-anchor="middle" fill="var(--accent)">A · 4 точки → 16 кубітів</text>
+            <text x="590" y="185" text-anchor="middle" fill="var(--interview)">B · 3 точки → 9 кубітів</text>
+            <text x="380" y="304" text-anchor="middle" fill="var(--fun)">C · 4 точки → 16 кубітів</text>
+          </g>
+        </svg>
+        <figcaption>Замість 11² = 121 кубіта на одну схему (нереально) маємо три незалежні схеми по 9–16 кубітів. Ціна:
+        глобальна оптимальність втрачається на межах кластерів, тому фінальний 2-opt і порівняння з OR-Tools обов'язкові.</figcaption>
+      </figure>
+
+      <p>Другий варіант декомпозиції ще ближчий до сильних сторін QPU: віддати квантовому комп'ютеру не маршрут,
+      а <b>розбиття</b>. Будуємо граф "зупинки, ребро тим важче, чим далі точки" і розв'язуємо MaxCut через QAOA
+      (1 кубіт на зупинку, без штрафів), отримуючи дві групи для двох авто. Маршрути всередині груп будує OR-Tools.
+      Тут квантова частина масштабується лінійно, а не квадратично.</p>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Постобробка: від 10 000 бітрядків до одного маршруту</h2>
+      <p class="section-desc">Результат QAOA це розподіл, а не відповідь. Відповідь робить класичний код.</p>
+
+      <div class="flow">
+        <div class="step">counts {бітрядок: частота}</div><div class="arrow">→</div>
+        <div class="step">reversed() + reshape(m, m)</div><div class="arrow">→</div>
+        <div class="step">валідна перестановка?</div><div class="arrow">→</div>
+        <div class="step">top-K найчастіших</div><div class="arrow">→</div>
+        <div class="step">2-opt кожного</div><div class="arrow">→</div>
+        <div class="step">мінімум вартості</div>
+      </div>
+      <ol>
+        <li><b>Декодування.</b> Розвертаємо бітрядок (little-endian), складаємо матрицю m×m.</li>
+        <li><b>Валідація.</b> Суми рядків і стовпців мають дорівнювати 1. Невалідні відкидаємо, але <b>рахуємо їхню частку</b>: <code>valid_fraction</code> це головна метрика якості штрафів і шуму.</li>
+        <li><b>Вибір кандидатів.</b> Беремо до 20 найчастіших валідних бітрядків. Частота корелює з якістю, але не гарантує її.</li>
+        <li><b>Ремонт.</b> 2-opt локальний пошук: розвертаємо підвідрізки маршруту, поки це зменшує довжину. На 3–4 точках він часто доводить будь-який валідний маршрут до оптимуму, тож чесний звіт містить і <code>raw_best_cost</code> (до ремонту), щоб було видно, що зробив саме QPU.</li>
+        <li><b>Невалідні семпли можна ремонтувати</b> (жадібно призначити пропущені зупинки), але тоді внесок квантової частини ще менш помітний. Для навчання краще відкидати.</li>
+      </ol>
+      <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді</span>
+        "Ваш QAOA знайшов оптимум?" Сильна відповідь: "Після 2-opt так, але 2-opt знайшов би його і з випадкового
+        старту. Тому я окремо міряю якість сирих семплів: частку валідних і ймовірність оптимального маршруту
+        в одному семплі, і порівнюю з випадковими бітрядками. На 9 кубітах QAOA піднімає ймовірність оптимуму
+        приблизно з 0.4% до 3–13%". Це показує, що ви розумієте, що саме вимірюєте.
+      </div></div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина III · Архітектура бекенду</div><div class="line"></div></div>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Принципи, на яких тримається такий бекенд</h2>
+      <p class="section-desc">Квантовий солвер повільний, дорогий, недетермінований і інколи недоступний. Архітектура має це прийняти як норму.</p>
+
+      <div class="grid2">
+        <div class="card"><b>1. Асинхронність за замовчуванням.</b><br>
+          Черга QPU може тривати хвилини або години. HTTP-запит ніколи не чекає на квантовий результат:
+          <code>202 Accepted</code> + <code>job_id</code> + polling (або webhook / SSE).</div>
+        <div class="card"><b>2. Солвер як стратегія.</b><br>
+          Один інтерфейс <code>SolverStrategy.solve(dist)</code>, три реалізації. Бізнес-код не знає, де саме
+          рахувався маршрут; додати D-Wave чи нову версію Qiskit це новий клас, а не переписування.</div>
+        <div class="card"><b>3. Класика завжди поруч.</b><br>
+          Shadow-baseline рахується для кожної задачі: це і fallback, і еталон для звіту. Без нього
+          будь-яке "квантове" число нічого не означає.</div>
+        <div class="card"><b>4. Ресурс QPU як гроші.</b><br>
+          QPU-секунди обмежені (на безкоштовному плані IBM це хвилини на місяць). Бюджет рахується в Redis,
+          роутер його перевіряє, ідемпотентність не дає заплатити двічі за той самий запит.</div>
+        <div class="card"><b>5. Симулятор як перший громадянин.</b><br>
+          Той самий код, що йде на QPU, працює на Aer локально і в CI. Відрізняється лише <code>mode</code>
+          примітиву. Тести ніколи не ходять у хмару.</div>
+        <div class="card"><b>6. Вимірюваність.</b><br>
+          Кожен запуск зберігає кубіти, двокубітні гейти, глибину, ітерації, частку валідних семплів,
+          час у черзі й на QPU, бекенд і версії бібліотек. Інакше бенчмарк неможливо відтворити.</div>
+      </div>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Загальна архітектура</h2>
+      <p class="section-desc">Ті самі будівельні блоки, що вже є в репозиторії: FastAPI, Celery, Redis, Postgres.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 360" role="img" aria-label="Архітектура. Клієнт звертається до FastAPI API з Pydantic-валідацією та Idempotency-Key. API записує задачу в Postgres і ставить її в Redis-брокер. Celery-воркери мають дві черги: classical і quantum з concurrency 1. Воркер викликає SolverRouter, який обирає одну з трьох стратегій: ClassicalORTools, QAOASimulator на Aer або QAOAIBMRuntime. Остання звертається до хмари IBM Quantum з процесорами Heron. Результати і бенчмарки пишуться в Postgres, метрики і помилки відправляються в Sentry і Prometheus">
+          <defs><marker id="q4a-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12" text-anchor="middle">
+            <rect x="12" y="150" width="100" height="56" rx="9" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="62" y="174" fill="currentColor" font-weight="bold">Клієнт</text>
+            <text x="62" y="192" fill="var(--fg-muted)" font-size="11">UI / curl</text>
+
+            <rect x="148" y="140" width="146" height="76" rx="9" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <text x="221" y="164" fill="currentColor" font-weight="bold">FastAPI</text>
+            <text x="221" y="182" fill="var(--fg-muted)" font-size="11">Pydantic · auth</text>
+            <text x="221" y="198" fill="var(--fg-muted)" font-size="11">Idempotency-Key</text>
+
+            <rect x="148" y="22" width="146" height="62" rx="9" fill="none" stroke="var(--bad)" stroke-width="1.3"/>
+            <text x="221" y="46" fill="currentColor" font-weight="bold">Redis</text>
+            <text x="221" y="64" fill="var(--fg-muted)" font-size="11">брокер · кеш · бюджет QPU</text>
+
+            <rect x="148" y="272" width="146" height="62" rx="9" fill="none" stroke="var(--info)" stroke-width="1.3"/>
+            <text x="221" y="296" fill="currentColor" font-weight="bold">Postgres</text>
+            <text x="221" y="314" fill="var(--fg-muted)" font-size="11">jobs · results · benchmarks</text>
+
+            <rect x="330" y="14" width="250" height="330" rx="12" fill="none" stroke="currentColor" stroke-dasharray="6,4"/>
+            <text x="345" y="34" text-anchor="start" fill="currentColor" font-weight="bold">Celery workers</text>
+            <rect x="345" y="44" width="220" height="32" rx="7" fill="none" stroke="currentColor"/>
+            <text x="455" y="65" fill="currentColor">черга classical (concurrency N)</text>
+            <rect x="345" y="84" width="220" height="32" rx="7" fill="none" stroke="var(--accent)"/>
+            <text x="455" y="105" fill="currentColor">черга quantum (concurrency 1)</text>
+            <rect x="345" y="134" width="220" height="40" rx="7" fill="var(--bg-soft)" stroke="currentColor" stroke-width="1.4"/>
+            <text x="455" y="159" fill="currentColor" font-weight="bold">SolverRouter</text>
+            <rect x="345" y="196" width="220" height="38" rx="7" fill="none" stroke="currentColor"/>
+            <text x="455" y="220" fill="currentColor">ClassicalORTools (+ shadow)</text>
+            <rect x="345" y="244" width="220" height="38" rx="7" fill="none" stroke="var(--accent)" stroke-dasharray="4,3"/>
+            <text x="455" y="268" fill="currentColor">QAOASimulator (Aer)</text>
+            <rect x="345" y="292" width="220" height="38" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="455" y="316" fill="currentColor">QAOAIBMRuntime</text>
+
+            <rect x="608" y="270" width="122" height="66" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.6"/>
+            <text x="669" y="294" fill="currentColor" font-weight="bold">IBM Quantum</text>
+            <text x="669" y="312" fill="var(--fg-muted)" font-size="11">Runtime · QPU</text>
+            <text x="669" y="326" fill="var(--fg-muted)" font-size="11">черга, сесії</text>
+
+            <rect x="608" y="40" width="122" height="70" rx="9" fill="none" stroke="var(--warn)" stroke-width="1.3"/>
+            <text x="669" y="66" fill="currentColor" font-weight="bold">Observability</text>
+            <text x="669" y="84" fill="var(--fg-muted)" font-size="11">Sentry · Prometheus</text>
+            <text x="669" y="100" fill="var(--fg-muted)" font-size="11">логи з job_id</text>
+          </g>
+          <g stroke="currentColor" stroke-width="1.3" fill="none">
+            <line x1="112" y1="178" x2="146" y2="178" marker-end="url(#q4a-arrow)"/>
+            <line x1="221" y1="140" x2="221" y2="86" marker-end="url(#q4a-arrow)"/>
+            <line x1="221" y1="216" x2="221" y2="270" marker-end="url(#q4a-arrow)"/>
+            <line x1="294" y1="60" x2="343" y2="60" marker-end="url(#q4a-arrow)"/>
+            <line x1="294" y1="70" x2="343" y2="98" marker-end="url(#q4a-arrow)"/>
+            <line x1="455" y1="116" x2="455" y2="132" marker-end="url(#q4a-arrow)"/>
+            <line x1="455" y1="174" x2="455" y2="194" marker-end="url(#q4a-arrow)"/>
+            <line x1="565" y1="311" x2="606" y2="305" marker-end="url(#q4a-arrow)"/>
+            <line x1="345" y1="320" x2="296" y2="310" marker-end="url(#q4a-arrow)"/>
+            <line x1="580" y1="120" x2="606" y2="90" marker-end="url(#q4a-arrow)" stroke-dasharray="4,3"/>
+          </g>
+        </svg>
+        <figcaption>Окрема черга <code>quantum</code> з concurrency 1 не дає двом воркерам одночасно відкрити сесії на QPU
+        і з'їсти місячний бюджет за годину. Класичні задачі ніколи не стоять за квантовими.</figcaption>
+      </figure>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Структура репозиторію</h2>
+      <p class="section-desc">Квантова математика ізольована від фреймворків: <code>app/quantum/</code> не імпортує FastAPI чи Celery.</p>
+
+<div class="tree"><span class="d">quantum-routing/</span>
+├── <span class="d">app/</span>
+│   ├── <span class="d">api/</span>quantum.py            <span class="c"># POST /routes/optimize, GET /jobs/{id}</span>
+│   ├── <span class="d">schemas/</span>quantum.py        <span class="c"># Pydantic: OptimizeRequest, JobRead, SolverReport</span>
+│   ├── <span class="d">quantum/</span>                  <span class="c"># чиста математика, без фреймворків</span>
+│   │   ├── qubo.py               <span class="c"># TSP -> QUBO (NumPy)</span>
+│   │   ├── ising.py              <span class="c"># QUBO -> SparsePauliOp</span>
+│   │   ├── qaoa.py               <span class="c"># ansatz, transpile, Estimator + COBYLA, Sampler</span>
+│   │   └── decode.py             <span class="c"># бітрядки -> маршрути, 2-opt, brute force</span>
+│   ├── <span class="d">solvers/</span>
+│   │   ├── base.py               <span class="c"># SolverStrategy Protocol</span>
+│   │   ├── classical.py          <span class="c"># brute force / OR-Tools adapter</span>
+│   │   ├── qaoa.py               <span class="c"># QAOASimulatorSolver, QAOAIBMRuntimeSolver</span>
+│   │   ├── router.py             <span class="c"># choose_solver(): розмір, бюджет, SLA, flag</span>
+│   │   └── registry.py           <span class="c"># SolverKind -> інстанс</span>
+│   ├── <span class="d">services/</span>distance.py       <span class="c"># haversine-матриця (як у route_optimizer)</span>
+│   ├── <span class="d">repositories/</span>quantum_jobs.py
+│   ├── <span class="d">workers/</span>tasks.py          <span class="c"># Celery: solve_route_job</span>
+│   └── <span class="d">core/</span>config.py           <span class="c"># pydantic-settings: IBM_INSTANCE, flags, ліміти</span>
+├── <span class="d">scripts/</span>benchmark.py          <span class="c"># серія прогонів -> CSV -> графіки</span>
+├── <span class="d">tests/</span>
+│   ├── test_qubo.py              <span class="c"># енергія валідного маршруту == його довжина</span>
+│   ├── test_ising.py             <span class="c"># Ising-енергія == QUBO-енергія для всіх 2^9 рядків</span>
+│   ├── test_decode.py            <span class="c"># little-endian, невалідні рядки</span>
+│   └── test_router.py
+├── docker-compose.yml            <span class="c"># api, worker-classical, worker-quantum, redis, postgres</span>
+└── pyproject.toml                <span class="c"># qiskit, qiskit-aer, qiskit-ibm-runtime, scipy, numpy</span></div>
+
+      <div class="callout good"><div class="ic">✅</div><div class="body">
+        <b>Найцінніший тест проєкту</b> короткий: для всіх 512 бітрядків на 9 кубітах порахувати енергію через
+        QUBO і через <code>SparsePauliOp</code> (наприклад, <code>Statevector.from_label(...).expectation_value(H)</code>)
+        і перевірити, що вони збігаються. Він ловить помилки знаків, коефіцієнта 1/4 і порядку кубітів до того,
+        як ви витратите хоч секунду QPU.
+      </div></div>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Pydantic-моделі та ендпоінти</h2>
+      <p class="section-desc">Контракт API однаковий для всіх солверів; відрізняються лише поля звіту.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/schemas/quantum.py</span></div>
+        <pre><code>import uuid
+from enum import StrEnum
+
+from pydantic import BaseModel, Field
+
+
+class SolverKind(StrEnum):
+    AUTO = "auto"
+    CLASSICAL = "classical"      # OR-Tools / brute force
+    QAOA_SIM = "qaoa_sim"        # Qiskit Aer on our worker
+    QAOA_IBM = "qaoa_ibm"        # real IBM QPU through Qiskit Runtime
+
+
+class Point(BaseModel):
+    id: str
+    lat: float = Field(ge=-90, le=90)
+    lng: float = Field(ge=-180, le=180)
+
+
+class OptimizeRequest(BaseModel):
+    depot: Point
+    stops: list[Point] = Field(min_length=2, max_length=40)
+    solver: SolverKind = SolverKind.AUTO
+    reps: int = Field(default=2, ge=1, le=5)          # QAOA layers p
+    shots: int = Field(default=10_000, ge=100, le=100_000)
+    deadline_seconds: int = Field(default=600, ge=5)  # SLA: when the answer is still useful
+
+
+class SolverReport(BaseModel):
+    solver: SolverKind
+    tour: list[str] | None              # point ids, depot first and last
+    cost_km: float | None
+    wall_time_s: float
+    qpu_time_s: float | None = None
+    num_qubits: int | None = None
+    two_qubit_gates: int | None = None
+    valid_fraction: float | None = None   # share of samples that were valid tours
+    gap_vs_classical_pct: float | None = None
+
+
+class JobStatus(StrEnum):
+    PENDING = "pending"
+    RUNNING = "running"
+    DONE = "done"
+    FAILED = "failed"
+
+
+class JobRead(BaseModel):
+    id: uuid.UUID
+    status: JobStatus
+    requested_solver: SolverKind
+    chosen_solver: SolverKind | None = None
+    fallback_reason: str | None = None
+    result: SolverReport | None = None
+    baseline: SolverReport | None = None   # classical shadow run, always present when done</code></pre>
+      </div>
+
+      <p>Зверніть увагу на <code>max_length=40</code> для зупинок: API приймає реалістичні задачі, а роутер сам
+      вирішить, що 40 точок на QPU не підуть. <code>deadline_seconds</code> це SLA клієнта: якщо очікувана черга QPU
+      довша, квантовий шлях не вибирається.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/api/quantum.py</span></div>
+        <pre><code>import hashlib
+import json
+import uuid
+
+from fastapi import APIRouter, Depends, Header, HTTPException, status
+
+from app.api.deps import get_job_repository, get_router_context
+from app.schemas.quantum import JobRead, OptimizeRequest, SolverKind
+from app.solvers.router import choose_solver
+from app.workers.tasks import solve_route_job
+
+router = APIRouter(prefix="/api/v1/quantum", tags=["quantum"])
+
+
+def problem_fingerprint(body: OptimizeRequest) -&gt; str:
+    canonical = json.dumps(body.model_dump(mode="json"), sort_keys=True)
+    return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+@router.post("/routes/optimize", response_model=JobRead, status_code=status.HTTP_202_ACCEPTED)
+def optimize(
+    body: OptimizeRequest,
+    idempotency_key: str | None = Header(default=None),
+    jobs=Depends(get_job_repository),
+    ctx=Depends(get_router_context),
+) -&gt; JobRead:
+    key = idempotency_key or problem_fingerprint(body)
+    if existing := jobs.find_by_key(key):  # same request again: same job, no second QPU bill
+        return existing
+    decision = choose_solver(body.solver, len(body.stops), body.deadline_seconds, ctx)
+    job = jobs.create(key=key, request=body, chosen=decision.solver, reason=decision.reason)
+    queue = "classical" if decision.solver == SolverKind.CLASSICAL else "quantum"
+    solve_route_job.apply_async(args=[str(job.id)], queue=queue)
+    return job
+
+
+@router.get("/jobs/{job_id}", response_model=JobRead)
+def get_job(job_id: uuid.UUID, jobs=Depends(get_job_repository)) -&gt; JobRead:
+    job = jobs.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="job not found")
+    return job</code></pre>
+      </div>
+
+      <table>
+        <tr><th>Ендпоінт</th><th>Відповідь</th><th>Нотатки</th></tr>
+        <tr><td><code>POST /api/v1/quantum/routes/optimize</code></td><td><code>202</code> + <code>JobRead</code> зі статусом <code>pending</code></td><td>Той самий <code>Idempotency-Key</code> або той самий payload повертає наявну задачу</td></tr>
+        <tr><td><code>GET /api/v1/quantum/jobs/{id}</code></td><td><code>200</code> + <code>JobRead</code></td><td>Після <code>done</code> містить <code>result</code> і <code>baseline</code></td></tr>
+        <tr><td><code>GET /api/v1/quantum/benchmarks</code></td><td>агрегати по солверах</td><td>Для дашборду з <a href="#s24">етапу 4</a></td></tr>
+      </table>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Стратегії солверів і роутер</h2>
+      <p class="section-desc">Strategy pattern (див. <a href="../python-tutorials/13-design-patterns.html">туторіал про патерни</a>) плюс явна політика вибору.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/solvers/base.py</span></div>
+        <pre><code>from typing import Protocol
+
+import numpy as np
+
+from app.schemas.quantum import SolverKind
+
+
+class SolveOutcome:
+    def __init__(self, tour: list[int] | None, cost: float | None, meta: dict) -&gt; None:
+        self.tour, self.cost, self.meta = tour, cost, meta
+
+
+class SolverStrategy(Protocol):
+    kind: SolverKind
+
+    def solve(self, dist: np.ndarray, *, reps: int, shots: int) -&gt; SolveOutcome: ...</code></pre>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 330" role="img" aria-label="Блок-схема роутера солверів. Запит з solver auto потрапляє на перше питання: квантовий прапорець увімкнено і зупинок не більше 4? Якщо ні, обирається OR-Tools. Якщо так, друге питання: чи є бюджет QPU-секунд і чи дедлайн довший за очікувану чергу? Якщо так, обирається QAOAIBMRuntime, якщо ні, QAOA на симуляторі Aer. Над усім позначено, що класичний baseline рахується завжди в тіньовому режимі">
+          <defs><marker id="q4r-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12" text-anchor="middle">
+            <rect x="160" y="12" width="420" height="34" rx="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="370" y="34" fill="var(--good)">Завжди: класичний baseline (shadow) для звіту і fallback</text>
+
+            <rect x="10" y="140" width="130" height="50" rx="9" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="75" y="161" fill="currentColor" font-weight="bold">POST optimize</text>
+            <text x="75" y="178" fill="var(--fg-muted)" font-size="11">solver=auto</text>
+
+            <polygon points="270,105 370,165 270,225 170,165" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="270" y="158" fill="currentColor">flag on і</text>
+            <text x="270" y="175" fill="currentColor">зупинок ≤ 4?</text>
+
+            <polygon points="510,105 620,165 510,225 400,165" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="510" y="152" fill="currentColor">є бюджет QPU і</text>
+            <text x="510" y="169" fill="currentColor">черга + запуск</text>
+            <text x="510" y="186" fill="currentColor">&lt; дедлайн?</text>
+
+            <rect x="205" y="268" width="130" height="46" rx="9" fill="none" stroke="currentColor" stroke-width="1.4"/>
+            <text x="270" y="290" fill="currentColor" font-weight="bold">OR-Tools</text>
+            <text x="270" y="306" fill="var(--fg-muted)" font-size="11">classical</text>
+            <rect x="445" y="268" width="130" height="46" rx="9" fill="none" stroke="var(--accent)" stroke-dasharray="4,3" stroke-width="1.4"/>
+            <text x="510" y="290" fill="currentColor" font-weight="bold">QAOA на Aer</text>
+            <text x="510" y="306" fill="var(--fg-muted)" font-size="11">qaoa_sim</text>
+            <rect x="640" y="142" width="94" height="46" rx="9" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="687" y="164" fill="currentColor" font-weight="bold">IBM QPU</text>
+            <text x="687" y="180" fill="var(--fg-muted)" font-size="11">qaoa_ibm</text>
+
+            <text x="282" y="250" text-anchor="start" fill="var(--bad)" font-size="11">ні</text>
+            <text x="385" y="157" fill="var(--good)" font-size="11">так</text>
+            <text x="522" y="250" text-anchor="start" fill="var(--bad)" font-size="11">ні</text>
+            <text x="630" y="157" fill="var(--good)" font-size="11">так</text>
+          </g>
+          <g stroke="currentColor" stroke-width="1.3" fill="none">
+            <line x1="140" y1="165" x2="168" y2="165" marker-end="url(#q4r-arrow)"/>
+            <line x1="270" y1="225" x2="270" y2="266" marker-end="url(#q4r-arrow)"/>
+            <line x1="370" y1="165" x2="398" y2="165" marker-end="url(#q4r-arrow)"/>
+            <line x1="510" y1="225" x2="510" y2="266" marker-end="url(#q4r-arrow)"/>
+            <line x1="620" y1="165" x2="638" y2="165" marker-end="url(#q4r-arrow)"/>
+          </g>
+        </svg>
+        <figcaption>Політика вибору солвера як чиста функція: легко тестувати, легко пояснити в логах
+        (<code>reason</code> зберігається в задачі й повертається клієнтові).</figcaption>
+      </figure>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/solvers/router.py</span></div>
+        <pre><code>from dataclasses import dataclass
+
+from app.schemas.quantum import SolverKind
+
+MAX_STOPS_SIM = 4    # 16 qubits: exact simulation in seconds
+MAX_STOPS_QPU = 4    # deeper circuits drown in noise on today's hardware
+
+
+@dataclass
+class RoutingDecision:
+    solver: SolverKind
+    reason: str
+
+
+@dataclass
+class RouterContext:
+    quantum_enabled: bool        # feature flag (per tenant)
+    qpu_seconds_left: float      # monthly budget, kept in Redis
+    expected_queue_s: float      # from backend.status().pending_jobs and history
+    estimated_qpu_s: float
+
+
+def choose_solver(requested: SolverKind, num_stops: int, deadline_s: int, ctx: RouterContext) -&gt; RoutingDecision:
+    if requested == SolverKind.CLASSICAL or not ctx.quantum_enabled:
+        return RoutingDecision(SolverKind.CLASSICAL, "requested classical or quantum flag is off")
+    if num_stops &gt; MAX_STOPS_SIM:
+        return RoutingDecision(SolverKind.CLASSICAL, f"{num_stops} stops is too large for a single QAOA run")
+
+    qpu_ok = (
+        num_stops &lt;= MAX_STOPS_QPU
+        and ctx.qpu_seconds_left &gt;= ctx.estimated_qpu_s
+        and ctx.expected_queue_s + ctx.estimated_qpu_s &lt; deadline_s
+    )
+    if requested == SolverKind.QAOA_IBM:
+        return (RoutingDecision(SolverKind.QAOA_IBM, "explicitly requested") if qpu_ok
+                else RoutingDecision(SolverKind.QAOA_SIM, "no QPU budget or the deadline is shorter than the queue"))
+    if requested == SolverKind.AUTO and qpu_ok:
+        return RoutingDecision(SolverKind.QAOA_IBM, "small instance, budget and deadline allow a QPU run")
+    return RoutingDecision(SolverKind.QAOA_SIM, "small instance, simulator is enough")</code></pre>
+      </div>
+
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        <code>expected_queue_s</code> можна оцінювати з <code>backend.status().pending_jobs</code> і з історії власних задач
+        (середній час від submit до старту на цьому бекенді). Точність тут не критична: важливо, щоб SLA-перевірка
+        взагалі існувала і щоб рішення було записане з причиною.
+      </div></div>
+    </section>
+
+    <section id="s16">
+      <h2><span class="num">16</span> Життєвий цикл задачі: Celery, ідемпотентність, кешування</h2>
+      <p class="section-desc">Від POST до готового маршруту через чергу, воркер і хмару IBM.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 360" role="img" aria-label="Діаграма послідовності з п'ятьма учасниками: клієнт, FastAPI, Postgres і Redis, Celery-воркер, IBM Runtime. Клієнт надсилає POST optimize з Idempotency-Key. API перевіряє ключ і створює задачу pending, відповідає 202 з job_id і ставить задачу в чергу. Воркер рахує класичний baseline, потім відкриває сесію в IBM Runtime і в циклі надсилає Estimator з параметрами, отримуючи енергію. Потім один Sampler повертає бітрядки. Воркер зберігає результат і звіт. Клієнт опитує GET jobs і отримує done з маршрутом">
+          <defs><marker id="q4s-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="11.5" text-anchor="middle">
+            <rect x="20" y="10" width="100" height="30" rx="7" fill="none" stroke="currentColor"/><text x="70" y="30" fill="currentColor" font-weight="bold">Клієнт</text>
+            <rect x="160" y="10" width="100" height="30" rx="7" fill="none" stroke="currentColor"/><text x="210" y="30" fill="currentColor" font-weight="bold">FastAPI</text>
+            <rect x="300" y="10" width="100" height="30" rx="7" fill="none" stroke="currentColor"/><text x="350" y="30" fill="currentColor" font-weight="bold">PG / Redis</text>
+            <rect x="440" y="10" width="100" height="30" rx="7" fill="none" stroke="currentColor"/><text x="490" y="30" fill="currentColor" font-weight="bold">Worker</text>
+            <rect x="580" y="10" width="140" height="30" rx="7" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="650" y="30" fill="currentColor" font-weight="bold">IBM Runtime</text>
+          </g>
+          <g stroke="currentColor" stroke-opacity=".35" stroke-dasharray="3,4">
+            <line x1="70" y1="40" x2="70" y2="350"/><line x1="210" y1="40" x2="210" y2="350"/>
+            <line x1="350" y1="40" x2="350" y2="350"/><line x1="490" y1="40" x2="490" y2="350"/><line x1="650" y1="40" x2="650" y2="350"/>
+          </g>
+          <rect x="455" y="198" width="270" height="72" rx="6" fill="none" stroke="var(--accent)" stroke-dasharray="5,3"/>
+          <text x="462" y="211" font-size="10.5" fill="var(--accent)">loop COBYLA · Session</text>
+          <g font-size="11" fill="currentColor" stroke-width="1.2">
+            <line x1="70" y1="62" x2="208" y2="62" stroke="currentColor" marker-end="url(#q4s-arrow)"/>
+            <text x="140" y="56" text-anchor="middle">POST optimize + Idempotency-Key</text>
+            <line x1="210" y1="86" x2="348" y2="86" stroke="currentColor" marker-end="url(#q4s-arrow)"/>
+            <text x="280" y="80" text-anchor="middle">ключ? → insert pending</text>
+            <line x1="210" y1="108" x2="72" y2="108" stroke="currentColor" stroke-dasharray="5,3" marker-end="url(#q4s-arrow)"/>
+            <text x="140" y="102" text-anchor="middle">202 {job_id}</text>
+            <line x1="210" y1="130" x2="488" y2="130" stroke="currentColor" marker-end="url(#q4s-arrow)"/>
+            <text x="350" y="124" text-anchor="middle">apply_async(queue="quantum") через брокер</text>
+            <path d="M490,150 h30 v16 h-28" fill="none" stroke="currentColor" marker-end="url(#q4s-arrow)"/>
+            <text x="560" y="162" text-anchor="start">baseline (CPU)</text>
+            <line x1="490" y1="188" x2="648" y2="188" stroke="currentColor" marker-end="url(#q4s-arrow)"/>
+            <text x="570" y="183" text-anchor="middle">Session(backend)</text>
+            <line x1="490" y1="230" x2="648" y2="230" stroke="currentColor" marker-end="url(#q4s-arrow)"/>
+            <text x="570" y="225" text-anchor="middle">Estimator (isa, H, θ)</text>
+            <line x1="650" y1="252" x2="492" y2="252" stroke="var(--accent)" stroke-dasharray="5,3" marker-end="url(#q4s-arrow)"/>
+            <text x="570" y="264" text-anchor="middle" fill="var(--accent)">evs (енергія)</text>
+            <line x1="490" y1="288" x2="648" y2="288" stroke="currentColor" marker-end="url(#q4s-arrow)"/>
+            <text x="570" y="283" text-anchor="middle">Sampler (isa, θ*) → counts</text>
+            <line x1="490" y1="310" x2="352" y2="310" stroke="currentColor" marker-end="url(#q4s-arrow)"/>
+            <text x="420" y="304" text-anchor="middle">result + звіт</text>
+            <line x1="70" y1="336" x2="208" y2="336" stroke="currentColor" marker-end="url(#q4s-arrow)"/>
+            <text x="140" y="330" text-anchor="middle">GET /jobs/{id} → done</text>
+          </g>
+        </svg>
+        <figcaption>HTTP-частина займає мілісекунди. Усе довге відбувається у воркері; клієнт опитує статус.
+        Повторний POST з тим самим ключем не створює нової задачі і не витрачає QPU.</figcaption>
+      </figure>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/workers/tasks.py</span></div>
+        <pre><code>import time
+import uuid
+
+from celery import shared_task
+
+from app.repositories.quantum_jobs import JobRepository
+from app.schemas.quantum import JobStatus, SolverKind
+from app.services.distance import distance_matrix_km
+from app.solvers.registry import get_solver
+
+QUANTUM_ERRORS = (TimeoutError, ConnectionError)  # plus IBMRuntimeError in real code
+
+
+@shared_task(bind=True, acks_late=True, max_retries=2, soft_time_limit=1800, time_limit=1900)
+def solve_route_job(self, job_id: str) -&gt; None:
+    repo = JobRepository()
+    job = repo.get(uuid.UUID(job_id))
+    if job.status == JobStatus.DONE:  # idempotent: redelivered message, nothing to do
+        return
+    repo.mark_running(job.id)
+    dist = distance_matrix_km(job.request.depot, job.request.stops)
+
+    # 1) classical shadow baseline: always, it is cheap and it is our fallback
+    started = time.perf_counter()
+    baseline = get_solver(SolverKind.CLASSICAL).solve(dist, reps=0, shots=0)
+    repo.save_baseline(job.id, baseline, wall_time_s=time.perf_counter() - started)
+
+    # 2) the chosen solver
+    started = time.perf_counter()
+    try:
+        outcome = get_solver(job.chosen_solver).solve(dist, reps=job.request.reps, shots=job.request.shots)
+    except QUANTUM_ERRORS as exc:
+        if self.request.retries &lt; self.max_retries:
+            raise self.retry(exc=exc, countdown=30)
+        repo.finish_with_fallback(job.id, baseline, reason=f"quantum solver failed: {exc!r}")
+        return
+    repo.finish(job.id, outcome, wall_time_s=time.perf_counter() - started, baseline=baseline)</code></pre>
+      </div>
+
+      <h3>Чому саме так</h3>
+      <ul>
+        <li><b><code>acks_late=True</code></b>: якщо воркер впаде посеред сесії, повідомлення повернеться в чергу.
+        Тому задача <b>ідемпотентна</b>: перевіряє, чи вже <code>DONE</code>, перш ніж щось рахувати.</li>
+        <li><b><code>soft_time_limit</code></b>: квантова задача не може висіти вічно. Після ліміту повертаємо baseline з причиною.</li>
+        <li><b>Retry лише на транзитні помилки</b> (мережа, таймаут Runtime). Помилки валідації чи "схема завелика" не ретраяться.</li>
+        <li><b>Кеш за відбитком задачі</b>: SHA-256 канонічного JSON (<code>problem_fingerprint</code>). Однакова задача повертає
+        готовий результат. Для QAOA це ще й економія: оптимальні γ, β для схожих задач можна кешувати як warm-start.</li>
+      </ul>
+    </section>
+
+    <section id="s17">
+      <h2><span class="num">17</span> Бюджет QPU, feature flags і спостережуваність</h2>
+      <p class="section-desc">Операційна частина, яку зазвичай пропускають у демо і про яку питають на співбесідах.</p>
+
+      <table>
+        <tr><th>Механізм</th><th>Реалізація</th><th>Навіщо</th></tr>
+        <tr><td>Бюджет QPU-секунд</td><td>Redis-лічильник <code>qpu:budget:{YYYY-MM}</code>, <code>INCRBYFLOAT</code> після кожної задачі з usage з метаданих job</td><td>Не вийти за безкоштовний ліміт / рахунок; роутер бачить залишок</td></tr>
+        <tr><td>Feature flag</td><td><code>QUANTUM_ENABLED</code> у pydantic-settings + per-tenant прапорець у БД</td><td>Миттєво вимкнути квантовий шлях без деплою (інцидент у IBM, кінчився бюджет)</td></tr>
+        <tr><td>Секрети</td><td>Токен IBM лише в env / secret manager; <code>QiskitRuntimeService(channel="ibm_quantum_platform", token=..., instance=...)</code> у фабриці</td><td>Токен у репозиторії це класичний витік</td></tr>
+        <tr><td>Метрики</td><td>Histogram <code>solver_wall_seconds{solver}</code>, gauge <code>qpu_budget_left</code>, counter <code>solver_fallback_total{reason}</code>, histogram <code>valid_fraction</code></td><td>Видно, як часто квантовий шлях реально працює</td></tr>
+        <tr><td>Трасування і помилки</td><td>Sentry з тегами <code>job_id</code>, <code>solver</code>, <code>backend</code>, <code>ibm_job_id</code></td><td>Зв'язати нашу задачу з job у консолі IBM</td></tr>
+        <tr><td>Відтворюваність</td><td>Зберігати seed, версії qiskit / qiskit-ibm-runtime / qiskit-aer, ім'я бекенду, кількість гейтів, глибину</td><td>Без цього бенчмарк через місяць нічого не варто</td></tr>
+      </table>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Умови доступу змінюються.</b> Станом на 2025–2026 у IBM Quantum Platform був безкоштовний Open Plan з кількома хвилинами
+        QPU на місяць, і на ньому не були доступні сесії (лише job mode і batch). Перевірте актуальні умови в документації IBM перед
+        тим, як закладати їх у роутер. Саме тому в коді режим виконання це параметр, а не константа.
+      </div></div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина IV · Код</div><div class="line"></div></div>
+
+    <div class="callout info"><div class="ic">🧪</div><div class="body">
+      Модулі <code>app/quantum/*</code> і солвери нижче запущено локально на <b>Qiskit 2.5.2, qiskit-aer 0.17.2,
+      qiskit-ibm-runtime 0.50.0, Python 3.13</b>: QUBO, Ising і QAOA на AerSimulator відпрацьовують, роутер протестовано.
+      Код API і Celery-задачі синтаксично перевірено, але він спирається на репозиторій і залежності
+      (<code>JobRepository</code>, <code>get_solver</code>, <code>deps</code>), які ви напишете самі. Реальний QPU в цьому прогоні не викликався.
+    </div></div>
+
+    <section id="s18">
+      <h2><span class="num">18</span> QUBO для TSP на NumPy</h2>
+      <p class="section-desc">Депо + 3 зупинки = 9 кубітів. Матриця відстаней у кілометрах.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/quantum/qubo.py</span></div>
+        <pre><code>"""TSP -&gt; QUBO. Depot is node 0 and is fixed at the start/end of the tour,
+so a problem with m stops needs m*m binary variables x[i, t]:
+x[i, t] = 1  &lt;=&gt;  stop i+1 is visited at position t."""
+import itertools
+
+import numpy as np
+
+
+def var_index(i: int, t: int, m: int) -&gt; int:
+    return i * m + t
+
+
+def build_tsp_qubo(dist: np.ndarray, penalty: float | None = None) -&gt; tuple[np.ndarray, float, float]:
+    """Returns (Q, offset, penalty): energy(x) = x @ Q @ x + offset, Q upper-triangular."""
+    m = dist.shape[0] - 1
+    Q = np.zeros((m * m, m * m))
+    offset = 0.0
+    A = penalty if penalty is not None else 2.0 * dist.max()
+
+    def add(a: int, b: int, w: float) -&gt; None:
+        i, j = min(a, b), max(a, b)
+        Q[i, j] += w
+
+    def one_hot(indices: list[int]) -&gt; None:
+        # A * (1 - sum x)^2 = A - A*sum x + 2A*sum_{a&lt;b} x_a x_b   (x^2 == x)
+        nonlocal offset
+        offset += A
+        for a in indices:
+            add(a, a, -A)
+        for a, b in itertools.combinations(indices, 2):
+            add(a, b, 2 * A)
+
+    for i in range(m):  # every stop is visited exactly once
+        one_hot([var_index(i, t, m) for t in range(m)])
+    for t in range(m):  # exactly one stop per position
+        one_hot([var_index(i, t, m) for i in range(m)])
+
+    for i in range(m):  # depot -&gt; first stop, last stop -&gt; depot
+        add(var_index(i, 0, m), var_index(i, 0, m), dist[0, i + 1])
+        add(var_index(i, m - 1, m), var_index(i, m - 1, m), dist[i + 1, 0])
+    for t in range(m - 1):  # stop i at t, stop j at t+1
+        for i, j in itertools.permutations(range(m), 2):
+            add(var_index(i, t, m), var_index(j, t + 1, m), dist[i + 1, j + 1])
+    return Q, offset, A
+
+
+def qubo_energy(Q: np.ndarray, offset: float, x: np.ndarray) -&gt; float:
+    return float(x @ Q @ x + offset)</code></pre>
+      </div>
+      <p>Матриця <code>Q</code> верхньотрикутна: <code>Q[i, i]</code> лінійні коефіцієнти (бо <span class="math">x² = x</span>), <code>Q[i, j]</code> для
+      <span class="math">i &lt; j</span> квадратичні. Для нашої матриці відстаней
+      <code>[[0,2,9,10],[2,0,6,4],[9,6,0,3],[10,4,3,0]]</code> штраф <span class="math">A = 2 · 10 = 20</span>, енергія маршруту
+      0→1→3→2→0 дорівнює 18.0, тобто рівно його довжині, бо всі штрафи нульові.</p>
+    </section>
+
+    <section id="s19">
+      <h2><span class="num">19</span> Ising → SparsePauliOp</h2>
+      <p class="section-desc">Ручне перетворення: 20 рядків, зате видно кожен коефіцієнт.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/quantum/ising.py</span></div>
+        <pre><code>"""QUBO -&gt; Ising Hamiltonian as a SparsePauliOp.
+
+Substitution x = (1 - z) / 2, where z = +1 for |0&gt; and z = -1 for |1&gt;."""
+import numpy as np
+from qiskit.quantum_info import SparsePauliOp
+
+
+def qubo_to_ising(Q: np.ndarray, offset: float) -&gt; tuple[SparsePauliOp, float]:
+    n = Q.shape[0]
+    h = np.zeros(n)
+    terms: list[tuple[str, list[int], float]] = []
+    for i in range(n):
+        h[i] -= Q[i, i] / 2
+        offset += Q[i, i] / 2
+        for j in range(i + 1, n):
+            b = Q[i, j]
+            if b == 0:
+                continue
+            h[i] -= b / 4
+            h[j] -= b / 4
+            offset += b / 4
+            terms.append(("ZZ", [i, j], b / 4))
+    terms += [("Z", [i], h[i]) for i in range(n) if h[i] != 0]
+    return SparsePauliOp.from_sparse_list(terms, num_qubits=n).simplify(), offset</code></pre>
+      </div>
+      <p>Для 3 зупинок результат має 9 кубітів і 39 доданків Паулі (30 ZZ + 9 Z). Константу <code>offset</code> повертаємо
+      окремо: на оптимізацію вона не впливає, але потрібна, щоб порівнювати енергію з довжиною маршруту.</p>
+
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        <b>Альтернатива: <code>qiskit-optimization</code>.</b> Пакет (тепер у qiskit-community) вміє будувати
+        <code>QuadraticProgram</code> для TSP (<code>qiskit_optimization.applications.Tsp</code>), конвертувати обмеження в штрафи
+        (<code>QuadraticProgramToQubo</code>) і віддавати Ising через <code>to_ising()</code>. Це зручно, але сумісність його релізів з
+        Qiskit 2.x варто перевіряти за changelog перед встановленням. Для навчання ручна версія корисніша: ви бачите,
+        звідки береться кожен ZZ.
+      </div></div>
+    </section>
+
+    <section id="s20">
+      <h2><span class="num">20</span> QAOA: QAOAAnsatz, транспіляція, Estimator + COBYLA</h2>
+      <p class="section-desc">Один і той самий код для Aer і реального QPU: змінюється лише <code>mode</code>.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/quantum/qaoa.py</span></div>
+        <pre><code>"""QAOA loop: Estimator for the energy, COBYLA for (beta, gamma), Sampler for bitstrings."""
+from dataclasses import dataclass, field
+
+import numpy as np
+from qiskit.circuit.library import QAOAAnsatz
+from qiskit.quantum_info import SparsePauliOp
+from qiskit.transpiler import generate_preset_pass_manager
+from scipy.optimize import minimize
+
+try:  # qiskit-ibm-runtime &gt;= 0.50: client-side primitives, same PUB interface
+    from qiskit_ibm_runtime.executor_estimator import Estimator
+    from qiskit_ibm_runtime.executor_sampler import Sampler
+except ImportError:  # older qiskit-ibm-runtime
+    from qiskit_ibm_runtime import EstimatorV2 as Estimator, SamplerV2 as Sampler
+
+
+@dataclass
+class QAOARun:
+    params: np.ndarray
+    energy_history: list[float] = field(default_factory=list)
+    counts: dict[str, int] = field(default_factory=dict)
+    num_qubits: int = 0
+    two_qubit_gates: int = 0
+    depth: int = 0
+
+
+def run_qaoa(hamiltonian: SparsePauliOp, mode, backend, *, reps: int = 2, shots: int = 10_000,
+             maxiter: int = 150, seed: int = 7, initial_params: np.ndarray | None = None) -&gt; QAOARun:
+    """mode: a backend (job mode), Session or Batch; backend is used for transpilation."""
+    h = (hamiltonian / np.max(np.abs(hamiltonian.coeffs))).simplify()  # flatter landscape for COBYLA
+
+    ansatz = QAOAAnsatz(cost_operator=h, reps=reps)
+    ansatz.measure_all()
+    pm = generate_preset_pass_manager(optimization_level=3, backend=backend, seed_transpiler=seed)
+    isa = pm.run(ansatz)
+    isa_h = h.apply_layout(isa.layout)  # observable must follow the qubit layout
+
+    estimator = Estimator(mode=mode)
+    run = QAOARun(params=np.array([]), num_qubits=h.num_qubits, depth=isa.depth(),
+                  two_qubit_gates=sum(isa.count_ops().get(g, 0) for g in ("cz", "ecr", "cx", "rzz")))
+
+    def energy(params: np.ndarray) -&gt; float:
+        result = estimator.run([(isa, isa_h, params)]).result()
+        value = float(result[0].data.evs)
+        run.energy_history.append(value)
+        return value
+
+    # ansatz.parameters are ordered [beta_0..beta_{p-1}, gamma_0..gamma_{p-1}]
+    x0 = initial_params if initial_params is not None else np.random.default_rng(seed).uniform(0, np.pi, 2 * reps)
+    opt = minimize(energy, x0, method="COBYLA", options={"maxiter": maxiter})
+    run.params = opt.x
+
+    sampler = Sampler(mode=mode)
+    pub_result = sampler.run([(isa, opt.x)], shots=shots).result()[0]
+    run.counts = pub_result.data.meas.get_counts()
+    return run</code></pre>
+      </div>
+
+      <ul>
+        <li><b><code>generate_preset_pass_manager</code></b> перетворює абстрактну схему на ISA-схему: лише нативні гейти бекенду і лише
+        дозволені пари кубітів. QPU IBM приймають тільки ISA-схеми.</li>
+        <li><b><code>apply_layout</code></b>: транспілятор переставляє логічні кубіти на фізичні (наш q0 може стати фізичним 57).
+        Оператор треба перенумерувати так само, інакше Estimator порахує енергію зовсім іншої задачі.</li>
+        <li><b>Порядок параметрів</b>: <code>ansatz.parameters</code> сортуються за іменем, тому спершу всі β, потім усі γ.</li>
+        <li><b>PUB</b> (Primitive Unified Bloc) <code>(circuit, observable, params)</code> для Estimator і <code>(circuit, params)</code> для Sampler:
+        у V2-примітивах один виклик може містити багато PUB, наприклад усі кластери з <a href="#s9">декомпозиції</a>.</li>
+      </ul>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Імпорти примітивів змінюються.</b> У qiskit-ibm-runtime 0.50 класи <code>EstimatorV2</code> і <code>SamplerV2</code>
+        позначено як deprecated на користь клієнтських <code>executor_estimator.Estimator</code> / <code>executor_sampler.Sampler</code>
+        з тим самим інтерфейсом PUB (ми це бачили в попередженнях під час прогону). Тому в коді <code>try/except ImportError</code>.
+        Також у Qiskit 2.x поряд з класом <code>QAOAAnsatz</code> з'явилась функція <code>qaoa_ansatz</code>; старі
+        класи-"blueprint" поступово переводять на функції. Перед стартом проєкту відкрийте release notes обох пакетів.
+      </div></div>
+    </section>
+
+    <section id="s21">
+      <h2><span class="num">21</span> Семплінг, декодування і вибір маршруту</h2>
+      <p class="section-desc">Класичний код, що перетворює <code>counts</code> на відповідь і на метрики.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/quantum/decode.py</span></div>
+        <pre><code>"""Bitstrings -&gt; tours: validate, repair with 2-opt, pick the best."""
+import itertools
+
+import numpy as np
+
+Tour = list[int]
+
+
+def decode(bitstring: str, m: int) -&gt; Tour | None:
+    # Qiskit is little-endian: the rightmost character is qubit 0
+    bits = np.fromiter((int(b) for b in reversed(bitstring)), dtype=int)
+    X = bits.reshape(m, m)  # rows: stops, columns: positions
+    if not ((X.sum(axis=0) == 1).all() and (X.sum(axis=1) == 1).all()):
+        return None
+    return [0, *(int(np.argmax(X[:, t])) + 1 for t in range(m)), 0]
+
+
+def tour_cost(tour: Tour, dist: np.ndarray) -&gt; float:
+    return float(sum(dist[a, b] for a, b in zip(tour, tour[1:])))
+
+
+def two_opt(tour: Tour, dist: np.ndarray) -&gt; Tour:
+    best, improved = tour[:], True
+    while improved:
+        improved = False
+        for i, j in itertools.combinations(range(1, len(best) - 1), 2):
+            candidate = best[:i] + best[i:j + 1][::-1] + best[j + 1:]
+            if tour_cost(candidate, dist) &lt; tour_cost(best, dist) - 1e-9:
+                best, improved = candidate, True
+    return best
+
+
+def pick_best(counts: dict[str, int], dist: np.ndarray, m: int) -&gt; tuple[Tour | None, dict]:
+    shots = sum(counts.values())
+    valid = {bs: c for bs, c in counts.items() if decode(bs, m)}
+    stats = {"shots": shots, "valid_fraction": sum(valid.values()) / shots}
+    if not valid:
+        return None, stats
+    # top-K most frequent valid samples, each polished by 2-opt
+    top = sorted(valid, key=valid.get, reverse=True)[:20]
+    tours = [two_opt(decode(bs, m), dist) for bs in top]
+    best = min(tours, key=lambda t: tour_cost(t, dist))
+    stats["raw_best_cost"] = min(tour_cost(decode(bs, m), dist) for bs in valid)
+    return best, stats
+
+
+def brute_force(dist: np.ndarray) -&gt; tuple[Tour, float]:
+    m = dist.shape[0] - 1
+    tours = ([0, *p, 0] for p in itertools.permutations(range(1, m + 1)))
+    best = min(tours, key=lambda t: tour_cost(t, dist))
+    return best, tour_cost(best, dist)</code></pre>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">демо-запуск на AerSimulator (вивід)</span></div>
+        <pre><code>valid tour 0-1-3-2-0 energy: 18.0
+qubits: 9 pauli terms: 39 penalty A: 20.0
+QAOA: [0, 2, 3, 1, 0] {'shots': 10000, 'valid_fraction': 0.2171, 'raw_best_cost': 18.0} iters: 56
+brute force: ([0, 1, 3, 2, 0], 18.0)</code></pre>
+      </div>
+      <p>Маршрути <code>[0, 2, 3, 1, 0]</code> і <code>[0, 1, 3, 2, 0]</code> це той самий цикл у різних напрямках (матриця
+      симетрична), обидва довжиною 18. Валідними виявились ≈ 22% семплів проти 1.2% у випадкових бітрядків.</p>
+    </section>
+
+    <section id="s22">
+      <h2><span class="num">22</span> Солвери: Aer, IBM QPU і класичний baseline</h2>
+      <p class="section-desc">Обгортки над <code>app/quantum</code>, які знає роутер.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">app/solvers/qaoa.py</span></div>
+        <pre><code>import numpy as np
+from qiskit_aer import AerSimulator
+from qiskit_ibm_runtime import QiskitRuntimeService, Session
+
+from app.quantum.decode import pick_best, tour_cost
+from app.quantum.ising import qubo_to_ising
+from app.quantum.qaoa import run_qaoa
+from app.quantum.qubo import build_tsp_qubo
+from app.schemas.quantum import SolverKind
+from app.solvers.base import SolveOutcome
+
+
+def _solve_with(dist: np.ndarray, mode, backend, reps: int, shots: int) -&gt; SolveOutcome:
+    m = dist.shape[0] - 1
+    Q, offset, penalty = build_tsp_qubo(dist)
+    hamiltonian, _ = qubo_to_ising(Q, offset)
+    run = run_qaoa(hamiltonian, mode=mode, backend=backend, reps=reps, shots=shots)
+    tour, stats = pick_best(run.counts, dist, m)
+    meta = {**stats, "num_qubits": run.num_qubits, "two_qubit_gates": run.two_qubit_gates,
+            "depth": run.depth, "iterations": len(run.energy_history), "penalty": penalty}
+    return SolveOutcome(tour, tour_cost(tour, dist) if tour else None, meta)
+
+
+class QAOASimulatorSolver:
+    kind = SolverKind.QAOA_SIM
+
+    def solve(self, dist: np.ndarray, *, reps: int, shots: int) -&gt; SolveOutcome:
+        backend = AerSimulator(method="automatic")
+        return _solve_with(dist, mode=backend, backend=backend, reps=reps, shots=shots)
+
+
+class QAOAIBMRuntimeSolver:
+    """Real QPU. Credentials come from the environment / saved account, never from code."""
+    kind = SolverKind.QAOA_IBM
+
+    def __init__(self, service: QiskitRuntimeService, backend_name: str | None = None) -&gt; None:
+        self.service = service
+        self.backend_name = backend_name
+
+    def solve(self, dist: np.ndarray, *, reps: int, shots: int) -&gt; SolveOutcome:
+        backend = (self.service.backend(self.backend_name) if self.backend_name
+                   else self.service.least_busy(operational=True, simulator=False))
+        # Session keeps the COBYLA loop on the QPU without re-queuing every iteration.
+        # Not available on every plan: in job mode pass mode=backend instead.
+        with Session(backend=backend) as session:
+            outcome = _solve_with(dist, mode=session, backend=backend, reps=reps, shots=shots)
+        outcome.meta["backend"] = backend.name
+        return outcome</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">app/solvers/classical.py</span></div>
+        <pre><code>import numpy as np
+
+from app.quantum.decode import brute_force, tour_cost, two_opt
+from app.schemas.quantum import SolverKind
+from app.solvers.base import SolveOutcome
+
+
+class ClassicalSolver:
+    """Baseline. Exact brute force for tiny instances; for bigger ones reuse the
+    existing OR-Tools RouteSolver from app/services/route_optimizer."""
+    kind = SolverKind.CLASSICAL
+
+    def solve(self, dist: np.ndarray, *, reps: int = 0, shots: int = 0) -&gt; SolveOutcome:
+        if dist.shape[0] &lt;= 9:
+            tour, cost = brute_force(dist)
+            return SolveOutcome(tour, cost, {"method": "brute_force"})
+        tour = two_opt([0, *range(1, dist.shape[0]), 0], dist)  # placeholder for OR-Tools
+        return SolveOutcome(tour, tour_cost(tour, dist), {"method": "2opt"})</code></pre>
+      </div>
+
+      <div class="decision">
+        <div class="decision-title">Як не спалити бюджет QPU на варіаційному циклі</div>
+        <table>
+          <tr><th>Стратегія</th><th>QPU-час</th><th>Коли</th></tr>
+          <tr><td>Увесь COBYLA-цикл у Session на QPU</td><td>найбільший (40–80 викликів Estimator)</td><td>Платний план, дослідження шуму</td></tr>
+          <tr class="chosen"><td><b>Parameter transfer</b>: оптимізувати γ, β на Aer, на QPU лише один Sampler</td><td>мінімальний (1 job)</td><td>Безкоштовний план, 3–4 зупинки (9–16 кубітів ще точно симулюються)</td></tr>
+          <tr><td>Batch: усі кластери декомпозиції одним пакетом</td><td>помірний</td><td>Етап 3, багато незалежних малих схем</td></tr>
+        </table>
+        <p>Parameter transfer працює, бо оптимальні кути QAOA для схожих задач (того ж розміру й структури) близькі між собою.
+        Для пет-проєкту це ще й гарний експеримент: порівняти якість семплів з "ідеальними" кутами на шумному QPU і на Aer.</p>
+      </div>
+    </section>
+
+    <section id="s23">
+      <h2><span class="num">23</span> Бенчмарк: що і як порівнювати</h2>
+      <p class="section-desc">Метрики, без яких звіт про "квантовий маршрут" не має сенсу.</p>
+
+      <table>
+        <tr><th>Метрика</th><th>Формула</th><th>Що показує</th></tr>
+        <tr><td>Gap до оптимуму</td><td>(cost − cost<sub>opt</sub>) / cost<sub>opt</sub> · 100%</td><td>Якість фінальної відповіді (після 2-opt)</td></tr>
+        <tr><td>Raw gap</td><td>те саме для найкращого семплу <b>до</b> 2-opt</td><td>Внесок саме квантової частини</td></tr>
+        <tr><td>P(opt) в одному семплі</td><td>частка семплів з оптимальним маршрутом</td><td>Наскільки QAOA "концентрує" ймовірність</td></tr>
+        <tr><td>Valid fraction</td><td>частка валідних перестановок</td><td>Якість штрафів і рівень шуму</td></tr>
+        <tr><td>Wall time / QPU time</td><td>з метаданих job</td><td>Реальна ціна відповіді</td></tr>
+        <tr><td>Розкид по seed</td><td>медіана і мін–макс по 3–5 запусках</td><td>Стабільність; один запуск нічого не доводить</td></tr>
+      </table>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 300" role="img" aria-label="Ілюстративний графік з нашого прогону на Aer для 3 зупинок, 9 кубітів. Для кожного варіанта дві смуги: частка валідних семплів і ймовірність оптимального маршруту в одному семплі. Випадкові бітрядки: 1.2 відсотка і 0.4 відсотка. QAOA p 1: 17 і 5 відсотків. QAOA p 2: 12 і 4 відсотки. QAOA p 3: 30 і 12 відсотків. OR-Tools або brute force: 100 і 100 відсотків, детерміновано за мілісекунди">
+          <text x="370" y="20" text-anchor="middle" font-size="12" fill="var(--fg-muted)">Ілюстрація: наш прогін на Aer · 3 зупинки, 9 кубітів · ціль CVaR α=0.2, 2000 shots · медіана з 3 seed</text>
+          <g font-size="12">
+            <g stroke="currentColor" stroke-opacity=".18">
+              <line x1="190" y1="40" x2="190" y2="262"/><line x1="290" y1="40" x2="290" y2="262"/>
+              <line x1="390" y1="40" x2="390" y2="262"/><line x1="490" y1="40" x2="490" y2="262"/><line x1="590" y1="40" x2="590" y2="262"/>
+            </g>
+            <g fill="var(--fg-muted)" font-size="11" text-anchor="middle">
+              <text x="190" y="278">0%</text><text x="290" y="278">10%</text><text x="390" y="278">20%</text><text x="490" y="278">30%</text><text x="590" y="278">40%</text>
+            </g>
+            <g fill="currentColor" text-anchor="end">
+              <text x="180" y="66">Випадкові бітрядки</text><text x="180" y="110">QAOA p = 1</text>
+              <text x="180" y="154">QAOA p = 2</text><text x="180" y="198">QAOA p = 3</text><text x="180" y="242">OR-Tools / brute</text>
+            </g>
+            <rect x="190" y="50" width="12" height="13" fill="var(--accent)"/><rect x="190" y="64" width="4" height="13" fill="var(--interview)"/>
+            <rect x="190" y="94" width="169" height="13" fill="var(--accent)"/><rect x="190" y="108" width="53" height="13" fill="var(--interview)"/>
+            <rect x="190" y="138" width="120" height="13" fill="var(--accent)"/><rect x="190" y="152" width="37" height="13" fill="var(--interview)"/>
+            <rect x="190" y="182" width="299" height="13" fill="var(--accent)"/><rect x="190" y="196" width="119" height="13" fill="var(--interview)"/>
+            <rect x="190" y="226" width="440" height="13" fill="var(--accent)"/><rect x="190" y="240" width="440" height="13" fill="var(--interview)"/>
+            <g fill="var(--bg-soft)"><rect x="604" y="224" width="8" height="32"/></g>
+            <g font-size="11" fill="currentColor">
+              <text x="208" y="61">1.2%</text><text x="200" y="75">0.4%</text>
+              <text x="365" y="105">16.9%</text><text x="249" y="119">5.3%</text>
+              <text x="316" y="149">12.0%</text><text x="233" y="163">3.7%</text>
+              <text x="495" y="193">29.9%</text><text x="315" y="207">11.9%</text>
+              <text x="636" y="237">100%</text><text x="636" y="251">100%</text>
+            </g>
+          </g>
+          <g font-size="11">
+            <rect x="200" y="285" width="12" height="10" fill="var(--accent)"/><text x="218" y="294" fill="var(--fg-muted)">частка валідних семплів</text>
+            <rect x="390" y="285" width="12" height="10" fill="var(--interview)"/><text x="408" y="294" fill="var(--fg-muted)">P(оптимальний маршрут) в одному семплі</text>
+          </g>
+        </svg>
+        <figcaption>QAOA помітно "концентрує" ймовірність порівняно з випадковим вгадуванням (оптимум у 10–30 разів частіше), але
+        класичний солвер дає точну відповідь детерміновано і за мілісекунди. Немонотонність p = 2 і p = 3 типова: COBYLA з випадкового
+        старту часто застрягає в локальному мінімумі, розкид між seed більший за різницю між p. Розрив від OR-Tools (смуга обрізана) і є чесний підсумок.</figcaption>
+      </figure>
+
+      <p>Скрипт <code>scripts/benchmark.py</code> проганяє сітку (кількість зупинок 3–4 × p 1–3 × seed 0–4 × солвер), пише рядки в
+      CSV / таблицю <code>benchmarks</code> і будує графіки. Обов'язково додайте в сітку <b>випадковий baseline</b> (рівномірні бітрядки):
+      без нього неможливо сказати, чи QAOA щось робить, чи просто 2-opt ремонтує шум.</p>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина V · Розвиток проєкту</div><div class="line"></div></div>
+
+    <section id="s24">
+      <h2><span class="num">24</span> Roadmap пет-проєкту по етапах</h2>
+      <p class="section-desc">Кожен етап закінчується чимось, що можна показати.</p>
+
+      <div class="timeline">
+        <div class="ev"><div class="yr">Етап 0 · 1 тиждень</div><div class="ev-t">Математика без квантів</div>
+          <p>NumPy: матриця відстаней, QUBO, brute force, тест "енергія валідного маршруту = довжина". Ising і тест "QUBO = Ising для всіх 512 рядків".</p></div>
+        <div class="ev"><div class="yr">Етап 1 · 2–3 тижні</div><div class="ev-t">MVP на симуляторі</div>
+          <p>QAOA на AerSimulator для 3 зупинок, декодування, 2-opt. FastAPI + Celery + Postgres, ендпоінти <code>optimize</code> і <code>jobs</code>, docker-compose. Тести в CI без доступу до хмари.</p></div>
+        <div class="ev"><div class="yr">Етап 2 · 1–2 тижні</div><div class="ev-t">Реальний QPU IBM</div>
+          <p>Акаунт IBM Quantum Platform, <code>QiskitRuntimeService</code>, parameter transfer з Aer, один Sampler на Heron. Порівняння valid fraction на QPU і на Aer. Опції mitigation (dynamical decoupling, twirling) і їхній вплив. Бюджет у Redis.</p></div>
+        <div class="ev"><div class="yr">Етап 3 · 2 тижні</div><div class="ev-t">Декомпозиція</div>
+          <p>k-means або OR-Tools для кластерів, QAOA на кожен кластер одним Batch, склеювання, 2-opt по всьому маршруту, порівняння з OR-Tools на 10–20 точках з <code>route_optimizer</code> цього репозиторію.</p></div>
+        <div class="ev"><div class="yr">Етап 4 · 1 тиждень</div><div class="ev-t">Бенчмарк-дашборд</div>
+          <p><code>GET /benchmarks</code> + проста сторінка з графіками: gap, raw gap, P(opt), valid fraction, час, QPU-секунди по солверах і p.</p></div>
+        <div class="ev"><div class="yr">Етап 5 · опційно</div><div class="ev-t">Задача, зручніша для QPU</div>
+          <p>MaxCut-розбиття зупинок між двома авто (1 кубіт на зупинку, без штрафів) на 20–50 кубітах; порівняння з квантовим відпалом D-Wave або з готовими Qiskit Functions; XY-mixer для TSP.</p></div>
+      </div>
+    </section>
+
+    <section id="s25">
+      <h2><span class="num">25</span> Як подати проєкт у портфоліо і резюме</h2>
+      <p class="section-desc">Роботодавців у квантовій індустрії вражає чесна методологія, а не слово "quantum" у назві.</p>
+
+      <ul>
+        <li><b>README з результатами</b>: таблиця бенчмарку, графіки, точні версії бібліотек і бекенду, і окремий розділ "Обмеження і чому OR-Tools виграє".</li>
+        <li><b>Стаття / пост</b>: "TSP на IBM Quantum: що відбувається між QUBO і бітрядками" з діаграмами конвеєра і числами кубітів/гейтів з <a href="#s6">розділу 6</a>.</li>
+        <li><b>Відтворюваність</b>: <code>make bench</code> відтворює графіки на Aer за кілька хвилин.</li>
+        <li><b>Внесок в open source</b>, що виріс із проєкту: issue або PR у Qiskit / qiskit-community, приклад у документацію.</li>
+      </ul>
+      <div class="codecard">
+        <div class="bar"><span class="path">резюме — приклади пунктів</span></div>
+        <pre><code>- Built a hybrid quantum-classical route optimization service (FastAPI, Celery, Qiskit 2.x,
+  IBM Quantum Runtime) with a pluggable solver strategy and automatic classical fallback.
+- Formulated TSP as QUBO / Ising Hamiltonian, implemented QAOA with transpilation to IBM Heron ISA;
+  analyzed qubit and two-qubit gate scaling (9 -> 36 qubits, 126 -> 2006 CZ at p=1).
+- Designed benchmarking against OR-Tools (gap, valid-sample fraction, QPU time) and cut QPU usage
+  to a single job per instance via simulator-to-hardware parameter transfer.</code></pre>
+      </div>
+    </section>
+
+    <section id="s26">
+      <h2><span class="num">26</span> Типові помилки</h2>
+      <p class="section-desc">Майже кожен з цих пунктів хтось уже витратив тиждень, щоб знайти.</p>
+
+      <table>
+        <tr><th>Помилка</th><th>Симптом</th><th>Виправлення</th></tr>
+        <tr><td>Читати бітрядок зліва направо</td><td>"Валідні" маршрути з неправильною вартістю</td><td><code>reversed(bitstring)</code>, тест на відомому рядку</td></tr>
+        <tr><td>Забути <code>apply_layout</code></td><td>Енергія не зменшується, COBYLA "блукає"</td><td><code>H.apply_layout(isa.layout)</code> після транспіляції</td></tr>
+        <tr><td>Штраф A замалий / завеликий</td><td>0% валідних або однакова ймовірність усіх валідних</td><td>A ≈ 2·max d, нормалізація H, моніторити valid fraction</td></tr>
+        <tr><td>COBYLA-цикл на QPU в job mode</td><td>Години очікування, з'їдений бюджет</td><td>Session або parameter transfer з Aer</td></tr>
+        <tr><td>Один запуск, один seed</td><td>"QAOA p = 3 краща за p = 2" (або навпаки) випадково</td><td>3–5 seed, медіана і розкид</td></tr>
+        <tr><td>Порівняння з поганим baseline</td><td>"Квантова перевага" над жадібним алгоритмом</td><td>Порівнювати з OR-Tools / точним brute force</td></tr>
+        <tr><td>Звітувати лише після 2-opt</td><td>QPU "завжди знаходить оптимум"</td><td>Окремо raw gap, P(opt), випадковий baseline</td></tr>
+        <tr><td>Синхронний виклик QPU в HTTP-хендлері</td><td>Таймаути, вичерпаний пул воркерів uvicorn</td><td>202 + Celery + polling</td></tr>
+        <tr><td>Токен IBM у коді чи notebook у git</td><td>Чужі задачі на вашому акаунті</td><td>Env / secret manager, ротація токена</td></tr>
+        <tr><td>Не фіксувати версії</td><td>Код ламається після <code>pip install -U</code>: API примітивів змінюється</td><td>lock-файл, версії в звіті кожного запуску</td></tr>
+      </table>
+    </section>
+
+    <section id="s27">
+      <h2><span class="num">27</span> Самоперевірка</h2>
+      <p class="section-desc">Якщо можете відповісти без підглядання, проєкт ви розумієте.</p>
+
+      <details class="qa"><summary><span class="qnum">1</span>Скільки кубітів потрібно для TSP з депо і 5 зупинками в нашому кодуванні і чому?</summary>
+        <div class="a"><p><b>25.</b> Змінна <span class="math">x<sub>i,t</sub></span> на кожну пару (зупинка, позиція), депо зафіксоване на початку й у кінці,
+        тому <span class="math">m² = 5² = 25</span>. Без фіксації депо було б <span class="math">(m+1)² = 36</span>.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">2</span>Чому штраф A має бути більшим за найбільшу відстань, але не в сотні разів?</summary>
+        <div class="a"><p>Якщо A менший, порушення обмеження може зменшити енергію більше, ніж коштує штраф, і мінімум стане невалідним.
+        Якщо A величезний, різниця між валідними маршрутами стає малою відносно масштабу H, і QAOA після нормалізації майже не розрізняє
+        хороші й погані маршрути.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">3</span>Що роблять cost-шар і mixer-шар QAOA, і скільки параметрів має QAOA з p = 3?</summary>
+        <div class="a"><p>Cost-шар <span class="math">e<sup>−iγH<sub>C</sub></sup></span> додає кожному бітрядку фазу, пропорційну його енергії; mixer
+        <span class="math">e<sup>−iβΣX</sup></span> перетворює фази на зміну амплітуд. Параметрів <b>2p = 6</b> (три γ і три β) незалежно від кількості кубітів.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">4</span>Навіщо <code>apply_layout</code> після транспіляції?</summary>
+        <div class="a"><p>Транспілятор розміщує логічні кубіти на фізичних кубітах чипа і може їх переставити. Спостережувану треба
+        перенумерувати за тим самим layout, інакше Estimator виміряє енергію для інших кубітів.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">5</span>Чому QPU-запит не можна робити прямо в FastAPI-хендлері?</summary>
+        <div class="a"><p>Черга QPU непередбачувана (хвилини або години), а варіаційний цикл це десятки викликів. HTTP-запит упреться в таймаут,
+        воркери uvicorn будуть зайняті очікуванням. Правильно: 202 + <code>job_id</code>, Celery-воркер, polling або webhook.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">6</span>Як зробити, щоб повторний POST не витратив QPU-час удруге?</summary>
+        <div class="a"><p>Ідемпотентність: <code>Idempotency-Key</code> або SHA-256 канонічного JSON задачі як ключ; якщо задача з ключем існує,
+        повертаємо її. У Celery-задачі з <code>acks_late</code> додатково перевіряємо, чи статус уже <code>DONE</code>.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">7</span>Як показати, що результат дав саме квантовий солвер, а не 2-opt?</summary>
+        <div class="a"><p>Звітувати метрики сирих семплів: valid fraction, P(opt) в одному семплі, raw gap до ремонту, і порівнювати їх з
+        рівномірно випадковими бітрядками (1.2% валідних і 0.4% оптимальних для 3 зупинок). Фінальний gap після 2-opt на малих задачах майже завжди 0.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">8</span>Задача має 30 зупинок. Що зробить ваш бекенд і як ще можна задіяти QPU?</summary>
+        <div class="a"><p>Роутер вибере класичний солвер (30 &gt; <code>MAX_STOPS_SIM</code>), відповідь буде з OR-Tools з причиною в <code>fallback_reason</code>.
+        Задіяти QPU можна через декомпозицію: класична кластеризація на групи по 3–4 зупинки і QAOA на кожну (Batch), або квантовий MaxCut
+        для розбиття зупинок між авто (1 кубіт на зупинку) з маршрутами всередині груп від OR-Tools.</p></div></details>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Quantum Doc · частина серії туторіалів AI Delivery Planner. Код квантових модулів перевірено на Qiskit 2.5.2, qiskit-aer 0.17.2 і qiskit-ibm-runtime 0.50.0 (симулятор); умови доступу IBM і API примітивів змінюються, тож звіряйтесь з актуальною документацією.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*|\/\/[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b|\bthis\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case|const|let|var|function|interface|type|export|extends|implements|new|void|enum|typeof|instanceof|static|public|private|readonly|null|undefined)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+<script>
+(function(){
+  var root = document.documentElement, btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function current(){
+    var t = root.getAttribute('data-theme');
+    return t === 'light' || t === 'dark' ? t : (mq && mq.matches ? 'dark' : 'light');
+  }
+  function render(){
+    var dark = current() === 'dark';
+    btn.textContent = dark ? '☀️ Світла тема' : '🌙 Темна тема';
+    btn.setAttribute('aria-label', dark ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('docs-theme', next); }catch(e){}
+    render();
+  });
+  if(mq && mq.addEventListener) mq.addEventListener('change', render);
+  render();
+})();
+</script>
+</body>
+</html>
