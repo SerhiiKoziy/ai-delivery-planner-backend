@@ -1,0 +1,1963 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>9. Ймовірності й shots — Quantum Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<script>
+(function(){
+  try{ var t = localStorage.getItem('docs-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --bg:#fcfbff; --bg-soft:#f3f2fa; --card:#ffffff; --border:#e0e0ec;
+    --fg:#1c1c2a; --fg-muted:#5c6176;
+    --accent:#3a5ee8; --accent-soft:#ebedff;
+    --code-bg:#212338; --code-fg:#e8e8f4; --code-muted:#8d92ab;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#3a5ee8; --info-bg:#ebedff; --info-border:#c7cffc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#171822; --bg-soft:#1e1f2b; --card:#1e1f2b; --border:#2e3041;
+      --fg:#e6e7f3; --fg-muted:#9ba0b7;
+      --accent:#7a8eff; --accent-soft:#1f2344;
+      --code-bg:#11111b; --code-fg:#e6e7f3; --code-muted:#7e8399;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#8a9dff; --info-bg:#161a36; --info-border:#2c356e;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#171822; --bg-soft:#1e1f2b; --card:#1e1f2b; --border:#2e3041;
+    --fg:#e6e7f3; --fg-muted:#9ba0b7;
+    --accent:#7a8eff; --accent-soft:#1f2344;
+    --code-bg:#11111b; --code-fg:#e6e7f3; --code-muted:#7e8399;
+    --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+    --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+    --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+    --info:#8a9dff; --info-bg:#161a36; --info-border:#2c356e;
+    --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"],
+  #tab-quantum:checked ~ .nav-tabbar label[for="tab-quantum"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  #tab-quantum:checked ~ .nav-links.quantum{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+
+  /* --- python-doc extras --- */
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider:first-child{margin-top:8px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+  .qa summary .qnum{color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700; margin-right:8px;}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  /* --- quantum-doc extras --- */
+  .res{border:1px solid var(--border); border-radius:var(--radius); background:var(--card); padding:14px 16px; margin:12px 0;}
+  .res .res-head{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:4px;}
+  .res .res-title{font-weight:700; font-size:15px;}
+  .res .res-meta{font-size:12.5px; color:var(--fg-muted);}
+  .res p{margin:6px 0 0; font-size:14.3px;}
+  .lvl{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap;}
+  .lvl.l1{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .lvl.l2{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .lvl.l3{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .lvl.type{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .timeline{border-left:2px solid var(--accent); margin:20px 0 20px 8px; padding-left:20px;}
+  .timeline .ev{position:relative; margin:0 0 18px;}
+  .timeline .ev::before{content:""; position:absolute; left:-27px; top:6px; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid var(--bg);}
+  .timeline .yr{font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; font-size:14px;}
+  .timeline .ev-t{font-weight:700;}
+  .timeline .ev p{margin:4px 0 0; font-size:14.3px; color:var(--fg-muted);}
+  .math{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:1.05em; white-space:nowrap;}
+  .math-block{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:18px; text-align:center; padding:14px; margin:14px 0; border:1px dashed var(--border); border-radius:var(--radius); background:var(--bg-soft); overflow-x:auto;}
+
+  /* --- theme switch --- */
+  :root{color-scheme:light;}
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .theme-toggle{
+    cursor:pointer; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+    background:var(--bg-soft); color:var(--fg); font:inherit; font-size:12.5px; font-weight:600;
+    transition:background .15s, border-color .15s;
+  }
+  .theme-toggle:hover{background:var(--card); border-color:var(--accent);}
+  .theme-toggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .say{color:var(--fg-muted); font-size:.9em; font-weight:400; font-style:normal;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="top-row">
+      <div class="brand">⚛️ Квантове програмування <span>· AI Delivery Planner</span></div>
+      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Темна тема</button>
+    </div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Квантове програмування · Туторіал 9 · Математичний фундамент</div>
+  <h1>Ймовірності й shots: як читати результати квантового комп'ютера</h1>
+  <p class="lead">Квантовий комп'ютер ніколи не повертає "відповідь". Він повертає вибірку: тисячу чи десять тисяч бітрядків, з яких ви оцінюєте ймовірності та середні. Цей туторіал освіжає теорію ймовірностей рівно в тому обсязі, який потрібен інженеру квантового ПЗ: правило Борна, біноміальний розподіл, ⟨Z⟩ і ⟨ZZ⟩ з counts, стандартна похибка, довірчі інтервали, "скільки shots треба для ±1%", шум зчитування і як його відкоригувати. Плюс 23 задачі з повними розв'язками. Усі числа перевірені кодом на NumPy та симуляторі Aer.</p>
+  <div class="pills">
+    <span class="pill">🎲 Правило Борна → counts</span>
+    <span class="pill">📉 Похибка ∝ 1/√N</span>
+    <span class="pill">🎯 Скільки shots для ±1%</span>
+    <span class="pill">🧪 Шум зчитування і його корекція</span>
+    <span class="pill">✍️ 23 задачі з розв'язками</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-quantum" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+      <label for="tab-quantum" class="nav-tabbtn">⚛️ Квантове</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="../node-doc/01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="../node-doc/02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="../node-doc/03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="../node-doc/04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="../node-doc/05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="../node-doc/06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="../node-doc/07-fs-process-os.html">7. fs, process, os</a>
+        <a href="../node-doc/08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="../node-doc/09-http-networking.html">9. HTTP і мережа</a>
+        <a href="../node-doc/10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="../node-doc/11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="../node-doc/12-databases-orm.html">12. БД і ORM</a>
+        <a href="../node-doc/13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="../node-doc/14-security.html">14. Безпека Node</a>
+        <a href="../node-doc/15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="../node-doc/16-testing.html">16. Тестування</a>
+        <a href="../node-doc/17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="../node-doc/18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="../node-doc/19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="../node-doc/20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+      <nav class="nav-links quantum">
+        <a href="01-quanta-and-quantum-computing.html">1. Кванти й обчислення</a>
+        <a href="02-quantum-engineering-history.html">2. Квантова інженерія</a>
+        <a href="03-quantum-backend-python-ibm.html">3. Бекенд + IBM Quantum</a>
+        <a href="04-pet-project-quantum-routing.html">4. Пет-проєкт: маршрути</a>
+        <a href="05-quantum-engineer-roadmap.html">5. Шлях інженера: ресурси</a>
+        <a href="06-linear-algebra-vectors-matrices.html">6. Лін. алгебра I: вектори, матриці</a>
+        <a href="07-linear-algebra-eigen-tensor.html">7. Лін. алгебра II: власні, тензори</a>
+        <a href="08-complex-numbers-phase.html">8. Комплексні числа й фаза</a>
+        <a href="09-probability-shots.html" class="active">9. Ймовірності й shots</a>
+        <a href="10-numpy-statevector-simulator.html">10. NumPy: свій симулятор</a>
+        <a href="11-qiskit-circuits-aer.html">11. Qiskit I: схеми й Aer</a>
+        <a href="12-qiskit-runtime-real-qpu.html">12. Qiskit II: реальний QPU</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — Основи</div>
+    <ol>
+      <li><a href="#s1">1. Навіщо це квантовому інженеру</a></li>
+      <li><a href="#s2">2. Дискретні розподіли</a></li>
+      <li><a href="#s3">3. Правило Борна</a></li>
+      <li><a href="#s4">4. Очікуване значення і дисперсія</a></li>
+      <li><a href="#s5">5. ⟨Z⟩, ⟨ZZ⟩ і парність</a></li>
+    </ol>
+    <div class="toc-group">Частина II — Від shots до похибки</div>
+    <ol>
+      <li><a href="#s6">6. Закон великих чисел і 1/√N</a></li>
+      <li><a href="#s7">7. ЦГТ і довірчі інтервали</a></li>
+      <li><a href="#s8">8. Скільки shots для ±1%</a></li>
+      <li><a href="#s9">9. Precision в EstimatorV2</a></li>
+    </ol>
+    <div class="toc-group">Частина III — Шум і порівняння</div>
+    <ol>
+      <li><a href="#s10">10. Статистика проти апаратного шуму</a></li>
+      <li><a href="#s11">11. Шум зчитування і Байєс</a></li>
+      <li><a href="#s12">12. Корекція: інверсія матриці</a></li>
+      <li><a href="#s13">13. Порівняння розподілів</a></li>
+      <li><a href="#s14">14. Кореляції в стані Белла</a></li>
+    </ol>
+    <div class="toc-group">Частина IV — Практика</div>
+    <ol>
+      <li><a href="#s15">15. Утиліти на Python</a></li>
+      <li><a href="#s16">16. Задачі <span class="toc-count">23</span></a></li>
+      <li><a href="#s17">17. Глибше: що читати</a></li>
+      <li><a href="#s18">18. Чекліст навику</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Основи</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Навіщо квантовому інженеру ймовірності</h2>
+      <p class="section-desc">Вимірювання кубіта — це підкидання монетки, нахил якої задав ваш алгоритм. Усе, що ви бачите, — статистика.</p>
+
+      <p>У класичному бекенді функція повертає значення. У квантовому — <b>розподіл</b>, і ви бачите не сам розподіл, а скінченну
+      вибірку з нього. Один прогін схеми з вимірюванням в кінці дає один бітрядок, наприклад <code>"0110"</code>. Цей прогін
+      називають <b>shot</b>. Щоб щось дізнатися, схему запускають тисячі разів і отримують словник <b>counts</b>:
+      <code>{"0110": 512, "1001": 488}</code>. З нього ви <i>оцінюєте</i> ймовірності, середні значення спостережуваних, вартість
+      маршруту в QAOA і так далі.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 230" role="img" aria-label="Конвеєр від стану до відповіді. Квантовий стан задає приховані амплітуди. Вимірювання за правилом Борна перетворює їх на ймовірності. N shots дають вибірку бітрядків, які збираються в словник counts. З counts обчислюються оцінки: частоти, середнє значення спостережуваної і похибка. Похибка залежить від N як 1 на корінь з N">
+          <defs><marker id="q09-a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="40" width="130" height="80" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="75" y="64" text-anchor="middle" fill="currentColor" font-weight="bold">Стан |ψ⟩</text>
+            <text x="75" y="84" text-anchor="middle" fill="var(--fg-muted)" font-size="11">амплітуди αₓ</text>
+            <text x="75" y="102" text-anchor="middle" fill="var(--fg-muted)" font-size="11">(ми їх не бачимо)</text>
+            <line x1="142" y1="80" x2="182" y2="80" stroke="currentColor" marker-end="url(#q09-a1)"/>
+            <rect x="185" y="40" width="130" height="80" rx="10" fill="none" stroke="currentColor"/>
+            <text x="250" y="64" text-anchor="middle" fill="currentColor" font-weight="bold">Правило Борна</text>
+            <text x="250" y="84" text-anchor="middle" fill="var(--fg-muted)" font-size="11">pₓ = |αₓ|²</text>
+            <text x="250" y="102" text-anchor="middle" fill="var(--fg-muted)" font-size="11">розподіл (теорія)</text>
+            <line x1="317" y1="80" x2="357" y2="80" stroke="currentColor" marker-end="url(#q09-a1)"/>
+            <rect x="360" y="40" width="160" height="80" rx="10" fill="none" stroke="currentColor"/>
+            <text x="440" y="64" text-anchor="middle" fill="currentColor" font-weight="bold">N shots</text>
+            <text x="440" y="84" text-anchor="middle" fill="var(--fg-muted)" font-size="11">"01", "10", "01", …</text>
+            <text x="440" y="102" text-anchor="middle" fill="var(--fg-muted)" font-size="11">counts = {"01": 497, …}</text>
+            <line x1="522" y1="80" x2="562" y2="80" stroke="currentColor" marker-end="url(#q09-a1)"/>
+            <rect x="565" y="40" width="155" height="80" rx="10" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="642" y="64" text-anchor="middle" fill="currentColor" font-weight="bold">Оцінка ± похибка</text>
+            <text x="642" y="84" text-anchor="middle" fill="var(--fg-muted)" font-size="11">p̂ = k/N, ⟨Z⟩ ≈ …</text>
+            <text x="642" y="102" text-anchor="middle" fill="var(--fg-muted)" font-size="11">σ ∝ 1/√N</text>
+            <text x="250" y="160" text-anchor="middle" fill="var(--accent)" font-size="11">квантова механіка</text>
+            <text x="540" y="160" text-anchor="middle" fill="var(--accent)" font-size="11">звичайна статистика (цей туторіал)</text>
+            <line x1="185" y1="145" x2="315" y2="145" stroke="var(--accent)"/>
+            <line x1="360" y1="145" x2="720" y2="145" stroke="var(--accent)"/>
+            <text x="365" y="205" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Апаратний шум (декогеренція, помилки гейтів і зчитування) спотворює вже сам розподіл, ще до вибірки — це окрема історія (розділи 10–12).</text>
+          </g>
+        </svg>
+        <figcaption>Ліва половина — фізика, права — статистика. Цей туторіал про праву половину: як із вибірки отримати чесну оцінку з похибкою.</figcaption>
+      </figure>
+
+      <p>Де саме ви використовуватимете цей матеріал щодня:</p>
+      <ul>
+        <li><b>Вибір shots</b> — це гроші. На IBM Quantum ви платите (або витрачаєте безкоштовні хвилини Open Plan) за час QPU. Подвоєння точності коштує вчетверо більше shots.</li>
+        <li><b>Порівняння "очікуване vs отримане"</b> — тест чи debug: схема працює правильно, чи це шум?</li>
+        <li><b>Варіаційні алгоритми</b> (QAOA, VQE, туторіал <a href="04-pet-project-quantum-routing.html">4</a>): класичний оптимізатор бачить зашумлену оцінку енергії, і від її похибки залежить, чи він взагалі зійдеться.</li>
+        <li><b>Mitigation</b>: корекція помилок зчитування — це просто лінійна алгебра над розподілами ймовірностей (розділ 12).</li>
+      </ul>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Shot — це один відвідувач в A/B-тесті: він або конвертувався (1), або ні (0). Counts — ваша таблиця "скільки конверсій із скількох візитів",
+        а оцінка ⟨Z⟩ з counts — той самий conversion rate з аналітики. Математика однакова до символу: похибка падає як 1/√N <span class="say">(√ — «корінь з»)</span>,
+        тож щоб удвічі звузити похибку, треба вчетверо більше відвідувачів. Різниця лише у валюті: в A/B-тесті ви платите трафіком і днями, тут — секундами QPU.
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Дискретні розподіли: Бернуллі, біноміальний, мультиноміальний</h2>
+      <p class="section-desc">Три розподіли покривають майже все, що повертає квантовий комп'ютер.</p>
+
+      <p><b>Випадкова величина</b> X — функція, що кожному результату експерименту ставить число. Для дискретної X закон
+      розподілу задає <b>функція ймовірностей</b> (PMF) <span class="math">P(X = x)</span>, де всі значення невід'ємні і в сумі дають 1.
+      Це і є словник <code>{результат: ймовірність}</code>, з яким ви працюватимете в Python.</p>
+
+      <h3>Бернуллі: один shot одного кубіта</h3>
+      <p>Вимірюємо один кубіт: результат 1 з імовірністю p, 0 з імовірністю 1 − p. Позначимо <span class="math">X ∈ {0, 1}</span> <span class="say">(∈ — «належить»)</span>:</p>
+      <div class="math-block">X ~ Bernoulli(p):  E[X] = p,  Var[X] = p(1 − p)</div>
+      <p>Дисперсія максимальна при p = 0.5 і дорівнює 0.25. Запам'ятайте цей факт: він дає "гірший випадок" для всіх розрахунків
+      кількості shots.</p>
+
+      <h3>Біноміальний: N shots одного кубіта</h3>
+      <p>Повторюємо незалежно N разів і рахуємо кількість одиниць K:</p>
+      <div class="math-block">P(K = k) = C(N, k) · pᵏ · (1 − p)ᴺ⁻ᵏ,   E[K] = Np,   Var[K] = Np(1 − p)</div>
+      <p>Частота <span class="math">p̂ = K/N</span> <span class="say">(p̂ — «p з дашком»: оцінка, порахована з вибірки shots)</span> — наша оцінка p. Її середнє дорівнює p (оцінка незміщена), а дисперсія в N² разів
+      менша за дисперсію K:</p>
+      <div class="math-block">E[p̂] = p,   Var[p̂] = p(1 − p) / N,   σ(p̂) = √(p(1 − p)/N)</div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 300" role="img" aria-label="Біноміальний розподіл кількості одиниць у 100 shots. Для p рівного 0.1 пік біля 10 з висотою близько 0.13, вузький. Для p рівного 0.5 пік біля 50 з висотою близько 0.08, ширший. Ширина розподілу корінь з N p (1 мінус p): 3 для p 0.1 і 5 для p 0.5">
+          <g font-size="12">
+            <line x1="65.2" y1="250" x2="65.2" y2="255" stroke="currentColor"/><text x="65.2" y="268" text-anchor="middle" fill="var(--fg-muted)" font-size="11">0</text><line x1="170.2" y1="250" x2="170.2" y2="255" stroke="currentColor"/><text x="170.2" y="268" text-anchor="middle" fill="var(--fg-muted)" font-size="11">10</text><line x1="275.1" y1="250" x2="275.1" y2="255" stroke="currentColor"/><text x="275.1" y="268" text-anchor="middle" fill="var(--fg-muted)" font-size="11">20</text><line x1="380.0" y1="250" x2="380.0" y2="255" stroke="currentColor"/><text x="380.0" y="268" text-anchor="middle" fill="var(--fg-muted)" font-size="11">30</text><line x1="484.9" y1="250" x2="484.9" y2="255" stroke="currentColor"/><text x="484.9" y="268" text-anchor="middle" fill="var(--fg-muted)" font-size="11">40</text><line x1="589.8" y1="250" x2="589.8" y2="255" stroke="currentColor"/><text x="589.8" y="268" text-anchor="middle" fill="var(--fg-muted)" font-size="11">50</text><line x1="694.8" y1="250" x2="694.8" y2="255" stroke="currentColor"/><text x="694.8" y="268" text-anchor="middle" fill="var(--fg-muted)" font-size="11">60</text><line x1="56" y1="182.1" x2="700" y2="182.1" stroke="var(--border)" stroke-dasharray="3,3"/><text x="52" y="186.1" text-anchor="end" fill="var(--fg-muted)" font-size="11">0.05</text><line x1="56" y1="114.3" x2="700" y2="114.3" stroke="var(--border)" stroke-dasharray="3,3"/><text x="52" y="118.3" text-anchor="end" fill="var(--fg-muted)" font-size="11">0.10</text>
+            <rect x="71.5" y="249.6" width="8.5" height="0.4" fill="var(--warn)" opacity=".75"/><rect x="82.0" y="247.8" width="8.5" height="2.2" fill="var(--warn)" opacity=".75"/><rect x="92.5" y="242.0" width="8.5" height="8.0" fill="var(--warn)" opacity=".75"/><rect x="103.0" y="228.5" width="8.5" height="21.5" fill="var(--warn)" opacity=".75"/><rect x="113.5" y="204.0" width="8.5" height="46.0" fill="var(--warn)" opacity=".75"/><rect x="124.0" y="169.1" width="8.5" height="80.9" fill="var(--warn)" opacity=".75"/><rect x="134.4" y="129.4" width="8.5" height="120.6" fill="var(--warn)" opacity=".75"/><rect x="144.9" y="94.2" width="8.5" height="155.8" fill="var(--warn)" opacity=".75"/><rect x="155.4" y="73.0" width="8.5" height="177.0" fill="var(--warn)" opacity=".75"/><rect x="165.9" y="71.0" width="8.5" height="179.0" fill="var(--warn)" opacity=".75"/><rect x="176.4" y="87.3" width="8.5" height="162.7" fill="var(--warn)" opacity=".75"/><rect x="186.9" y="115.9" width="8.5" height="134.1" fill="var(--warn)" opacity=".75"/><rect x="197.4" y="149.2" width="8.5" height="100.8" fill="var(--warn)" opacity=".75"/><rect x="207.9" y="180.4" width="8.5" height="69.6" fill="var(--warn)" opacity=".75"/><rect x="218.4" y="205.6" width="8.5" height="44.4" fill="var(--warn)" opacity=".75"/><rect x="228.9" y="223.8" width="8.5" height="26.2" fill="var(--warn)" opacity=".75"/><rect x="239.4" y="235.6" width="8.5" height="14.4" fill="var(--warn)" opacity=".75"/><rect x="249.9" y="242.6" width="8.5" height="7.4" fill="var(--warn)" opacity=".75"/><rect x="260.3" y="246.5" width="8.5" height="3.5" fill="var(--warn)" opacity=".75"/><rect x="270.8" y="248.4" width="8.5" height="1.6" fill="var(--warn)" opacity=".75"/><rect x="281.3" y="249.3" width="8.5" height="0.7" fill="var(--warn)" opacity=".75"/><rect x="407.2" y="249.7" width="8.5" height="0.3" fill="var(--accent)" opacity=".75"/><rect x="417.7" y="249.4" width="8.5" height="0.6" fill="var(--accent)" opacity=".75"/><rect x="428.2" y="248.8" width="8.5" height="1.2" fill="var(--accent)" opacity=".75"/><rect x="438.7" y="247.9" width="8.5" height="2.1" fill="var(--accent)" opacity=".75"/><rect x="449.2" y="246.3" width="8.5" height="3.7" fill="var(--accent)" opacity=".75"/><rect x="459.7" y="243.9" width="8.5" height="6.1" fill="var(--accent)" opacity=".75"/><rect x="470.2" y="240.3" width="8.5" height="9.7" fill="var(--accent)" opacity=".75"/><rect x="480.7" y="235.3" width="8.5" height="14.7" fill="var(--accent)" opacity=".75"/><rect x="491.2" y="228.5" width="8.5" height="21.5" fill="var(--accent)" opacity=".75"/><rect x="501.7" y="219.7" width="8.5" height="30.3" fill="var(--accent)" opacity=".75"/><rect x="512.1" y="209.2" width="8.5" height="40.8" fill="var(--accent)" opacity=".75"/><rect x="522.6" y="197.1" width="8.5" height="52.9" fill="var(--accent)" opacity=".75"/><rect x="533.1" y="184.2" width="8.5" height="65.8" fill="var(--accent)" opacity=".75"/><rect x="543.6" y="171.3" width="8.5" height="78.7" fill="var(--accent)" opacity=".75"/><rect x="554.1" y="159.6" width="8.5" height="90.4" fill="var(--accent)" opacity=".75"/><rect x="564.6" y="150.2" width="8.5" height="99.8" fill="var(--accent)" opacity=".75"/><rect x="575.1" y="144.1" width="8.5" height="105.9" fill="var(--accent)" opacity=".75"/><rect x="585.6" y="142.0" width="8.5" height="108.0" fill="var(--accent)" opacity=".75"/><rect x="596.1" y="144.1" width="8.5" height="105.9" fill="var(--accent)" opacity=".75"/><rect x="606.6" y="150.2" width="8.5" height="99.8" fill="var(--accent)" opacity=".75"/><rect x="617.1" y="159.6" width="8.5" height="90.4" fill="var(--accent)" opacity=".75"/><rect x="627.6" y="171.3" width="8.5" height="78.7" fill="var(--accent)" opacity=".75"/><rect x="638.0" y="184.2" width="8.5" height="65.8" fill="var(--accent)" opacity=".75"/><rect x="648.5" y="197.1" width="8.5" height="52.9" fill="var(--accent)" opacity=".75"/><rect x="659.0" y="209.2" width="8.5" height="40.8" fill="var(--accent)" opacity=".75"/><rect x="669.5" y="219.7" width="8.5" height="30.3" fill="var(--accent)" opacity=".75"/><rect x="680.0" y="228.5" width="8.5" height="21.5" fill="var(--accent)" opacity=".75"/><rect x="690.5" y="235.3" width="8.5" height="14.7" fill="var(--accent)" opacity=".75"/>
+            <line x1="60" y1="250" x2="700" y2="250" stroke="currentColor"/>
+            <line x1="60" y1="250" x2="60" y2="50" stroke="currentColor"/>
+            <text x="380.0" y="288" text-anchor="middle" fill="currentColor">k — кількість результатів «1» зі 100 shots</text>
+            <text x="20" y="40" fill="var(--fg-muted)" font-size="11">P(k)</text>
+            <rect x="420" y="40" width="12" height="12" fill="var(--warn)" opacity=".75"/><text x="440" y="51" fill="currentColor">p = 0.1: μ = 10, σ = 3</text>
+            <rect x="420" y="62" width="12" height="12" fill="var(--accent)" opacity=".75"/><text x="440" y="73" fill="currentColor">p = 0.5: μ = 50, σ = 5</text>
+          </g>
+        </svg>
+        <figcaption>Біноміальний розподіл кількості одиниць у 100 shots (обчислено scipy.stats.binom). Що ближче p до 0.5, то ширший розподіл: невизначеність максимальна, коли кубіт "найбільше в суперпозиції".</figcaption>
+      </figure>
+
+      <h3>Мультиноміальний: N shots n кубітів</h3>
+      <p>Для n кубітів результатів 2ⁿ: бітрядки від <code>"0…0"</code> до <code>"1…1"</code>. Кожен shot — один із них з ймовірністю pₓ.
+      Вектор кількостей <span class="math">(K₀, K₁, …)</span> має <b>мультиноміальний розподіл</b>. Кожна окрема координата
+      Kₓ — біноміальна з параметром pₓ, тому всі формули для одного результату працюють і тут. Нове лише те, що кількості
+      <b>від'ємно корельовані</b>: сума завжди N, і якщо "00" випало частіше, інші результати мусили випасти рідше
+      (<span class="math">Cov(Kₓ, Kᵧ) = −N·pₓ·pᵧ</span>).</p>
+
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        <b>Головне з розділу:</b> counts з квантового комп'ютера — це реалізація мультиноміального розподілу. Частота кожного
+        бітрядка — оцінка його ймовірності з похибкою <span class="math">√(p(1−p)/N)</span>. Більше нічого магічного.
+      </div></div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Правило Борна: від амплітуд до ймовірностей</h2>
+      <p class="section-desc">Єдиний міст між квантовою механікою і статистикою.</p>
+
+      <p>Стан n кубітів — вектор з 2ⁿ комплексних амплітуд <span class="math">|ψ⟩ = Σₓ αₓ |x⟩</span> <span class="say">(|ψ⟩ — «кет псі»: вектор-стовпчик стану; Σ — «сума», велика сигма; α — «альфа»)</span>. Правило Борна:
+      ймовірність отримати бітрядок x при вимірюванні в обчислювальному базисі</p>
+      <div class="math-block">P(x) = |αₓ|² = αₓ · αₓ*,    Σₓ |αₓ|² = 1</div>
+      <p>Умова нормування — це не "додаткова вимога", а наслідок того, що ймовірності мусять сумуватися в 1. Фаза амплітуди
+      (наприклад, <span class="math">e^{iπ/4}</span> <span class="say">(π — «пі»)</span>) на ймовірність в цьому базисі не впливає: <span class="math">|e^{iφ}·a|² = |a|²</span> <span class="say">(φ — «фі»)</span>.
+      Але фаза впливає на те, що станеться <i>після</i> інших гейтів (інтерференція) — детальніше в
+      <a href="08-complex-numbers-phase.html">туторіалі 8</a>.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 270" role="img" aria-label="Правило Борна і порядок бітів у Qiskit. Зліва вектор стану двох кубітів з чотирма амплітудами з індексами 0, 1, 2, 3: 0.6, 0, 0, 0.8i. Індекси в двійковому вигляді 00, 01, 10, 11, де правий біт це кубіт q0, лівий q1. Справа гістограма ймовірностей: 00 має 0.36, 11 має 0.64, інші нуль">
+          <defs><marker id="q09-a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="120" y="22" text-anchor="middle" fill="var(--accent)" font-weight="bold">Вектор стану (Statevector)</text>
+            <text x="40" y="52" fill="var(--fg-muted)" font-size="11">індекс</text>
+            <text x="100" y="52" fill="var(--fg-muted)" font-size="11">бітрядок</text>
+            <text x="180" y="52" fill="var(--fg-muted)" font-size="11">αₓ</text>
+            <g>
+              <text x="50" y="82" fill="currentColor">0</text><text x="110" y="82" fill="currentColor" class="mono">0 0</text><text x="180" y="82" fill="currentColor">0.6</text>
+              <text x="50" y="112" fill="currentColor">1</text><text x="110" y="112" fill="currentColor">0 1</text><text x="180" y="112" fill="var(--fg-muted)">0</text>
+              <text x="50" y="142" fill="currentColor">2</text><text x="110" y="142" fill="currentColor">1 0</text><text x="180" y="142" fill="var(--fg-muted)">0</text>
+              <text x="50" y="172" fill="currentColor">3</text><text x="110" y="172" fill="currentColor">1 1</text><text x="180" y="172" fill="currentColor">0.8i</text>
+            </g>
+            <rect x="30" y="62" width="200" height="120" rx="8" fill="none" stroke="currentColor"/>
+            <text x="104" y="210" fill="var(--warn)" font-size="11">q1</text><text x="124" y="210" fill="var(--warn)" font-size="11">q0</text>
+            <line x1="113" y1="198" x2="113" y2="186" stroke="var(--warn)"/><line x1="130" y1="198" x2="130" y2="186" stroke="var(--warn)"/>
+            <text x="130" y="236" text-anchor="middle" fill="var(--warn)" font-size="11">Qiskit: правий біт = кубіт 0 (little-endian)</text>
+            <line x1="250" y1="122" x2="330" y2="122" stroke="currentColor" marker-end="url(#q09-a2)"/>
+            <text x="290" y="112" text-anchor="middle" fill="currentColor">|αₓ|²</text>
+            <line x1="370" y1="200" x2="700" y2="200" stroke="currentColor"/>
+            <rect x="385" y="128" width="55" height="72" fill="var(--accent)" opacity=".8"/>
+            <rect x="465" y="199" width="55" height="1" fill="var(--accent)"/>
+            <rect x="545" y="199" width="55" height="1" fill="var(--accent)"/>
+            <rect x="625" y="72" width="55" height="128" fill="var(--accent)" opacity=".8"/>
+            <text x="412" y="120" text-anchor="middle" fill="currentColor">0.36</text>
+            <text x="652" y="64" text-anchor="middle" fill="currentColor">0.64</text>
+            <text x="492" y="190" text-anchor="middle" fill="var(--fg-muted)">0</text>
+            <text x="572" y="190" text-anchor="middle" fill="var(--fg-muted)">0</text>
+            <text x="412" y="218" text-anchor="middle" fill="currentColor">"00"</text>
+            <text x="492" y="218" text-anchor="middle" fill="currentColor">"01"</text>
+            <text x="572" y="218" text-anchor="middle" fill="currentColor">"10"</text>
+            <text x="652" y="218" text-anchor="middle" fill="currentColor">"11"</text>
+            <text x="535" y="250" text-anchor="middle" fill="var(--fg-muted)" font-size="11">|0.8i|² = 0.8i · (−0.8i) = 0.64 — фаза i зникла</text>
+          </g>
+        </svg>
+        <figcaption>Ймовірність — квадрат модуля амплітуди. Порядок бітів у Qiskit "зворотний": індекс 1 у векторі відповідає ключу <code>"01"</code>, тобто q0 = 1, q1 = 0.</figcaption>
+      </figure>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Пастка №1 для новачка в Qiskit — порядок бітів.</b> У ключі <code>"01"</code> правий символ — кубіт 0. Якщо ви
+        рахуєте ⟨Z₀⟩, дивіться на <i>останній</i> символ рядка (<code>bitstring[-1]</code>), а не на перший. Половина
+        "загадкових" багів у постобробці — саме тут.
+      </div></div>
+
+      <div class="codecard"><div class="bar"><span class="path">born_rule.py</span></div><pre><code>import numpy as np
+from qiskit.quantum_info import Statevector
+
+psi = Statevector([0.6, 0, 0, 0.8j])
+print(psi.probabilities())          # [0.36 0.   0.   0.64]
+print(psi.probabilities_dict())     # {'00': 0.36, '11': 0.64}
+
+# те саме вручну: |a|^2 = a * conj(a)
+amps = np.array([0.6, 0, 0, 0.8j])
+print(np.abs(amps) ** 2)            # [0.36 0.   0.   0.64]
+
+# вибірка з цього розподілу = те, що робить QPU (без шуму)
+print(psi.sample_counts(shots=1000, qargs=None))  # напр. {'00': 361, '11': 639}</code></pre></div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Очікуване значення і дисперсія</h2>
+      <p class="section-desc">Математичне сподівання — це "постійна складова" випадкової величини, дисперсія — "потужність шуму" навколо неї.</p>
+
+      <p>Для дискретної величини:</p>
+      <div class="math-block">E[X] = Σ x · P(x),    Var[X] = E[(X − E[X])²] = E[X²] − E[X]²,    σ = √Var[X]</div>
+      <p>Три властивості, які знадобляться постійно:</p>
+      <ul>
+        <li><b>Лінійність сподівання:</b> <span class="math">E[aX + bY] = aE[X] + bE[Y]</span> — завжди, навіть для залежних X, Y. Саме тому
+        енергію <span class="math">⟨H⟩ = Σ cᵢ⟨Pᵢ⟩</span> можна рахувати доданок за доданком.</li>
+        <li><b>Масштаб дисперсії:</b> <span class="math">Var[aX] = a²·Var[X]</span>. Множите спостережувану на 2 — похибка росте вдвічі, дисперсія вчетверо.</li>
+        <li><b>Сума незалежних:</b> <span class="math">Var[X + Y] = Var[X] + Var[Y]</span>. Для залежних додається <span class="math">2·Cov(X, Y)</span>.</li>
+      </ul>
+
+      <p>Застосуємо до середнього N незалежних однаково розподілених shots <span class="math">X̄ = (X₁ + … + X_N)/N</span> <span class="say">(X̄ — «X з рискою»: вибіркове середнє)</span>:</p>
+      <div class="math-block">E[X̄] = E[X],    Var[X̄] = N·Var[X] / N² = Var[X] / N,    σ(X̄) = σ / √N</div>
+      <p>Це одна з найважливіших формул туторіалу: <b>стандартна похибка середнього</b> (standard error, SE). Розкид одного shot
+      — σ, а розкид середнього з N shots — σ/√N.</p>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Lighthouse на тій самій сторінці дає різний Performance score від запуску до запуску (CPU, мережа, GC), тому Lighthouse CI робить
+        кілька прогонів і бере медіану, а CrUX агрегує тисячі реальних візитів. Розкид <i>одного</i> запуску (σ) не зменшується — зменшується розкид
+        середнього: 16 прогонів звужують його вчетверо. Shots — це ваші прогони. Де аналогія ламається: метрики швидкодії мають довгий хвіст, тому
+        там люблять медіану й p75; кожен shot — чесний 0/1 з біноміальним розподілом, і звичайне середнє тут — правильна оцінка.
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> ⟨Z⟩, ⟨ZZ⟩ і парність бітрядка</h2>
+      <p class="section-desc">Як з counts отримати те, що в квантових алгоритмах називають "очікуваним значенням спостережуваної".</p>
+
+      <p>Спостережувана Z (матриця Паулі) має власні значення +1 (стан |0⟩) і −1 (стан |1⟩). Вимірювання кубіта в
+      обчислювальному базисі — це вимірювання Z: біт 0 означає "+1", біт 1 — "−1". Тому</p>
+      <div class="math-block">⟨Z⟩ = (+1)·p₀ + (−1)·p₁ = p₀ − p₁ = 1 − 2p₁</div>
+      <p>Дисперсія одного shot: <span class="math">Z² = 1</span> завжди, тож <span class="math">Var[Z] = 1 − ⟨Z⟩²</span>. Максимум 1 при ⟨Z⟩ = 0.
+      Звідси стандартна похибка оцінки ⟨Z⟩ з N shots:</p>
+      <div class="math-block">SE(⟨Z⟩) = √((1 − ⟨Z⟩²) / N) ≤ 1/√N</div>
+      <p>Зверніть увагу: <span class="math">⟨Z⟩ = 1 − 2p₁</span>, тому похибка ⟨Z⟩ <b>удвічі більша</b> за похибку p₁. "±1% на ймовірність" і
+      "±0.01 на ⟨Z⟩" — різні вимоги, і друга коштує вчетверо більше shots (задача 11).</p>
+
+      <h3>Добутки Паулі: ⟨Z₀Z₁⟩ і парність</h3>
+      <p>Для двох кубітів <span class="math">Z₀Z₁</span> має значення (+1)(+1), (+1)(−1) і т.д. Добуток знаків дорівнює
+      <span class="math">(−1)^(b₀ + b₁)</span> — це <b>парність</b> обраних бітів. Парна кількість одиниць дає +1, непарна −1.
+      Узагальнення для будь-якої множини кубітів S:</p>
+      <div class="math-block">⟨∏_{i∈S} Zᵢ⟩ = Σₓ p̂(x) · (−1)^(Σ_{i∈S} xᵢ)</div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 270" role="img" aria-label="Обчислення Z0 Z1 з counts через парність. Чотири рядки: бітрядок 00 має 480 shots, парність парна, знак плюс; 01 має 20 shots, непарна, мінус; 10 має 30 shots, непарна, мінус; 11 має 470, парна, плюс. Сума зі знаками 480 мінус 20 мінус 30 плюс 470 дорівнює 900, поділити на 1000 дорівнює 0.9">
+          <g font-size="12">
+            <text x="60" y="30" fill="var(--fg-muted)" font-size="11">бітрядок (q1 q0)</text>
+            <text x="200" y="30" fill="var(--fg-muted)" font-size="11">counts</text>
+            <text x="300" y="30" fill="var(--fg-muted)" font-size="11">кількість одиниць</text>
+            <text x="450" y="30" fill="var(--fg-muted)" font-size="11">знак (−1)^парність</text>
+            <text x="610" y="30" fill="var(--fg-muted)" font-size="11">внесок</text>
+            <g>
+              <rect x="40" y="42" width="660" height="34" rx="6" fill="var(--good-bg)"/>
+              <text x="90" y="64" fill="currentColor" font-weight="bold">"00"</text><text x="215" y="64" fill="currentColor">480</text><text x="345" y="64" fill="currentColor">0 → парна</text><text x="495" y="64" fill="var(--good)" font-weight="bold">+1</text><text x="620" y="64" fill="var(--good)">+480</text>
+              <rect x="40" y="82" width="660" height="34" rx="6" fill="var(--bad-bg)"/>
+              <text x="90" y="104" fill="currentColor" font-weight="bold">"01"</text><text x="215" y="104" fill="currentColor">20</text><text x="345" y="104" fill="currentColor">1 → непарна</text><text x="495" y="104" fill="var(--bad)" font-weight="bold">−1</text><text x="620" y="104" fill="var(--bad)">−20</text>
+              <rect x="40" y="122" width="660" height="34" rx="6" fill="var(--bad-bg)"/>
+              <text x="90" y="144" fill="currentColor" font-weight="bold">"10"</text><text x="215" y="144" fill="currentColor">30</text><text x="345" y="144" fill="currentColor">1 → непарна</text><text x="495" y="144" fill="var(--bad)" font-weight="bold">−1</text><text x="620" y="144" fill="var(--bad)">−30</text>
+              <rect x="40" y="162" width="660" height="34" rx="6" fill="var(--good-bg)"/>
+              <text x="90" y="184" fill="currentColor" font-weight="bold">"11"</text><text x="215" y="184" fill="currentColor">470</text><text x="345" y="184" fill="currentColor">2 → парна</text><text x="495" y="184" fill="var(--good)" font-weight="bold">+1</text><text x="620" y="184" fill="var(--good)">+470</text>
+            </g>
+            <line x1="560" y1="210" x2="700" y2="210" stroke="currentColor"/>
+            <text x="700" y="232" text-anchor="end" fill="currentColor" font-weight="bold">⟨Z₀Z₁⟩ = 900 / 1000 = 0.90</text>
+            <text x="40" y="232" fill="var(--fg-muted)" font-size="11">Те саме для ⟨Z₀⟩: дивимось лише на правий біт —</text>
+            <text x="40" y="250" fill="var(--fg-muted)" font-size="11">(480 + 30 − 20 − 470) / 1000 = 0.02</text>
+          </g>
+        </svg>
+        <figcaption>Будь-який добуток Z-операторів рахується з тих самих counts: для кожного бітрядка беремо парність потрібних бітів, ставимо знак і усереднюємо. Ці counts — майже стан Белла з невеликим шумом.</figcaption>
+      </figure>
+
+      <p>Чудова властивість: з <b>одного</b> набору counts в Z-базисі ви отримуєте ⟨Zᵢ⟩, ⟨ZᵢZⱼ⟩, ⟨ZᵢZⱼZₖ⟩ для будь-яких
+      кубітів одночасно. А от ⟨X⟩ чи ⟨XX⟩ вимагають іншої схеми: перед вимірюванням додають гейт H на відповідні кубіти
+      (поворот базису). Саме тому EstimatorV2 групує доданки гамільтоніана за сумісними базисами — менше схем, менше shots.</p>
+
+      <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають так</span>
+        "Як з counts порахувати ⟨Z₀Z₂⟩ для 3 кубітів?" — Для кожного ключа беремо біти 0 і 2 (рахуючи справа), знак
+        <span class="math">(−1)^(b₀+b₂)</span>, множимо на count, сумуємо, ділимо на N. Бонус: похибка не більша за 1/√N.
+      </div></div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · Від shots до похибки</div><div class="line"></div></div>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Закон великих чисел і магічне 1/√N</h2>
+      <p class="section-desc">Частота прямує до ймовірності, але повільно. Наскільки повільно — каже σ/√N.</p>
+
+      <p><b>Закон великих чисел</b> (ЗВЧ): для незалежних однаково розподілених shots середнє <span class="math">X̄_N</span> прямує до
+      E[X], коли N → ∞. Він гарантує, що оцінка колись стане точною, але не каже, <i>наскільки</i> точною вона буде за
+      скінченного N. Відповідь дає стандартна похибка з розділу 4: розкид оцінки зменшується як <span class="math">1/√N</span>.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 300" role="img" aria-label="Збіжність оцінки ймовірності результату 0 для кубіта після Hadamard на симуляторі Aer. Вісь X логарифмічна від 10 до 10000 shots. Оцінка стрибає 0.7 при 10 shots, 0.6 при 20, далі 0.48, 0.47 і поступово наближається до 0.49 при 10000. Затінена воронка 95 відсотків звужується як 1 на корінь з N">
+          <g font-size="12">
+            <polygon points="70.0,30.0 80.3,30.0 90.7,30.0 101.0,30.0 111.4,32.1 121.7,38.2 132.0,44.0 142.4,49.5 152.7,54.6 163.1,59.5 173.4,64.1 183.7,68.4 194.1,72.5 204.4,76.3 214.7,79.9 225.1,83.3 235.4,86.6 245.8,89.6 256.1,92.5 266.4,95.2 276.8,97.7 287.1,100.1 297.5,102.4 307.8,104.5 318.1,106.5 328.5,108.4 338.8,110.2 349.2,111.9 359.5,113.5 369.8,115.0 380.2,116.5 390.5,117.8 400.8,119.1 411.2,120.2 421.5,121.4 431.9,122.4 442.2,123.4 452.5,124.4 462.9,125.3 473.2,126.1 483.6,126.9 493.9,127.6 504.2,128.3 514.6,129.0 524.9,129.6 535.3,130.2 545.6,130.8 555.9,131.3 566.3,131.8 576.6,132.3 586.9,132.7 597.3,133.1 607.6,133.5 618.0,133.9 628.3,134.2 638.6,134.6 649.0,134.9 659.3,135.2 669.7,135.4 680.0,135.7 680.0,144.3 669.7,144.6 659.3,144.8 649.0,145.1 638.6,145.4 628.3,145.8 618.0,146.1 607.6,146.5 597.3,146.9 586.9,147.3 576.6,147.7 566.3,148.2 555.9,148.7 545.6,149.2 535.3,149.8 524.9,150.4 514.6,151.0 504.2,151.7 493.9,152.4 483.6,153.1 473.2,153.9 462.9,154.7 452.5,155.6 442.2,156.6 431.9,157.6 421.5,158.6 411.2,159.8 400.8,160.9 390.5,162.2 380.2,163.5 369.8,165.0 359.5,166.5 349.2,168.1 338.8,169.8 328.5,171.6 318.1,173.5 307.8,175.5 297.5,177.6 287.1,179.9 276.8,182.3 266.4,184.8 256.1,187.5 245.8,190.4 235.4,193.4 225.1,196.7 214.7,200.1 204.4,203.7 194.1,207.5 183.7,211.6 173.4,215.9 163.1,220.5 152.7,225.4 142.4,230.5 132.0,236.0 121.7,241.8 111.4,247.9 101.0,250.0 90.7,250.0 80.3,250.0 70.0,250.0" fill="var(--accent-soft)" stroke="none"/>
+            <polyline points="70.0,70.4 80.3,74.4 90.7,78.1 101.0,81.6 111.4,85.0 121.7,88.1 132.0,91.0 142.4,93.8 152.7,96.4 163.1,98.9 173.4,101.3 183.7,103.5 194.1,105.5 204.4,107.5 214.7,109.3 225.1,111.1 235.4,112.7 245.8,114.3 256.1,115.7 266.4,117.1 276.8,118.4 287.1,119.7 297.5,120.8 307.8,121.9 318.1,122.9 328.5,123.9 338.8,124.8 349.2,125.7 359.5,126.5 369.8,127.3 380.2,128.0 390.5,128.7 400.8,129.3 411.2,129.9 421.5,130.5 431.9,131.0 442.2,131.5 452.5,132.0 462.9,132.5 473.2,132.9 483.6,133.3 493.9,133.7 504.2,134.0 514.6,134.4 524.9,134.7 535.3,135.0 545.6,135.3 555.9,135.6 566.3,135.8 576.6,136.0 586.9,136.3 597.3,136.5 607.6,136.7 618.0,136.9 628.3,137.1 638.6,137.2 649.0,137.4 659.3,137.5 669.7,137.7 680.0,137.8" fill="none" stroke="var(--fg-muted)" stroke-dasharray="3,3"/>
+            <polyline points="70.0,209.6 80.3,205.6 90.7,201.9 101.0,198.4 111.4,195.0 121.7,191.9 132.0,189.0 142.4,186.2 152.7,183.6 163.1,181.1 173.4,178.7 183.7,176.5 194.1,174.5 204.4,172.5 214.7,170.7 225.1,168.9 235.4,167.3 245.8,165.7 256.1,164.3 266.4,162.9 276.8,161.6 287.1,160.3 297.5,159.2 307.8,158.1 318.1,157.1 328.5,156.1 338.8,155.2 349.2,154.3 359.5,153.5 369.8,152.7 380.2,152.0 390.5,151.3 400.8,150.7 411.2,150.1 421.5,149.5 431.9,149.0 442.2,148.5 452.5,148.0 462.9,147.5 473.2,147.1 483.6,146.7 493.9,146.3 504.2,146.0 514.6,145.6 524.9,145.3 535.3,145.0 545.6,144.7 555.9,144.4 566.3,144.2 576.6,144.0 586.9,143.7 597.3,143.5 607.6,143.3 618.0,143.1 628.3,142.9 638.6,142.8 649.0,142.6 659.3,142.5 669.7,142.3 680.0,142.2" fill="none" stroke="var(--fg-muted)" stroke-dasharray="3,3"/>
+            <line x1="70" y1="140.0" x2="680" y2="140.0" stroke="var(--good)" stroke-width="1.5"/>
+            <polyline points="70.0,52.0 131.2,96.0 212.1,148.8 273.3,153.2 334.5,146.6 415.5,148.8 476.7,149.2 537.9,147.9 618.8,145.5 680.0,143.5" fill="none" stroke="var(--accent)" stroke-width="2"/>
+            <circle cx="70.0" cy="52.0" r="3.5" fill="var(--accent)"/><circle cx="131.2" cy="96.0" r="3.5" fill="var(--accent)"/><circle cx="212.1" cy="148.8" r="3.5" fill="var(--accent)"/><circle cx="273.3" cy="153.2" r="3.5" fill="var(--accent)"/><circle cx="334.5" cy="146.6" r="3.5" fill="var(--accent)"/><circle cx="415.5" cy="148.8" r="3.5" fill="var(--accent)"/><circle cx="476.7" cy="149.2" r="3.5" fill="var(--accent)"/><circle cx="537.9" cy="147.9" r="3.5" fill="var(--accent)"/><circle cx="618.8" cy="145.5" r="3.5" fill="var(--accent)"/><circle cx="680.0" cy="143.5" r="3.5" fill="var(--accent)"/>
+            <line x1="70" y1="250" x2="680" y2="250" stroke="currentColor"/><line x1="70" y1="250" x2="70" y2="25" stroke="currentColor"/>
+            <line x1="70.0" y1="250" x2="70.0" y2="255" stroke="currentColor"/><text x="70.0" y="270" text-anchor="middle" fill="var(--fg-muted)" font-size="11">10</text><line x1="273.3" y1="250" x2="273.3" y2="255" stroke="currentColor"/><text x="273.3" y="270" text-anchor="middle" fill="var(--fg-muted)" font-size="11">100</text><line x1="476.7" y1="250" x2="476.7" y2="255" stroke="currentColor"/><text x="476.7" y="270" text-anchor="middle" fill="var(--fg-muted)" font-size="11">1000</text><line x1="680.0" y1="250" x2="680.0" y2="255" stroke="currentColor"/><text x="680.0" y="270" text-anchor="middle" fill="var(--fg-muted)" font-size="11">10000</text><text x="62" y="232.0" text-anchor="end" fill="var(--fg-muted)" font-size="11">0.3</text><text x="62" y="188.0" text-anchor="end" fill="var(--fg-muted)" font-size="11">0.4</text><text x="62" y="144.0" text-anchor="end" fill="var(--fg-muted)" font-size="11">0.5</text><text x="62" y="100.0" text-anchor="end" fill="var(--fg-muted)" font-size="11">0.6</text><text x="62" y="56.0" text-anchor="end" fill="var(--fg-muted)" font-size="11">0.7</text>
+            <text x="375" y="292" text-anchor="middle" fill="currentColor">кількість shots N (лог. шкала)</text>
+            <text x="560" y="132.0" fill="var(--good)" font-size="11">істинне p = 0.5</text>
+            <text x="300" y="40" fill="var(--fg-muted)" font-size="11">заливка: 0.5 ± 1.96·0.5/√N (95%)</text>
+            <text x="300" y="56" fill="var(--fg-muted)" font-size="11">пунктир: 0.5 ± 0.5/√N (1σ)</text>
+          </g>
+        </svg>
+        <figcaption>Реальний прогін на AerSimulator (seed 42): схема H + вимірювання, 10 000 shots, накопичувана частота "0". На 10 shots оцінка 0.70, на 100 — 0.47, на 10 000 — 0.492. Блакитна воронка — 95% коридор <span class="math">0.5 ± 1.96·0.5/√N</span>.</figcaption>
+      </figure>
+
+      <p>Подивіться на графік уважно. На перших десятках shots оцінка стрибає на ±20%, і це <b>нормально</b>, а не "кубіт
+      зламався". Після тисячі shots вона в межах ±3%. Щоб дійти до ±1%, треба близько 10 000 — і жодним "розумним" трюком
+      постобробки це не обійти, бо інформації у вибірці просто немає.</p>
+
+      <div class="rule-box">
+        <b>Правило "4×":</b> щоб удвічі зменшити статистичну похибку, потрібно вчетверо більше shots. Щоб у 10 разів — у 100 разів більше.
+        Це закон, не властивість конкретного заліза.
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Центральна гранична теорема і довірчі інтервали</h2>
+      <p class="section-desc">Чому скрізь з'являється 1.96 і як записати результат "чесно": p̂ ± похибка.</p>
+
+      <p><b>ЦГТ:</b> сума (і середнє) великої кількості незалежних величин зі скінченною дисперсією приблизно нормальна,
+      незалежно від того, як розподілений один доданок. Для частоти:</p>
+      <div class="math-block">p̂ ≈ 𝒩(p, σ²),   σ = √(p(1 − p)/N)</div>
+      <p>Біноміальний розподіл на графіку розділу 2 вже виглядає як дзвін саме через ЦГТ. Практичне правило застосовності:
+      <span class="math">Np ≥ 10</span> і <span class="math">N(1−p) ≥ 10</span>, тобто принаймні по десятку результатів кожного типу.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 290" role="img" aria-label="Нормальний розподіл оцінки p з капелюшком. Темніша центральна смуга від мінус 1 до плюс 1 сигма містить 68 відсотків площі, світліша від мінус 1.96 до плюс 1.96 сигма містить 95 відсотків. Сигма тут дорівнює кореню з p (1 мінус p) на N">
+          <g font-size="12">
+            <polygon points="178.8,230 178.8,203.7 185.1,200.1 191.4,196.2 197.7,191.9 204.0,187.3 210.4,182.3 216.7,176.9 223.0,171.3 229.3,165.3 235.6,159.0 241.9,152.4 248.2,145.7 254.5,138.7 260.9,131.6 267.2,124.4 273.5,117.1 279.8,109.9 286.1,102.8 292.4,95.9 298.7,89.3 305.0,82.9 311.3,76.9 317.7,71.4 324.0,66.5 330.3,62.1 336.6,58.3 342.9,55.3 349.2,52.9 355.5,51.4 361.8,50.6 368.2,50.6 374.5,51.4 380.8,52.9 387.1,55.3 393.4,58.3 399.7,62.1 406.0,66.5 412.3,71.4 418.7,76.9 425.0,82.9 431.3,89.3 437.6,95.9 443.9,102.8 450.2,109.9 456.5,117.1 462.8,124.4 469.1,131.6 475.5,138.7 481.8,145.7 488.1,152.4 494.4,159.0 500.7,165.3 507.0,171.3 513.3,176.9 519.6,182.3 526.0,187.3 532.3,191.9 538.6,196.2 544.9,200.1 551.2,203.7 551.2,230" fill="var(--accent-soft)"/>
+            <polygon points="270.0,230 270.0,121.1 273.2,117.4 276.4,113.7 279.7,110.1 282.9,106.4 286.1,102.8 289.3,99.3 292.5,95.8 295.8,92.3 299.0,89.0 302.2,85.7 305.4,82.5 308.6,79.4 311.9,76.5 315.1,73.6 318.3,70.9 321.5,68.3 324.7,65.9 328.0,63.6 331.2,61.5 334.4,59.5 337.6,57.8 340.8,56.2 344.1,54.8 347.3,53.6 350.5,52.6 353.7,51.7 356.9,51.1 360.2,50.7 363.4,50.5 366.6,50.5 369.8,50.7 373.1,51.1 376.3,51.7 379.5,52.6 382.7,53.6 385.9,54.8 389.2,56.2 392.4,57.8 395.6,59.5 398.8,61.5 402.0,63.6 405.3,65.9 408.5,68.3 411.7,70.9 414.9,73.6 418.1,76.5 421.4,79.4 424.6,82.5 427.8,85.7 431.0,89.0 434.2,92.3 437.5,95.8 440.7,99.3 443.9,102.8 447.1,106.4 450.3,110.1 453.6,113.7 456.8,117.4 460.0,121.1 460.0,230" fill="var(--accent)" opacity=".28"/>
+            <polyline points="23.0,229.7 27.8,229.7 32.5,229.6 37.2,229.5 42.0,229.4 46.8,229.3 51.5,229.2 56.2,229.1 61.0,228.9 65.8,228.7 70.5,228.5 75.2,228.3 80.0,228.0 84.8,227.7 89.5,227.3 94.2,226.9 99.0,226.4 103.8,225.9 108.5,225.3 113.2,224.6 118.0,223.9 122.8,223.0 127.5,222.1 132.2,221.1 137.0,219.9 141.8,218.7 146.5,217.3 151.2,215.7 156.0,214.0 160.8,212.2 165.5,210.2 170.3,208.0 175.0,205.7 179.8,203.2 184.5,200.5 189.2,197.6 194.0,194.5 198.8,191.2 203.5,187.7 208.2,184.0 213.0,180.1 217.8,176.0 222.5,171.7 227.2,167.3 232.0,162.6 236.8,157.8 241.5,152.9 246.2,147.8 251.0,142.6 255.8,137.3 260.5,132.0 265.2,126.6 270.0,121.1 274.8,115.7 279.5,110.3 284.2,104.9 289.0,99.6 293.8,94.5 298.5,89.5 303.2,84.7 308.0,80.0 312.8,75.7 317.5,71.6 322.2,67.8 327.0,64.3 331.8,61.1 336.5,58.4 341.2,56.0 346.0,54.0 350.8,52.5 355.5,51.4 360.2,50.7 365.0,50.5 369.8,50.7 374.5,51.4 379.2,52.5 384.0,54.0 388.8,56.0 393.5,58.4 398.2,61.1 403.0,64.3 407.8,67.8 412.5,71.6 417.2,75.7 422.0,80.0 426.8,84.7 431.5,89.5 436.3,94.5 441.0,99.6 445.8,104.9 450.5,110.3 455.2,115.7 460.0,121.1 464.8,126.6 469.5,132.0 474.2,137.3 479.0,142.6 483.8,147.8 488.5,152.9 493.2,157.8 498.0,162.6 502.8,167.3 507.5,171.7 512.2,176.0 517.0,180.1 521.8,184.0 526.5,187.7 531.2,191.2 536.0,194.5 540.8,197.6 545.5,200.5 550.2,203.2 555.0,205.7 559.8,208.0 564.5,210.2 569.2,212.2 574.0,214.0 578.8,215.7 583.5,217.3 588.2,218.7 593.0,219.9 597.8,221.1 602.5,222.1 607.2,223.0 612.0,223.9 616.8,224.6 621.5,225.3 626.2,225.9 631.0,226.4 635.8,226.9 640.5,227.3 645.2,227.7 650.0,228.0 654.8,228.3 659.5,228.5 664.2,228.7 669.0,228.9 673.8,229.1 678.5,229.2 683.2,229.3 688.0,229.4 692.8,229.5 697.5,229.6 702.2,229.7 707.0,229.7" fill="none" stroke="currentColor" stroke-width="2"/>
+            <line x1="20" y1="230" x2="710" y2="230" stroke="currentColor"/>
+            <line x1="178.8" y1="230" x2="178.8" y2="236" stroke="currentColor"/><text x="178.8" y="252" text-anchor="middle" fill="var(--fg-muted)" font-size="11">−1.96σ</text><line x1="270.0" y1="230" x2="270.0" y2="236" stroke="currentColor"/><text x="270.0" y="252" text-anchor="middle" fill="var(--fg-muted)" font-size="11">−1σ</text><line x1="365.0" y1="230" x2="365.0" y2="236" stroke="currentColor"/><text x="365.0" y="252" text-anchor="middle" fill="var(--fg-muted)" font-size="11">p̂</text><line x1="460.0" y1="230" x2="460.0" y2="236" stroke="currentColor"/><text x="460.0" y="252" text-anchor="middle" fill="var(--fg-muted)" font-size="11">+1σ</text><line x1="551.2" y1="230" x2="551.2" y2="236" stroke="currentColor"/><text x="551.2" y="252" text-anchor="middle" fill="var(--fg-muted)" font-size="11">+1.96σ</text>
+            <text x="365" y="150" text-anchor="middle" fill="currentColor" font-weight="bold">68%</text>
+            <text x="507.5" y="205" text-anchor="middle" fill="var(--accent)" font-size="11">95%</text>
+            <text x="222.5" y="205" text-anchor="middle" fill="var(--accent)" font-size="11">95%</text>
+            <text x="365" y="278" text-anchor="middle" fill="currentColor">σ = √(p(1−p)/N) — стандартна похибка оцінки</text>
+            <text x="560" y="60" fill="var(--fg-muted)" font-size="11">±1σ → 68.3%</text>
+            <text x="560" y="78" fill="var(--fg-muted)" font-size="11">±1.96σ → 95%</text>
+            <text x="560" y="96" fill="var(--fg-muted)" font-size="11">±2.576σ → 99%</text>
+          </g>
+        </svg>
+        <figcaption>Нормальне наближення для оцінки p̂. Квантилі, які варто пам'ятати: z = 1 (68.3%), z = 1.96 (95%), z = 2.576 (99%).</figcaption>
+      </figure>
+
+      <h3>Інтервал Вальда (нормальний)</h3>
+      <div class="math-block">p ∈ [ p̂ − z·√(p̂(1−p̂)/N),  p̂ + z·√(p̂(1−p̂)/N) ],   z = 1.96 для 95%</div>
+      <p>Тлумачення "95%": якщо повторювати весь експеримент багато разів, приблизно 95% таких інтервалів накриють справжнє p.
+      Це не "з імовірністю 95% p лежить тут" в баєсівському сенсі, але для інженерної практики відмінністю можна знехтувати.</p>
+
+      <h3>Інтервал Вілсона: коли p̂ близько до 0 або 1</h3>
+      <p>Вальд ламається на краях: при 0 одиниць зі 100 він дає інтервал [0, 0], ніби ми точно знаємо, що p = 0. Для
+      квантових задач це типова ситуація: "заборонені" стани (наприклад, "01" у стані Белла) мають бути рідкісними.
+      Інтервал Вілсона (Wilson score) поводиться коректно:</p>
+      <div class="math-block">центр = (p̂ + z²/2N) / (1 + z²/N),   півширина = z·√(p̂(1−p̂)/N + z²/4N²) / (1 + z²/N)</div>
+      <p>Для 0 зі 100 він дає [0, 0.037]. Швидка оцінка без формул — <b>правило трьох</b>: якщо подія не трапилась жодного
+      разу за N спроб, верхня межа 95% приблизно 3/N.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">intervals.py</span></div><pre><code>import numpy as np
+from scipy.stats import norm
+
+def wald(k, n, conf=0.95):
+    z = norm.ppf(0.5 + conf / 2)            # 1.95996 для 95%
+    p = k / n
+    h = z * np.sqrt(p * (1 - p) / n)
+    return p - h, p + h
+
+def wilson(k, n, conf=0.95):
+    z = norm.ppf(0.5 + conf / 2)
+    p = k / n
+    d = 1 + z**2 / n
+    c = (p + z**2 / (2 * n)) / d
+    h = z * np.sqrt(p * (1 - p) / n + z**2 / (4 * n**2)) / d
+    return c - h, c + h
+
+print(wald(2880, 10_000))    # (0.27912, 0.29688)
+print(wilson(2880, 10_000))  # (0.27921, 0.29696)  — майже те саме при великих N
+print(wald(0, 100))          # (0.0, 0.0)          — абсурд
+print(wilson(0, 100))        # (0.0, 0.03699)      — розумно</code></pre></div>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Звіт A/B-тесту "конверсія 28.8%" без інтервалу нічого не вартий: продакт не відрізнить реальне покращення від шуму, тому GrowthBook, Statsig
+        та інші показують оцінку разом з інтервалом. Так само <span class="math">p̂ = 0.288 ± 0.009 (95%)</span>. У квантовому коді зберігайте разом
+        з оцінкою її похибку — як в API ви повертали б не голе число, а <code>{value, error}</code> (EstimatorV2 так і робить: поле <code>stds</code> поруч з <code>evs</code>).
+      </div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Скільки shots треба для похибки ±1%</h2>
+      <p class="section-desc">Ключова навичка туторіалу: перетворити вимогу до точності на кількість shots і назад.</p>
+
+      <p>Хочемо, щоб <span class="math">|p̂ − p| ≤ ε</span> <span class="say">(ε — «епсилон»)</span> з довірою 1 − δ <span class="say">(δ — «дельта»)</span>. З нормального наближення: <span class="math">z·√(p(1−p)/N) ≤ ε</span>, звідки</p>
+      <div class="math-block">N ≥ z² · p(1 − p) / ε²</div>
+      <p>p заздалегідь невідоме, тож беремо гірший випадок <span class="math">p(1−p) ≤ 1/4</span>:</p>
+      <div class="math-block">N ≥ (z / 2ε)²   →   ε = 0.01, z = 1.96:   N ≥ (1.96 / 0.02)² = 98² = 9604</div>
+      <p>Варіанти, які варто тримати в голові:</p>
+      <ul>
+        <li><b>±1% як 1σ</b> (68% впевненості): <span class="math">N = 0.25/0.01² = 2500</span>.</li>
+        <li><b>±1% з 95%</b>: <b>9604</b> — найчастіша відповідь на співбесіді.</li>
+        <li><b>±1% з 99%</b>: <span class="math">(2.576/0.02)² ≈ 16 590</span> <span class="say">(≈ — «приблизно дорівнює»)</span>.</li>
+        <li>Якщо відомо, що <span class="math">p ≈ 0.1</span>, то <span class="math">N = 1.96²·0.09/0.0001 ≈ 3458</span> — майже втричі менше за гірший випадок.</li>
+      </ul>
+
+      <h3>Гарантія без наближень: нерівність Хеффдінга</h3>
+      <p>Нормальне наближення — саме наближення. Якщо потрібна <i>гарантія</i> для будь-якого p і будь-якого N (наприклад, у
+      формальному звіті чи в теоремі про алгоритм), використовують нерівність Хеффдінга для обмежених величин у [0, 1]:</p>
+      <div class="math-block">P(|p̂ − p| ≥ ε) ≤ 2·exp(−2Nε²)   →   N ≥ ln(2/δ) / (2ε²)</div>
+      <p>Для ε = 0.01, δ = 0.05: <span class="math">N ≥ ln(40)/0.0002 ≈ 18 445</span>. Удвічі більше, ніж 9604: ціна за гарантію без
+      припущень. На практиці беруть нормальне наближення, у статтях з теоретичними оцінками складності — Хеффдінга або Чернова.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 300" role="img" aria-label="Похибка оцінки ймовірності залежно від кількості shots, гірший випадок p рівне 0.5. Три криві спадають як 1 на корінь з N: 1 сигма, 95 відсотків нормального наближення і гарантована межа Хеффдінга. Позначки: 1024 shots дають плюс-мінус 3.1 відсотка, 9604 shots дають плюс-мінус 1 відсоток, Хеффдінг вимагає 18445 shots для того самого. Щоб зменшити похибку вдвічі, shots треба вчетверо більше">
+          <g font-size="12">
+            <line x1="66" y1="219.3" x2="670" y2="219.3" stroke="var(--border)" stroke-dasharray="2,4"/><text x="62" y="223.3" text-anchor="end" fill="var(--fg-muted)" font-size="11">±2%</text><line x1="66" y1="188.6" x2="670" y2="188.6" stroke="var(--border)" stroke-dasharray="2,4"/><text x="62" y="192.6" text-anchor="end" fill="var(--fg-muted)" font-size="11">±4%</text><line x1="66" y1="157.9" x2="670" y2="157.9" stroke="var(--border)" stroke-dasharray="2,4"/><text x="62" y="161.9" text-anchor="end" fill="var(--fg-muted)" font-size="11">±6%</text><line x1="66" y1="127.1" x2="670" y2="127.1" stroke="var(--border)" stroke-dasharray="2,4"/><text x="62" y="131.1" text-anchor="end" fill="var(--fg-muted)" font-size="11">±8%</text><line x1="66" y1="96.4" x2="670" y2="96.4" stroke="var(--border)" stroke-dasharray="2,4"/><text x="62" y="100.4" text-anchor="end" fill="var(--fg-muted)" font-size="11">±10%</text><line x1="66" y1="65.7" x2="670" y2="65.7" stroke="var(--border)" stroke-dasharray="2,4"/><text x="62" y="69.7" text-anchor="end" fill="var(--fg-muted)" font-size="11">±12%</text>
+            <polyline points="70.0,41.4 77.6,53.2 85.2,64.4 92.8,74.9 100.4,84.8 108.0,94.2 115.6,103.0 123.2,111.3 130.8,119.2 138.4,126.6 145.9,133.6 153.5,140.2 161.1,146.4 168.7,152.2 176.3,157.8 183.9,163.0 191.5,167.9 199.1,172.6 206.7,177.0 214.3,181.1 221.9,185.0 229.5,188.7 237.1,192.2 244.7,195.4 252.3,198.5 259.9,201.4 267.5,204.2 275.1,206.8 282.7,209.2 290.3,211.5 297.8,213.7 305.4,215.8 313.0,217.7 320.6,219.5 328.2,221.3 335.8,222.9 343.4,224.4 351.0,225.9 358.6,227.2 366.2,228.5 373.8,229.7 381.4,230.9 389.0,232.0 396.6,233.0 404.2,234.0 411.8,234.9 419.4,235.7 427.0,236.5 434.6,237.3 442.2,238.0 449.7,238.7 457.3,239.3 464.9,239.9 472.5,240.5 480.1,241.0 487.7,241.6 495.3,242.0 502.9,242.5 510.5,242.9 518.1,243.3 525.7,243.7 533.3,244.0 540.9,244.4 548.5,244.7 556.1,245.0 563.7,245.3 571.3,245.6 578.9,245.8 586.5,246.0 594.1,246.3 601.6,246.5 609.2,246.7 616.8,246.9 624.4,247.0 632.0,247.2 639.6,247.4 647.2,247.5 654.8,247.7 662.4,247.8 670.0,247.9" fill="none" stroke="var(--warn)" stroke-width="2" stroke-dasharray="6,3"/>
+            <polyline points="70.0,99.5 77.6,108.0 85.2,116.1 92.8,123.6 100.4,130.8 108.0,137.6 115.6,143.9 123.2,149.9 130.8,155.6 138.4,160.9 145.9,166.0 153.5,170.7 161.1,175.2 168.7,179.5 176.3,183.5 183.9,187.2 191.5,190.8 199.1,194.1 206.7,197.3 214.3,200.3 221.9,203.1 229.5,205.8 237.1,208.3 244.7,210.6 252.3,212.9 259.9,215.0 267.5,216.9 275.1,218.8 282.7,220.6 290.3,222.2 297.8,223.8 305.4,225.3 313.0,226.7 320.6,228.0 328.2,229.3 335.8,230.4 343.4,231.5 351.0,232.6 358.6,233.6 366.2,234.5 373.8,235.4 381.4,236.2 389.0,237.0 396.6,237.7 404.2,238.4 411.8,239.1 419.4,239.7 427.0,240.3 434.6,240.8 442.2,241.3 449.7,241.8 457.3,242.3 464.9,242.7 472.5,243.1 480.1,243.5 487.7,243.9 495.3,244.2 502.9,244.6 510.5,244.9 518.1,245.2 525.7,245.4 533.3,245.7 540.9,245.9 548.5,246.2 556.1,246.4 563.7,246.6 571.3,246.8 578.9,247.0 586.5,247.1 594.1,247.3 601.6,247.5 609.2,247.6 616.8,247.7 624.4,247.9 632.0,248.0 639.6,248.1 647.2,248.2 654.8,248.3 662.4,248.4 670.0,248.5" fill="none" stroke="var(--accent)" stroke-width="2.2"/>
+            <polyline points="70.0,173.2 77.6,177.6 85.2,181.7 92.8,185.5 100.4,189.2 108.0,192.6 115.6,195.9 123.2,198.9 130.8,201.8 138.4,204.6 145.9,207.1 153.5,209.6 161.1,211.9 168.7,214.0 176.3,216.0 183.9,218.0 191.5,219.8 199.1,221.5 206.7,223.1 214.3,224.6 221.9,226.1 229.5,227.4 237.1,228.7 244.7,229.9 252.3,231.0 259.9,232.1 267.5,233.1 275.1,234.1 282.7,235.0 290.3,235.8 297.8,236.6 305.4,237.4 313.0,238.1 320.6,238.8 328.2,239.4 335.8,240.0 343.4,240.6 351.0,241.1 358.6,241.6 366.2,242.1 373.8,242.5 381.4,243.0 389.0,243.4 396.6,243.7 404.2,244.1 411.8,244.4 419.4,244.7 427.0,245.0 434.6,245.3 442.2,245.6 449.7,245.8 457.3,246.1 464.9,246.3 472.5,246.5 480.1,246.7 487.7,246.9 495.3,247.1 502.9,247.2 510.5,247.4 518.1,247.5 525.7,247.7 533.3,247.8 540.9,247.9 548.5,248.0 556.1,248.2 563.7,248.3 571.3,248.4 578.9,248.5 586.5,248.5 594.1,248.6 601.6,248.7 609.2,248.8 616.8,248.8 624.4,248.9 632.0,249.0 639.6,249.0 647.2,249.1 654.8,249.1 662.4,249.2 670.0,249.2" fill="none" stroke="var(--fg-muted)" stroke-width="1.5"/>
+            <circle cx="221.5" cy="203.0" r="4" fill="var(--bad)"/><circle cx="367.4" cy="234.6" r="4" fill="var(--bad)"/><circle cx="409.9" cy="234.6" r="4" fill="var(--bad)"/><text x="229.5" y="195.0" fill="var(--bad)" font-size="11">1024 → ±3.1%</text><text x="363.4" y="208.6" text-anchor="end" fill="var(--bad)" font-size="11">9604 → ±1%</text><text x="415.9" y="222.6" fill="var(--bad)" font-size="11">18 445 (Hoeffding, ±1%)</text>
+            <line x1="70" y1="250" x2="670" y2="250" stroke="currentColor"/><line x1="70" y1="250" x2="70" y2="25" stroke="currentColor"/>
+            <line x1="70.0" y1="250" x2="70.0" y2="255" stroke="currentColor"/><text x="70.0" y="270" text-anchor="middle" fill="var(--fg-muted)" font-size="11">100</text><line x1="220.0" y1="250" x2="220.0" y2="255" stroke="currentColor"/><text x="220.0" y="270" text-anchor="middle" fill="var(--fg-muted)" font-size="11">1 000</text><line x1="370.0" y1="250" x2="370.0" y2="255" stroke="currentColor"/><text x="370.0" y="270" text-anchor="middle" fill="var(--fg-muted)" font-size="11">10 000</text><line x1="520.0" y1="250" x2="520.0" y2="255" stroke="currentColor"/><text x="520.0" y="270" text-anchor="middle" fill="var(--fg-muted)" font-size="11">100 000</text><line x1="670.0" y1="250" x2="670.0" y2="255" stroke="currentColor"/><text x="670.0" y="270" text-anchor="middle" fill="var(--fg-muted)" font-size="11">1 000 000</text>
+            <text x="370" y="292" text-anchor="middle" fill="currentColor">shots N (лог. шкала)</text>
+            <line x1="470" y1="40" x2="495" y2="40" stroke="var(--warn)" stroke-width="2" stroke-dasharray="6,3"/><text x="502" y="44" fill="currentColor" font-size="11">Хеффдінг, 95% гарантовано</text>
+            <line x1="470" y1="58" x2="495" y2="58" stroke="var(--accent)" stroke-width="2.2"/><text x="502" y="62" fill="currentColor" font-size="11">нормальне наближення, 95%</text>
+            <line x1="470" y1="76" x2="495" y2="76" stroke="var(--fg-muted)" stroke-width="1.5"/><text x="502" y="80" fill="currentColor" font-size="11">1σ (68%)</text>
+          </g>
+        </svg>
+        <figcaption>Півширина 95% інтервалу в гіршому випадку (p = 0.5). Крива спадає як 1/√N: на лог. шкалі по N кожна декада зменшує похибку лише в √10 ≈ 3.16 раза.</figcaption>
+      </figure>
+
+      <div class="cheat"><table>
+        <tr><th>Похибка ±ε (на p)</th><th>1σ (68%)</th><th>95% (z = 1.96)</th><th>99% (z = 2.576)</th><th>Хеффдінг, 95%</th></tr>
+        <tr><td>±5%</td><td>100</td><td>385</td><td>664</td><td>738</td></tr>
+        <tr><td>±3%</td><td>278</td><td>1 068</td><td>1 844</td><td>2 050</td></tr>
+        <tr><td>±2%</td><td>625</td><td>2 401</td><td>4 148</td><td>4 612</td></tr>
+        <tr class="chosen"><td><b>±1%</b></td><td>2 500</td><td><b>9 604</b></td><td>16 590</td><td>18 445</td></tr>
+        <tr><td>±0.5%</td><td>10 000</td><td>38 416</td><td>66 358</td><td>73 778</td></tr>
+        <tr><td>±0.1%</td><td>250 000</td><td>960 400</td><td>1 658 944</td><td>1 844 440</td></tr>
+      </table></div>
+
+      <h3>Перевірка експериментом на Aer</h3>
+      <p>Теорія каже: при 9604 shots приблизно 95% експериментів дадуть оцінку в межах ±1%. Перевіримо: 400 незалежних
+      експериментів по 9604 shots на схемі H + вимірювання.</p>
+      <div class="codecard"><div class="bar"><span class="path">check_9604.py</span></div><pre><code>import numpy as np
+from qiskit import QuantumCircuit
+from qiskit_aer import AerSimulator
+
+qc = QuantumCircuit(1)
+qc.h(0)
+qc.measure_all()
+sim = AerSimulator()
+
+def experiment(shots, runs=400, seed0=1000):
+    est = []
+    for s in range(runs):
+        counts = sim.run(qc, shots=shots, seed_simulator=seed0 + s).result().get_counts()
+        est.append(counts.get("0", 0) / shots)
+    return np.array(est)
+
+e = experiment(9604)
+print(np.mean(np.abs(e - 0.5) &lt;= 0.01))  # 0.9525  ← теорія: 0.95
+print(e.std())                          # 0.00510 ← теорія: 0.5/√9604 = 0.00510
+
+e = experiment(2500, seed0=5000)
+print(np.mean(np.abs(e - 0.5) &lt;= 0.01))  # 0.6625  ← теорія: ~0.68 (це ±1σ)</code></pre></div>
+      <p>Збіг з теорією в межах статистики самого експерименту (400 повторів дають власну похибку ~1%). Тобто формула
+      <span class="math">N = (z/2ε)²</span> — не абстракція, а робочий інструмент планування бюджету QPU.</p>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Ця формула про статистичну похибку, а не про правильність відповіді.</b> На реальному QPU 9604 shots дадуть оцінку
+        ±1% навколо <i>зашумленого</i> значення. Якщо апаратний шум зсунув p з 0.5 до 0.515, ви дуже точно виміряєте 0.515.
+        Більше shots не лікують систематичну похибку — дивіться розділ 10.
+      </div></div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Precision в EstimatorV2 ↔ shots</h2>
+      <p class="section-desc">Як Qiskit Runtime дозволяє задавати точність замість shots.</p>
+
+      <p>У SamplerV2 ви задаєте <code>shots</code> напряму. В EstimatorV2 замість цього задають <b>precision</b> — цільову стандартну
+      похибку оцінки очікуваного значення. Для одного оператора Паулі (власні значення ±1, дисперсія ≤ 1) з розділу 5
+      маємо <span class="math">SE ≤ 1/√N</span>, тому</p>
+      <div class="math-block">shots ≈ 1 / precision²</div>
+      <p>За документацією IBM Runtime, precision за замовчуванням дорівнює <span class="math">0.015625 = 1/64</span>, тобто
+      <span class="math">1/√4096</span> — приблизно 4096 shots на схему (перевірте актуальне значення в документації вашої версії
+      <code>qiskit-ibm-runtime</code>: дефолти змінювались).</p>
+
+      <div class="codecard"><div class="bar"><span class="path">estimator_precision.py</span></div><pre><code>import numpy as np
+from qiskit import QuantumCircuit
+from qiskit.quantum_info import SparsePauliOp
+from qiskit_aer.primitives import EstimatorV2
+
+qc = QuantumCircuit(1)
+qc.ry(1.2, 0)                         # ⟨Z⟩ = cos(1.2) = 0.36236
+obs = SparsePauliOp("Z")
+
+for prec in (0.05, 0.01):
+    vals = []
+    for s in range(200):
+        est = EstimatorV2(options={"run_options": {"seed": s}})
+        res = est.run([(qc, obs)], precision=prec).result()[0]
+        vals.append(float(res.data.evs))
+    print(prec, np.mean(vals), np.std(vals), float(res.data.stds))
+
+# 0.05  ~0.364  ~0.05   0.05   ← розкид ≈ заявленій precision
+# 0.01  ~0.362  ~0.010  0.01   (точні цифри трохи різняться між запусками)</code></pre></div>
+
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        <b>Нюанс Aer проти справжнього QPU.</b> Aer-івський EstimatorV2 обчислює точне значення і <i>додає гаусів шум</i> з
+        σ = precision — це модель статистики shots, а не реальний семплінг. IBM Runtime на залізі справді виконує
+        ~1/precision² shots. Для гамільтоніана <span class="math">H = Σ cᵢPᵢ</span> дисперсія більша, і безпечна верхня оцінка
+        похибки — <span class="math">Σ|cᵢ| / √N</span> (задача 21).
+      </div></div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина III · Шум і порівняння розподілів</div><div class="line"></div></div>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Статистична похибка проти апаратного шуму</h2>
+      <p class="section-desc">Два зовсім різні джерела помилок, і лікуються вони по-різному.</p>
+
+      <table>
+        <tr><th></th><th>Статистична (shot noise)</th><th>Апаратна (систематична)</th></tr>
+        <tr><td>Причина</td><td>Скінченна вибірка з правильного розподілу</td><td>Декогеренція, помилки гейтів, помилки зчитування, crosstalk</td></tr>
+        <tr><td>Як поводиться з N</td><td>Зменшується як 1/√N</td><td>Не зменшується зовсім (зсув, bias)</td></tr>
+        <tr><td>Як виглядає</td><td>Випадковий розкид навколо істинного p</td><td>Розподіл зсунутий: "заборонені" стани мають помітну ймовірність</td></tr>
+        <tr><td>Чим лікувати</td><td>Більше shots</td><td>Error suppression і mitigation (TREX, ZNE, корекція зчитування), краще залізо, коротші схеми</td></tr>
+        <tr><td>Як перевірити</td><td>Порівняти розкид кількох повторів з σ/√N</td><td>Прогнати схему з відомою відповіддю (калібрувальну) і подивитись зсув</td></tr>
+      </table>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Це точно як випадкова і систематична похибка в аналітиці. Більше трафіку зменшує випадковий розкид конверсії, але якщо adblock і відмови від
+        cookies стабільно "з'їдають" 15% подій трекера, дашборд буде брехати на ту саму величину за будь-якого обсягу трафіку. Систематику лікують
+        <b>калібруванням</b>: звіряють трекер з еталонним джерелом (серверні логи, замовлення в БД) і виводять коефіцієнт корекції. Корекція помилок
+        зчитування (розділ 12) — буквально це: готуємо еталонні стани |0⟩ і |1⟩ і міряємо, як часто прилад їх плутає.
+      </div>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Шум зчитування, умовні ймовірності і Байєс</h2>
+      <p class="section-desc">Детектор кубіта іноді помиляється. Модель цього — матриця 2×2 умовних ймовірностей.</p>
+
+      <p>Нехай <b>істинний</b> стан після схеми — біт t ∈ {0, 1}, а <b>прочитаний</b> — r. Зчитування описують умовні ймовірності
+      <span class="math">P(r | t)</span>: "яка ймовірність прочитати r, якщо насправді t". Їх збирають у <b>матрицю плутанини</b>
+      (confusion / assignment matrix), стовпці якої відповідають істинному стану:</p>
+      <div class="math-block">M = [ P(r=0|t=0)   P(r=0|t=1) ;  P(r=1|t=0)   P(r=1|t=1) ] = [ 0.98  0.05 ;  0.02  0.95 ]</div>
+      <p>Кожен стовпець у сумі дає 1 (з істинного стану ми щось точно прочитаємо). Зверніть увагу на асиметрію: |1⟩
+      помиляється частіше (5%), бо надпровідний кубіт може <b>релаксувати</b> в |0⟩ просто під час довгого зчитування (процес T1).
+      Це типова картина для реального заліза. За формулою повної ймовірності виміряний розподіл — це добуток матриці на істинний:</p>
+      <div class="math-block">p_виміряне = M · p_істинне</div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 270" role="img" aria-label="Модель шуму зчитування як канал. Ліворуч істинні стани 0 і 1, праворуч прочитані 0 і 1. Від істинного 0 до прочитаного 0 товста стрілка 0.98, до прочитаного 1 тонка 0.02. Від істинного 1 до прочитаного 1 товста стрілка 0.95, до прочитаного 0 тонка 0.05. Внизу: для стану плюс з істинним розподілом 0.5 0.5 виміряне виходить 0.515 0.485">
+          <defs><marker id="q09-a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="110" y="28" text-anchor="middle" fill="var(--accent)" font-weight="bold">Істинний стан t</text>
+            <text x="560" y="28" text-anchor="middle" fill="var(--accent)" font-weight="bold">Прочитаний біт r</text>
+            <circle cx="110" cy="75" r="26" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="110" y="80" text-anchor="middle" fill="currentColor" font-weight="bold">|0⟩</text>
+            <circle cx="110" cy="175" r="26" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="110" y="180" text-anchor="middle" fill="currentColor" font-weight="bold">|1⟩</text>
+            <circle cx="560" cy="75" r="26" fill="none" stroke="currentColor"/><text x="560" y="80" text-anchor="middle" fill="currentColor" font-weight="bold">"0"</text>
+            <circle cx="560" cy="175" r="26" fill="none" stroke="currentColor"/><text x="560" y="180" text-anchor="middle" fill="currentColor" font-weight="bold">"1"</text>
+            <line x1="138" y1="75" x2="530" y2="75" stroke="var(--good)" stroke-width="5" marker-end="url(#q09-a3)"/>
+            <text x="335" y="66" text-anchor="middle" fill="var(--good)">0.98</text>
+            <line x1="138" y1="175" x2="530" y2="175" stroke="var(--good)" stroke-width="5" marker-end="url(#q09-a3)"/>
+            <text x="335" y="196" text-anchor="middle" fill="var(--good)">0.95</text>
+            <line x1="136" y1="88" x2="533" y2="160" stroke="var(--bad)" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#q09-a3)"/>
+            <text x="250" y="122" fill="var(--bad)">0.02 (хибна "1")</text>
+            <line x1="136" y1="162" x2="533" y2="90" stroke="var(--bad)" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#q09-a3)"/>
+            <text x="380" y="122" fill="var(--bad)">0.05 (релаксація T1)</text>
+            <rect x="620" y="55" width="100" height="140" rx="8" fill="var(--bg)" stroke="var(--border)"/>
+            <text x="670" y="78" text-anchor="middle" fill="var(--fg-muted)" font-size="11">M =</text>
+            <text x="670" y="105" text-anchor="middle" fill="currentColor">0.98  0.05</text>
+            <text x="670" y="130" text-anchor="middle" fill="currentColor">0.02  0.95</text>
+            <text x="670" y="160" text-anchor="middle" fill="var(--fg-muted)" font-size="10">стовпці = t</text>
+            <text x="670" y="176" text-anchor="middle" fill="var(--fg-muted)" font-size="10">рядки = r</text>
+            <text x="365" y="236" text-anchor="middle" fill="currentColor">|+⟩: p_істинне = (0.5, 0.5)  →  M·p = (0.98·0.5 + 0.05·0.5,  0.02·0.5 + 0.95·0.5) = (0.515, 0.485)</text>
+            <text x="365" y="258" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Aer з цією моделлю шуму, 100 000 shots: (0.5174, 0.4826) — в межах ±0.003 статистики</text>
+          </g>
+        </svg>
+        <figcaption>Шум зчитування — це канал з асиметричними "перехресними" ймовірностями. Ідеальна монетка |+⟩ <span class="say">(|+⟩ — «кет плюс»: (|0⟩+|1⟩)/√2)</span> на виході виглядає як злегка зважена: 51.5% / 48.5%.</figcaption>
+      </figure>
+
+      <h3>Формула Байєса: "що насправді було, якщо я прочитав 1?"</h3>
+      <p>Матриця M відповідає на питання "що я прочитаю за відомого стану". Часто потрібне обернене: прочитали 1 — наскільки
+      ймовірно, що стан справді |1⟩? Це <b>апостеріорна</b> ймовірність:</p>
+      <div class="math-block">P(t=1 | r=1) = P(r=1|t=1)·P(t=1) / [ P(r=1|t=1)·P(t=1) + P(r=1|t=0)·P(t=0) ]</div>
+      <p>При рівних апріорних 0.5: <span class="math">0.95·0.5 / (0.95·0.5 + 0.02·0.5) = 0.95/0.97 ≈ 0.979</span>. А якщо стан |1⟩ сам
+      по собі рідкісний (апріорна 0.1), то <span class="math">0.095 / (0.095 + 0.018) ≈ 0.841</span>: кожне шосте "1" — хибне! Це той самий
+      ефект, що й у медичних тестах на рідкісні хвороби, і він важливий для квантових алгоритмів, де правильна відповідь —
+      рідкісний бітрядок.</p>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Корекція зчитування: інверсія матриці плутанини</h2>
+      <p class="section-desc">Найпростіша форма error mitigation — це розв'язати систему лінійних рівнянь 2×2.</p>
+
+      <p>Якщо <span class="math">p_вим = M·p_іст</span>, то <span class="math">p_іст = M⁻¹·p_вим</span>. M вимірюють калібруванням: готують |0⟩,
+      міряють багато разів (отримують перший стовпець), потім |1⟩ (другий стовпець). Для 2×2:</p>
+      <div class="math-block">M = [a b; c d],   M⁻¹ = 1/(ad − bc) · [d −b; −c a]</div>
+      <p>Для нашої M: <span class="math">det = 0.98·0.95 − 0.05·0.02 = 0.930</span>,
+      <span class="math">M⁻¹ ≈ [1.0215  −0.0538; −0.0215  1.0538]</span>.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 250" role="img" aria-label="Корекція зчитування. Ліворуч виміряний розподіл 0.62 і 0.38. Множення на обернену матрицю M в мінус першому з елементами 1.0215, мінус 0.0538, мінус 0.0215, 1.0538 дає скоригований розподіл 0.6129 і 0.3871. Внизу попередження: якщо виміряне близьке до 0.99 і 0.01, інверсія дає від'ємну квазіймовірність мінус 0.011">
+          <defs><marker id="q09-a4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="90" y="28" text-anchor="middle" fill="var(--fg-muted)" font-size="11">виміряне p_вим</text>
+            <rect x="40" y="40" width="100" height="80" rx="8" fill="none" stroke="currentColor"/>
+            <text x="90" y="72" text-anchor="middle" fill="currentColor">0.62</text>
+            <text x="90" y="100" text-anchor="middle" fill="currentColor">0.38</text>
+            <line x1="145" y1="80" x2="205" y2="80" stroke="currentColor" marker-end="url(#q09-a4)"/>
+            <text x="300" y="28" text-anchor="middle" fill="var(--fg-muted)" font-size="11">M⁻¹ (з калібрування)</text>
+            <rect x="210" y="40" width="180" height="80" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="300" y="72" text-anchor="middle" fill="currentColor">1.0215   −0.0538</text>
+            <text x="300" y="100" text-anchor="middle" fill="currentColor">−0.0215   1.0538</text>
+            <line x1="395" y1="80" x2="455" y2="80" stroke="currentColor" marker-end="url(#q09-a4)"/>
+            <text x="520" y="28" text-anchor="middle" fill="var(--fg-muted)" font-size="11">скориговане p_іст</text>
+            <rect x="460" y="40" width="120" height="80" rx="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="520" y="72" text-anchor="middle" fill="currentColor">0.6129</text>
+            <text x="520" y="100" text-anchor="middle" fill="currentColor">0.3871</text>
+            <text x="655" y="72" fill="var(--fg-muted)" font-size="11">сума = 1</text>
+            <text x="655" y="90" fill="var(--fg-muted)" font-size="11">зберігається</text>
+            <rect x="40" y="150" width="650" height="70" rx="8" fill="var(--warn-bg)" stroke="var(--warn-border)"/>
+            <text x="60" y="176" fill="var(--warn)" font-weight="bold">Пастка:</text>
+            <text x="120" y="176" fill="currentColor">p_вим = (0.99, 0.01)  →  M⁻¹·p_вим = (1.0108, −0.0108)</text>
+            <text x="60" y="202" fill="currentColor" font-size="11">Від'ємна "ймовірність"! Статистичний шум у p_вим + інверсія = квазіймовірності. Обрізайте до найближчого валідного розподілу.</text>
+          </g>
+        </svg>
+        <figcaption>Корекція — це множення на M⁻¹. Сума ймовірностей зберігається (бо стовпці M сумуються в 1), але окремі значення можуть вийти за [0, 1].</figcaption>
+      </figure>
+
+      <p>Перевірка на Aer: з моделлю шуму M та 100 000 shots стан |+⟩ дав виміряні (0.5174, 0.4826); після
+      <code>np.linalg.solve(M, p)</code> — (0.4994, 0.5006). Систематичний зсув прибрано, залишилась лише статистика.</p>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Масштабування.</b> Для n кубітів повна матриця має розмір 2ⁿ × 2ⁿ: при n = 20 це вже ~10¹² елементів. На практиці
+        припускають незалежність помилок кубітів (тензорний добуток 2×2 матриць, див. <a href="07-linear-algebra-eigen-tensor.html">туторіал 7</a>)
+        або використовують готові методи: <b>M3</b> (matrix-free measurement mitigation) і <b>TREX</b> (twirled readout error
+        extinction), який вмикається в EstimatorV2 опціями resilience (див. <a href="03-quantum-backend-python-ibm.html">туторіал 3</a>).
+        Інверсія 2×2 — це фундамент, на якому вони стоять.
+      </div></div>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Порівняння розподілів: TVD, Hellinger, χ²</h2>
+      <p class="section-desc">"Наскільки отримане схоже на очікуване?" — числом, а не на око.</p>
+
+      <h3>Total variation distance (TVD)</h3>
+      <div class="math-block">TVD(P, Q) = ½ · Σₓ |P(x) − Q(x)|  ∈ [0, 1]</div>
+      <p>Тлумачення: максимальна різниця ймовірностей будь-якої події під P і під Q. TVD = 0.05 означає, що жоден
+      "класифікатор" не відрізнить ці розподіли з перевагою більше 5% за один shot.</p>
+
+      <h3>Hellinger fidelity</h3>
+      <div class="math-block">BC = Σₓ √(P(x)·Q(x)),    F_H = BC²  ∈ [0, 1]</div>
+      <p>Коефіцієнт Бхаттачар'ї BC — "скалярний добуток" коренів розподілів (аналог перекриття станів). У Qiskit є готова
+      функція <code>qiskit.quantum_info.hellinger_fidelity(counts1, counts2)</code>, яка приймає counts напряму. Ми перевірили:
+      для прикладу нижче вона повертає 0.94997, що збігається з BC² вручну.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 260" role="img" aria-label="Порівняння виміряного розподілу з ідеальним станом Белла. Чотири пари стовпців: 00 виміряне 0.48 проти ідеального 0.5; 01 виміряне 0.02 проти 0; 10 виміряне 0.03 проти 0; 11 виміряне 0.47 проти 0.5. Різниці по модулю 0.02, 0.02, 0.03, 0.03, сума 0.10, половина 0.05 це TVD. Hellinger fidelity 0.950">
+          <g font-size="12">
+            <line x1="60" y1="200" x2="560" y2="200" stroke="currentColor"/>
+            <g>
+              <rect x="80" y="56" width="40" height="144" fill="var(--accent)" opacity=".8"/>
+              <rect x="122" y="50" width="40" height="150" fill="none" stroke="var(--good)" stroke-width="2" stroke-dasharray="4,2"/>
+              <rect x="200" y="194" width="40" height="6" fill="var(--bad)"/>
+              <rect x="320" y="191" width="40" height="9" fill="var(--bad)"/>
+              <rect x="440" y="59" width="40" height="141" fill="var(--accent)" opacity=".8"/>
+              <rect x="482" y="50" width="40" height="150" fill="none" stroke="var(--good)" stroke-width="2" stroke-dasharray="4,2"/>
+              <text x="100" y="48" text-anchor="middle" fill="currentColor" font-size="11">0.48</text>
+              <text x="142" y="42" text-anchor="middle" fill="var(--good)" font-size="11">0.50</text>
+              <text x="220" y="186" text-anchor="middle" fill="var(--bad)" font-size="11">0.02</text>
+              <text x="340" y="183" text-anchor="middle" fill="var(--bad)" font-size="11">0.03</text>
+              <text x="460" y="51" text-anchor="middle" fill="currentColor" font-size="11">0.47</text>
+              <text x="502" y="42" text-anchor="middle" fill="var(--good)" font-size="11">0.50</text>
+              <text x="121" y="220" text-anchor="middle" fill="currentColor">"00"</text>
+              <text x="230" y="220" text-anchor="middle" fill="currentColor">"01"</text>
+              <text x="350" y="220" text-anchor="middle" fill="currentColor">"10"</text>
+              <text x="481" y="220" text-anchor="middle" fill="currentColor">"11"</text>
+              <text x="121" y="240" text-anchor="middle" fill="var(--fg-muted)" font-size="11">|Δ| = 0.02</text>
+              <text x="230" y="240" text-anchor="middle" fill="var(--fg-muted)" font-size="11">|Δ| = 0.02</text>
+              <text x="350" y="240" text-anchor="middle" fill="var(--fg-muted)" font-size="11">|Δ| = 0.03</text>
+              <text x="481" y="240" text-anchor="middle" fill="var(--fg-muted)" font-size="11">|Δ| = 0.03</text>
+            </g>
+            <rect x="580" y="50" width="140" height="150" rx="8" fill="var(--bg)" stroke="var(--border)"/>
+            <rect x="594" y="66" width="12" height="12" fill="var(--accent)" opacity=".8"/><text x="612" y="77" fill="currentColor" font-size="11">виміряне</text>
+            <rect x="594" y="88" width="12" height="12" fill="none" stroke="var(--good)" stroke-dasharray="3,2"/><text x="612" y="99" fill="currentColor" font-size="11">ідеальне</text>
+            <text x="594" y="130" fill="currentColor" font-weight="bold">TVD = 0.05</text>
+            <text x="594" y="150" fill="var(--fg-muted)" font-size="11">½·(0.02+0.02+</text>
+            <text x="594" y="164" fill="var(--fg-muted)" font-size="11">0.03+0.03)</text>
+            <text x="594" y="188" fill="currentColor" font-weight="bold">F_H = 0.950</text>
+          </g>
+        </svg>
+        <figcaption>Стан Белла з невеликим шумом: counts <code>{"00": 480, "01": 20, "10": 30, "11": 470}</code> проти ідеалу 50/50. TVD — половина суми модулів різниць.</figcaption>
+      </figure>
+
+      <h3>Чи це взагалі той розподіл? Тест χ²</h3>
+      <p>Щоб відрізнити "шум shots" від "схема робить не те", порівнюють спостережувані кількості Oₓ з очікуваними Eₓ = N·pₓ:</p>
+      <div class="math-block">χ² = Σₓ (Oₓ − Eₓ)² / Eₓ,   ступенів свободи = (кількість результатів) − 1</div>
+      <p>Якщо χ² <span class="say">(χ — «хі»)</span> більше за критичне значення (для 3 ступенів свободи і рівня 5% це 7.81), розбіжність не пояснюється
+      статистикою shots. Умова застосовності: усі Eₓ ≥ 5. Для одного біта це еквівалентно z-тесту:
+      <span class="math">z = (p̂ − p₀)/√(p₀(1−p₀)/N)</span>, і |z| &gt; 1.96 — сигнал, що щось не так.</p>
+
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        <b>Нюанс для QPU:</b> з великим N будь-який тест "виявить" розбіжність, бо реальне залізо завжди трохи шумить. На
+        мільйоні shots χ² скаже "не той розподіл" навіть для чудового QPU. Тому в практиці квантових тестів дивляться на
+        TVD або fidelity з порогом ("TVD &lt; 0.05 — ок"), а χ² використовують для симуляторів і юніт-тестів, де шуму бути не повинно.
+      </div></div>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Кореляції в стані Белла: що статистика каже про заплутаність</h2>
+      <p class="section-desc">Чому counts лише в одному базисі не доводять, що стан заплутаний.</p>
+
+      <p>Стан Белла <span class="math">|Φ⁺⟩ = (|00⟩ + |11⟩)/√2</span> <span class="say">(Φ — «фі велика»)</span> у Z-базисі дає "00" і "11" по 50%. Маргінальні розподіли кожного кубіта —
+      чиста монетка (⟨Z₀⟩ = ⟨Z₁⟩ = 0), але біти ідеально корельовані: <span class="math">⟨Z₀Z₁⟩ = 1</span>. Коваріація
+      <span class="math">Cov(Z₀, Z₁) = ⟨Z₀Z₁⟩ − ⟨Z₀⟩⟨Z₁⟩ = 1</span>, коефіцієнт кореляції теж 1.</p>
+
+      <p>Але точно таку ж статистику в Z-базисі дає <b>класична суміш</b>: "з імовірністю ½ готуємо |00⟩, інакше |11⟩". Різниця
+      проявляється в іншому базисі. Додамо H на обидва кубіти перед вимірюванням (вимірюємо X⊗X <span class="say">(⊗ — «тензорно»: тензорний (кронекерів) добуток)</span>):</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 280" role="img" aria-label="Порівняння стану Белла і класичної суміші. Верхній ряд: Z-базис, обидва дають 00 і 11 по половині, Z0Z1 дорівнює 1. Нижній ряд: X-базис. Стан Белла на Aer дає 00 509 і 11 491, тобто XX дорівнює 1. Класична суміш дає усі чотири результати приблизно по 250, XX близько 0">
+          <g font-size="12">
+            <text x="200" y="22" text-anchor="middle" fill="var(--accent)" font-weight="bold">Стан Белла |Φ⁺⟩</text>
+            <text x="560" y="22" text-anchor="middle" fill="var(--warn)" font-weight="bold">Класична суміш {|00⟩, |11⟩}</text>
+            <line x1="365" y1="10" x2="365" y2="270" stroke="var(--border)"/>
+            <text x="12" y="80" fill="var(--fg-muted)" font-size="11" transform="rotate(-90 12 80)">Z-базис</text>
+            <text x="12" y="210" fill="var(--fg-muted)" font-size="11" transform="rotate(-90 12 210)">X-базис</text>
+            <!-- Bell Z -->
+            <line x1="60" y1="120" x2="340" y2="120" stroke="currentColor"/>
+            <rect x="75" y="60" width="44" height="60" fill="var(--accent)" opacity=".8"/><rect x="140" y="119" width="44" height="1" fill="var(--accent)"/><rect x="205" y="119" width="44" height="1" fill="var(--accent)"/><rect x="270" y="58" width="44" height="62" fill="var(--accent)" opacity=".8"/>
+            <text x="97" y="135" text-anchor="middle" fill="var(--fg-muted)" font-size="10">00</text><text x="162" y="135" text-anchor="middle" fill="var(--fg-muted)" font-size="10">01</text><text x="227" y="135" text-anchor="middle" fill="var(--fg-muted)" font-size="10">10</text><text x="292" y="135" text-anchor="middle" fill="var(--fg-muted)" font-size="10">11</text>
+            <text x="200" y="45" text-anchor="middle" fill="currentColor" font-size="11">⟨Z₀Z₁⟩ = 1</text>
+            <!-- Mixture Z -->
+            <line x1="420" y1="120" x2="700" y2="120" stroke="currentColor"/>
+            <rect x="435" y="60" width="44" height="60" fill="var(--warn)" opacity=".8"/><rect x="500" y="119" width="44" height="1" fill="var(--warn)"/><rect x="565" y="119" width="44" height="1" fill="var(--warn)"/><rect x="630" y="60" width="44" height="60" fill="var(--warn)" opacity=".8"/>
+            <text x="457" y="135" text-anchor="middle" fill="var(--fg-muted)" font-size="10">00</text><text x="522" y="135" text-anchor="middle" fill="var(--fg-muted)" font-size="10">01</text><text x="587" y="135" text-anchor="middle" fill="var(--fg-muted)" font-size="10">10</text><text x="652" y="135" text-anchor="middle" fill="var(--fg-muted)" font-size="10">11</text>
+            <text x="560" y="45" text-anchor="middle" fill="currentColor" font-size="11">⟨Z₀Z₁⟩ = 1 — не відрізнити!</text>
+            <!-- Bell X -->
+            <line x1="60" y1="245" x2="340" y2="245" stroke="currentColor"/>
+            <rect x="75" y="184" width="44" height="61" fill="var(--accent)" opacity=".8"/><rect x="140" y="244" width="44" height="1" fill="var(--accent)"/><rect x="205" y="244" width="44" height="1" fill="var(--accent)"/><rect x="270" y="186" width="44" height="59" fill="var(--accent)" opacity=".8"/>
+            <text x="97" y="260" text-anchor="middle" fill="var(--fg-muted)" font-size="10">00: 509</text><text x="162" y="260" text-anchor="middle" fill="var(--fg-muted)" font-size="10">01</text><text x="227" y="260" text-anchor="middle" fill="var(--fg-muted)" font-size="10">10</text><text x="292" y="260" text-anchor="middle" fill="var(--fg-muted)" font-size="10">11: 491</text>
+            <text x="200" y="172" text-anchor="middle" fill="var(--good)" font-size="11" font-weight="bold">⟨X₀X₁⟩ = 1 (квантова кореляція)</text>
+            <!-- Mixture X -->
+            <line x1="420" y1="245" x2="700" y2="245" stroke="currentColor"/>
+            <rect x="435" y="215" width="44" height="30" fill="var(--warn)" opacity=".8"/><rect x="500" y="215" width="44" height="30" fill="var(--warn)" opacity=".8"/><rect x="565" y="214" width="44" height="31" fill="var(--warn)" opacity=".8"/><rect x="630" y="216" width="44" height="29" fill="var(--warn)" opacity=".8"/>
+            <text x="457" y="260" text-anchor="middle" fill="var(--fg-muted)" font-size="10">252</text><text x="522" y="260" text-anchor="middle" fill="var(--fg-muted)" font-size="10">248</text><text x="587" y="260" text-anchor="middle" fill="var(--fg-muted)" font-size="10">255</text><text x="652" y="260" text-anchor="middle" fill="var(--fg-muted)" font-size="10">245</text>
+            <text x="560" y="172" text-anchor="middle" fill="var(--bad)" font-size="11" font-weight="bold">⟨X₀X₁⟩ ≈ −0.006 ≈ 0</text>
+          </g>
+        </svg>
+        <figcaption>Ліворуч — реальний прогін на Aer (1000 shots): у X-базисі стан Белла теж дає лише "00" і "11". Праворуч — дані задачі 23: класична суміш у X-базисі розсипається в рівномірний розподіл. Кореляції в <i>кількох</i> базисах — статистичний підпис заплутаності.</figcaption>
+      </figure>
+
+      <p>Строге формулювання цієї ідеї — нерівність CHSH (Белла): комбінація чотирьох кореляцій у різних базисах для будь-якої
+      класичної моделі не перевищує 2, а квантова механіка дозволяє до 2√2 ≈ 2.83. Її теж оцінюють з counts, і похибку
+      рахують тими самими формулами SE (детальніше — у Nielsen &amp; Chuang, §2.6).</p>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина IV · Практика</div><div class="line"></div></div>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Утиліти на Python: усе з туторіалу в одному модулі</h2>
+      <p class="section-desc">Невеликий модуль постобробки, який варто мати в кожному квантовому проєкті (і з яким зручно перевіряти задачі).</p>
+
+      <div class="codecard"><div class="bar"><span class="path">qstats.py</span></div><pre><code>"""Статистика для counts з квантового комп'ютера. Ключі — бітрядки Qiskit (правий біт = кубіт 0)."""
+import math
+import numpy as np
+from scipy.stats import norm
+
+def probs(counts: dict[str, int]) -&gt; dict[str, float]:
+    n = sum(counts.values())
+    return {k: v / n for k, v in counts.items()}
+
+def z_expectation(counts: dict[str, int], qubits: list[int]) -&gt; tuple[float, float]:
+    """⟨∏ Z_i⟩ для кубітів qubits і його стандартна похибка."""
+    n = sum(counts.values())
+    total = 0
+    for bits, c in counts.items():
+        parity = sum(int(bits[-1 - q]) for q in qubits) % 2   # bits[-1] — кубіт 0
+        total += c * (1 - 2 * parity)
+    ev = total / n
+    se = math.sqrt(max(0.0, 1 - ev**2) / n)                   # Var одного shot = 1 − ⟨Z⟩²
+    return ev, se
+
+def shots_needed(eps: float, conf: float = 0.95, p: float = 0.5) -&gt; int:
+    """Скільки shots, щоб |p̂ − p| ≤ eps з довірою conf (нормальне наближення)."""
+    z = norm.ppf(0.5 + conf / 2)
+    return math.ceil(z**2 * p * (1 - p) / eps**2)
+
+def shots_hoeffding(eps: float, delta: float = 0.05) -&gt; int:
+    return math.ceil(math.log(2 / delta) / (2 * eps**2))
+
+def correct_readout_1q(p_meas, m) -&gt; np.ndarray:
+    """p_true = M⁻¹ · p_meas, з обрізанням до валідного розподілу."""
+    p = np.linalg.solve(np.asarray(m, float), np.asarray(p_meas, float))
+    p = np.clip(p, 0, None)
+    return p / p.sum()
+
+def tvd(p: dict[str, float], q: dict[str, float]) -&gt; float:
+    keys = set(p) | set(q)
+    return 0.5 * sum(abs(p.get(k, 0) - q.get(k, 0)) for k in keys)
+
+
+if __name__ == "__main__":
+    c = {"00": 480, "01": 20, "10": 30, "11": 470}
+    print(z_expectation(c, [0, 1]))      # (0.9, 0.01378...)
+    print(z_expectation(c, [0]))         # (0.02, 0.03161...)
+    print(shots_needed(0.01))            # 9604
+    print(shots_hoeffding(0.01))         # 18445
+    print(correct_readout_1q([0.62, 0.38], [[0.98, 0.05], [0.02, 0.95]]))  # [0.6129 0.3871]
+    print(tvd(probs(c), {"00": 0.5, "11": 0.5}))   # 0.05</code></pre></div>
+      <p>Обрізання від'ємних значень з подальшою нормалізацією — найпростіший спосіб повернутися до валідного розподілу.
+      Більш коректно шукати найближчий розподіл за нормою L2 чи максимальною правдоподібністю, але для 1–2 кубітів
+      різниця зазвичай мізерна.</p>
+    </section>
+
+    <section id="s16">
+      <h2><span class="num">16</span> Задачі з розв'язками</h2>
+      <p class="section-desc">23 задачі: від розминки до планування бюджету QPU. Спершу розв'яжіть на папері, потім розгорніть відповідь. Усі числа перевірені кодом.</p>
+
+      <div class="legend">
+        <span><span class="dot" style="background:var(--good)"></span>легко — пряме застосування формули</span>
+        <span><span class="dot" style="background:var(--warn)"></span>середньо — кілька кроків</span>
+        <span><span class="dot" style="background:var(--bad)"></span>складно — інженерне рішення</span>
+      </div>
+
+      <h3>Блок A. Від амплітуд до ймовірностей</h3>
+
+      <div class="task" id="task1">
+        <div class="task-head"><span class="tasknum">Задача 1</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Ймовірності з комплексних амплітуд</span></div>
+        <p>Кубіт у стані <span class="math">|ψ⟩ = (√3/2)|0⟩ + (½)·e^{iπ/4}|1⟩</span>. Знайдіть P(0), P(1). Чи впливає фаза <span class="math">e^{iπ/4}</span>?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>За правилом Борна <span class="math">P(0) = |√3/2|² = 3/4 = 0.75</span>.
+          <span class="math">P(1) = |½·e^{iπ/4}|² = ¼·|e^{iπ/4}|² = ¼·1 = 0.25</span>, бо модуль будь-якого <span class="math">e^{iφ}</span> дорівнює 1.</p>
+          <p>Сума 1 — стан нормований. Фаза на ймовірності <b>в цьому базисі</b> не впливає, але змінить результат, якщо перед
+          вимірюванням застосувати H (інтерференція). Відносна фаза — фізична, глобальна — ні (туторіал 8).</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task2">
+        <div class="task-head"><span class="tasknum">Задача 2</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Ключі counts і порядок бітів</span></div>
+        <p>Statevector двох кубітів: <span class="math">[1/√3, 1/√3, 1/√3, 0]</span>. Які ключі і з якими ймовірностями буде в
+        <code>probabilities_dict()</code>? У якому з них кубіт 0 дорівнює 1?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Індекси 0, 1, 2 мають ймовірність <span class="math">(1/√3)² = 1/3</span>, індекс 3 — нуль. У двійковому вигляді (2 біти):
+          0 → <code>"00"</code>, 1 → <code>"01"</code>, 2 → <code>"10"</code>. Результат: <code>{"00": 0.333, "01": 0.333, "10": 0.333}</code>
+          (перевірено <code>Statevector.probabilities_dict()</code>).</p>
+          <p>Кубіт 0 — <b>правий</b> біт, тож q0 = 1 лише в <code>"01"</code>. Ключа <code>"11"</code> немає взагалі, тому обидва кубіти
+          ніколи не дорівнюють 1 одночасно.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task3">
+        <div class="task-head"><span class="tasknum">Задача 3</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Нормування</span></div>
+        <p>Хтось записав <span class="math">|ψ⟩ = 0.6|0⟩ + 0.7|1⟩</span>. Що не так? Виправте і знайдіть P(1).</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><span class="math">0.6² + 0.7² = 0.36 + 0.49 = 0.85 ≠ 1</span> — стан не нормований, "ймовірності" в сумі дають 0.85.
+          Ділимо обидві амплітуди на <span class="math">√0.85 ≈ 0.9220</span>: <span class="math">α ≈ 0.6508, β ≈ 0.7593</span> <span class="say">(β — «бета»)</span>.</p>
+          <p><span class="math">P(1) = 0.49/0.85 ≈ 0.4235</span>. Qiskit <code>Statevector</code> з ненормованим вектором не впаде одразу, але
+          <code>is_valid()</code> поверне False — корисна перевірка в тестах.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task4">
+        <div class="task-head"><span class="tasknum">Задача 4</span><span class="taskdiff easy">Легко</span><span class="tasktitle">⟨Z⟩, дисперсія і похибка з counts</span></div>
+        <p>Один кубіт, 10 000 shots: <code>{"0": 7120, "1": 2880}</code>. Знайдіть ⟨Z⟩, Var[Z] одного shot і стандартну похибку ⟨Z⟩.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><span class="math">p̂₀ = 0.712, p̂₁ = 0.288</span>. <span class="math">⟨Z⟩ = p₀ − p₁ = 0.424</span>.</p>
+          <p>Оскільки Z² = 1, <span class="math">Var[Z] = 1 − 0.424² = 1 − 0.179776 = 0.820224</span>.</p>
+          <p><span class="math">SE = √(0.820224 / 10000) ≈ 0.00906</span>. Запис результату: <b>⟨Z⟩ = 0.424 ± 0.009 (1σ)</b> або
+          ± 0.018 для 95%.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task5">
+        <div class="task-head"><span class="tasknum">Задача 5</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Біноміальні очікування</span></div>
+        <p>P(1) = 0.25, запускаємо 4000 shots. Скільки одиниць очікувати і який типовий розкид (1σ)? Чи підозріло отримати 1100?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><span class="math">E[K] = Np = 1000</span>, <span class="math">σ = √(Np(1−p)) = √(4000·0.25·0.75) = √750 ≈ 27.4</span>.</p>
+          <p>1100 відхиляється на <span class="math">100/27.4 ≈ 3.65σ</span>. Ймовірність такого або більшого відхилення в нормальному
+          наближенні ~0.03% — це вже не статистика. Або p насправді не 0.25 (апаратний шум, помилка в схемі), або
+          порушена незалежність shots.</p>
+        </div></details>
+      </div>
+
+      <h3>Блок B. Очікувані значення з бітрядків</h3>
+
+      <div class="task" id="task6">
+        <div class="task-head"><span class="tasknum">Задача 6</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">⟨Z₀Z₁⟩, ⟨Z₀⟩, ⟨Z₁⟩ з одних counts</span></div>
+        <p>1000 shots: <code>{"00": 480, "01": 20, "10": 30, "11": 470}</code>. Обчисліть ⟨Z₀Z₁⟩, ⟨Z₀⟩, ⟨Z₁⟩. Що за стан, найімовірніше, готували?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><b>⟨Z₀Z₁⟩</b>: парність обох бітів (схема в <a href="#s5">розділі 5</a>). Парні "00", "11" → +1, непарні "01", "10" → −1:
+          <span class="math">(480 + 470 − 20 − 30)/1000 = 0.90</span>.</p>
+          <p><b>⟨Z₀⟩</b>: дивимося лише на правий символ. q0 = 0 у "00" і "10" (480 + 30 = 510), q0 = 1 у "01" і "11" (20 + 470 = 490):
+          <span class="math">(510 − 490)/1000 = 0.02</span>.</p>
+          <p><b>⟨Z₁⟩</b>: лівий символ. q1 = 0 у "00", "01" (500), q1 = 1 у "10", "11" (500): <span class="math">0.00</span>.</p>
+          <p>Кожен кубіт окремо — монетка (⟨Z⟩ ≈ 0, похибка ~0.03, тож 0.02 статистично не відрізняється від нуля), а разом
+          вони сильно корельовані. Це стан Белла <span class="math">|Φ⁺⟩</span> з ~5% помилок, які "розбивають" кореляцію.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task7">
+        <div class="task-head"><span class="tasknum">Задача 7</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Три кубіти: ⟨ZZZ⟩ проти ⟨Z₀Z₁⟩</span></div>
+        <p>10 000 shots стану, близького до GHZ: <code>{"000": 4900, "111": 4800, "001": 100, "110": 200}</code>. Знайдіть
+        ⟨Z₀Z₁Z₂⟩, ⟨Z₀Z₁⟩ і ⟨Z₁Z₂⟩. Чому ⟨ZZZ⟩ близьке до нуля, хоча кореляції ідеальні?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <figure class="diagram">
+            <svg viewBox="0 0 700 210" role="img" aria-label="Таблиця знаків для трьох спостережуваних. Рядок 000, 4900 shots: ZZZ плюс, Z0Z1 плюс, Z1Z2 плюс. Рядок 111, 4800: ZZZ мінус бо три одиниці непарно, Z0Z1 плюс, Z1Z2 плюс. Рядок 001, 100: ZZZ мінус, Z0Z1 мінус, Z1Z2 плюс. Рядок 110, 200: ZZZ плюс, Z0Z1 мінус, Z1Z2 плюс. Результати: ZZZ 0.02, Z0Z1 0.94, Z1Z2 1.00">
+              <g font-size="12">
+                <text x="40" y="26" fill="var(--fg-muted)" font-size="11">бітрядок (q2 q1 q0)</text>
+                <text x="210" y="26" fill="var(--fg-muted)" font-size="11">counts</text>
+                <text x="320" y="26" fill="var(--fg-muted)" font-size="11">Z₂Z₁Z₀</text>
+                <text x="450" y="26" fill="var(--fg-muted)" font-size="11">Z₁Z₀</text>
+                <text x="570" y="26" fill="var(--fg-muted)" font-size="11">Z₂Z₁</text>
+                <text x="60" y="56" fill="currentColor" font-weight="bold">"000"</text><text x="215" y="56" fill="currentColor">4900</text><text x="335" y="56" fill="var(--good)">+</text><text x="462" y="56" fill="var(--good)">+</text><text x="582" y="56" fill="var(--good)">+</text>
+                <text x="60" y="86" fill="currentColor" font-weight="bold">"111"</text><text x="215" y="86" fill="currentColor">4800</text><text x="335" y="86" fill="var(--bad)">−</text><text x="462" y="86" fill="var(--good)">+</text><text x="582" y="86" fill="var(--good)">+</text>
+                <text x="60" y="116" fill="currentColor" font-weight="bold">"001"</text><text x="215" y="116" fill="currentColor">100</text><text x="335" y="116" fill="var(--bad)">−</text><text x="462" y="116" fill="var(--bad)">−</text><text x="582" y="116" fill="var(--good)">+</text>
+                <text x="60" y="146" fill="currentColor" font-weight="bold">"110"</text><text x="215" y="146" fill="currentColor">200</text><text x="335" y="146" fill="var(--good)">+</text><text x="462" y="146" fill="var(--bad)">−</text><text x="582" y="146" fill="var(--good)">+</text>
+                <line x1="40" y1="162" x2="660" y2="162" stroke="currentColor"/>
+                <text x="60" y="190" fill="currentColor" font-weight="bold">середнє</text>
+                <text x="320" y="190" fill="currentColor" font-weight="bold">0.02</text>
+                <text x="450" y="190" fill="currentColor" font-weight="bold">0.94</text>
+                <text x="570" y="190" fill="currentColor" font-weight="bold">1.00</text>
+              </g>
+            </svg>
+            <figcaption>Для кожної спостережуваної свій набір бітів для парності; counts ті самі.</figcaption>
+          </figure>
+          <p><b>⟨ZZZ⟩</b>: "000" — 0 одиниць (+), "111" — 3 (−), "001" — 1 (−), "110" — 2 (+):
+          <span class="math">(4900 − 4800 − 100 + 200)/10000 = 0.02</span>.</p>
+          <p><b>⟨Z₀Z₁⟩</b> (два правих біти): "000" → 00 (+), "111" → 11 (+), "001" → 01 (−), "110" → 10 (−):
+          <span class="math">(4900 + 4800 − 100 − 200)/10000 = 0.94</span>.</p>
+          <p><b>⟨Z₁Z₂⟩</b> (два лівих): 00, 11, 00, 11 — усі парні: <span class="math">1.00</span>.</p>
+          <p>Чому ⟨ZZZ⟩ ≈ 0: для GHZ "000" дає +1, "111" дає −1 (непарна кількість одиниць), і вони приблизно рівноймовірні —
+          знаки взаємно знищуються. Кореляції ідеальні, але спостережувана "не та". Для GHZ сигнатурою є саме парні добутки
+          ⟨ZᵢZⱼ⟩ = 1 (і ⟨XXX⟩ = 1 в іншому базисі). А помилки "001" і "110" — це перекинутий кубіт 0: тому страждає лише ⟨Z₀Z₁⟩.</p>
+        </div></details>
+      </div>
+
+      <h3>Блок C. Похибки та довірчі інтервали</h3>
+
+      <div class="task" id="task8">
+        <div class="task-head"><span class="tasknum">Задача 8</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">95% інтервал для P(1)</span></div>
+        <p>З задачі 4: 2880 одиниць з 10 000. Побудуйте 95% інтервал Вальда і порівняйте з Вілсоном.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><span class="math">p̂ = 0.288</span>, <span class="math">SE = √(0.288·0.712/10000) = √0.0000205 ≈ 0.004528</span>.
+          Півширина <span class="math">1.96·0.004528 ≈ 0.00888</span>.</p>
+          <p>Вальд: <b>[0.2791, 0.2969]</b>. Вілсон: [0.2792, 0.2970] — практично те саме, бо N велике, а p̂ далеко від країв.
+          Висновок: при тисячах shots і p̂ у межах 0.05…0.95 Вальда достатньо.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task9">
+        <div class="task-head"><span class="tasknum">Задача 9</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Рідкісні події: 0 зі 100 і 3 з 50</span></div>
+        <p>(а) Стан "01" для схеми Белла не випав жодного разу за 100 shots. Яка верхня межа P("01") з 95%?
+        (б) Подія трапилась 3 рази з 50. Порівняйте Вальда і Вілсона.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>(а) Вальд дає [0, 0] — нульова ширина, бо <span class="math">p̂(1−p̂) = 0</span>. Це хибна впевненість. Вілсон: [0, 0.037].
+          Правило трьох: <span class="math">3/100 = 0.03</span>. Точна межа Клоппера–Пірсона: <span class="math">1 − 0.025^{1/100} ≈ 0.036</span>.
+          Отже, "0 зі 100" означає лише "P(01) найімовірніше менше ~3–4%", а не "P(01) = 0".</p>
+          <p>(б) <span class="math">p̂ = 0.06</span>. Вальд: <span class="math">0.06 ± 1.96·√(0.06·0.94/50) = 0.06 ± 0.066</span> → [−0.006, 0.126].
+          Від'ємна нижня межа — абсурд. Вілсон: <b>[0.021, 0.162]</b>, асиметричний, як і має бути біля нуля.
+          Умова <span class="math">Np ≥ 10</span> порушена (Np = 3), тому нормальне наближення погане.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task10">
+        <div class="task-head"><span class="tasknum">Задача 10</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Shots для ±1%: гірший і відомий випадок</span></div>
+        <p>Скільки shots треба, щоб оцінити P(1) з похибкою ±1% і довірою 95%, якщо (а) про p нічого не відомо; (б) з попереднього
+        запуску відомо, що p ≈ 0.1?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>(а) Гірший випадок <span class="math">p(1−p) = 0.25</span>: <span class="math">N = 1.96²·0.25/0.01² = 3.8416·2500 = 9604</span>.</p>
+          <p>(б) <span class="math">p(1−p) = 0.09</span>: <span class="math">N = 3.8416·0.09/0.0001 = 3457.4 → 3458</span>.</p>
+          <p>Економія ~2.8 раза. Практичний патерн: спершу "розвідувальний" запуск на ~500 shots, щоб оцінити p, потім основний
+          з розрахованою кількістю. На платному QPU це реальні гроші. Але обережно: якщо помилитеся з оцінкою p у бік 0.5,
+          точність буде гіршою за заявлену.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task11">
+        <div class="task-head"><span class="tasknum">Задача 11</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">±0.01 на ⟨Z⟩ — це не ±1% на p</span></div>
+        <p>Потрібна стандартна похибка ⟨Z⟩ не більше 0.01 (1σ). Скільки shots? Порівняйте з вимогою "SE(p̂) ≤ 0.01".</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><span class="math">SE(⟨Z⟩) ≤ 1/√N ≤ 0.01 → N ≥ 10 000</span> (гірший випадок ⟨Z⟩ = 0).</p>
+          <p>Для p: <span class="math">SE(p̂) ≤ 0.5/√N ≤ 0.01 → N ≥ 2500</span>.</p>
+          <p>Різниця в 4 рази, бо <span class="math">⟨Z⟩ = 1 − 2p</span>: похибка множиться на 2, а кількість shots — на 2² = 4. Завжди
+          уточнюйте, про яку величину йдеться у вимозі "точність 1%", інакше бюджет QPU легко помилиться вчетверо.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task12">
+        <div class="task-head"><span class="tasknum">Задача 12</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Хеффдінг проти нормального наближення</span></div>
+        <p>Скільки shots за Хеффдінгом для ε = 0.01 і δ = 0.05? А для δ = 0.01? Коли варто брати Хеффдінга?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><span class="math">N ≥ ln(2/δ)/(2ε²)</span>. δ = 0.05: <span class="math">ln 40 / 0.0002 = 3.689/0.0002 ≈ 18 444.4 → 18 445</span>.
+          δ = 0.01: <span class="math">ln 200 / 0.0002 ≈ 26 492</span>.</p>
+          <p>Порівняно з 9604 (нормальне, 95%) — майже вдвічі більше. Хеффдінг дає гарантію для будь-якого N і p без
+          асимптотичних припущень. Беріть його, коли потрібна доведена межа (аналіз складності алгоритму, SLA "з гарантією")
+          або коли N мале і ЦГТ не працює. Для інженерних оцінок бюджету достатньо нормального наближення.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task13">
+        <div class="task-head"><span class="tasknum">Задача 13</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Бюджет QPU для QAOA</span></div>
+        <p>Ваш QAOA (туторіал 4) робить 50 ітерацій оптимізатора. На кожній ітерації — 3 схеми (три групи доданків гамільтоніана),
+        для кожної потрібна SE(⟨·⟩) ≤ 0.01. Скільки всього shots? Припустімо (умовно!), що один shot коштує ~300 мкс QPU-часу.
+        Скільки хвилин це займе і що робити, якщо місячна квота ~10 хвилин?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Одна схема: <span class="math">1/0.01² = 10 000</span> shots. Ітерація: 3 × 10 000 = 30 000. Усього:
+          <span class="math">50 × 30 000 = 1 500 000</span> shots.</p>
+          <p>Час: <span class="math">1.5·10⁶ × 300·10⁻⁶ с = 450 с = 7.5 хв</span> — три чверті місячної квоти на один запуск, без
+          урахування накладних витрат на завантаження схем і транспіляцію (на реальному залізі вони помітні).</p>
+          <figure class="diagram">
+            <svg viewBox="0 0 700 200" role="img" aria-label="Порівняння бюджету shots для QAOA. Варіант A: точність 0.01 на всіх 50 ітераціях, 1.5 мільйона shots, близько 7.5 хвилин. Варіант B: точність 0.02, 375 тисяч shots, близько 1.9 хвилини. Варіант C: 45 ітерацій з точністю 0.03 плюс 5 фінальних з 0.01, близько 300 тисяч shots, близько 1.5 хвилини. Квота 10 хвилин позначена вертикальною лінією">
+              <g font-size="12">
+                <line x1="160" y1="20" x2="160" y2="170" stroke="currentColor"/>
+                <rect x="160" y="30" width="405" height="32" rx="4" fill="var(--bad)" opacity=".75"/>
+                <text x="150" y="51" text-anchor="end" fill="currentColor">A: 0.01 скрізь</text>
+                <text x="575" y="51" fill="currentColor">1.5 млн · 7.5 хв</text>
+                <rect x="160" y="80" width="101" height="32" rx="4" fill="var(--warn)" opacity=".8"/>
+                <text x="150" y="101" text-anchor="end" fill="currentColor">B: 0.02 скрізь</text>
+                <text x="271" y="101" fill="currentColor">375 тис · 1.9 хв</text>
+                <rect x="160" y="130" width="81" height="32" rx="4" fill="var(--good)" opacity=".8"/>
+                <text x="150" y="151" text-anchor="end" fill="currentColor">C: адаптивно</text>
+                <text x="251" y="151" fill="currentColor">300 тис · 1.5 хв</text>
+                <line x1="700" y1="20" x2="700" y2="170" stroke="var(--fg-muted)" stroke-dasharray="4,3"/>
+                <text x="695" y="190" text-anchor="end" fill="var(--fg-muted)" font-size="11">10 хв квоти (масштаб: 54 px ≈ 1 хв)</text>
+              </g>
+            </svg>
+            <figcaption>Ті самі 50 ітерацій, різні стратегії точності. Хвилини — за умовним припущенням 300 мкс/shot.</figcaption>
+          </figure>
+          <p>Що робити:</p>
+          <ul>
+            <li><b>Знизити точність на ранніх ітераціях.</b> Оптимізатору на старті не потрібна ±0.01: при SE = 0.02 shots у 4 рази менше (375 000, ~1.9 хв).</li>
+            <li><b>Адаптивна схема:</b> 45 ітерацій з SE = 0.03 (~1111 shots на схему → ~150 000) + 5 фінальних з 0.01 (150 000) ≈ 300 000 shots, ~1.5 хв.</li>
+            <li><b>Налагоджувати на Aer</b>, на QPU запускати лише фінальну конфігурацію або оптимізовані параметри.</li>
+            <li><b>Групувати доданки</b> в менше базисів (менше схем на ітерацію).</li>
+          </ul>
+          <p>300 мкс/shot тут — умовне число для навчальної арифметики; реальна вартість залежить від заліза, rep_delay і накладних
+          витрат. Перевіряйте фактичне використання в метаданих job (туторіал 3).</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task14">
+        <div class="task-head"><span class="tasknum">Задача 14</span><span class="taskdiff easy">Легко</span><span class="tasktitle">precision ↔ shots в EstimatorV2</span></div>
+        <p>Яка кількість shots приблизно відповідає precision = 0.005? А дефолтному 0.015625?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><span class="math">shots ≈ 1/precision²</span>: <span class="math">1/0.005² = 40 000</span>; <span class="math">1/0.015625² = 4096</span>.</p>
+          <p>Зменшити precision у 3.125 раза (з 0.015625 до 0.005) коштує майже в 10 разів більше shots. Тому задавайте precision
+          свідомо, а не "про всяк випадок якомога менше".</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task15">
+        <div class="task-head"><span class="tasknum">Задача 15</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Похибка дефолтних 1024 shots</span></div>
+        <p>Багато туторіалів запускають схеми з <code>shots=1024</code>. Яка тоді похибка оцінки ймовірності (гірший випадок, 1σ і 95%)?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><span class="math">1σ = 0.5/√1024 = 0.5/32 = 0.0156</span> (±1.6%). <span class="math">95%: 1.96 × 0.0156 ≈ 0.0306</span> (±3.1%).</p>
+          <p>Перевірка на Aer (400 повторів по 1024 shots): розкид 0.01565, 95.0% оцінок у межах ±3.06%. Отже, різниця 52% проти
+          48% на 1024 shots нічого не означає — це в межах шуму.</p>
+        </div></details>
+      </div>
+
+      <h3>Блок D. Шум зчитування і корекція</h3>
+
+      <div class="task" id="task16">
+        <div class="task-head"><span class="tasknum">Задача 16</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Що побачимо для |+⟩ із шумом зчитування</span></div>
+        <p>Матриця зчитування <span class="math">M = [0.98 0.05; 0.02 0.95]</span> (стовпці — істинний стан). Який розподіл ви
+        виміряєте для ідеального <span class="math">|+⟩</span>? А для <span class="math">|1⟩</span>?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><span class="math">|+⟩</span>: <span class="math">p_іст = (0.5, 0.5)</span>,
+          <span class="math">M·p = (0.98·0.5 + 0.05·0.5, 0.02·0.5 + 0.95·0.5) = (0.515, 0.485)</span>.</p>
+          <p><span class="math">|1⟩</span>: <span class="math">p_іст = (0, 1)</span>, <span class="math">M·p</span> = другий стовпець = (0.05, 0.95).</p>
+          <p>Aer з моделлю <code>ReadoutError([[0.98, 0.02], [0.05, 0.95]])</code> (увага: в Aer рядки — істинний стан, тобто це
+          транспонована M) на 100 000 shots дав (0.5174, 0.4826) і (0.0497, 0.9503). Обидва в межах ±2σ ≈ ±0.003 від теорії.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task17">
+        <div class="task-head"><span class="tasknum">Задача 17</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Корекція вручну</span></div>
+        <p>З тією ж M виміряно (0.62, 0.38). Знайдіть скоригований розподіл, обчисливши M⁻¹ вручну.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><span class="math">det M = 0.98·0.95 − 0.05·0.02 = 0.931 − 0.001 = 0.930</span>.</p>
+          <p><span class="math">M⁻¹ = (1/0.930)·[0.95 −0.05; −0.02 0.98] ≈ [1.0215 −0.0538; −0.0215 1.0538]</span>.</p>
+          <p><span class="math">p₀ = (0.95·0.62 − 0.05·0.38)/0.930 = (0.589 − 0.019)/0.930 = 0.570/0.930 ≈ 0.6129</span>.</p>
+          <p><span class="math">p₁ = (−0.02·0.62 + 0.98·0.38)/0.930 = (−0.0124 + 0.3724)/0.930 = 0.360/0.930 ≈ 0.3871</span>.</p>
+          <p>Сума 1. Корекція "повернула" ймовірність з 0 в 1: шум зчитування асиметричний (|1⟩ частіше читається як 0),
+          тож реальне P(1) трохи більше, ніж виміряне. Схема цього кроку — у <a href="#s12">розділі 12</a>.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task18">
+        <div class="task-head"><span class="tasknum">Задача 18</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Від'ємна квазіймовірність</span></div>
+        <p>Виміряно (0.99, 0.01). Застосуйте M⁻¹. Що пішло не так і як це виправити в коді?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><span class="math">p₁ = (−0.02·0.99 + 0.98·0.01)/0.930 = (−0.0198 + 0.0098)/0.930 ≈ −0.0108</span>,
+          <span class="math">p₀ ≈ 1.0108</span>.</p>
+          <p>Чому: модель каже, що навіть для ідеального |0⟩ ми мали б прочитати мінімум 2% одиниць. Виміряли 1% — менше, ніж
+          дозволяє модель. Причини: статистичний шум (за 100 shots 1% проти 2% — це нормально) або дрейф калібрування.
+          Лінійна інверсія не знає, що ймовірності невід'ємні.</p>
+          <p>Виправлення: обрізати від'ємні до нуля і перенормувати (у <code>correct_readout_1q</code> з розділу 15 →
+          (1.0, 0.0)) або розв'язувати задачу найменших квадратів з обмеженнями <span class="math">p ≥ 0, Σp = 1</span>.
+          Для оцінки очікуваних значень квазіймовірності можна використовувати як є — середнє залишається незміщеним.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task19">
+        <div class="task-head"><span class="tasknum">Задача 19</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Байєс: наскільки вірити прочитаній "1"</span></div>
+        <p>Та сама M. (а) Апріорі стан |0⟩ і |1⟩ рівноймовірні, прочитали "1". Яка ймовірність, що стан справді |1⟩?
+        (б) Те саме, якщо апріорі P(|1⟩) = 0.1. (в) P(|0⟩ | прочитали "0") при рівних апріорних.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>(а) <span class="math">0.95·0.5 / (0.95·0.5 + 0.02·0.5) = 0.95/0.97 ≈ 0.979</span>.</p>
+          <p>(б) <span class="math">0.95·0.1 / (0.95·0.1 + 0.02·0.9) = 0.095/0.113 ≈ 0.841</span>. Знаменник — повна ймовірність прочитати "1":
+          справжні одиниці (0.095) плюс хибні з великої кількості нулів (0.018).</p>
+          <p>(в) <span class="math">0.98·0.5 / (0.98·0.5 + 0.05·0.5) = 0.98/1.03 ≈ 0.951</span>. Прочитаному "0" вірити <i>менше</i>, ніж "1",
+          бо релаксація |1⟩ → "0" (5%) частіша за хибне збудження (2%).</p>
+          <p>Мораль для алгоритмів пошуку (Гровер, QAOA): якщо правильний бітрядок рідкісний, частина "знайдених" — шум.
+          Перевіряйте кандидатів класично (для маршрутів — просто порахуйте вартість, туторіал 4).</p>
+        </div></details>
+      </div>
+
+      <h3>Блок E. Порівняння і перевірка гіпотез</h3>
+
+      <div class="task" id="task20">
+        <div class="task-head"><span class="tasknum">Задача 20</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">TVD і Hellinger fidelity</span></div>
+        <p>Counts <code>{"00": 480, "01": 20, "10": 30, "11": 470}</code> проти ідеального стану Белла. Обчисліть TVD і Hellinger fidelity.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Ймовірності: (0.48, 0.02, 0.03, 0.47) проти (0.5, 0, 0, 0.5).</p>
+          <p><span class="math">TVD = ½(|0.48−0.5| + 0.02 + 0.03 + |0.47−0.5|) = ½(0.02 + 0.02 + 0.03 + 0.03) = 0.05</span>.</p>
+          <p><span class="math">BC = √(0.48·0.5) + 0 + 0 + √(0.47·0.5) = 0.48990 + 0.48477 = 0.97467</span>,
+          <span class="math">F_H = BC² ≈ 0.9500</span>. <code>hellinger_fidelity(counts, {"00": 500, "11": 500})</code> повертає те саме.</p>
+          <p>Графічне пояснення — у <a href="#s13">розділі 13</a>. TVD 0.05 і fidelity 0.95 — хороший результат для 2-кубітної
+          схеми на реальному QPU.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task21">
+        <div class="task-head"><span class="tasknum">Задача 21</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Shots для гамільтоніана</span></div>
+        <p><span class="math">H = 0.5·Z₀ + 0.3·Z₀Z₁ + 0.2·Z₁</span>, усі доданки вимірюються в Z-базисі однією схемою. Скільки shots
+        гарантує SE(⟨H⟩) ≤ 0.01?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Для кожного shot значення <span class="math">h = 0.5·z₀ + 0.3·z₀z₁ + 0.2·z₁</span>, де <span class="math">zᵢ = ±1</span>. Отже
+          <span class="math">|h| ≤ 0.5 + 0.3 + 0.2 = 1</span>, і дисперсія одного shot не перевищує <span class="math">(Σ|cᵢ|)² = 1</span>.</p>
+          <p><span class="math">SE ≤ 1/√N ≤ 0.01 → N ≥ 10 000</span>. Це оцінка з запасом: фактична дисперсія залежить від стану і
+          зазвичай менша. Загальне правило: <span class="math">N ≥ (Σ|cᵢ| / precision)²</span>. Для гамільтоніанів з великими
+          коефіцієнтами (хімія, QUBO зі штрафами з туторіалу 4) це число швидко росте — ще одна причина нормувати
+          коефіцієнти.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task22">
+        <div class="task-head"><span class="tasknum">Задача 22</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Це шум shots чи баг у схемі?</span></div>
+        <p>(а) Очікуєте 50/50, отримали 5300 / 4700 з 10 000. (б) Отримали 520 / 480 з 1000. (в) Схема H⊗H має давати
+        рівномірний розподіл на 4 результати; з 1000 shots отримали {260, 240, 255, 245}. (г) А якщо {290, 220, 260, 230}?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>(а) <span class="math">SE = √(0.25/10000) = 0.005</span>, <span class="math">z = (0.53 − 0.5)/0.005 = 6.0</span>. Ймовірність такого
+          відхилення випадково ~2·10⁻⁹. <b>Не статистика</b>: систематичний зсув (шум зчитування, неточний кут повороту).</p>
+          <p>(б) <span class="math">SE = √(0.25/1000) ≈ 0.0158</span>, <span class="math">z = 0.02/0.0158 ≈ 1.26</span>, p-value ≈ 0.21. Цілком
+          узгоджується з 50/50. Та сама різниця 2% — але при меншому N вона в межах шуму. Відповідь залежить від N!</p>
+          <p>(в) Очікувано по 250. <span class="math">χ² = (10² + 10² + 5² + 5²)/250 = 250/250 = 1.0</span>, 3 ступені свободи,
+          p-value ≈ 0.80. Критичне значення 7.81 далеко — розподіл узгоджується з рівномірним.</p>
+          <p>(г) <span class="math">χ² = (40² + 30² + 10² + 20²)/250 = 3000/250 = 12.0 &gt; 7.81</span>, p-value ≈ 0.007. На симуляторі
+          без шуму це майже напевно баг; на реальному QPU — шум, який варто з'ясувати (порівняйте з калібруванням зчитування).</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task23">
+        <div class="task-head"><span class="tasknum">Задача 23</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Заплутаний стан чи класична суміш?</span></div>
+        <p>Хтось стверджує, що приготував стан Белла. У Z-базисі отримано лише "00" і "11" приблизно порівну. Потім додали H на
+        обидва кубіти і отримали <code>{"00": 252, "01": 248, "10": 255, "11": 245}</code>. Обчисліть ⟨X₀X₁⟩ і зробіть висновок.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Після H на обидва кубіти Z-вимірювання дорівнює X-вимірюванню вихідного стану, тож ⟨X₀X₁⟩ = парність нових counts:
+          <span class="math">(252 + 245 − 248 − 255)/1000 = −0.006</span>, SE ≈ 0.032. Статистично це нуль.</p>
+          <p>Для <span class="math">|Φ⁺⟩</span> має бути ⟨XX⟩ = +1 (на Aer: <code>{"00": 509, "11": 491}</code>). Нуль у X-базисі при
+          ідеальній кореляції в Z-базисі — підпис <b>класичної суміші</b> {|00⟩, |11⟩}: фаза між компонентами втрачена
+          (декогеренція або CNOT подали на некогерентний стан). Порівняння гістограм — у <a href="#s14">розділі 14</a>.</p>
+          <p>Висновок: щоб стверджувати заплутаність, потрібні кореляції щонайменше у двох несумісних базисах. Сама по собі
+          гістограма в Z-базисі нічого не доводить.</p>
+        </div></details>
+      </div>
+    </section>
+
+    <section id="s17">
+      <h2><span class="num">17</span> Глибше: що читати й дивитись</h2>
+      <p class="section-desc">Конкретні розділи, а не "почитайте статистику". Рівні: <span class="lvl l1">база</span> <span class="lvl l2">поглиблено</span> <span class="lvl l3">просунуто</span>.</p>
+
+      <div class="res">
+        <div class="res-head"><span class="res-title">Blitzstein, Hwang — "Introduction to Probability" (2nd ed., CRC Press)</span><span class="lvl l1">база</span><span class="lvl type">книга</span></div>
+        <div class="res-meta">Розділи 1–4 (ймовірність, умовна ймовірність і Байєс, дискретні випадкові величини, сподівання), розділ 10 (нерівності і граничні теореми)</div>
+        <p>Найкращий сучасний підручник для повернення до теорії ймовірностей після перерви. Автори виклали PDF у вільний доступ на сайті книги (probabilitybook.net — перевірте актуальну адресу). Розділ 10 дає ЗВЧ, ЦГТ і нерівність Чебишова/Чернова, на яких тримається розділ 8 цього туторіалу.</p>
+      </div>
+
+      <div class="res">
+        <div class="res-head"><span class="res-title">Harvard Stat 110 (Joe Blitzstein) — лекції на YouTube</span><span class="lvl l1">база</span><span class="lvl type">відео</span></div>
+        <div class="res-meta">Лекції 1–13 (до біноміального і Пуассона), окремо лекції про ЦГТ і закон великих чисел</div>
+        <p>Курс до тієї ж книги. Ідеально, якщо ви краще сприймаєте живе пояснення з задачами на дошці. Дивіться на 1.25×, паралельно розв'язуючи strategic practice з сайту курсу.</p>
+      </div>
+
+      <div class="res">
+        <div class="res-head"><span class="res-title">3Blue1Brown — "Bayes theorem, the geometry of changing beliefs" і "But what is the Central Limit Theorem?"</span><span class="lvl l1">база</span><span class="lvl type">відео</span></div>
+        <div class="res-meta">Два відео по ~15–30 хв</div>
+        <p>Геометрична інтуїція для двох ідей туторіалу: апостеріорні ймовірності (задача 19) і чому сума shots стає нормальною (розділ 7).</p>
+      </div>
+
+      <div class="res">
+        <div class="res-head"><span class="res-title">Khan Academy — "Statistics and probability"</span><span class="lvl l1">база</span><span class="lvl type">курс</span></div>
+        <div class="res-meta">Юніти про random variables, sampling distributions, confidence intervals, significance tests (χ²)</div>
+        <p>Якщо треба швидко відновити механіку довірчих інтервалів і χ²-тесту з вправами з автоперевіркою.</p>
+      </div>
+
+      <div class="res">
+        <div class="res-head"><span class="res-title">Nielsen &amp; Chuang — "Quantum Computation and Quantum Information"</span><span class="lvl l2">поглиблено</span><span class="lvl type">книга</span></div>
+        <div class="res-meta">§2.2.3 (квантове вимірювання), §2.2.5 (спостережувані, проєктивні вимірювання, середнє і стандартне відхилення), §2.6 (EPR і нерівність Белла), Appendix 1 (нотатки з теорії ймовірностей)</div>
+        <p>Формальне визначення ⟨M⟩ = ⟨ψ|M|ψ⟩ <span class="say">(⟨ψ|M|ψ⟩ — «бра псі, M, кет псі»: середнє (очікуване) значення M у стані ψ)</span> і [ΔM]² <span class="say">(Δ — «дельта велика»)</span> через проєктори — математичний фундамент розділів 4–5. Appendix 1 — стислий довідник з ймовірностей, включно з нерівністю Чернова, яку автори використовують для оцінок повторень алгоритмів.</p>
+      </div>
+
+      <div class="res">
+        <div class="res-head"><span class="res-title">IBM Quantum Learning — "Basics of Quantum Information" (John Watrous)</span><span class="lvl l1">база</span><span class="lvl type">курс</span></div>
+        <div class="res-meta">Урок 1 "Single systems" (класичні ймовірнісні стани проти квантових, вимірювання), урок 2 "Multiple systems" (кореляції, маргінальні розподіли)</div>
+        <p>Watrous будує квантову інформацію саме від класичних ймовірнісних векторів і стохастичних матриць — прямий місток від цього туторіалу до лінійної алгебри квантових станів. Матриця M з розділу 11 — це стохастична матриця з його першого уроку.</p>
+      </div>
+
+      <div class="res">
+        <div class="res-head"><span class="res-title">Документація Qiskit / IBM Quantum: primitives, shots і precision; error mitigation</span><span class="lvl l2">поглиблено</span><span class="lvl type">документація</span></div>
+        <div class="res-meta">Сторінки про SamplerV2/EstimatorV2 (параметри shots і precision), про resilience options (TREX, ZNE), API <code>qiskit.quantum_info.hellinger_fidelity</code></div>
+        <p>Перевіряйте дефолти (precision, кількість shots) саме для вашої версії <code>qiskit-ibm-runtime</code>: вони змінювались між релізами, і API примітивів зараз мігрує (туторіал 3).</p>
+      </div>
+
+      <div class="res">
+        <div class="res-head"><span class="res-title">Nation, Kang, Sundaresan, Gambetta — "Scalable mitigation of measurement errors on quantum computers" (PRX Quantum, 2021)</span><span class="lvl l3">просунуто</span><span class="lvl type">стаття</span></div>
+        <div class="res-meta">arXiv:2108.12518 (метод M3)</div>
+        <p>Як масштабувати інверсію матриці зчитування з розділу 12 на десятки кубітів без матриць 2ⁿ × 2ⁿ. Читати після того, як розв'язали задачі 16–18.</p>
+      </div>
+
+      <div class="res">
+        <div class="res-head"><span class="res-title">Wasserman — "All of Statistics" (Springer)</span><span class="lvl l2">поглиблено</span><span class="lvl type">книга</span></div>
+        <div class="res-meta">Розділи 4 (нерівності: Хеффдінг), 5 (збіжність, ЦГТ), 6–7 (оцінювання, довірчі інтервали)</div>
+        <p>Стислий "інженерний" підручник: якщо Blitzstein здається надто повільним, тут те саме за третину сторінок, з доведенням нерівності Хеффдінга.</p>
+      </div>
+    </section>
+
+    <section id="s18">
+      <h2><span class="num">18</span> Чекліст: навик на базовому рівні, якщо ви можете…</h2>
+      <p class="section-desc">Пройдіться по пунктах чесно. Кожен "ні" — це посилання на розділ, до якого варто повернутися.</p>
+
+      <div class="card">
+        <ul>
+          <li>☐ З вектора стану отримати розподіл ймовірностей і правильно прочитати ключі Qiskit (правий біт — q0). → <a href="#s3">розділ 3</a></li>
+          <li>☐ Порахувати ⟨Z⟩, ⟨ZᵢZⱼ⟩, ⟨ZᵢZⱼZₖ⟩ з counts через парність і пояснити, чому ⟨X⟩ вимагає іншої схеми. → <a href="#s5">розділ 5</a></li>
+          <li>☐ Записати результат як "оцінка ± SE" і пояснити, звідки береться σ/√N. → <a href="#s4">розділи 4</a>, <a href="#s6">6</a></li>
+          <li>☐ Побудувати 95% інтервал і знати, коли Вальд ламається і треба Вілсон. → <a href="#s7">розділ 7</a></li>
+          <li>☐ Без калькулятора сказати: ±1% з 95% — 9604 shots, 1σ — 2500, удвічі точніше — вчетверо дорожче. → <a href="#s8">розділ 8</a></li>
+          <li>☐ Перевести precision EstimatorV2 у shots і оцінити shots для гамільтоніана через Σ|cᵢ|. → <a href="#s9">розділ 9</a>, задача 21</li>
+          <li>☐ Відрізнити статистичну похибку від систематичної і пояснити, чому більше shots не лікує шум заліза. → <a href="#s10">розділ 10</a></li>
+          <li>☐ Скласти матрицю зчитування 2×2, застосувати Байєса і вручну інвертувати її для корекції. → <a href="#s11">розділи 11</a>, <a href="#s12">12</a></li>
+          <li>☐ Порівняти два розподіли через TVD / Hellinger fidelity і перевірити гіпотезу z- або χ²-тестом. → <a href="#s13">розділ 13</a></li>
+          <li>☐ Пояснити, чому кореляції в одному базисі не доводять заплутаність. → <a href="#s14">розділ 14</a></li>
+          <li>☐ Розв'язати щонайменше 18 з 23 задач без підглядання у відповідь.</li>
+        </ul>
+      </div>
+
+      <h3>Куди далі</h3>
+      <ul>
+        <li><a href="06-linear-algebra-vectors-matrices.html">Туторіал 6</a> і <a href="07-linear-algebra-eigen-tensor.html">7</a> — лінійна алгебра: звідки беруться амплітуди, оператори Паулі і тензорні добутки, якими ми тут користувалися.</li>
+        <li><a href="08-complex-numbers-phase.html">Туторіал 8</a> — комплексні числа і фаза: чому фаза не видна в counts, але визначає інтерференцію.</li>
+        <li><a href="10-numpy-statevector-simulator.html">Туторіал 10</a> — власний симулятор на NumPy: реалізуйте <code>sample_counts</code> і перевірте формули цього туторіалу на ньому.</li>
+        <li><a href="11-qiskit-circuits-aer.html">Туторіал 11</a> і <a href="12-qiskit-runtime-real-qpu.html">12</a> — Qiskit, Aer і реальний QPU: там ці формули стануть щоденною практикою.</li>
+        <li><a href="01-quanta-and-quantum-computing.html">Туторіал 1</a> (вимірювання і стан Белла), <a href="03-quantum-backend-python-ibm.html">3</a> (примітиви і mitigation в бекенді), <a href="05-quantum-engineer-roadmap.html">5</a> (дорожня карта навчання).</li>
+      </ul>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Quantum Doc · частина серії туторіалів AI Delivery Planner. Числові відповіді й експерименти перевірено кодом: NumPy 2.5, SciPy, Qiskit 2.5.2, Qiskit Aer 0.17.2, qiskit-ibm-runtime 0.50 (симулятор, не реальний QPU).
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*|\/\/[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b|\bthis\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case|const|let|var|function|interface|type|export|extends|implements|new|void|enum|typeof|instanceof|static|public|private|readonly|null|undefined)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+<script>
+(function(){
+  var root = document.documentElement, btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function current(){
+    var t = root.getAttribute('data-theme');
+    return t === 'light' || t === 'dark' ? t : (mq && mq.matches ? 'dark' : 'light');
+  }
+  function render(){
+    var dark = current() === 'dark';
+    btn.textContent = dark ? '☀️ Світла тема' : '🌙 Темна тема';
+    btn.setAttribute('aria-label', dark ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('docs-theme', next); }catch(e){}
+    render();
+  });
+  if(mq && mq.addEventListener) mq.addEventListener('change', render);
+  render();
+})();
+</script>
+</body>
+</html>

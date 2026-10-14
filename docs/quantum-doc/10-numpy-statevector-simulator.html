@@ -1,0 +1,2537 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>10. NumPy: власний симулятор — Quantum Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<script>
+(function(){
+  try{ var t = localStorage.getItem('docs-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --bg:#fcfbff; --bg-soft:#f3f2fa; --card:#ffffff; --border:#e0e0ec;
+    --fg:#1c1c2a; --fg-muted:#5c6176;
+    --accent:#3a5ee8; --accent-soft:#ebedff;
+    --code-bg:#212338; --code-fg:#e8e8f4; --code-muted:#8d92ab;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#3a5ee8; --info-bg:#ebedff; --info-border:#c7cffc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#171822; --bg-soft:#1e1f2b; --card:#1e1f2b; --border:#2e3041;
+      --fg:#e6e7f3; --fg-muted:#9ba0b7;
+      --accent:#7a8eff; --accent-soft:#1f2344;
+      --code-bg:#11111b; --code-fg:#e6e7f3; --code-muted:#7e8399;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#8a9dff; --info-bg:#161a36; --info-border:#2c356e;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#171822; --bg-soft:#1e1f2b; --card:#1e1f2b; --border:#2e3041;
+    --fg:#e6e7f3; --fg-muted:#9ba0b7;
+    --accent:#7a8eff; --accent-soft:#1f2344;
+    --code-bg:#11111b; --code-fg:#e6e7f3; --code-muted:#7e8399;
+    --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+    --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+    --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+    --info:#8a9dff; --info-bg:#161a36; --info-border:#2c356e;
+    --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"],
+  #tab-quantum:checked ~ .nav-tabbar label[for="tab-quantum"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  #tab-quantum:checked ~ .nav-links.quantum{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+
+  /* --- python-doc extras --- */
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider:first-child{margin-top:8px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+  .qa summary .qnum{color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700; margin-right:8px;}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  /* --- quantum-doc extras --- */
+  .res{border:1px solid var(--border); border-radius:var(--radius); background:var(--card); padding:14px 16px; margin:12px 0;}
+  .res .res-head{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:4px;}
+  .res .res-title{font-weight:700; font-size:15px;}
+  .res .res-meta{font-size:12.5px; color:var(--fg-muted);}
+  .res p{margin:6px 0 0; font-size:14.3px;}
+  .lvl{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap;}
+  .lvl.l1{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .lvl.l2{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .lvl.l3{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .lvl.type{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .timeline{border-left:2px solid var(--accent); margin:20px 0 20px 8px; padding-left:20px;}
+  .timeline .ev{position:relative; margin:0 0 18px;}
+  .timeline .ev::before{content:""; position:absolute; left:-27px; top:6px; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid var(--bg);}
+  .timeline .yr{font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; font-size:14px;}
+  .timeline .ev-t{font-weight:700;}
+  .timeline .ev p{margin:4px 0 0; font-size:14.3px; color:var(--fg-muted);}
+  .math{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:1.05em; white-space:nowrap;}
+  .math-block{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:18px; text-align:center; padding:14px; margin:14px 0; border:1px dashed var(--border); border-radius:var(--radius); background:var(--bg-soft); overflow-x:auto;}
+
+  /* --- theme switch --- */
+  :root{color-scheme:light;}
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .theme-toggle{
+    cursor:pointer; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+    background:var(--bg-soft); color:var(--fg); font:inherit; font-size:12.5px; font-weight:600;
+    transition:background .15s, border-color .15s;
+  }
+  .theme-toggle:hover{background:var(--card); border-color:var(--accent);}
+  .theme-toggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .say{color:var(--fg-muted); font-size:.9em; font-weight:400; font-style:normal;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="top-row">
+      <div class="brand">⚛️ Квантове програмування <span>· AI Delivery Planner</span></div>
+      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Темна тема</button>
+    </div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Квантове програмування · Туторіал 10 · Навик «Python / NumPy»</div>
+  <h1>Власний квантовий симулятор на NumPy: від 2 кубітів до n</h1>
+  <p class="lead">Практичний міст між математикою з туторіалів 6–9 і Qiskit. Пишемо statevector-симулятор власноруч: спершу «в лоб» на матрицях 4×4 для двох кубітів, потім n-кубітний через reshape і tensordot без жодної матриці 2ⁿ×2ⁿ. Вимірювання, shots, очікувані значення, перевірка заплутаності, bit-flip шум, 109 тестів проти Qiskit і 23 задачі з розв'язками. Увесь код і весь вивід на сторінці — з реального запуску.</p>
+  <div class="pills">
+    <span class="pill">🧮 complex128, kron, eigh</span>
+    <span class="pill">🧱 v1: 2 кубіти на 4×4</span>
+    <span class="pill">🧊 v2: n кубітів через reshape</span>
+    <span class="pill">✅ 109 тестів проти Qiskit</span>
+    <span class="pill">🏋️ 23 задачі з розв'язками</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-quantum" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+      <label for="tab-quantum" class="nav-tabbtn">⚛️ Квантове</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="../node-doc/01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="../node-doc/02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="../node-doc/03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="../node-doc/04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="../node-doc/05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="../node-doc/06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="../node-doc/07-fs-process-os.html">7. fs, process, os</a>
+        <a href="../node-doc/08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="../node-doc/09-http-networking.html">9. HTTP і мережа</a>
+        <a href="../node-doc/10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="../node-doc/11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="../node-doc/12-databases-orm.html">12. БД і ORM</a>
+        <a href="../node-doc/13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="../node-doc/14-security.html">14. Безпека Node</a>
+        <a href="../node-doc/15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="../node-doc/16-testing.html">16. Тестування</a>
+        <a href="../node-doc/17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="../node-doc/18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="../node-doc/19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="../node-doc/20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+      <nav class="nav-links quantum">
+        <a href="01-quanta-and-quantum-computing.html">1. Кванти й обчислення</a>
+        <a href="02-quantum-engineering-history.html">2. Квантова інженерія</a>
+        <a href="03-quantum-backend-python-ibm.html">3. Бекенд + IBM Quantum</a>
+        <a href="04-pet-project-quantum-routing.html">4. Пет-проєкт: маршрути</a>
+        <a href="05-quantum-engineer-roadmap.html">5. Шлях інженера: ресурси</a>
+        <a href="06-linear-algebra-vectors-matrices.html">6. Лін. алгебра I: вектори, матриці</a>
+        <a href="07-linear-algebra-eigen-tensor.html">7. Лін. алгебра II: власні, тензори</a>
+        <a href="08-complex-numbers-phase.html">8. Комплексні числа й фаза</a>
+        <a href="09-probability-shots.html">9. Ймовірності й shots</a>
+        <a href="10-numpy-statevector-simulator.html" class="active">10. NumPy: свій симулятор</a>
+        <a href="11-qiskit-circuits-aer.html">11. Qiskit I: схеми й Aer</a>
+        <a href="12-qiskit-runtime-real-qpu.html">12. Qiskit II: реальний QPU</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — NumPy для квантів</div>
+    <ol>
+      <li><a href="#s1">1. Навіщо власний симулятор</a></li>
+      <li><a href="#s2">2. Комплексні масиви і точність</a></li>
+      <li><a href="#s3">3. Гейти як константи</a></li>
+      <li><a href="#s4">4. Порядок кубітів</a></li>
+    </ol>
+    <div class="toc-group">Частина II — v1: два кубіти</div>
+    <ol>
+      <li><a href="#s5">5. Гейт на один кубіт з двох</a></li>
+      <li><a href="#s6">6. CNOT через проектори</a></li>
+      <li><a href="#s7">7. Код v1 і стан Белла</a></li>
+      <li><a href="#s8">8. Вимірювання і shots</a></li>
+    </ol>
+    <div class="toc-group">Частина III — v2: n кубітів</div>
+    <ol>
+      <li><a href="#s9">9. Ціна kron</a></li>
+      <li><a href="#s10">10. Трюк reshape</a></li>
+      <li><a href="#s11">11. apply_gate для k кубітів</a></li>
+      <li><a href="#s12">12. RX, RY, RZ</a></li>
+      <li><a href="#s13">13. Очікувані значення</a></li>
+      <li><a href="#s14">14. Частковий слід</a></li>
+      <li><a href="#s15">15. Circuit API</a></li>
+      <li><a href="#s16">16. Тести проти Qiskit</a></li>
+      <li><a href="#s17">17. Бенчмарк і межа</a></li>
+      <li><a href="#s18">18. Шум: Монте-Карло</a></li>
+    </ol>
+    <div class="toc-group">Частина IV — Практика</div>
+    <ol>
+      <li><a href="#s19">19. Задачі A: основи <span class="toc-count">5</span></a></li>
+      <li><a href="#s20">20. Задачі B: v1 <span class="toc-count">5</span></a></li>
+      <li><a href="#s21">21. Задачі C: v2 <span class="toc-count">7</span></a></li>
+      <li><a href="#s22">22. Задачі D: алгоритми й шум <span class="toc-count">6</span></a></li>
+    </ol>
+    <div class="toc-group">Частина V — Далі</div>
+    <ol>
+      <li><a href="#s23">23. Глибше</a></li>
+      <li><a href="#s24">24. Чекліст навику</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · NumPy для квантів</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Навіщо писати власний симулятор</h2>
+      <p class="section-desc">Найкоротший шлях від "розумію формули" до "розумію, що робить Qiskit".</p>
+
+      <p>У туторіалах <a href="06-linear-algebra-vectors-matrices.html">6</a> і <a href="07-linear-algebra-eigen-tensor.html">7</a>
+      стан кубітів був вектором, гейт був унітарною матрицею, а кілька кубітів з'єднував тензорний добуток. У
+      <a href="08-complex-numbers-phase.html">8</a> з'явилися фази, у <a href="09-probability-shots.html">9</a> — shots і статистика.
+      Тут усе це стає кодом. <b>Statevector-симулятор</b> зберігає всі 2ⁿ комплексних амплітуд стану і по черзі множить їх на гейти.
+      Саме так працює <code>qiskit.quantum_info.Statevector</code> і режим <code>method="statevector"</code> в Qiskit Aer (там C++ і SIMD,
+      але суть та сама).</p>
+
+      <p>Писати свій симулятор у продакшн не треба. Користь в іншому:</p>
+      <ul>
+        <li><b>Порядок кубітів перестає дивувати.</b> Після того як ви самі зловите баг "X на q0 дав <code>'10'</code>", рядки на кшталт <code>'011'</code> з Qiskit читаються автоматично.</li>
+        <li><b>Ви бачите ціну.</b> Пам'ять 16·2ⁿ байт, час кожного гейта O(2ⁿ). Звідси інтуїція, чому 30 кубітів ще на ноутбуці, а 50 вже ні на чому.</li>
+        <li><b>Є еталон для тестів.</b> На маленьких схемах свій NumPy-код легко звірити з Qiskit, а потім використовувати як oracle у тестах бекенду з <a href="03-quantum-backend-python-ibm.html">туторіалу 3</a>.</li>
+        <li><b>Співбесіда.</b> "Напишіть симулятор на 2 кубіти" — популярна live-coding задача для quantum software ролей.</li>
+      </ul>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 270" role="img" aria-label="Архітектура симулятора, який ми напишемо. Зліва Circuit API з методами h, cx, ry та іншими. Він накопичує список операцій: пари матриця і список кубітів. Ядро apply_gate по черзі застосовує кожну операцію до вектора стану з 2 в степені n комплексних амплітуд, використовуючи reshape і tensordot. З вектора стану отримуємо три результати: семплювання shots у словник counts у форматі Qiskit, очікуване значення Pauli-рядка, та матрицю густини одного кубіта для перевірки заплутаності">
+          <defs><marker id="q10a-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="40" width="150" height="74" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="85" y="62" text-anchor="middle" fill="currentColor" font-weight="bold">Circuit API</text>
+            <text x="85" y="82" text-anchor="middle" fill="var(--fg-muted)" font-size="11" font-family="monospace">.h(0) .cx(0,1)</text>
+            <text x="85" y="99" text-anchor="middle" fill="var(--fg-muted)" font-size="11" font-family="monospace">.ry(θ, 2) …</text>
+
+            <line x1="160" y1="77" x2="196" y2="77" stroke="currentColor" marker-end="url(#q10a-arr)"/>
+            <rect x="200" y="40" width="150" height="74" rx="9" fill="none" stroke="currentColor"/>
+            <text x="275" y="62" text-anchor="middle" fill="currentColor" font-weight="bold">ops</text>
+            <text x="275" y="82" text-anchor="middle" fill="var(--fg-muted)" font-size="11" font-family="monospace">[(H, [0]),</text>
+            <text x="275" y="99" text-anchor="middle" fill="var(--fg-muted)" font-size="11" font-family="monospace"> (CX, [0, 1]), …]</text>
+
+            <line x1="350" y1="77" x2="386" y2="77" stroke="currentColor" marker-end="url(#q10a-arr)"/>
+            <rect x="390" y="40" width="150" height="74" rx="9" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+            <text x="465" y="62" text-anchor="middle" fill="var(--accent)" font-weight="bold">apply_gate</text>
+            <text x="465" y="82" text-anchor="middle" fill="var(--fg-muted)" font-size="11">reshape → tensordot</text>
+            <text x="465" y="99" text-anchor="middle" fill="var(--fg-muted)" font-size="11">→ moveaxis</text>
+
+            <line x1="540" y1="77" x2="576" y2="77" stroke="currentColor" marker-end="url(#q10a-arr)"/>
+            <rect x="580" y="40" width="130" height="74" rx="9" fill="var(--interview-bg)" stroke="var(--interview)"/>
+            <text x="645" y="62" text-anchor="middle" fill="var(--interview)" font-weight="bold">ψ</text>
+            <text x="645" y="82" text-anchor="middle" fill="var(--fg-muted)" font-size="11">2ⁿ × complex128</text>
+            <text x="645" y="99" text-anchor="middle" fill="var(--fg-muted)" font-size="11">16·2ⁿ байт</text>
+            <path d="M645,114 C645,135 645,140 645,150" fill="none" stroke="currentColor" marker-end="url(#q10a-arr)"/>
+            <path d="M600,114 C560,150 300,140 140,170" fill="none" stroke="currentColor" marker-end="url(#q10a-arr)"/>
+            <path d="M620,114 C600,150 420,150 390,170" fill="none" stroke="currentColor" marker-end="url(#q10a-arr)"/>
+
+            <rect x="20" y="174" width="220" height="70" rx="9" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="130" y="196" text-anchor="middle" fill="var(--good)" font-weight="bold">sample_counts(shots)</text>
+            <text x="130" y="216" text-anchor="middle" fill="var(--fg-muted)" font-size="11">|ψ|² → multinomial</text>
+            <text x="130" y="233" text-anchor="middle" fill="var(--fg-muted)" font-size="11" font-family="monospace">{'00': 500, '11': 500}</text>
+            <rect x="270" y="174" width="220" height="70" rx="9" fill="var(--info-bg)" stroke="var(--info)"/>
+            <text x="380" y="196" text-anchor="middle" fill="var(--info)" font-weight="bold">expectation("ZZ")</text>
+            <text x="380" y="216" text-anchor="middle" fill="var(--fg-muted)" font-size="11">⟨ψ|P|ψ⟩, точно</text>
+            <text x="380" y="233" text-anchor="middle" fill="var(--fg-muted)" font-size="11">аналог EstimatorV2</text>
+            <rect x="520" y="154" width="190" height="90" rx="9" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="615" y="178" text-anchor="middle" fill="var(--warn)" font-weight="bold">reduced_density(q)</text>
+            <text x="615" y="198" text-anchor="middle" fill="var(--fg-muted)" font-size="11">ρ одного кубіта</text>
+            <text x="615" y="215" text-anchor="middle" fill="var(--fg-muted)" font-size="11">tr(ρ²) &lt; 1 ⇒</text>
+            <text x="615" y="231" text-anchor="middle" fill="var(--fg-muted)" font-size="11">заплутаний</text>
+            <text x="360" y="22" text-anchor="middle" fill="var(--fg-muted)" font-size="11">увесь симулятор ≈ 160 рядків Python (файл qsim.py нижче)</text>
+          </g>
+        </svg>
+        <figcaption>Що будуємо. Ядро одне: <code>apply_gate</code>. Решта — обгортки довкола вектора стану.</figcaption>
+      </figure>
+
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        <b>Як читати сторінку.</b> Частини I–III — теорія з робочим кодом, кожен лістинг запущено, вивід під ним справжній
+        (Python 3.13, NumPy 2.5.4, Qiskit 2.5.2, Apple M4). Частина IV — 23 задачі від легких до складних, розв'язок прихований під
+        "Показати відповідь". Спробуйте спершу самі: навик формується на задачах, а не на читанні.
+      </div></div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Комплексні масиви і точність</h2>
+      <p class="section-desc">Чотири пастки, на яких спотикаються всі, хто вперше пише квантовий код на NumPy.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">basics.py</span></div>
+        <pre><code>import numpy as np
+
+# 1. Комплексний вектор стану: dtype має бути complex128
+ket0 = np.array([1, 0], dtype=complex)
+plus = np.array([1, 1], dtype=complex) / np.sqrt(2)
+print(ket0.dtype, plus)
+
+# 2. Пастка: dtype фіксується при створенні; int-масив не прийме комплексне число
+bad = np.array([1, 0])
+try:
+    bad[1] = 1j
+except TypeError as e:
+    print("TypeError:", e)
+
+# 3. Float-арифметика: точної рівності не буде
+s = 1 / np.sqrt(2)
+print(s * s == 0.5, np.isclose(s * s, 0.5))
+
+# 4. Норма і скалярний добуток: vdot сам спрягає перший аргумент
+psi = np.array([1, 1j], dtype=complex) / np.sqrt(2)
+print(np.linalg.norm(psi), np.vdot(psi, psi), psi @ psi)
+
+# 5. Гейт = матриця, застосування = matmul
+H = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
+print(H @ ket0)
+
+# 6. Перевірка унітарності: U†U = I
+print(np.allclose(H.conj().T @ H, np.eye(2)))
+
+# 7. Власні значення ермітової матриці: eigh (а не eig)
+Z = np.diag([1, -1]).astype(complex)
+X = np.array([[0, 1], [1, 0]], dtype=complex)
+vals, vecs = np.linalg.eigh(X)
+print(vals)
+print(np.round(vecs, 3))
+
+# 8. Тензорний добуток
+print(np.kron(ket0, plus))
+print(np.kron(H, np.eye(2)).shape)</code></pre>
+      </div>
+      <pre class="tree">complex128 [0.70710678+0.j 0.70710678+0.j]
+TypeError: int() argument must be a string, a bytes-like object or a real number, not 'complex'
+False True
+0.9999999999999999 (0.9999999999999998+0j) 0j
+[0.70710678+0.j 0.70710678+0.j]
+True
+[-1.  1.]
+[[-0.707+0.j  0.707+0.j]
+ [ 0.707+0.j  0.707+0.j]]
+[0.70710678+0.j 0.70710678+0.j 0.        +0.j 0.        +0.j]
+(4, 4)</pre>
+
+      <h3>Що тут важливо</h3>
+      <ul>
+        <li><b><code>dtype=complex</code> завжди явно.</b> <code>np.array([1, 0])</code> — це int64, і комплексне значення в нього вже не записати (TypeError).
+        Множення на <code>1j</code> підніме тип автоматично, а от присвоєння в існуючий масив — ні. Тому в симуляторі всі стани і гейти
+        створюються як <code>complex128</code> одразу: 16 байт на амплітуду (8 на дійсну + 8 на уявну частину).</li>
+        <li><b>Ніколи <code>==</code> для float.</b> <code>(1/√2)² == 0.5</code> <span class="say">(√ — «корінь з»)</span> дає <code>False</code>. Порівнюємо через
+        <code>np.isclose</code> / <code>np.allclose</code> (за замовчуванням <code>rtol=1e-5, atol=1e-8</code>). Норма теж виходить
+        <code>0.9999999999999999</code>, і це нормально.</li>
+        <li><b><code>np.vdot</code>, а не <code>@</code>, для скалярного добутку.</b> Бра-вектор ⟨ψ| <span class="say">(⟨ψ| — «бра псі»: рядок, спряжено-транспонований кет)</span> — це <i>спряжений</i> транспонований
+        кет. <code>vdot</code> спрягає перший аргумент сам, <code>psi @ psi</code> — ні, і для <span class="math">(|0⟩ + i|1⟩)/√2</span> <span class="say">(|0⟩ — «кет нуль»: вектор-стовпчик стану)</span> дає 0 замість 1.
+        Це найчастіший баг у задачах на очікувані значення.</li>
+        <li><b><code>eigh</code> для ермітових матриць.</b> Повертає дійсні власні значення у зростаючому порядку і ортонормовані власні вектори
+        <i>у стовпцях</i>. <code>eig</code> теж працює, але може повернути <code>1+0j</code> із шумом в уявній частині і неортогональні вектори для
+        вироджених значень.</li>
+      </ul>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        complex128 — це як точка <code>{x, y}</code> або 2D-вектор у Canvas/SVG: модуль — довжина стрілки, аргумент — кут. Множення на
+        e<sup>iθ</sup> — це <code>transform: rotate(θ)</code> у CSS: поворот без зміни довжини. Де аналогія ламається: в UI поворот видно одразу, а фаза
+        амплітуди сама по собі не спостерігається — у ймовірність іде лише квадрат модуля, а фаза проявляється тільки через інтерференцію.
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Гейти як константи</h2>
+      <p class="section-desc">Кожен гейт — маленька унітарна матриця. Тримаємо їх як модульні константи і перевіряємо властивості кодом.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">qsim.py · гейти</span></div>
+        <pre><code># ---------- гейти ----------
+I2 = np.eye(2, dtype=complex)
+X = np.array([[0, 1], [1, 0]], dtype=complex)
+Y = np.array([[0, -1j], [1j, 0]], dtype=complex)
+Z = np.array([[1, 0], [0, -1]], dtype=complex)
+H = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
+S = np.diag([1, 1j]).astype(complex)
+T = np.diag([1, np.exp(1j * np.pi / 4)]).astype(complex)
+P0 = np.diag([1, 0]).astype(complex)
+P1 = np.diag([0, 1]).astype(complex)
+
+# Матриці багатокубітних гейтів у порядку Qiskit: для qubits=[a, b]
+# індекс = b·2 + a, тобто перший у списку — молодший біт.
+CX = np.kron(I2, P0) + np.kron(X, P1)     # qubits=[control, target]
+CZ = np.diag([1, 1, 1, -1]).astype(complex)
+SWAP = np.array([[1, 0, 0, 0],
+                 [0, 0, 1, 0],
+                 [0, 1, 0, 0],
+                 [0, 0, 0, 1]], dtype=complex)
+CCX = np.eye(8, dtype=complex)            # qubits=[c0, c1, target]
+CCX[[3, 7]] = CCX[[7, 3]]                 # міняємо |011⟩ ↔ |111⟩
+
+PAULI = {"I": I2, "X": X, "Y": Y, "Z": Z}
+
+
+def rx(theta: float) -&gt; np.ndarray:
+    c, s = np.cos(theta / 2), np.sin(theta / 2)
+    return np.array([[c, -1j * s], [-1j * s, c]], dtype=complex)
+
+
+def ry(theta: float) -&gt; np.ndarray:
+    c, s = np.cos(theta / 2), np.sin(theta / 2)
+    return np.array([[c, -s], [s, c]], dtype=complex)
+
+
+def rz(theta: float) -&gt; np.ndarray:
+    return np.diag([np.exp(-1j * theta / 2), np.exp(1j * theta / 2)])
+</code></pre>
+      </div>
+
+      <table>
+        <tr><th>Гейт</th><th>Матриця</th><th>Що робить</th><th>Перевірка</th></tr>
+        <tr><td><b>X</b></td><td class="mono">[[0,1],[1,0]]</td><td>NOT: |0⟩↔|1⟩</td><td><code>X @ X ≈ I</code> <span class="say">(≈ — «приблизно дорівнює»)</span></td></tr>
+        <tr><td><b>Z</b></td><td class="mono">diag(1, −1)</td><td>Фаза −1 на |1⟩</td><td><code>H @ Z @ H ≈ X</code></td></tr>
+        <tr><td><b>H</b></td><td class="mono">[[1,1],[1,−1]]/√2</td><td>|0⟩→|+⟩ <span class="say">(|+⟩ — «кет плюс»: (|0⟩+|1⟩)/√2)</span>, |1⟩→|−⟩ <span class="say">(|−⟩ — «кет мінус»: (|0⟩−|1⟩)/√2)</span></td><td><code>H @ H ≈ I</code></td></tr>
+        <tr><td><b>S, T</b></td><td class="mono">diag(1, i), diag(1, e<sup>iπ/4</sup> <span class="say">(e<sup>iπ/4</sup> — «е в степені і-пі на чотири»: точка на одиничному колі, поворот на кут, як CSS rotate(); π — «пі»)</span>)</td><td>Фази 90° і 45°</td><td><code>T @ T ≈ S</code></td></tr>
+        <tr><td><b>RY(θ)</b> <span class="say">(θ — «тета»)</span></td><td class="mono">[[c,−s],[s,c]], c=cos θ/2</td><td>Поворот навколо осі Y сфери Блоха</td><td><code>RY(π) ≈ −iY</code></td></tr>
+        <tr><td><b>CX</b></td><td class="mono">4×4, див. §6</td><td>Фліп target, якщо control = 1</td><td>Унітарна, <code>CX @ CX ≈ I</code></td></tr>
+      </table>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Кути — половинні.</b> У RX/RY/RZ стоїть θ/2, бо сфера Блоха "подвоює" кут: поворот на 2π повертає стан на місце
+        лише з точністю до глобальної фази −1. Визначення в <code>qsim.py</code> збігаються з Qiskit, і це перевірено тестами в §16.
+        Якщо ваші RZ розходяться з Qiskit на глобальну фазу, перевірте, чи не взяли ви <code>diag(1, e<sup>iθ</sup>)</code> — це вже гейт <code>P(θ)</code>.
+      </div></div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Порядок кубітів: little-endian</h2>
+      <p class="section-desc">Головне джерело багів у квантовому коді. Розберемо один раз і назавжди.</p>
+
+      <p>Стан n кубітів — вектор довжини 2ⁿ. Індекс амплітуди — це число, двійкові розряди якого задають значення кубітів.
+      Питання тільки в тому, <b>який кубіт є молодшим розрядом</b>. Qiskit обрав <b>little-endian</b>: qubit 0 — наймолодший біт.</p>
+
+      <div class="math-block">index = b₀·2⁰ + b₁·2¹ + … + b<sub>n−1</sub>·2<sup>n−1</sup></div>
+
+      <p>Наслідки, які треба тримати в голові:</p>
+      <ul>
+        <li>У рядку результату <code>'110'</code> qubit 0 стоїть <b>праворуч</b>: тут q0=0, q1=1, q2=1. Рядок читається як звичайне двійкове число.</li>
+        <li>У <code>np.kron(a, b)</code> лівий множник стає <b>старшим</b> розрядом. Тому стан "q1 у |1⟩, q0 у |0⟩" — це <code>np.kron(ket1, ket0)</code>, індекс 2, рядок <code>'10'</code>.</li>
+        <li>Гейт H на qubit 0 у 2-кубітній системі — це <code>np.kron(I, H)</code>, а не <code>np.kron(H, I)</code>.</li>
+        <li>Підручник Nielsen &amp; Chuang і багато лекцій пишуть навпаки (big-endian: перший кубіт ліворуч). Коли переносите формулу з книги в Qiskit, перевертайте порядок.</li>
+      </ul>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 250" role="img" aria-label="Little-endian порядок на прикладі трьох кубітів. Індекс 6 у двійковому записі 110. Три клітинки зліва направо: q2 зі значенням 1 і вагою 4, q1 зі значенням 1 і вагою 2, q0 зі значенням 0 і вагою 1. Сума 4 плюс 2 дорівнює 6. Під ними: np.kron(a2, a1, a0) — лівий множник це старший кубіт q2. Праворуч вектор стану з восьми амплітуд з індексами від 0 до 7 і рядками від 000 до 111, амплітуда з індексом 6 підсвічена">
+          <g font-size="12">
+            <text x="20" y="28" fill="currentColor" font-weight="bold">Рядок Qiskit '110'  →  index 6</text>
+            <rect x="20" y="44" width="80" height="60" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <rect x="110" y="44" width="80" height="60" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <rect x="200" y="44" width="80" height="60" rx="8" fill="none" stroke="currentColor"/>
+            <text x="60" y="70" text-anchor="middle" fill="currentColor" font-size="20" font-weight="bold">1</text>
+            <text x="150" y="70" text-anchor="middle" fill="currentColor" font-size="20" font-weight="bold">1</text>
+            <text x="240" y="70" text-anchor="middle" fill="currentColor" font-size="20" font-weight="bold">0</text>
+            <text x="60" y="94" text-anchor="middle" fill="var(--fg-muted)" font-size="11">q2 · вага 4</text>
+            <text x="150" y="94" text-anchor="middle" fill="var(--fg-muted)" font-size="11">q1 · вага 2</text>
+            <text x="240" y="94" text-anchor="middle" fill="var(--fg-muted)" font-size="11">q0 · вага 1</text>
+            <text x="150" y="128" text-anchor="middle" fill="currentColor">4 + 2 + 0 = 6</text>
+            <text x="20" y="160" fill="currentColor" font-family="monospace">np.kron(a2, np.kron(a1, a0))</text>
+            <text x="20" y="180" fill="var(--fg-muted)" font-size="11">лівий множник = старший кубіт (q2)</text>
+            <text x="20" y="204" fill="var(--fg-muted)" font-size="11">reshape((2,2,2)): вісь 0 = q2, вісь 1 = q1, вісь 2 = q0</text>
+            <text x="20" y="224" fill="var(--accent)" font-size="11" font-weight="bold">⇒ qubit q живе на осі n − 1 − q</text>
+
+            <text x="430" y="28" fill="currentColor" font-weight="bold">ψ (8 амплітуд)</text>
+            <g font-family="monospace" font-size="11">
+              <rect x="430" y="40" width="270" height="22" fill="none" stroke="var(--border)"/><text x="440" y="55" fill="var(--fg-muted)">ψ[0]  '000'</text>
+              <rect x="430" y="62" width="270" height="22" fill="none" stroke="var(--border)"/><text x="440" y="77" fill="var(--fg-muted)">ψ[1]  '001'  ← q0 = 1</text>
+              <rect x="430" y="84" width="270" height="22" fill="none" stroke="var(--border)"/><text x="440" y="99" fill="var(--fg-muted)">ψ[2]  '010'  ← q1 = 1</text>
+              <rect x="430" y="106" width="270" height="22" fill="none" stroke="var(--border)"/><text x="440" y="121" fill="var(--fg-muted)">ψ[3]  '011'</text>
+              <rect x="430" y="128" width="270" height="22" fill="none" stroke="var(--border)"/><text x="440" y="143" fill="var(--fg-muted)">ψ[4]  '100'  ← q2 = 1</text>
+              <rect x="430" y="150" width="270" height="22" fill="none" stroke="var(--border)"/><text x="440" y="165" fill="var(--fg-muted)">ψ[5]  '101'</text>
+              <rect x="430" y="172" width="270" height="22" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="440" y="187" fill="var(--accent)" font-weight="bold">ψ[6]  '110'</text>
+              <rect x="430" y="194" width="270" height="22" fill="none" stroke="var(--border)"/><text x="440" y="209" fill="var(--fg-muted)">ψ[7]  '111'</text>
+            </g>
+          </g>
+        </svg>
+        <figcaption>Один малюнок, який варто запам'ятати: праворуч у рядку — q0, ліворуч у <code>kron</code> — старший кубіт, у тензорі qubit q — це вісь n−1−q.</figcaption>
+      </figure>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · v1: два кубіти</div><div class="line"></div></div>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Гейт на один кубіт із двох</h2>
+      <p class="section-desc">Найпростіший робочий підхід: кожну операцію розширити до повної матриці 4×4.</p>
+
+      <p>Однокубітний гейт U діє на один кубіт, а з другим нічого не робить, тобто на нього діє I. Оператор на всій системі —
+      тензорний добуток. З урахуванням little-endian:</p>
+      <div class="math-block">U на q0: &nbsp; I ⊗ U &nbsp;&nbsp;&nbsp;&nbsp; U на q1: &nbsp; U ⊗ I</div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 190" role="img" aria-label="Дві схеми поруч. Ліва: np.kron(I, H) — гейт H стоїть на дроті q0, дріт q1 порожній. Права: np.kron(H, I) — гейт H стоїть на дроті q1, дріт q0 порожній. Внизу пояснення: як і в Qiskit, q0 малюється зверху, але в kron стоїть праворуч">
+          <g font-size="12">
+            <text x="175" y="24" text-anchor="middle" fill="currentColor" font-family="monospace" font-weight="bold">np.kron(I, H)</text>
+            <text x="30" y="70" fill="var(--fg-muted)">q0</text>
+            <text x="30" y="130" fill="var(--fg-muted)">q1</text>
+            <line x1="60" y1="66" x2="310" y2="66" stroke="currentColor"/>
+            <line x1="60" y1="126" x2="310" y2="126" stroke="currentColor"/>
+            <rect x="160" y="46" width="40" height="40" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="180" y="71" text-anchor="middle" fill="var(--accent)" font-weight="bold">H</text>
+
+            <text x="545" y="24" text-anchor="middle" fill="currentColor" font-family="monospace" font-weight="bold">np.kron(H, I)</text>
+            <text x="400" y="70" fill="var(--fg-muted)">q0</text>
+            <text x="400" y="130" fill="var(--fg-muted)">q1</text>
+            <line x1="430" y1="66" x2="680" y2="66" stroke="currentColor"/>
+            <line x1="430" y1="126" x2="680" y2="126" stroke="currentColor"/>
+            <rect x="530" y="106" width="40" height="40" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="550" y="131" text-anchor="middle" fill="var(--accent)" font-weight="bold">H</text>
+            <text x="360" y="176" text-anchor="middle" fill="var(--fg-muted)" font-size="11">У схемах Qiskit q0 малюється зверху, а в kron і в рядку результату стоїть праворуч (молодший).</text>
+          </g>
+        </svg>
+        <figcaption>Те саме правило, що й у §4, тільки для операторів.</figcaption>
+      </figure>
+
+      <p>Перевірка на пальцях: <span class="math">(I ⊗ X)|00⟩ = |0⟩ ⊗ X|0⟩ = |01⟩</span> <span class="say">(⊗ — «тензорно»: тензорний (кронекерів) добуток)</span>, індекс 1, рядок <code>'01'</code>, qubit 0 став 1.
+      Якщо в коді переплутати множники, X на q0 дасть <code>'10'</code>. Цей баг ви відтворите в задачі 9.</p>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> CNOT через проектори</h2>
+      <p class="section-desc">Як записати "якщо control = 1, застосуй X" без жодного if — лише лінійною алгеброю.</p>
+
+      <p>Проектори <span class="math">P₀ = |0⟩⟨0| = diag(1, 0)</span> <span class="say">(|0⟩⟨0| — «кет нуль бра нуль»: зовнішній добуток, це матриця)</span> і <span class="math">P₁ = |1⟩⟨1| = diag(0, 1)</span> "вирізають" частину стану, де кубіт дорівнює 0 або 1.
+      Розклад CNOT: у гілці control = 0 на target діє I, у гілці control = 1 — X:</p>
+      <div class="math-block">CX(c=q0, t=q1) = I ⊗ P₀ + X ⊗ P₁</div>
+      <p>Порядок множників знову little-endian: праворуч — q0 (control), ліворуч — q1 (target). Така ж ідея дає будь-який
+      контрольований гейт: <span class="math">CU = I ⊗ P₀ + U ⊗ P₁</span>.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 230" role="img" aria-label="Дія CNOT з control q0 і target q1 на чотири базисні стани. Ліворуч стовпець входів 00, 01, 10, 11 у форматі q1q0, праворуч виходів. 00 переходить у 00, 10 переходить у 10, бо q0 дорівнює 0 і нічого не змінюється. 01 переходить у 11 і 11 переходить у 01, бо q0 дорівнює 1 і q1 інвертується. Праворуч матриця 4 на 4: рядки 1 0 0 0, 0 0 0 1, 0 0 1 0, 0 1 0 0">
+          <defs><marker id="q10b-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="13" font-family="monospace">
+            <text x="60" y="24" text-anchor="middle" fill="var(--fg-muted)" font-size="11" font-family="inherit">вхід q1q0</text>
+            <text x="270" y="24" text-anchor="middle" fill="var(--fg-muted)" font-size="11" font-family="inherit">вихід</text>
+            <text x="60" y="58" text-anchor="middle" fill="currentColor">|00⟩</text>
+            <text x="60" y="98" text-anchor="middle" fill="currentColor">|01⟩</text>
+            <text x="60" y="138" text-anchor="middle" fill="currentColor">|10⟩</text>
+            <text x="60" y="178" text-anchor="middle" fill="currentColor">|11⟩</text>
+            <text x="270" y="58" text-anchor="middle" fill="currentColor">|00⟩</text>
+            <text x="270" y="98" text-anchor="middle" fill="currentColor">|01⟩</text>
+            <text x="270" y="138" text-anchor="middle" fill="currentColor">|10⟩</text>
+            <text x="270" y="178" text-anchor="middle" fill="currentColor">|11⟩</text>
+            <line x1="90" y1="54" x2="236" y2="54" stroke="var(--fg-muted)" marker-end="url(#q10b-arr)"/>
+            <line x1="90" y1="134" x2="236" y2="134" stroke="var(--fg-muted)" marker-end="url(#q10b-arr)"/>
+            <line x1="90" y1="96" x2="236" y2="172" stroke="var(--accent)" stroke-width="1.8" marker-end="url(#q10b-arr)"/>
+            <line x1="90" y1="174" x2="236" y2="98" stroke="var(--accent)" stroke-width="1.8" marker-end="url(#q10b-arr)"/>
+            <text x="165" y="210" text-anchor="middle" fill="var(--accent)" font-size="11" font-family="inherit">q0 = 1 ⇒ q1 інвертується</text>
+
+            <text x="520" y="24" text-anchor="middle" fill="var(--fg-muted)" font-size="11" font-family="inherit">матриця (стовпець = вхід)</text>
+            <text x="400" y="58" fill="currentColor">⎡ 1  0  0  0 ⎤</text>
+            <text x="400" y="98" fill="currentColor">⎢ 0  0  0  <tspan fill="var(--accent)" font-weight="bold">1</tspan> ⎥</text>
+            <text x="400" y="138" fill="currentColor">⎢ 0  0  1  0 ⎥</text>
+            <text x="400" y="178" fill="currentColor">⎣ 0  <tspan fill="var(--accent)" font-weight="bold">1</tspan>  0  0 ⎦</text>
+            <text x="580" y="98" fill="var(--fg-muted)" font-size="11" font-family="inherit">рядок 1 ← стовпець 3</text>
+            <text x="580" y="178" fill="var(--fg-muted)" font-size="11" font-family="inherit">рядок 3 ← стовпець 1</text>
+          </g>
+        </svg>
+        <figcaption>CX(control=q0, target=q1) у порядку Qiskit — це перестановка індексів 1 ↔ 3. Такий самий вигляд має <code>qsim.CX</code>.</figcaption>
+      </figure>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Код v1 і стан Белла</h2>
+      <p class="section-desc">Повний 2-кубітний симулятор. Це і є відповідь на тест навику "написати 2-кубітний симулятор на NumPy".</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">sim2.py</span></div>
+        <pre><code>"""v1: 2-кубітний симулятор на повних матрицях 4×4.
+
+Порядок бітів як у Qiskit (little-endian): індекс амплітуди = b1·2 + b0,
+тобто q0 — молодший (правий) біт рядка "b1b0".
+"""
+import numpy as np
+
+I = np.eye(2, dtype=complex)
+X = np.array([[0, 1], [1, 0]], dtype=complex)
+Y = np.array([[0, -1j], [1j, 0]], dtype=complex)
+Z = np.array([[1, 0], [0, -1]], dtype=complex)
+H = np.array([[1, 1], [1, -1]], dtype=complex) / np.sqrt(2)
+S = np.diag([1, 1j])
+T = np.diag([1, np.exp(1j * np.pi / 4)])
+
+P0 = np.diag([1, 0]).astype(complex)  # |0⟩⟨0|
+P1 = np.diag([0, 1]).astype(complex)  # |1⟩⟨1|
+
+
+def zero_state() -&gt; np.ndarray:
+    psi = np.zeros(4, dtype=complex)
+    psi[0] = 1
+    return psi
+
+
+def op_1q(gate: np.ndarray, qubit: int) -&gt; np.ndarray:
+    """Розширити 1-кубітний гейт до 4×4. Лівий множник kron = старший кубіт q1."""
+    return np.kron(I, gate) if qubit == 0 else np.kron(gate, I)
+
+
+def op_cx(control: int, target: int) -&gt; np.ndarray:
+    """CNOT = |0⟩⟨0|_c ⊗ I + |1⟩⟨1|_c ⊗ X_t (з урахуванням порядку множників)."""
+    if (control, target) == (0, 1):
+        return np.kron(I, P0) + np.kron(X, P1)
+    if (control, target) == (1, 0):
+        return np.kron(P0, I) + np.kron(P1, X)
+    raise ValueError("control != target, обидва з {0, 1}")
+
+
+def probabilities(psi: np.ndarray) -&gt; dict[str, float]:
+    return {format(i, "02b"): float(abs(a) ** 2) for i, a in enumerate(psi)}
+
+
+def sample(psi: np.ndarray, shots: int, seed: int | None = None) -&gt; dict[str, int]:
+    rng = np.random.default_rng(seed)
+    p = np.abs(psi) ** 2
+    idx = rng.choice(4, size=shots, p=p / p.sum())
+    counts = np.bincount(idx, minlength=4)
+    return {format(i, "02b"): int(c) for i, c in enumerate(counts) if c}
+
+
+if __name__ == "__main__":
+    psi = zero_state()
+    psi = op_1q(H, 0) @ psi         # H на q0
+    psi = op_cx(0, 1) @ psi         # CNOT q0 → q1
+    print(np.round(psi, 4))
+    print(probabilities(psi))
+    print(sample(psi, shots=1000, seed=7))</code></pre>
+      </div>
+      <pre class="tree">[0.7071+0.j 0.    +0.j 0.    +0.j 0.7071+0.j]
+{'00': 0.4999999999999999, '01': 0.0, '10': 0.0, '11': 0.4999999999999999}
+{'00': 502, '11': 498}</pre>
+
+      <p>Схема H(q0) → CX(q0→q1) дає стан Белла <span class="math">|Φ⁺⟩ = (|00⟩ + |11⟩)/√2</span> <span class="say">(Φ — «фі велика»)</span>. Ймовірності <code>0.4999999999999999</code> замість 0.5 —
+      та сама float-похибка з §2. А от <code>{'00': 502, '11': 498}</code> — вже не похибка, а статистика: 1000 підкидань "чесної монети" рідко
+      дають рівно 500/500. Скільки саме можна очікувати відхилення, рахуємо в задачі 10 і детально в <a href="09-probability-shots.html">туторіалі 9</a>.</p>
+
+      <div class="callout good"><div class="ic">✅</div><div class="body">
+        <b>Чому порядок множення справа наліво.</b> <code>op_cx(0, 1) @ op_1q(H, 0) @ psi</code>: першим діє той оператор, що ближче до ψ.
+        Схема читається зліва направо, а формула — справа наліво. У коді вище стан оновлюється покроково, тож плутанини немає.
+      </div></div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Вимірювання і shots</h2>
+      <p class="section-desc">Симулятор знає точні ймовірності, але реальний QPU повертає лише вибірку. Емулюємо саме вибірку.</p>
+
+      <p>Правило Борна: ймовірність результату i дорівнює <span class="math">|ψᵢ|²</span>. На реальному пристрої ви бачите тільки
+      гістограму з N shots. Два способи її отримати в NumPy:</p>
+      <ul>
+        <li><code>rng.choice(2**n, size=shots, p=p)</code> + <code>np.bincount</code> — генерує кожен shot окремо. Пам'ять O(shots), зате можна дістати і послідовність результатів.</li>
+        <li><code>rng.multinomial(shots, p)</code> — одразу лічильники. O(2ⁿ) пам'яті і в рази швидше. Саме так зроблено в <code>qsim.sample_counts</code>.</li>
+      </ul>
+      <p>Завжди використовуйте <code>np.random.default_rng(seed)</code>, а не глобальний <code>np.random.seed</code>: генератор передається явно,
+      тести детерміновані, паралельні воркери не ділять стан. Перед семплюванням нормуємо <code>p / p.sum()</code>, бо після сотень гейтів сума
+      ймовірностей може бути 0.9999999999998, і NumPy поскаржиться.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 240" role="img" aria-label="Ліворуч точні ймовірності для стану Белла: стовпчики 00 і 11 по 0.5, стовпчики 01 і 10 нульові. Стрілка multinomial з 1000 shots. Праворуч вибіркова гістограма: 00 — 502, 11 — 498, з позначеною смугою плюс-мінус 16, яка відповідає одному стандартному відхиленню">
+          <defs><marker id="q10c-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="150" y="22" text-anchor="middle" fill="currentColor" font-weight="bold">|ψ|² (точно)</text>
+            <line x1="40" y1="190" x2="270" y2="190" stroke="currentColor"/>
+            <rect x="55" y="70" width="40" height="120" fill="var(--accent)"/>
+            <rect x="110" y="188" width="40" height="2" fill="var(--accent)"/>
+            <rect x="165" y="188" width="40" height="2" fill="var(--accent)"/>
+            <rect x="220" y="70" width="40" height="120" fill="var(--accent)"/>
+            <text x="75" y="62" text-anchor="middle" fill="currentColor" font-size="11">0.5</text>
+            <text x="240" y="62" text-anchor="middle" fill="currentColor" font-size="11">0.5</text>
+            <g font-family="monospace" font-size="11" fill="var(--fg-muted)">
+              <text x="75" y="206" text-anchor="middle">00</text><text x="130" y="206" text-anchor="middle">01</text>
+              <text x="185" y="206" text-anchor="middle">10</text><text x="240" y="206" text-anchor="middle">11</text>
+            </g>
+
+            <line x1="290" y1="130" x2="410" y2="130" stroke="currentColor" marker-end="url(#q10c-arr)"/>
+            <text x="350" y="120" text-anchor="middle" fill="currentColor" font-family="monospace" font-size="11">multinomial</text>
+            <text x="350" y="148" text-anchor="middle" fill="var(--fg-muted)" font-size="11">shots = 1000</text>
+
+            <text x="560" y="22" text-anchor="middle" fill="currentColor" font-weight="bold">counts (вибірка, seed=7)</text>
+            <line x1="440" y1="190" x2="680" y2="190" stroke="currentColor"/>
+            <rect x="455" y="69.5" width="40" height="120.5" fill="var(--good)"/>
+            <rect x="510" y="188" width="40" height="2" fill="var(--good)"/>
+            <rect x="565" y="188" width="40" height="2" fill="var(--good)"/>
+            <rect x="620" y="70.5" width="40" height="119.5" fill="var(--good)"/>
+            <rect x="450" y="66.2" width="215" height="7.6" fill="var(--warn)" opacity=".35"/>
+            <text x="475" y="58" text-anchor="middle" fill="currentColor" font-size="11">502</text>
+            <text x="640" y="58" text-anchor="middle" fill="currentColor" font-size="11">498</text>
+            <text x="560" y="100" text-anchor="middle" fill="var(--warn)" font-size="11">500 ± 16 (1σ)</text>
+            <g font-family="monospace" font-size="11" fill="var(--fg-muted)">
+              <text x="475" y="206" text-anchor="middle">00</text><text x="530" y="206" text-anchor="middle">01</text>
+              <text x="585" y="206" text-anchor="middle">10</text><text x="640" y="206" text-anchor="middle">11</text>
+            </g>
+            <text x="360" y="232" text-anchor="middle" fill="var(--fg-muted)" font-size="11">σ = √(N·p·(1−p)) = √(1000·0.5·0.5) ≈ 15.8; рівно 500/500 випадає лише у ~2.4% запусків (задача 10)</text>
+          </g>
+        </svg>
+        <figcaption>Точні ймовірності проти вибірки. Відхилення 502/498 — нормальна статистична флуктуація, а не баг симулятора.</figcaption>
+      </figure>
+
+      <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають так</span>
+        "Ваш симулятор дав 515/485 для стану Белла. Він зламаний?" Відповідь: ні, σ <span class="say">(σ — «сигма»)</span> ≈ 15.8, тож 515 — це приблизно 1σ. Підозріло було б 600/400
+        (понад 6σ) або будь-який ненульовий <code>'01'</code>/<code>'10'</code> без шуму.
+      </div></div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина III · v2: n кубітів</div><div class="line"></div></div>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Ціна kron</h2>
+      <p class="section-desc">Підхід v1 узагальнюється на n кубітів одним циклом, але матриця росте як 4ⁿ.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">bench.py · наївний шлях</span></div>
+        <pre><code>def full_op_1q(gate, q, n):
+    """Наївно: I ⊗ … ⊗ gate ⊗ … ⊗ I — матриця 2ⁿ×2ⁿ."""
+    m = np.array([[1]], dtype=complex)
+    for k in reversed(range(n)):          # зліва старший кубіт
+        m = np.kron(m, gate if k == q else I2)
+    return m
+
+
+def layer_kron(n):
+    psi = zero_state(n)
+    for q in range(n):
+        psi = full_op_1q(H, q, n) @ psi
+    return psi</code></pre>
+      </div>
+
+      <p>Вектор стану займає <span class="math">16·2ⁿ</span> байт, а повна матриця гейта — <span class="math">16·4ⁿ</span>. Для 12 кубітів це вже
+      256 MB на <i>одну</i> операцію, і множення матриці на вектор коштує O(4ⁿ). Реальні заміри шару "H на кожен кубіт" нижче в §17:
+      на 12 кубітах наївний шлях повільніший за тензорний приблизно в 3700 разів, а на 14 кубітах йому потрібно 4 GB на одну матрицю.</p>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Гейт на 1 кубіт змінює лише пари амплітуд.</b> Повна матриця <code>I ⊗ … ⊗ U ⊗ … ⊗ I</code> майже вся складається з нулів:
+        у кожному рядку лише 2 ненульові елементи з 2ⁿ. Ми витрачаємо пам'ять і час на множення нулів. Наступний розділ прибирає це марнотратство.
+      </div></div>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Знайома проблема зі Storybook чи e2e-матриці: 10 булевих пропсів — це 2¹⁰ = 1024 комбінації, 20 — понад мільйон. Повна матриця гейта —
+        це "перерендерити всі комбінації", хоча змінився один проп. Трюк з наступного розділу схожий на точкове оновлення стану замість перерендеру
+        всього дерева. Де аналогія ламається: UI-комбінації можна просто не тестувати, а в квантовому стані всі 2ⁿ амплітуд реально існують і всі потрібні.
+      </div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Трюк reshape: вектор як тензор</h2>
+      <p class="section-desc">Ключова ідея всіх statevector-симуляторів: не будувати оператор, а діяти на потрібну вісь.</p>
+
+      <p>Вектор довжини 2ⁿ можна без копіювання переглянути як n-вимірний масив форми <code>(2, 2, …, 2)</code>. Кожна вісь — один кубіт
+      (вісь 0 — старший, тож qubit q живе на осі <span class="math">n−1−q</span>). Гейт U на кубіті q робить ось що: для кожної фіксованої комбінації
+      інших індексів бере 2-вектор уздовж осі q і множить його на U:</p>
+      <div class="math-block">ψ′[…, i, …] = Σ<sub>j</sub> U[i, j] · ψ[…, j, …]</div>
+      <p>Це рівно те, що робить <code>np.tensordot(U, t, axes=([1], [axis]))</code>: згортає другий індекс U з віссю стану. Один нюанс:
+      <code>tensordot</code> ставить нову вісь <b>на початок</b>, тому її треба повернути на місце через <code>np.moveaxis</code>.
+      Альтернатива — <code>np.einsum</code>, де порядок осей задається явно рядком індексів.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 300" role="img" aria-label="Три кроки застосування гейта H до кубіта 1 у системі з трьох кубітів. Крок 1: плаский вектор з восьми амплітуд, індекси від 0 до 7. Крок 2: reshape у тензор форми 2 на 2 на 2, осі мають підписи q2, q1, q0. Крок 3: tensordot H по осі 1 дає тензор з осями q1 штрих, q2, q0 — нова вісь опинилася першою. Крок 4: moveaxis повертає вісь на позицію 1, осі q2, q1 штрих, q0. Потім reshape назад у вектор довжини 8. Внизу вартість: пам'ять O(2 в степені n), час O(2 в степені n) на гейт, проти O(4 в степені n) для kron">
+          <defs><marker id="q10d-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="20" y="24" fill="currentColor" font-weight="bold">① ψ: shape (8,)</text>
+            <g font-family="monospace" font-size="11">
+              <rect x="20" y="36" width="40" height="28" fill="none" stroke="currentColor"/><text x="40" y="55" text-anchor="middle" fill="currentColor">0</text>
+              <rect x="60" y="36" width="40" height="28" fill="none" stroke="currentColor"/><text x="80" y="55" text-anchor="middle" fill="currentColor">1</text>
+              <rect x="100" y="36" width="40" height="28" fill="var(--accent-soft)" stroke="currentColor"/><text x="120" y="55" text-anchor="middle" fill="currentColor">2</text>
+              <rect x="140" y="36" width="40" height="28" fill="var(--accent-soft)" stroke="currentColor"/><text x="160" y="55" text-anchor="middle" fill="currentColor">3</text>
+              <rect x="180" y="36" width="40" height="28" fill="none" stroke="currentColor"/><text x="200" y="55" text-anchor="middle" fill="currentColor">4</text>
+              <rect x="220" y="36" width="40" height="28" fill="none" stroke="currentColor"/><text x="240" y="55" text-anchor="middle" fill="currentColor">5</text>
+              <rect x="260" y="36" width="40" height="28" fill="var(--accent-soft)" stroke="currentColor"/><text x="280" y="55" text-anchor="middle" fill="currentColor">6</text>
+              <rect x="300" y="36" width="40" height="28" fill="var(--accent-soft)" stroke="currentColor"/><text x="320" y="55" text-anchor="middle" fill="currentColor">7</text>
+            </g>
+            <text x="360" y="55" fill="var(--fg-muted)" font-size="11">підсвічено: q1 = 1 (індекси 2, 3, 6, 7)</text>
+
+            <line x1="180" y1="70" x2="180" y2="96" stroke="currentColor" marker-end="url(#q10d-arr)"/>
+            <text x="190" y="88" fill="var(--fg-muted)" font-family="monospace" font-size="11">reshape(2, 2, 2) — без копії</text>
+
+            <text x="20" y="118" fill="currentColor" font-weight="bold">② t: осі (q2, q1, q0)</text>
+            <g font-family="monospace" font-size="11">
+              <text x="40" y="140" fill="var(--fg-muted)">q2=0</text>
+              <rect x="20" y="146" width="40" height="26" fill="none" stroke="currentColor"/><text x="40" y="164" text-anchor="middle" fill="currentColor">0</text>
+              <rect x="60" y="146" width="40" height="26" fill="none" stroke="currentColor"/><text x="80" y="164" text-anchor="middle" fill="currentColor">1</text>
+              <rect x="20" y="172" width="40" height="26" fill="var(--accent-soft)" stroke="currentColor"/><text x="40" y="190" text-anchor="middle" fill="currentColor">2</text>
+              <rect x="60" y="172" width="40" height="26" fill="var(--accent-soft)" stroke="currentColor"/><text x="80" y="190" text-anchor="middle" fill="currentColor">3</text>
+              <text x="150" y="140" fill="var(--fg-muted)">q2=1</text>
+              <rect x="130" y="146" width="40" height="26" fill="none" stroke="currentColor"/><text x="150" y="164" text-anchor="middle" fill="currentColor">4</text>
+              <rect x="170" y="146" width="40" height="26" fill="none" stroke="currentColor"/><text x="190" y="164" text-anchor="middle" fill="currentColor">5</text>
+              <rect x="130" y="172" width="40" height="26" fill="var(--accent-soft)" stroke="currentColor"/><text x="150" y="190" text-anchor="middle" fill="currentColor">6</text>
+              <rect x="170" y="172" width="40" height="26" fill="var(--accent-soft)" stroke="currentColor"/><text x="190" y="190" text-anchor="middle" fill="currentColor">7</text>
+              <text x="8" y="216" fill="var(--fg-muted)">рядок = q1, стовпець = q0</text>
+            </g>
+            <path d="M12,152 L12,192" stroke="var(--accent)" stroke-width="2" marker-end="url(#q10d-arr)"/>
+
+            <line x1="230" y1="172" x2="286" y2="172" stroke="currentColor" marker-end="url(#q10d-arr)"/>
+            <rect x="292" y="120" width="200" height="104" rx="9" fill="none" stroke="var(--accent)"/>
+            <text x="392" y="142" text-anchor="middle" fill="var(--accent)" font-weight="bold">③ tensordot(H, t, ([1],[1]))</text>
+            <text x="392" y="164" text-anchor="middle" fill="var(--fg-muted)" font-size="11">кожна пара (q1=0, q1=1)</text>
+            <text x="392" y="180" text-anchor="middle" fill="var(--fg-muted)" font-size="11">множиться на H 2×2</text>
+            <text x="392" y="206" text-anchor="middle" fill="currentColor" font-family="monospace" font-size="11">осі → (q1′, q2, q0)</text>
+
+            <line x1="492" y1="172" x2="526" y2="172" stroke="currentColor" marker-end="url(#q10d-arr)"/>
+            <rect x="530" y="120" width="180" height="104" rx="9" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="620" y="142" text-anchor="middle" fill="var(--good)" font-weight="bold">④ moveaxis(0 → 1)</text>
+            <text x="620" y="166" text-anchor="middle" fill="currentColor" font-family="monospace" font-size="11">осі → (q2, q1′, q0)</text>
+            <text x="620" y="190" text-anchor="middle" fill="var(--fg-muted)" font-size="11">reshape(-1) → ψ′</text>
+            <text x="620" y="208" text-anchor="middle" fill="var(--fg-muted)" font-size="11">shape (8,)</text>
+
+            <rect x="20" y="240" width="690" height="46" rx="9" fill="var(--bg)" stroke="var(--border)"/>
+            <text x="365" y="260" text-anchor="middle" fill="currentColor">Вартість гейта: пам'ять O(2ⁿ), час O(2ⁿ) для 1-кубітного, O(2ⁿ·2ᵏ) для k-кубітного</text>
+            <text x="365" y="278" text-anchor="middle" fill="var(--fg-muted)" font-size="11">проти O(4ⁿ) пам'яті й часу при kron — для 20 кубітів різниця в мільйон разів</text>
+          </g>
+        </svg>
+        <figcaption>Гейт H на qubit 1 у системі з 3 кубітів. Стрілка у кроці ② показує одну пару амплітуд (0 і 2), яку H змішує; таких пар 4.</figcaption>
+      </figure>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">reshape_demo.py</span></div>
+        <pre><code>import numpy as np
+from qsim import H, I2, apply_gate
+
+n = 3
+rng = np.random.default_rng(0)
+psi = rng.normal(size=8) + 1j * rng.normal(size=8)
+psi /= np.linalg.norm(psi)
+
+# 1) еталон: повна матриця 8×8 для H на qubit 1 (I ⊗ H ⊗ I)
+full = np.kron(I2, np.kron(H, I2)) @ psi
+
+# 2) reshape + tensordot + moveaxis (qubit 1 → вісь n-1-1 = 1)
+t = psi.reshape(2, 2, 2)                       # осі: (q2, q1, q0)
+t2 = np.tensordot(H, t, axes=([1], [1]))       # осі: (q1', q2, q0)
+t2 = np.moveaxis(t2, 0, 1)                     # осі: (q2, q1', q0)
+print("tensordot == kron:", np.allclose(t2.reshape(-1), full))
+
+# 3) einsum: те саме одним рядком, індекси говорять самі за себе
+t3 = np.einsum("ij,ajb-&gt;aib", H, t)
+print("einsum    == kron:", np.allclose(t3.reshape(-1), full))
+
+# 4) і наша бібліотечна функція
+print("apply_gate == kron:", np.allclose(apply_gate(psi, H, [1], n), full))</code></pre>
+      </div>
+      <pre class="tree">tensordot == kron: True
+einsum    == kron: True
+apply_gate == kron: True</pre>
+
+      <p>Рядок <code>"ij,ajb-&gt;aib"</code> читається так: <code>a, j, b</code> — осі стану (q2, q1, q0), <code>ij</code> — матриця гейта; індекс <code>j</code>
+      зустрічається двічі і не виходить у результат, отже по ньому сумуємо. Результат має осі <code>a, i, b</code> у правильному порядку, moveaxis не потрібен.
+      Для фіксованої кількості кубітів einsum виразніший, для довільних <code>qubits</code> зручніше генерувати осі для tensordot, як у наступному розділі.</p>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Як TypedArray над одним <code>ArrayBuffer</code>: <code>new Float64Array(buf)</code> і <code>new Uint8Array(buf)</code> дивляться на ті самі
+        байти по-різному, нічого не копіюючи. <code>reshape</code> так само дає view того самого масиву як тензора <code>(2, 2, …, 2)</code> — дані
+        не рухаються, змінюється лише індексація. Копія з'являється там, де без неї ніяк: <code>tensordot</code> створює новий масив, а <code>reshape</code>
+        після <code>moveaxis</code> копіює, бо осі вже не в порядку пам'яті.
+      </div>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> apply_gate для k кубітів</h2>
+      <p class="section-desc">Одна функція для 1-, 2- і 3-кубітних гейтів у довільних позиціях.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">qsim.py · ядро</span></div>
+        <pre><code># ---------- ядро ----------
+def zero_state(n: int) -&gt; np.ndarray:
+    psi = np.zeros(2**n, dtype=complex)
+    psi[0] = 1
+    return psi
+
+
+def apply_gate(psi: np.ndarray, gate: np.ndarray, qubits: list[int], n: int) -&gt; np.ndarray:
+    """Застосувати k-кубітний гейт до кубітів `qubits` (порядок Qiskit)."""
+    k = len(qubits)
+    assert gate.shape == (2**k, 2**k)
+    t = psi.reshape((2,) * n)
+    g = gate.reshape((2,) * (2 * k))
+    # осі гейта: (out_{k-1} … out_0, in_{k-1} … in_0); qubits[0] — молодший
+    axes = [n - 1 - q for q in reversed(qubits)]
+    t = np.tensordot(g, t, axes=(list(range(k, 2 * k)), axes))
+    t = np.moveaxis(t, list(range(k)), axes)
+    return t.reshape(-1)</code></pre>
+      </div>
+
+      <p>Що відбувається по рядках:</p>
+      <ol>
+        <li><b>Гейт k кубітів теж стає тензором.</b> Матриця 2ᵏ×2ᵏ переглядається як масив форми <code>(2,)*2k</code>: перші k осей — вихідні індекси,
+        останні k — вхідні. У порядку Qiskit старший біт іде першим, тож для <code>qubits=[c, t]</code> осі гейта: <code>(out_t, out_c, in_t, in_c)</code>.</li>
+        <li><b><code>axes</code></b> — осі стану, з якими згортаємо вхідні осі гейта, у тому ж порядку: для <code>reversed(qubits)</code> беремо <code>n−1−q</code>.</li>
+        <li><b><code>tensordot</code></b> ставить k нових осей на початок, <b><code>moveaxis</code></b> повертає їх на ті самі позиції <code>axes</code>.</li>
+      </ol>
+
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        <b>Як визначено багатокубітні матриці.</b> У <code>qsim.py</code> <code>CX</code>, <code>CZ</code>, <code>SWAP</code>, <code>CCX</code> записані в порядку Qiskit:
+        перший кубіт у списку — молодший біт індексу матриці. Тому <code>CX = kron(I, P0) + kron(X, P1)</code> з <code>qubits=[control, target]</code>,
+        а Toffoli — одинична 8×8 з переставленими рядками 3 (<code>|011⟩</code>: обидва контролі = 1, target = 0) і 7. Якщо взяти матрицю CNOT з підручника
+        (там control — старший біт), а кубіти передати як у Qiskit, отримаєте "CNOT навпаки". Тести з §16 ловлять таку помилку одразу.
+      </div></div>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Параметризовані гейти RX, RY, RZ</h2>
+      <p class="section-desc">Ті самі "крутилки", якими варіаційні алгоритми (QAOA, VQE) налаштовують схему.</p>
+
+      <p>Повороти на кут θ навколо осей сфери Блоха — це матричні експоненти <span class="math">R<sub>P</sub>(θ) = e<sup>−iθP/2</sup> = cos(θ/2)·I − i·sin(θ/2)·P</span>
+      для P ∈ <span class="say">(∈ — «належить»)</span> {X, Y, Z}. Звідси формули в <code>qsim.py</code> (§3). Перевіримо властивості, а не віримо формулам:</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">rot_demo.py</span></div>
+        <pre><code>import numpy as np
+from qsim import X, Y, Z, rx, ry, rz
+
+print("RX(π) == -iX:", np.allclose(rx(np.pi), -1j * X))
+print("RY(π) == -iY:", np.allclose(ry(np.pi), -1j * Y))
+print("RZ(2π) == -I:", np.allclose(rz(2 * np.pi), -np.eye(2)))   # 2π ≠ тотожність!
+
+# RZ(θ) і фазовий гейт P(θ)=diag(1, e^{iθ}) відрізняються лише глобальною фазою
+theta = 0.8
+P = np.diag([1, np.exp(1j * theta)])
+print("RZ == e^{-iθ/2}·P:", np.allclose(rz(theta), np.exp(-1j * theta / 2) * P))
+
+# RY(θ)|0⟩ = cos(θ/2)|0⟩ + sin(θ/2)|1⟩ — дійсні амплітуди, керуємо P(1)
+for th in [0, np.pi / 3, np.pi / 2, np.pi]:
+    a = ry(th) @ np.array([1, 0], dtype=complex)
+    print(f"θ={th:.3f}  P(1)={abs(a[1])**2:.4f}  sin²(θ/2)={np.sin(th / 2)**2:.4f}")</code></pre>
+      </div>
+      <pre class="tree">RX(π) == -iX: True
+RY(π) == -iY: True
+RZ(2π) == -I: True
+RZ == e^{-iθ/2}·P: True
+θ=0.000  P(1)=0.0000  sin²(θ/2)=0.0000
+θ=1.047  P(1)=0.2500  sin²(θ/2)=0.2500
+θ=1.571  P(1)=0.5000  sin²(θ/2)=0.5000
+θ=3.142  P(1)=1.0000  sin²(θ/2)=1.0000</pre>
+
+      <ul>
+        <li><b>RZ(2π) = −I.</b> Повний оберт дає глобальну фазу −1, яку неможливо виміряти (див. <a href="08-complex-numbers-phase.html">туторіал 8</a>).
+        Але в контрольованій версії ця фаза стає відносною і вже має значення.</li>
+        <li><b>RZ і P(θ)</b> відрізняються лише глобальною фазою, тому на одному кубіті дають однакову статистику.</li>
+        <li><b>RY</b> тримає амплітуди дійсними і дозволяє задати ймовірність: <span class="math">P(1) = sin²(θ/2)</span>. Це найпростіший спосіб приготувати
+        "зважену монету" (задача 20).</li>
+      </ul>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Очікувані значення Pauli-рядків</h2>
+      <p class="section-desc">Друга половина того, що повертає QPU: не гістограма, а середнє значення спостережуваної.</p>
+
+      <p>Спостережувана в Qiskit задається Pauli-рядком, наприклад <code>"ZZ"</code> чи <code>"XIY"</code>. Її середнє на стані ψ:
+      <span class="math">⟨P⟩ = ⟨ψ|P|ψ⟩</span> <span class="say">(⟨ψ|P|ψ⟩ — «бра псі, P, кет псі»: середнє (очікуване) значення P у стані ψ)</span>. Обчислюємо як <code>vdot(ψ, Pψ)</code>, де Pψ — це послідовне застосування однокубітних Pauli до відповідних кубітів.
+      Матрицю 2ⁿ×2ⁿ знову не будуємо.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">qsim.py · очікуване значення</span></div>
+        <pre><code>def expectation(psi: np.ndarray, label: str) -&gt; float:
+    """⟨ψ|P|ψ⟩ для Pauli-рядка у форматі Qiskit: label[-1] діє на qubit 0."""
+    n = len(label)
+    phi = psi
+    for q, ch in enumerate(reversed(label)):
+        if ch != "I":
+            phi = apply_gate(phi, PAULI[ch], [q], n)
+    return float(np.real(np.vdot(psi, phi)))</code></pre>
+      </div>
+
+      <ul>
+        <li><b>Порядок літер — як у Qiskit:</b> <code>label[-1]</code> діє на qubit 0. <code>"ZI"</code> — це Z на q1 і I на q0.</li>
+        <li><b>Результат дійсний</b>, бо Pauli-рядок ермітовий. <code>np.real</code> лише прибирає залишок <code>1e-17j</code>.</li>
+        <li><b>Діапазон [−1, 1].</b> Власні значення будь-якого Pauli-рядка — ±1. Для Z-рядків <span class="math">⟨Z…Z⟩ = Σ pᵢ·(−1)<sup>парність(i)</sup></span> <span class="say">(Σ — «сума», велика сигма)</span>,
+        тож середнє можна оцінити прямо з counts (задача 16), а для X і Y треба спершу повернути базис гейтами H або S†H <span class="say">(S† — «S-даґер»: ермітово спряжена, тобто транспонувати й комплексно спряжити)</span> (задача 15).
+        Саме так працює EstimatorV2 на реальному пристрої.</li>
+      </ul>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Частковий слід і перевірка заплутаності</h2>
+      <p class="section-desc">Як кодом відповісти на питання "чи заплутані ці кубіти?"</p>
+
+      <p>Для чистого стану двох підсистем є простий критерій. Візьмемо <b>редуковану матрицю густини</b> одного кубіта
+      <span class="math">ρ = Tr<sub>решта</sub>|ψ⟩⟨ψ|</span>. Якщо стан добутковий, ρ описує чистий стан і <span class="math">Tr(ρ²) = 1</span>. Якщо заплутаний —
+      <span class="math">Tr(ρ²) &lt; 1</span>, а мінімум 1/2 відповідає максимальній заплутаності (стан Белла). Цю величину називають <b>чистотою</b> (purity).</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">qsim.py · частковий слід</span></div>
+        <pre><code>def reduced_density(psi: np.ndarray, q: int, n: int) -&gt; np.ndarray:
+    """Матриця густини одного кубіта (частковий слід за рештою)."""
+    t = np.moveaxis(psi.reshape((2,) * n), n - 1 - q, 0).reshape(2, -1)
+    return t @ t.conj().T</code></pre>
+      </div>
+
+      <p>Трюк той самий: переносимо вісь потрібного кубіта на початок, решту осей сплющуємо в одну. Отримуємо матрицю M розміру 2×2ⁿ⁻¹, і
+      <span class="math">ρ = M·M†</span>, бо згортка по осях "решти" — це і є частковий слід. Для стану Белла ρ = I/2: окремо кубіт виглядає як
+      чесна монета, хоча вся пара в чистому стані. Демо — у наступному розділі, функцію чистоти від кута — у задачі 21.</p>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Як selector у Redux/Zustand: store описує весь застосунок, а компонент через selector бачить лише свій зріз. Частковий слід робить подібне
+        для квантового стану: все про "решту" кубітів ми усереднюємо і бачимо ефективний стан однієї частини. Де аналогія ламається: selector нічого
+        не губить, store лишається повним. Частковий слід від заплутаного стану дає мішаний стан — кореляції з рештою системи з локального зрізу
+        не відновити, тому половина пари Белла виглядає як чесна монета.
+      </div>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Мінімальний Circuit API</h2>
+      <p class="section-desc">Fluent-інтерфейс у стилі Qiskit поверх ядра: схема як список операцій.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">qsim.py · Circuit</span></div>
+        <pre><code># ---------- мінімальний Circuit API ----------
+@dataclass
+class Circuit:
+    n: int
+    ops: list[tuple[np.ndarray, list[int]]] = field(default_factory=list)
+
+    def gate(self, m: np.ndarray, *qubits: int) -&gt; "Circuit":
+        if len(set(qubits)) != len(qubits) or not all(0 &lt;= q &lt; self.n for q in qubits):
+            raise ValueError(f"bad qubits {qubits}")
+        self.ops.append((m, list(qubits)))
+        return self
+
+    def h(self, q): return self.gate(H, q)
+    def x(self, q): return self.gate(X, q)
+    def y(self, q): return self.gate(Y, q)
+    def z(self, q): return self.gate(Z, q)
+    def s(self, q): return self.gate(S, q)
+    def t(self, q): return self.gate(T, q)
+    def rx(self, th, q): return self.gate(rx(th), q)
+    def ry(self, th, q): return self.gate(ry(th), q)
+    def rz(self, th, q): return self.gate(rz(th), q)
+    def cx(self, c, t): return self.gate(CX, c, t)
+    def cz(self, a, b): return self.gate(CZ, a, b)
+    def swap(self, a, b): return self.gate(SWAP, a, b)
+    def ccx(self, c0, c1, t): return self.gate(CCX, c0, c1, t)
+
+    def statevector(self) -&gt; np.ndarray:
+        psi = zero_state(self.n)
+        for m, qs in self.ops:
+            psi = apply_gate(psi, m, qs, self.n)
+        return psi
+
+    def run(self, shots: int = 1024, seed: int | None = None) -&gt; dict[str, int]:
+        return sample_counts(self.statevector(), shots, np.random.default_rng(seed))
+
+    def run_noisy(self, shots: int, p_flip: float, seed: int | None = None) -&gt; dict[str, int]:
+        """Bit-flip шум методом Монте-Карло: після кожного гейта кожен
+        задіяний кубіт з імовірністю p_flip отримує випадковий X.
+        Одна траєкторія = один shot."""
+        rng = np.random.default_rng(seed)
+        counts: dict[str, int] = {}
+        for _ in range(shots):
+            psi = zero_state(self.n)
+            for m, qs in self.ops:
+                psi = apply_gate(psi, m, qs, self.n)
+                for q in qs:
+                    if rng.random() &lt; p_flip:
+                        psi = apply_gate(psi, X, [q], self.n)
+            key = next(iter(sample_counts(psi, 1, rng)))
+            counts[key] = counts.get(key, 0) + 1
+        return dict(sorted(counts.items()))</code></pre>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">demo_v2.py</span></div>
+        <pre><code>import numpy as np
+from qsim import Circuit, expectation, reduced_density
+
+bell = Circuit(2).h(0).cx(0, 1)
+psi = bell.statevector()
+print("ψ =", np.round(psi, 4))
+print("counts:", bell.run(shots=1000, seed=7))
+print("⟨ZZ⟩ =", round(expectation(psi, "ZZ"), 6), " ⟨ZI⟩ =", round(expectation(psi, "ZI"), 6))
+
+rho = reduced_density(psi, 0, 2)
+print("ρ_q0 =\n", np.round(rho, 3))
+print("purity tr(ρ²) =", round(float(np.real(np.trace(rho @ rho))), 6))
+
+print("noisy p=0.05:", bell.run_noisy(shots=2000, p_flip=0.05, seed=1))</code></pre>
+      </div>
+      <pre class="tree">ψ = [0.7071+0.j 0.    +0.j 0.    +0.j 0.7071+0.j]
+counts: {'00': 500, '11': 500}
+⟨ZZ⟩ = 1.0  ⟨ZI⟩ = 0.0
+ρ_q0 =
+ [[0.5+0.j 0. +0.j]
+ [0. +0.j 0.5+0.j]]
+purity tr(ρ²) = 0.5
+noisy p=0.05: {'00': 899, '01': 90, '10': 104, '11': 907}</pre>
+
+      <p>Рішення в дизайні, які варто помітити:</p>
+      <ul>
+        <li><b>Схема зберігає операції, а не стан.</b> Як і <code>QuantumCircuit</code>: її можна виконати багато разів, з шумом і без, порахувати вартість, транспілювати.</li>
+        <li><b>Методи повертають <code>self</code></b>, тому <code>Circuit(2).h(0).cx(0, 1)</code> читається як схема.</li>
+        <li><b>Валідація кубітів одразу в <code>gate()</code></b>: <code>cx(1, 1)</code> падає з <code>ValueError</code> при побудові, а не загадковою помилкою reshape при запуску.</li>
+        <li><b>Немає явного <code>measure</code>.</b> <code>run()</code> вимірює всі кубіти в кінці, як <code>measure_all()</code>. Проміжне вимірювання одного кубіта — окрема функція
+        <code>measure_qubit</code> (задача 17).</li>
+      </ul>
+    </section>
+
+    <section id="s16">
+      <h2><span class="num">16</span> Тести проти Qiskit</h2>
+      <p class="section-desc">Власний симулятор без тестів — це генератор правдоподібних чисел. Звіряємо з еталоном.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 220" role="img" aria-label="Схема тестування. Генератор випадкових схем з фіксованим seed будує одну й ту саму послідовність з 25 гейтів одночасно в нашому Circuit і в qiskit QuantumCircuit. Наш statevector і qiskit Statevector порівнюються через np.allclose з допуском 1e-10. Параметризація: n від 1 до 5 кубітів, 20 seed, разом 100 випадкових схем, плюс 9 точкових тестів, всього 109 тестів">
+          <defs><marker id="q10e-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="70" width="150" height="70" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="85" y="94" text-anchor="middle" fill="currentColor" font-weight="bold">random_pair(rng, n)</text>
+            <text x="85" y="113" text-anchor="middle" fill="var(--fg-muted)" font-size="11">25 випадкових гейтів:</text>
+            <text x="85" y="129" text-anchor="middle" fill="var(--fg-muted)" font-size="11">1q, RX/RY/RZ, 2q, CCX</text>
+            <path d="M160,95 C200,95 200,50 236,50" fill="none" stroke="currentColor" marker-end="url(#q10e-arr)"/>
+            <path d="M160,115 C200,115 200,160 236,160" fill="none" stroke="currentColor" marker-end="url(#q10e-arr)"/>
+            <rect x="240" y="25" width="190" height="50" rx="9" fill="none" stroke="currentColor"/>
+            <text x="335" y="46" text-anchor="middle" fill="currentColor" font-family="monospace">qsim.Circuit</text>
+            <text x="335" y="64" text-anchor="middle" fill="var(--fg-muted)" font-size="11">.statevector()</text>
+            <rect x="240" y="135" width="190" height="50" rx="9" fill="none" stroke="currentColor"/>
+            <text x="335" y="156" text-anchor="middle" fill="currentColor" font-family="monospace">qiskit.QuantumCircuit</text>
+            <text x="335" y="174" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Statevector(qc).data</text>
+            <path d="M430,50 C470,50 470,95 506,95" fill="none" stroke="currentColor" marker-end="url(#q10e-arr)"/>
+            <path d="M430,160 C470,160 470,115 506,115" fill="none" stroke="currentColor" marker-end="url(#q10e-arr)"/>
+            <rect x="510" y="70" width="200" height="70" rx="9" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="610" y="94" text-anchor="middle" fill="var(--good)" font-weight="bold">np.allclose(atol=1e-10)</text>
+            <text x="610" y="113" text-anchor="middle" fill="var(--fg-muted)" font-size="11">n ∈ 1..5 × 20 seed = 100</text>
+            <text x="610" y="129" text-anchor="middle" fill="var(--fg-muted)" font-size="11">+ 9 точкових = 109 ✓</text>
+            <text x="360" y="210" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Порівнюємо повні вектори, включно з фазою: однакові визначення гейтів ⇒ збіг до глобальної фази теж</text>
+          </g>
+        </svg>
+        <figcaption>Property-based підхід: одна випадкова схема перевіряє одразу порядок кубітів, усі матриці гейтів і ядро <code>apply_gate</code>.</figcaption>
+      </figure>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">test_qsim.py</span></div>
+        <pre><code>import numpy as np
+import pytest
+from qiskit import QuantumCircuit
+from qiskit.quantum_info import SparsePauliOp, Statevector
+
+from qsim import Circuit, expectation, measure_qubit, reduced_density
+
+ONE_Q = ["h", "x", "y", "z", "s", "t"]
+ROT = ["rx", "ry", "rz"]
+TWO_Q = ["cx", "cz", "swap"]
+
+
+def random_pair(rng, n):
+    """Будує однакову випадкову схему в нашому симуляторі і в Qiskit."""
+    ours, ref = Circuit(n), QuantumCircuit(n)
+    for _ in range(25):
+        kind = rng.integers(4)
+        if kind == 0:
+            g, q = rng.choice(ONE_Q), int(rng.integers(n))
+            getattr(ours, g)(q); getattr(ref, g)(q)
+        elif kind == 1:
+            g, q, th = rng.choice(ROT), int(rng.integers(n)), float(rng.uniform(0, 2 * np.pi))
+            getattr(ours, g)(th, q); getattr(ref, g)(th, q)
+        elif kind == 2 and n &gt;= 2:
+            g = rng.choice(TWO_Q)
+            a, b = (int(v) for v in rng.choice(n, 2, replace=False))
+            getattr(ours, g)(a, b); getattr(ref, g)(a, b)
+        elif n &gt;= 3:
+            a, b, c = (int(v) for v in rng.choice(n, 3, replace=False))
+            ours.ccx(a, b, c); ref.ccx(a, b, c)
+    return ours, ref
+
+
+@pytest.mark.parametrize("n", [1, 2, 3, 4, 5])
+@pytest.mark.parametrize("seed", range(20))
+def test_statevector_matches_qiskit(n, seed):
+    ours, ref = random_pair(np.random.default_rng(seed), n)
+    assert np.allclose(ours.statevector(), Statevector(ref).data, atol=1e-10)
+
+
+@pytest.mark.parametrize("label", ["ZZ", "XI", "IY", "XY", "ZX"])
+def test_expectation_matches_qiskit(label):
+    ours, ref = random_pair(np.random.default_rng(42), 2)
+    expected = Statevector(ref).expectation_value(SparsePauliOp(label)).real
+    assert np.isclose(expectation(ours.statevector(), label), expected)
+
+
+def test_counts_format_and_total():
+    counts = Circuit(3).x(0).run(shots=100, seed=0)
+    assert counts == {"001": 100}           # qubit 0 — правий біт
+
+
+def test_measure_one_qubit_of_bell():
+    psi = Circuit(2).h(0).cx(0, 1).statevector()
+    bit, post = measure_qubit(psi, 0, np.random.default_rng(3))
+    expected = np.zeros(4, complex); expected[3 * bit] = 1   # |00⟩ або |11⟩
+    assert np.allclose(post, expected)
+
+
+def test_bell_is_maximally_entangled():
+    psi = Circuit(2).h(0).cx(0, 1).statevector()
+    rho = reduced_density(psi, 1, 2)
+    assert np.isclose(np.trace(rho @ rho).real, 0.5)
+
+
+def test_bad_qubits_rejected():
+    with pytest.raises(ValueError):
+        Circuit(2).cx(1, 1)</code></pre>
+      </div>
+      <pre class="tree">$ pytest -q test_qsim.py
+109 passed in 0.29s</pre>
+
+      <div class="callout good"><div class="ic">✅</div><div class="body">
+        <b>Чому порівнюємо вектори, а не counts.</b> Counts — випадкові, і тест на них або нестабільний, або з широким допуском. Вектор стану
+        детермінований, і збіг до <code>1e-10</code> означає, що збігаються всі ймовірності й усі фази. Counts тестуємо тільки там, де результат
+        детермінований (<code>{'001': 100}</code> після X на q0) — це заодно фіксує формат рядка.
+      </div></div>
+    </section>
+
+    <section id="s17">
+      <h2><span class="num">17</span> Бенчмарк і межа statevector</h2>
+      <p class="section-desc">Скільки кубітів витягне ноутбук і чому 50 не витягне ніхто.</p>
+
+      <p>Шар = H на кожен кубіт + ланцюжок CX(q, q+1), тобто 2n−1 гейтів. Найкращий час з трьох запусків (для 22–24 кубітів — один запуск),
+      Apple M4, 16 GB RAM, NumPy 2.5.4, один потік. Колонка "kron" міряє лише n гейтів H через повні матриці і зупиняється на 12 кубітах.</p>
+      <pre class="tree">  n      state   tensor layer  kron (лише H)    матриця 2ⁿ×2ⁿ
+  4    0.000MB        0.04 ms         0.1 ms      3.81e-06 GB
+  8    0.004MB        0.10 ms         3.5 ms      0.000977 GB
+ 10    0.016MB        0.20 ms        50.5 ms        0.0156 GB
+ 12    0.062MB        0.60 ms      2228.8 ms          0.25 GB
+ 14    0.250MB        1.99 ms              —             4 GB
+ 16    1.000MB       10.79 ms              —            64 GB
+ 18    4.000MB       62.23 ms              —      1.02e+03 GB
+ 20   16.000MB      470.18 ms              —      1.64e+04 GB
+ 22   64.000MB     3668.11 ms              —      2.62e+05 GB
+ 24  256.000MB    35567.31 ms              —      4.19e+06 GB</pre>
+
+      <ul>
+        <li><b>Пам'ять стану подвоюється з кожним кубітом</b>: 16 MB на 20 кубітах, 256 MB на 24, 16 GB на 30 — це вся пам'ять тестового ноутбука.</li>
+        <li><b>Час росте швидше за 2ⁿ</b>, бо гейтів у шарі теж більше (2n−1), а <code>moveaxis + reshape</code> копіює масив, коли осі вже не суцільні.
+        Aer і qsim уникають копій, застосовуючи гейт in-place на C++ з SIMD і потоками, тому вони на порядки швидші, але <b>експонента лишається</b>.</li>
+        <li><b>Повна матриця</b> вже на 14 кубітах потребує 4 GB на одну операцію.</li>
+      </ul>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 280" role="img" aria-label="Графік у логарифмічному масштабі: по горизонталі кількість кубітів від 0 до 50, по вертикалі пам'ять у байтах від 1 байта до 2 в 64 степені. Дві прямі. Вектор стану 16 помножити на 2 в степені n: перетинає 16 GB, пам'ять ноутбука, на 30 кубітах, а на 50 кубітах сягає 16 PiB. Повна матриця 16 помножити на 4 в степені n: перетинає 16 GB вже на 15 кубітах. Горизонтальна пунктирна лінія порядку петабайтів показує пам'ять найбільших суперкомп'ютерів, її вектор стану перетинає близько 48 кубітів">
+          <g font-size="11">
+            <line x1="60" y1="220" x2="680" y2="220" stroke="currentColor"/>
+            <line x1="60" y1="20" x2="60" y2="220" stroke="currentColor"/>
+            <g fill="var(--fg-muted)" text-anchor="middle">
+              <text x="60" y="236">0</text><text x="184" y="236">10</text><text x="308" y="236">20</text>
+              <text x="432" y="236">30</text><text x="556" y="236">40</text><text x="680" y="236">50</text>
+              <text x="370" y="254">кількість кубітів n</text>
+            </g>
+            <g fill="var(--fg-muted)" text-anchor="end">
+              <text x="54" y="185">1 KB</text><text x="54" y="154">1 MB</text><text x="54" y="122">1 GB</text>
+              <text x="54" y="91">1 TB</text><text x="54" y="60">1 PB</text>
+            </g>
+            <g stroke="var(--border)" stroke-dasharray="2,4">
+              <line x1="60" y1="188.75" x2="680" y2="188.75"/><line x1="60" y1="157.5" x2="680" y2="157.5"/>
+              <line x1="60" y1="126.25" x2="680" y2="126.25"/><line x1="60" y1="95" x2="680" y2="95"/><line x1="60" y1="63.75" x2="680" y2="63.75"/>
+            </g>
+            <line x1="60" y1="113.75" x2="680" y2="113.75" stroke="var(--warn)" stroke-dasharray="6,4"/>
+            <text x="676" y="108" text-anchor="end" fill="var(--warn)">16 GB — ноутбук</text>
+            <line x1="60" y1="57.5" x2="680" y2="57.5" stroke="var(--bad)" stroke-dasharray="6,4"/>
+            <text x="66" y="51" fill="var(--bad)">~PB — найбільші суперкомп'ютери</text>
+            <line x1="60" y1="207.5" x2="680" y2="51.25" stroke="var(--accent)" stroke-width="2.2"/>
+            <text x="560" y="140" fill="var(--accent)" font-weight="bold">вектор стану 16·2ⁿ</text>
+            <line x1="60" y1="207.5" x2="432" y2="20" stroke="var(--interview)" stroke-width="2.2"/>
+            <text x="300" y="70" fill="var(--interview)" font-weight="bold" text-anchor="end">повна матриця 16·4ⁿ</text>
+            <circle cx="432" cy="113.75" r="4" fill="var(--accent)"/>
+            <text x="440" y="132" fill="currentColor">n = 30</text>
+            <circle cx="246" cy="113.75" r="4" fill="var(--interview)"/>
+            <text x="252" y="132" fill="currentColor">n = 15</text>
+            <circle cx="680" cy="51.25" r="4" fill="var(--accent)"/>
+            <text x="676" y="40" text-anchor="end" fill="currentColor" font-weight="bold">n = 50: 16 PiB</text>
+          </g>
+        </svg>
+        <figcaption>Логарифмічна шкала: обидві залежності — прямі, але матриця росте вдвічі крутіше. Пам'ять суперкомп'ютерів — орієнтовний порядок величини.</figcaption>
+      </figure>
+
+      <p><b>Чому 50 кубітів неможливо:</b> <span class="math">2⁵⁰ · 16 байт = 2⁵⁴ байт = 16 PiB</span> (≈ 18·10¹⁵ байт) лише на те, щоб <i>зберегти</i> один стан.
+      Рекорди повної statevector-симуляції на суперкомп'ютерах — порядку 45–50 кубітів (з трюками на кшталт стиснення амплітуд), і кожен додатковий кубіт подвоює вимоги. Тому для більших схем використовують
+      інші методи: тензорні мережі (добре для малої заплутаності), стабілізаторні симулятори (лише Clifford-гейти, тисячі кубітів), MPS-метод в Aer. Кожен з них
+      експоненційно дорогий для якогось класу схем, і саме тут з'являється потенційна квантова перевага.</p>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Як вкладка браузера, що впирається в ліміт пам'яті: стан на 30 кубітів — 2³⁰ · 16 байт = 16 GiB, вкладка впаде задовго до цього. Тільки тут кожен
+        кубіт не додає, а <i>подвоює</i> пам'ять, і ні code splitting, ні віртуалізація списку не допоможуть: усі амплітуди потрібні одночасно.
+      </div>
+    </section>
+
+    <section id="s18">
+      <h2><span class="num">18</span> Шум: bit-flip методом Монте-Карло</h2>
+      <p class="section-desc">Як отримати "брудні" counts, схожі на реальний QPU, не переходячи до матриць густини.</p>
+
+      <p>Найпростіша модель шуму — <b>bit-flip канал</b>: після кожного гейта кожен задіяний кубіт з імовірністю p отримує випадковий X.
+      Точний опис такого шуму потребує матриці густини 2ⁿ×2ⁿ (знову 4ⁿ пам'яті). Дешевший шлях — <b>квантові траєкторії</b>: проганяємо схему багато разів,
+      щоразу підкидаючи монетку для кожної можливої помилки, і усереднюємо. Середнє по траєкторіях збігається з точним результатом каналу.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 720 250" role="img" aria-label="Чотири траєкторії схеми H на q0, CX(0,1). Кожна траєкторія — горизонтальна лінія з трьома точками, де може статися помилка: після H на q0, після CX на q0 і на q1. У першій і третій траєкторіях помилок немає, результат 00 або 11. У другій траєкторії після CX сталася помилка на q1, результат 01. У четвертій помилка на q0 після CX, результат 10. Праворуч гістограма з 2000 shots при p рівному 0.05: 00 — 899, 01 — 90, 10 — 104, 11 — 907">
+          <g font-size="12">
+            <text x="20" y="22" fill="currentColor" font-weight="bold">Траєкторія = один shot</text>
+            <g>
+              <text x="20" y="58" fill="var(--fg-muted)" font-size="11">#1</text>
+              <line x1="50" y1="54" x2="380" y2="54" stroke="currentColor"/>
+              <rect x="80" y="44" width="70" height="20" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="115" y="58" text-anchor="middle" fill="var(--accent)" font-size="11">H(0)</text>
+              <rect x="200" y="44" width="70" height="20" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="235" y="58" text-anchor="middle" fill="var(--accent)" font-size="11">CX(0,1)</text>
+              <text x="395" y="58" fill="var(--good)" font-family="monospace">'11'</text>
+
+              <text x="20" y="108" fill="var(--fg-muted)" font-size="11">#2</text>
+              <line x1="50" y1="104" x2="380" y2="104" stroke="currentColor"/>
+              <rect x="80" y="94" width="70" height="20" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="115" y="108" text-anchor="middle" fill="var(--accent)" font-size="11">H(0)</text>
+              <rect x="200" y="94" width="70" height="20" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="235" y="108" text-anchor="middle" fill="var(--accent)" font-size="11">CX(0,1)</text>
+              <rect x="290" y="94" width="50" height="20" rx="4" fill="var(--bad-bg)" stroke="var(--bad)"/><text x="315" y="108" text-anchor="middle" fill="var(--bad)" font-size="11">X(1)</text>
+              <text x="395" y="108" fill="var(--bad)" font-family="monospace">'01'</text>
+
+              <text x="20" y="158" fill="var(--fg-muted)" font-size="11">#3</text>
+              <line x1="50" y1="154" x2="380" y2="154" stroke="currentColor"/>
+              <rect x="80" y="144" width="70" height="20" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="115" y="158" text-anchor="middle" fill="var(--accent)" font-size="11">H(0)</text>
+              <rect x="200" y="144" width="70" height="20" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="235" y="158" text-anchor="middle" fill="var(--accent)" font-size="11">CX(0,1)</text>
+              <text x="395" y="158" fill="var(--good)" font-family="monospace">'00'</text>
+
+              <text x="20" y="208" fill="var(--fg-muted)" font-size="11">#4</text>
+              <line x1="50" y1="204" x2="380" y2="204" stroke="currentColor"/>
+              <rect x="80" y="194" width="70" height="20" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="115" y="208" text-anchor="middle" fill="var(--accent)" font-size="11">H(0)</text>
+              <rect x="200" y="194" width="70" height="20" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="235" y="208" text-anchor="middle" fill="var(--accent)" font-size="11">CX(0,1)</text>
+              <rect x="290" y="194" width="50" height="20" rx="4" fill="var(--bad-bg)" stroke="var(--bad)"/><text x="315" y="208" text-anchor="middle" fill="var(--bad)" font-size="11">X(0)</text>
+              <text x="395" y="208" fill="var(--bad)" font-family="monospace">'10'</text>
+            </g>
+            <text x="200" y="240" text-anchor="middle" fill="var(--fg-muted)" font-size="11">червоне — випадкова помилка з імовірністю p після гейта</text>
+
+            <text x="580" y="22" text-anchor="middle" fill="currentColor" font-weight="bold">2000 shots, p = 0.05</text>
+            <line x1="470" y1="200" x2="700" y2="200" stroke="currentColor"/>
+            <rect x="480" y="56.2" width="40" height="143.8" fill="var(--good)"/>
+            <rect x="535" y="185.6" width="40" height="14.4" fill="var(--bad)"/>
+            <rect x="590" y="183.4" width="40" height="16.6" fill="var(--bad)"/>
+            <rect x="645" y="54.9" width="40" height="145.1" fill="var(--good)"/>
+            <g font-size="11" fill="currentColor" text-anchor="middle">
+              <text x="500" y="50">899</text><text x="555" y="180">90</text><text x="610" y="178">104</text><text x="665" y="49">907</text>
+            </g>
+            <g font-family="monospace" font-size="11" fill="var(--fg-muted)" text-anchor="middle">
+              <text x="500" y="216">00</text><text x="555" y="216">01</text><text x="610" y="216">10</text><text x="665" y="216">11</text>
+            </g>
+          </g>
+        </svg>
+        <figcaption>Ліворуч — схематичні траєкторії, праворуч — реальний вивід <code>demo_v2.py</code>. Помилки "розмазують" ідеальні <code>'00'/'11'</code> у заборонені <code>'01'/'10'</code>.</figcaption>
+      </figure>
+
+      <p>У <code>run_noisy</code> кожен shot — окрема траєкторія. Це повільно (2000 повних прогонів), зате код на 10 рядків і точно відображає модель.
+      Задача 22 показує цікавий ефект: X-помилка одразу після H на кубіті у стані |+⟩ <b>нічого не змінює</b>, бо <span class="math">X|+⟩ = |+⟩</span>.
+      Тож модель "кожна помилка псує результат" переоцінює шкоду.</p>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Реальний шум складніший.</b> На надпровідних QPU домінують деполяризація, релаксація T₁ (|1⟩ → |0⟩), дефазування T₂ і помилки зчитування.
+        Для них потрібні канали Крауса, які не завжди зводяться до випадкових унітарних гейтів. У Qiskit Aer це <code>NoiseModel</code> або
+        <code>AerSimulator.from_backend(fake_backend)</code>, де шум підтягується з калібрувань реального пристрою
+        (<a href="03-quantum-backend-python-ibm.html">туторіал 3</a>). Наш bit-flip — навчальна модель, щоб відчути, як шум виглядає в counts.
+      </div></div>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Це chaos testing для схем: замість аналітично виводити, як шум змінює розподіл, ми сотні разів проганяємо схему з випадково вставленими
+        помилками й дивимось на агреговану статистику — як Chaos Monkey вбиває випадкові інстанси, а fast-check генерує випадкові входи. Де аналогія
+        ламається: fuzzing шукає один падаючий кейс, а Монте-Карло-траєкторії потрібні всі разом — нас цікавить середній розподіл, а не окремий прогін.
+      </div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина IV · Практика</div><div class="line"></div></div>
+
+    <div class="callout info"><div class="ic">🏋️</div><div class="body">
+      <b>Як працювати із задачами.</b> Скопіюйте <code>qsim.py</code> і <code>sim2.py</code> з розділів 7 і 15 у робочу папку, задачі розв'язуйте в окремих файлах поруч.
+      Усі розв'язки нижче запущені з <code>PYTHONPATH</code>, що вказує на цю папку; вивід під кодом — справжній. Легкі задачі — 5–10 хвилин, середні — 15–30, складні — до години.
+    </div></div>
+
+    <section id="s19">
+      <h2><span class="num">19</span> Задачі A: основи NumPy для квантів</h2>
+      <p class="section-desc">Розминка на типах, точності й лінійній алгебрі. Без цього все інше ламається тихо.</p>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 1</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Стан |−⟩ і пастка скалярного добутку</span></div>
+        <p>Створіть <span class="math">|−⟩ = (|0⟩ − |1⟩)/√2</span> і перевірте нормування. Потім для <span class="math">ψ = (|0⟩ + i|1⟩)/√2</span> порівняйте
+        <code>np.vdot(psi, psi)</code> і <code>psi @ psi</code>. Поясніть різницю.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t01.py</span></div><pre><code>import numpy as np
+minus = np.array([1, -1], dtype=complex) / np.sqrt(2)
+print(np.linalg.norm(minus))            # 1.0 (з точністю float)
+psi = np.array([1, 1j], dtype=complex) / np.sqrt(2)
+print(np.vdot(psi, psi))                # ⟨ψ|ψ⟩ = 1
+print(psi @ psi)                        # БЕЗ спряження: 1/2 + (i²)/2 = 0</code></pre></div>
+          <span class="out">0.9999999999999999
+(0.9999999999999998+0j)
+0j</span>
+          <p><b>Чому.</b> ⟨ψ|ψ⟩ <span class="say">(⟨ψ|ψ⟩ — «бра-кет псі і псі»: скалярний добуток, одне комплексне число)</span> = Σ ψᵢ*·ψᵢ = Σ|ψᵢ|². <code>vdot</code> спрягає перший аргумент, <code>@</code> — ні, і рахує Σψᵢ² = 1/2 + i²/2 = 0.
+          Для дійсних станів обидва дають однаковий результат, тому баг ховається до першого комплексного стану.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 2</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Функція is_unitary</span></div>
+        <p>Напишіть <code>is_unitary(m)</code> і перевірте H, S, T та матрицю зсуву <code>[[1, 1], [0, 1]]</code>. Чому остання не може бути квантовим гейтом?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t02.py</span></div><pre><code>import numpy as np
+from qsim import H, S, T
+
+def is_unitary(m):
+    return np.allclose(m.conj().T @ m, np.eye(m.shape[0]))
+
+shear = np.array([[1, 1], [0, 1]], dtype=complex)
+for name, m in {"H": H, "S": S, "T": T, "shear": shear}.items():
+    print(name, is_unitary(m))
+print(np.round(shear.conj().T @ shear, 3).real)</code></pre></div>
+          <span class="out">H True
+S True
+T True
+shear False
+[[1. 1.]
+ [1. 2.]]</span>
+          <p><b>Чому.</b> Унітарність U†U = I рівносильна збереженню норми для будь-якого стану, тобто сума ймовірностей лишається 1.
+          Зсув перетворює |1⟩ на |0⟩ + |1⟩ з нормою √2 — "ймовірність 200%". Фізична еволюція замкненої системи завжди унітарна.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 3</span><span class="taskdiff easy">Легко</span><span class="tasktitle">HZH = X</span></div>
+        <p>Перевірте кодом тотожності <span class="math">HZH = X</span>, <span class="math">HXH = Z</span>, <span class="math">H² = I</span>. Яке практичне значення першої?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t03.py</span></div><pre><code>import numpy as np
+from qsim import H, X, Z
+print(np.allclose(H @ Z @ H, X), np.allclose(H @ X @ H, Z))
+print(np.allclose(H @ H, np.eye(2)))</code></pre></div>
+          <span class="out">True True
+True</span>
+          <p><b>Чому це важливо.</b> H міняє місцями базиси Z і X. Тому щоб виміряти кубіт у базисі X, перед звичайним Z-вимірюванням ставлять H.
+          Саме так Estimator оцінює ⟨X⟩ на залізі (задача 15). Друга практична річ: CZ = (I⊗H)·CX·(I⊗H) — задача 12.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 4</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Власні вектори Y</span></div>
+        <p>Знайдіть власні значення і вектори Pauli-Y через <code>eigh</code> і перевірте <span class="math">Yv = λv</span> <span class="say">(λ — «лямбда»)</span>. Чому вектори виглядають "не як у підручнику"?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t04.py</span></div><pre><code>import numpy as np
+from qsim import Y
+vals, vecs = np.linalg.eigh(Y)
+print(vals)
+for lam, v in zip(vals, vecs.T):          # власні вектори — СТОВПЦІ
+    print(lam, np.round(v, 4), np.allclose(Y @ v, lam * v))</code></pre></div>
+          <span class="out">[-1.  1.]
+-1.0 [-0.7071-0.j      0.    +0.7071j] True
+1.0 [-0.7071+0.j      0.    -0.7071j] True</span>
+          <p><b>Чому.</b> У підручнику власні вектори Y — <span class="math">(|0⟩ ± i|1⟩)/√2</span>. NumPy повернув їх, помножені на −1: власний вектор визначений
+          лише з точністю до множника <span class="math">e<sup>iφ</sup></span>, а для стану це глобальна фаза, яка нічого не змінює. Порівнюйте власні вектори через
+          <span class="math">|⟨u|v⟩| ≈ 1</span>, а не через <code>allclose</code>. І не забудьте: вектори в <b>стовпцях</b>, звідси <code>vecs.T</code>.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 5</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Який індекс у |1⟩⊗|0⟩</span></div>
+        <p>Без запуску скажіть, на якому індексі буде 1 у <code>np.kron(ket1, ket0)</code> і як Qiskit підпише цей результат. Потім перевірте.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t05.py</span></div><pre><code>import numpy as np
+ket0 = np.array([1, 0], dtype=complex); ket1 = np.array([0, 1], dtype=complex)
+v = np.kron(ket1, ket0)                  # лівий множник — старший кубіт q1
+i = int(np.flatnonzero(v)[0])
+print(v.real, "index =", i, "label =", format(i, "02b"))</code></pre></div>
+          <span class="out">[0. 0. 1. 0.] index = 2 label = 10</span>
+          <p><b>Чому.</b> Лівий множник kron — старший біт: індекс = 1·2 + 0·1 = 2, рядок <code>'10'</code>. У термінах Qiskit це q1 = 1, q0 = 0.
+          Якщо ви сказали "індекс 1" — ви думаєте в big-endian, як у підручнику (див. §4).</p>
+        </div></details>
+      </div>
+    </section>
+
+    <section id="s20">
+      <h2><span class="num">20</span> Задачі B: 2-кубітний симулятор v1</h2>
+      <p class="section-desc">Працюємо з <code>sim2.py</code>: повні матриці 4×4, явний kron.</p>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 6</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Приготувати '01' і '10'</span></div>
+        <p>Використовуючи лише <code>op_1q</code> і <code>X</code>, отримайте стани з рядками Qiskit <code>'01'</code> і <code>'10'</code>.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t06.py</span></div><pre><code>from sim2 import X, op_1q, probabilities, zero_state
+psi = op_1q(X, 0) @ zero_state()          # X на qubit 0
+print(psi.real, {k: v for k, v in probabilities(psi).items() if v})
+psi = op_1q(X, 1) @ zero_state()          # X на qubit 1
+print(psi.real, {k: v for k, v in probabilities(psi).items() if v})</code></pre></div>
+          <span class="out">[0. 1. 0. 0.] {'01': 1.0}
+[0. 0. 1. 0.] {'10': 1.0}</span>
+          <p><b>Чому.</b> <code>'01'</code> означає q0 = 1 (правий біт), тому X ставимо на qubit 0. Звичка "перший біт — перший кубіт" дає протилежну відповідь.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 7</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">CNOT з control на q1</span></div>
+        <p>Побудуйте через проектори CX(control = q1, target = q0), виведіть матрицю, звірте з <code>op_cx(1, 0)</code> і випишіть, куди переходить кожен базисний стан.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t07.py</span></div><pre><code>import numpy as np
+from sim2 import I, X, P0, P1, op_cx
+cx10 = np.kron(P0, I) + np.kron(P1, X)   # control q1 (лівий), target q0
+print(cx10.real.astype(int))
+print(np.allclose(cx10, op_cx(1, 0)))
+# дія на базис: |10⟩ (індекс 2) → |11⟩ (індекс 3)
+e = np.eye(4)
+print([int(np.argmax(cx10 @ e[i])) for i in range(4)])</code></pre></div>
+          <span class="out">[[1 0 0 0]
+ [0 1 0 0]
+ [0 0 0 1]
+ [0 0 1 0]]
+True
+[0, 1, 3, 2]</span>
+          <p><b>Чому.</b> Control тепер старший кубіт, тож проектори стоять у лівому множнику: <span class="math">P₀ ⊗ I + P₁ ⊗ X</span>. Перестановка індексів 2 ↔ 3:
+          <code>'10'</code> → <code>'11'</code>. Порівняйте з §6, де control = q0 дає перестановку 1 ↔ 3. Одна й та сама "CNOT" має дві різні матриці залежно від
+          того, який кубіт керує, тому <b>матриця без зазначення порядку кубітів нічого не означає</b>.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 8</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Усі чотири стани Белла</span></div>
+        <p>Додаючи X на q1 і/або Z на q0 до схеми H → CX, отримайте всі чотири стани Белла <span class="math">Φ⁺, Φ⁻, Ψ⁺, Ψ⁻</span> <span class="say">(Ψ — «псі велика»)</span> і виведіть вектори.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t08.py</span></div><pre><code>import numpy as np
+from sim2 import H, X, Z, op_1q, op_cx, zero_state
+
+def bell(flip_x: bool, flip_z: bool):
+    psi = zero_state()
+    if flip_x: psi = op_1q(X, 1) @ psi
+    psi = op_1q(H, 0) @ psi
+    if flip_z: psi = op_1q(Z, 0) @ psi
+    return op_cx(0, 1) @ psi
+
+for name, fx, fz in [("Φ+", 0, 0), ("Φ-", 0, 1), ("Ψ+", 1, 0), ("Ψ-", 1, 1)]:
+    print(name, np.round(bell(fx, fz).real, 4))</code></pre></div>
+          <span class="out">Φ+ [0.7071 0.     0.     0.7071]
+Φ- [ 0.7071  0.      0.     -0.7071]
+Ψ+ [0.     0.7071 0.7071 0.    ]
+Ψ- [ 0.     -0.7071  0.7071  0.    ]</span>
+          <p><b>Чому.</b> X на q1 до CNOT робить корельовані біти антикорельованими (Φ → Ψ), Z на q0 після H міняє знак |1⟩ контролю (+ → −).
+          Усі чотири стани ортонормовані й утворюють <b>базис Белла</b>. На цьому побудована надщільне кодування: 2 класичні біти через 1 кубіт.
+          Знак у Ψ⁻ стоїть на <code>'01'</code>, бо Z діє раніше за CNOT.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 9</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Знайдіть баг у op_1q</span></div>
+        <p>Колега написав <code>op_1q</code>, де для qubit 0 використано <code>np.kron(gate, I)</code>. Опишіть симптом, який побачить користувач.
+        Які з трьох тестів його зловлять: X на q0, стан Белла H(0) → CX(0, 1), H на обох кубітах?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t09.py</span></div><pre><code>import numpy as np
+from sim2 import H, I, X, op_1q, op_cx, probabilities, zero_state
+
+def op_1q_buggy(gate, qubit):
+    return np.kron(gate, I) if qubit == 0 else np.kron(I, gate)  # переплутано
+
+def nonzero(psi):
+    return {k: round(v, 3) for k, v in probabilities(psi).items() if v &gt; 1e-12}
+
+for name, op in [("ok   ", op_1q), ("buggy", op_1q_buggy)]:
+    x0 = op(X, 0) @ zero_state()                                  # X на q0
+    bell = op_cx(0, 1) @ op(H, 0) @ zero_state()                  # H(0) → CX(0,1)
+    hh = op(H, 1) @ op(H, 0) @ zero_state()                       # H на обох
+    print(name, "X(0):", nonzero(x0), "| Bell:", nonzero(bell), "| H⊗H:", nonzero(hh))</code></pre></div>
+          <span class="out">ok    X(0): {'01': 1.0} | Bell: {'00': 0.5, '11': 0.5} | H⊗H: {'00': 0.25, '01': 0.25, '10': 0.25, '11': 0.25}
+buggy X(0): {'10': 1.0} | Bell: {'00': 0.5, '10': 0.5} | H⊗H: {'00': 0.25, '01': 0.25, '10': 0.25, '11': 0.25}</span>
+          <p><b>Симптом:</b> гейт "на q0" насправді діє на q1, і навпаки. X на q0 дає <code>'10'</code>. Стан Белла теж ламається: H потрапляє на q1,
+          а CX(0→1) з control у |0⟩ нічого не робить, тож замість <code>'00'/'11'</code> маємо <code>'00'/'10'</code>. А от <b>H на обох кубітах</b> дає
+          ідентичний результат: симетрична схема не помічає, що кубіти переплутані. Висновок для тестів: беріть <b>асиметричні</b> стани (гейт лише на одному кубіті)
+          і порівнюйте весь вектор, а не лише набір ключів у counts.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 10</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Наскільки counts відхиляються від 500</span></div>
+        <p>Повторіть 10 000 разів семплювання стану Белла з 1000 shots. Знайдіть середнє і стандартне відхилення кількості <code>'00'</code>, порівняйте з
+        <span class="math">√(N·p·(1−p))</span>. Як часто випадає рівно 500?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t10.py</span></div><pre><code>import numpy as np
+from sim2 import H, op_1q, op_cx, zero_state
+psi = op_cx(0, 1) @ op_1q(H, 0) @ zero_state()
+p = np.abs(psi) ** 2
+rng = np.random.default_rng(0)
+runs = np.array([rng.multinomial(1000, p)[0] for _ in range(10_000)])  # скільки '00'
+print("mean", runs.mean(), "std", round(runs.std(), 2), "theory", round(np.sqrt(1000 * .5 * .5), 2))
+print("частка запусків рівно 500:", round(np.mean(runs == 500), 4))</code></pre></div>
+          <span class="out">mean 499.8597 std 15.8 theory 15.81
+частка запусків рівно 500: 0.0237</span>
+          <p><b>Чому.</b> Кількість <code>'00'</code> має біноміальний розподіл B(1000, 0.5): σ = √250 ≈ 15.8, і експеримент це підтверджує. Ймовірність рівно 500 ≈ 2.5%.
+          Практичний висновок: відносна похибка оцінки ймовірності ≈ σ/N ≈ 1.6% при 1000 shots, і щоб зменшити її вдвічі, shots треба вчетверо більше.
+          Детально — у <a href="09-probability-shots.html">туторіалі 9</a>.</p>
+        </div></details>
+      </div>
+    </section>
+
+    <section id="s21">
+      <h2><span class="num">21</span> Задачі C: n-кубітний симулятор v2</h2>
+      <p class="section-desc">Працюємо з <code>qsim.py</code>. Тут уже гейти в довільних позиціях і перевірка тотожностей.</p>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 11</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">SWAP із трьох CNOT</span></div>
+        <p>Доведіть кодом, що <span class="math">CX(a,b)·CX(b,a)·CX(a,b) = SWAP(a,b)</span> для сусідніх (0, 1) і несусідніх (0, 2) кубітів 3-кубітної системи.
+        Використайте несиметричний стартовий стан.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t11.py</span></div><pre><code>import numpy as np
+from qsim import Circuit
+for a, b in [(0, 1), (0, 2)]:
+    prep = lambda c: c.x(0).h(1).t(1)          # довільний несиметричний стан
+    via_cx = prep(Circuit(3)).cx(a, b).cx(b, a).cx(a, b).statevector()
+    direct = prep(Circuit(3)).swap(a, b).statevector()
+    print((a, b), np.allclose(via_cx, direct))</code></pre></div>
+          <span class="out">(0, 1) True
+(0, 2) True</span>
+          <p><b>Чому це важливо.</b> На реальних чипах кубіти з'єднані не всі з усіма. Коли транспілятор Qiskit ставить CX між несусідніми кубітами, він вставляє
+          SWAP-и, а кожен SWAP коштує 3 двокубітні гейти — головне джерело помилок. Звідси метрика "кількість двокубітних гейтів після транспіляції" з
+          <a href="04-pet-project-quantum-routing.html">туторіалу 4</a>. Несиметричний стан тут обов'язковий: на <code>|000⟩</code> будь-яка перестановка дає той самий результат.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 12</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">CZ через CX і H</span></div>
+        <p>Перевірте, що <span class="math">CZ(0,1) = H(1)·CX(0,1)·H(1)</span> на двох різних стартових станах.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t12.py</span></div><pre><code>import numpy as np
+from qsim import Circuit
+for prep in [lambda c: c.h(0).h(1), lambda c: c.x(0).ry(0.7, 1)]:
+    a = prep(Circuit(2)).cz(0, 1).statevector()
+    b = prep(Circuit(2)).h(1).cx(0, 1).h(1).statevector()
+    print(np.allclose(a, b))</code></pre></div>
+          <span class="out">True
+True</span>
+          <p><b>Чому.</b> HXH = Z (задача 3), а контрольованість переживає спряження: H на target "перетворює" контрольований X на контрольований Z.
+          Нативний двокубітний гейт процесорів IBM Heron — саме CZ, тому кожен ваш CX транспілятор переписує за цією тотожністю.
+          Перевірка на двох станах — мінімум; строгий тест — порівняння на всіх базисних станах, як у задачі 14.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 13</span><span class="taskdiff easy">Легко</span><span class="tasktitle">GHZ на 5 кубітах</span></div>
+        <p>Побудуйте стан <span class="math">(|00000⟩ + |11111⟩)/√2</span>. Які індекси вектора ненульові? Що покаже 1000 shots?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t13.py</span></div><pre><code>import numpy as np
+from qsim import Circuit
+n = 5
+ghz = Circuit(n).h(0)
+for q in range(n - 1):
+    ghz.cx(q, q + 1)
+psi = ghz.statevector()
+print(np.flatnonzero(np.abs(psi) &gt; 1e-12), np.round(psi[[0, -1]].real, 4))
+print(ghz.run(shots=1000, seed=11))</code></pre></div>
+          <span class="out">[ 0 31] [0.7071 0.7071]
+{'00000': 490, '11111': 510}</span>
+          <p><b>Чому.</b> H створює суперпозицію на q0, ланцюжок CX "копіює" значення далі (не стан — no-cloning не порушено, ми створюємо кореляцію).
+          Ненульові лише індекси 0 і 2⁵−1 = 31. На реальному QPU GHZ — популярний бенчмарк: частка <code>'00000'</code> + <code>'11111'</code> швидко падає з
+          ростом n, і це наочна міра якості пристрою.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 14</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Toffoli з однокубітних гейтів і CX</span></div>
+        <p>Реалізуйте стандартний розклад Toffoli (Nielsen &amp; Chuang, рис. 4.9): 6 CNOT, 2 H, 7 гейтів T/T†. Доведіть, що він збігається з <code>CCX</code> як оператор,
+        прогнавши всі 8 базисних станів.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t14.py</span></div><pre><code>import numpy as np
+from qsim import CCX, T, Circuit, apply_gate
+
+TDG = T.conj().T
+
+def toffoli_decomposed(c: Circuit, c0, c1, t):
+    c.h(t); c.cx(c1, t); c.gate(TDG, t); c.cx(c0, t); c.t(t)
+    c.cx(c1, t); c.gate(TDG, t); c.cx(c0, t); c.t(c1); c.t(t); c.h(t)
+    c.cx(c0, c1); c.t(c0); c.gate(TDG, c1); c.cx(c0, c1)
+    return c
+
+# порівнюємо як оператори: проганяємо всі 8 базисних станів
+ok = True
+for i in range(8):
+    e = np.zeros(8, complex); e[i] = 1
+    c = toffoli_decomposed(Circuit(3), 0, 1, 2)
+    psi = e
+    for m, qs in c.ops:
+        psi = apply_gate(psi, m, qs, 3)
+    ok &amp;= np.allclose(psi, CCX @ e)
+print("decomposition == CCX:", ok, " CX count:", sum(m.shape == (4, 4) for m, _ in c.ops))</code></pre></div>
+          <span class="out">decomposition == CCX: True  CX count: 6</span>
+          <p><b>Чому прогін базису доводить рівність.</b> Лінійний оператор повністю визначається тим, куди він переводить базисні вектори: це його стовпці.
+          Якщо всі 8 стовпців збіглися (з фазою!), оператори рівні. Практичний висновок: Toffoli на залізі коштує 6 двокубітних гейтів, тому класичні оборотні
+          схеми (суматори, оракули) на QPU дуже дорогі.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 15</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Кореляції Белла в трьох базисах</span></div>
+        <p>Для <span class="math">Φ⁺</span> обчисліть <span class="math">⟨ZZ⟩, ⟨XX⟩, ⟨YY⟩, ⟨ZI⟩, ⟨XI⟩</span>. Потім отримайте <span class="math">⟨XX⟩</span> вимірюванням: поверніть базис і подивіться на counts.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t15.py</span></div><pre><code>import numpy as np
+from qsim import Circuit, expectation
+psi = Circuit(2).h(0).cx(0, 1).statevector()
+for lab in ["ZZ", "XX", "YY", "ZI", "XI"]:
+    print(lab, round(expectation(psi, lab), 6))
+# XX через вимірювання: повернути базис H на обох, потім міряти в Z
+counts = Circuit(2).h(0).cx(0, 1).h(0).h(1).run(shots=4000, seed=5)
+print(counts)</code></pre></div>
+          <span class="out">ZZ 1.0
+XX 1.0
+YY -1.0
+ZI 0.0
+XI 0.0
+{'00': 2028, '11': 1972}</span>
+          <p><b>Чому.</b> Окремо кожен кубіт випадковий (<span class="math">⟨ZI⟩ = ⟨XI⟩ = 0</span>), але результати ідеально корельовані і в Z, і в X: ⟨ZZ⟩ = ⟨XX⟩ = 1, ⟨YY⟩ = −1.
+          Класична пара "монет з однаковим результатом" дала б кореляцію лише в одному базисі — це і є сигнатура заплутаності. Після H на обох кубітах
+          в counts лишилися тільки парні рядки <code>'00'</code>/<code>'11'</code>, тобто ⟨XX⟩ = 1.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 16</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">⟨ZZ⟩ з counts</span></div>
+        <p>Напишіть <code>zz_from_counts(counts, a, b)</code>, що оцінює <span class="math">⟨Z_a Z_b⟩</span> з гістограми. Порівняйте з точним значенням для 10², 10³, 10⁴, 10⁵ shots.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t16.py</span></div><pre><code>import numpy as np
+from qsim import Circuit, expectation
+
+def zz_from_counts(counts: dict[str, int], a: int, b: int) -&gt; float:
+    shots = sum(counts.values())
+    s = 0
+    for bits, c in counts.items():
+        parity = int(bits[-1 - a]) ^ int(bits[-1 - b])  # qubit q — це bits[-1-q]
+        s += c * (1 - 2 * parity)                        # +1 парна, -1 непарна
+    return s / shots
+
+c = Circuit(2).ry(1.1, 0).cx(0, 1).ry(0.4, 1)
+exact = expectation(c.statevector(), "ZZ")
+for shots in [100, 1000, 10_000, 100_000]:
+    est = zz_from_counts(c.run(shots=shots, seed=1), 0, 1)
+    print(shots, round(est, 4), "exact", round(exact, 4), "err", round(abs(est - exact), 4))</code></pre></div>
+          <span class="out">100 0.96 exact 0.9211 err 0.0389
+1000 0.912 exact 0.9211 err 0.0091
+10000 0.924 exact 0.9211 err 0.0029
+100000 0.9222 exact 0.9211 err 0.0011</span>
+          <p><b>Чому.</b> Власне значення Z⊗Z на базисному стані = +1, якщо біти однакові, і −1, якщо різні. Тому середнє — зважена сума знаків парності.
+          Похибка падає приблизно як 1/√shots: у 10 разів більше shots — похибка в ~3 рази менша. Два місця, де легко помилитися: індекс біта в рядку
+          (<code>bits[-1-q]</code>, не <code>bits[q]</code>) і забути поділити на загальну кількість shots.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 17</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Виміряти лише один кубіт</span></div>
+        <p>Для <span class="math">ψ = (|00⟩ + |01⟩ + |10⟩)/√3</span> виміряйте лише q0 через <code>measure_qubit</code>. Яка ймовірність кожного результату і в якому стані опиниться система після?</p>
+
+        <figure class="diagram">
+          <svg viewBox="0 0 720 190" role="img" aria-label="Дерево вимірювання. Зліва стан (|00⟩ + |01⟩ + |10⟩)/√3. Вимірювання q0 розгалужується. Верхня гілка q0 = 0 з імовірністю 2/3: залишаються доданки |00⟩ і |10⟩, після нормування (|00⟩ + |10⟩)/√2, кубіт q1 досі в суперпозиції. Нижня гілка q0 = 1 з імовірністю 1/3: залишається лише |01⟩">
+            <defs><marker id="q10f-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+            <g font-size="12">
+              <rect x="10" y="70" width="210" height="50" rx="9" fill="var(--accent-soft)" stroke="var(--accent)"/>
+              <text x="115" y="100" text-anchor="middle" fill="currentColor">(|00⟩ + |01⟩ + |10⟩)/√3</text>
+              <path d="M220,85 C270,85 280,45 330,45" fill="none" stroke="currentColor" marker-end="url(#q10f-arr)"/>
+              <path d="M220,105 C270,105 280,145 330,145" fill="none" stroke="currentColor" marker-end="url(#q10f-arr)"/>
+              <text x="218" y="30" fill="var(--good)" font-weight="bold">q0 = 0 · P = 2/3</text>
+              <text x="218" y="178" fill="var(--warn)" font-weight="bold">q0 = 1 · P = 1/3</text>
+              <rect x="335" y="20" width="370" height="52" rx="9" fill="var(--good-bg)" stroke="var(--good)"/>
+              <text x="350" y="42" fill="currentColor">лишаються |00⟩, |10⟩ → (|00⟩ + |10⟩)/√2</text>
+              <text x="350" y="60" fill="var(--fg-muted)" font-size="11">q1 досі в суперпозиції |+⟩: виміряли не все</text>
+              <rect x="335" y="120" width="370" height="52" rx="9" fill="var(--warn-bg)" stroke="var(--warn)"/>
+              <text x="350" y="142" fill="currentColor">лишається лише |01⟩</text>
+              <text x="350" y="160" fill="var(--fg-muted)" font-size="11">стан повністю визначений</text>
+            </g>
+          </svg>
+          <figcaption>Часткове вимірювання: обнуляємо несумісні з результатом амплітуди і перенормовуємо решту.</figcaption>
+        </figure>
+
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t17.py</span></div><pre><code>import numpy as np
+from qsim import measure_qubit
+psi = np.array([1, 1, 1, 0], dtype=complex) / np.sqrt(3)   # |00⟩+|01⟩+|10⟩
+rng = np.random.default_rng(0)
+seen = {}
+for _ in range(3000):
+    bit, post = measure_qubit(psi, 0, rng)
+    seen.setdefault(bit, (np.round(post.real, 4), 0))
+    seen[bit] = (seen[bit][0], seen[bit][1] + 1)
+for bit, (post, cnt) in sorted(seen.items()):
+    print("q0 =", bit, "freq", round(cnt / 3000, 3), "post", post)</code></pre></div>
+          <span class="out">q0 = 0 freq 0.67 post [0.7071 0.     0.7071 0.    ]
+q0 = 1 freq 0.33 post [0. 1. 0. 0.]</span>
+          <p><b>Чому.</b> <span class="math">P(q0 = 0)</span> = сума |ψᵢ|² по індексах з нульовим молодшим бітом: <code>'00'</code> і <code>'10'</code>, тобто 2/3. Після вимірювання
+          ці амплітуди лишаються і нормуються на √(2/3): вектор <code>[0.7071, 0, 0.7071, 0]</code>. Саме така логіка потрібна для mid-circuit measurement і
+          квантової телепортації, де результат вимірювання керує наступними гейтами. Реалізація — <code>qsim.measure_qubit</code>, маска <code>(idx &gt;&gt; q) &amp; 1</code>.</p>
+        </div></details>
+      </div>
+    </section>
+
+    <section id="s22">
+      <h2><span class="num">22</span> Задачі D: алгоритми, шум, звірка з Qiskit</h2>
+      <p class="section-desc">Симулятор як інструмент: перший квантовий алгоритм, модель шуму, порівняння з бібліотекою.</p>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 18</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Алгоритм Дойча</span></div>
+        <p>Функція <span class="math">f: {0,1} → {0,1}</span> дана як оракул <span class="math">U_f|x, y⟩ = |x, y ⊕ f(x)⟩</span> <span class="say">(⊕ — «XOR»: додавання за модулем 2)</span> (x — q0, y — q1). Реалізуйте 4 можливі оракули
+        і схему Дойча. Покажіть, що <b>один</b> запуск оракула відрізняє сталу функцію від збалансованої (класично потрібно два).</p>
+
+        <figure class="diagram">
+          <svg viewBox="0 0 720 170" role="img" aria-label="Схема алгоритму Дойча. Кубіт q0, тобто x: гейт H, потім спільний блок U_f, потім H і вимірювання. Кубіт q1, тобто y: гейт X, потім H, потім блок U_f. Результат вимірювання q0: 0 означає сталу функцію, 1 — збалансовану">
+            <g font-size="12">
+              <text x="16" y="56" fill="var(--fg-muted)">q0 (x)</text>
+              <text x="16" y="126" fill="var(--fg-muted)">q1 (y)</text>
+              <line x1="70" y1="52" x2="590" y2="52" stroke="currentColor"/>
+              <line x1="70" y1="122" x2="470" y2="122" stroke="currentColor"/>
+              <rect x="200" y="34" width="36" height="36" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="218" y="57" text-anchor="middle" fill="var(--accent)" font-weight="bold">H</text>
+              <rect x="110" y="104" width="36" height="36" rx="5" fill="var(--bad-bg)" stroke="var(--bad)"/><text x="128" y="127" text-anchor="middle" fill="var(--bad)" font-weight="bold">X</text>
+              <rect x="200" y="104" width="36" height="36" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="218" y="127" text-anchor="middle" fill="var(--accent)" font-weight="bold">H</text>
+              <rect x="280" y="30" width="90" height="114" rx="8" fill="var(--interview-bg)" stroke="var(--interview)"/>
+              <text x="325" y="92" text-anchor="middle" fill="var(--interview)" font-weight="bold">U_f</text>
+              <rect x="410" y="34" width="36" height="36" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="428" y="57" text-anchor="middle" fill="var(--accent)" font-weight="bold">H</text>
+              <rect x="490" y="30" width="46" height="44" rx="5" fill="none" stroke="currentColor"/>
+              <path d="M498,64 A16,16 0 0 1 528,64" fill="none" stroke="currentColor"/>
+              <line x1="513" y1="64" x2="526" y2="42" stroke="currentColor"/>
+              <text x="600" y="48" fill="var(--good)" font-family="monospace">0 → стала</text>
+              <text x="600" y="66" fill="var(--warn)" font-family="monospace">1 → збалансована</text>
+              <text x="20" y="164" fill="var(--fg-muted)" font-size="11">q1 у стані |−⟩: фаза (−1)^f(x) переходить на q0 (phase kickback), а фінальний H перетворює її на біт</text>
+            </g>
+          </svg>
+          <figcaption>Перший алгоритм, де інтерференція дає перевагу над класикою (Deutsch, 1985). Узагальнення на n бітів — алгоритм Дойча–Йожи.</figcaption>
+        </figure>
+
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t18.py</span></div><pre><code>import numpy as np
+from qsim import CX, X, Circuit
+
+def oracle(c: Circuit, kind: str) -&gt; Circuit:
+    """U_f|x,y⟩ = |x, y⊕f(x)⟩, x = qubit 0, y = qubit 1."""
+    if kind == "const0": pass
+    elif kind == "const1": c.x(1)
+    elif kind == "identity": c.cx(0, 1)                  # f(x) = x
+    elif kind == "not": c.x(0).cx(0, 1).x(0)             # f(x) = 1 - x
+    return c
+
+for kind in ["const0", "const1", "identity", "not"]:
+    c = Circuit(2).x(1).h(0).h(1)
+    oracle(c, kind).h(0)
+    p1 = sum(v for k, v in c.run(shots=1000, seed=0).items() if k[-1] == "1") / 1000
+    print(f"{kind:9s} P(q0=1) = {p1:.2f} -&gt;", "balanced" if p1 &gt; .5 else "constant")</code></pre></div>
+          <span class="out">const0    P(q0=1) = 0.00 -&gt; constant
+const1    P(q0=1) = 0.00 -&gt; constant
+identity  P(q0=1) = 1.00 -&gt; balanced
+not       P(q0=1) = 1.00 -&gt; balanced</span>
+          <p><b>Чому працює.</b> Після X і H кубіт y у стані |−⟩, і <span class="math">U_f|x⟩|−⟩ = (−1)<sup>f(x)</sup>|x⟩|−⟩</span> — значення функції стає фазою.
+          x у суперпозиції, тож q0 отримує <span class="math">((−1)<sup>f(0)</sup>|0⟩ + (−1)<sup>f(1)</sup>|1⟩)/√2</span>. Якщо f стала, це ±|+⟩, і H дає |0⟩; якщо збалансована — ±|−⟩, і H дає |1⟩.
+          Результат детермінований (P = 0 або 1), без статистики. Глобальна фаза ± для const1 та "not" не впливає — пряма ілюстрація <a href="08-complex-numbers-phase.html">туторіалу 8</a>.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 19</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Баг порядку осей у apply_gate</span></div>
+        <p>У <code>apply_gate</code> забули <code>n−1−q</code> і використали <code>axes = reversed(qubits)</code>. Що станеться з X на q0 у 3-кубітній системі? Чому всі
+        тести на 1 кубіті пройдуть?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t19.py</span></div><pre><code>import numpy as np
+from qsim import CX, X, apply_gate, zero_state
+
+def apply_gate_buggy(psi, gate, qubits, n):
+    k = len(qubits)
+    t = psi.reshape((2,) * n); g = gate.reshape((2,) * (2 * k))
+    axes = list(reversed(qubits))                 # БАГ: забули n-1-q
+    t = np.tensordot(g, t, axes=(list(range(k, 2 * k)), axes))
+    return np.moveaxis(t, list(range(k)), axes).reshape(-1)
+
+n = 3
+for f in (apply_gate, apply_gate_buggy):
+    psi = f(zero_state(n), X, [0], n)
+    print(f.__name__, "X on q0 -&gt;", format(int(np.argmax(abs(psi))), "03b"))</code></pre></div>
+          <span class="out">apply_gate X on q0 -&gt; 001
+apply_gate_buggy X on q0 -&gt; 100</span>
+          <p><b>Чому.</b> Без перетворення qubit q потрапляє на вісь q, а вісь 0 — це <i>старший</i> кубіт. Тож гейт на q0 діє на q2, і результат дзеркальний: <code>'100'</code>.
+          При n = 1 вісь 0 і є qubit 0, тому однокубітні тести баг не бачать; при симетричних станах і симетричних гейтах — теж. Тест <code>test_counts_format_and_total</code>
+          із §16 (X на q0 → <code>'001'</code>) ловить його одразу.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 20</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Зважена монета на RY</span></div>
+        <p>Підберіть θ, щоб <span class="math">RY(θ)|0⟩</span> давав <span class="math">P(1) = 0.2</span>, і перевірте на 10 000 shots.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t20.py</span></div><pre><code>import numpy as np
+from qsim import Circuit
+theta = 2 * np.arcsin(np.sqrt(0.2))
+print("theta =", round(theta, 6), "rad")
+counts = Circuit(1).ry(theta, 0).run(shots=10_000, seed=2)
+print(counts, "P(1) ≈", counts["1"] / 10_000)</code></pre></div>
+          <span class="out">theta = 0.927295 rad
+{'0': 7995, '1': 2005} P(1) ≈ 0.2005</span>
+          <p><b>Чому.</b> <span class="math">RY(θ)|0⟩ = cos(θ/2)|0⟩ + sin(θ/2)|1⟩</span>, тому <span class="math">P(1) = sin²(θ/2)</span> і <span class="math">θ = 2·arcsin(√0.2) ≈ 0.9273</span>.
+          Відхилення 0.2005 від 0.2 — у межах σ = √(0.2·0.8/10000) = 0.004. Так кодують класичні ймовірності в амплітуди (amplitude encoding) у QML.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 21</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Наскільки заплутаний RY(θ) → CX</span></div>
+        <p>Для схеми <span class="math">RY(θ)</span> на q0 → <span class="math">CX(0,1)</span> порахуйте чистоту редукованого стану q0 для θ ∈ {0, π/4, π/2, 3π/4, π}. Поясніть форму залежності.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t21.py</span></div><pre><code>import numpy as np
+from qsim import Circuit, reduced_density
+for theta in [0, np.pi / 4, np.pi / 2, 3 * np.pi / 4, np.pi]:
+    psi = Circuit(2).ry(theta, 0).cx(0, 1).statevector()
+    rho = reduced_density(psi, 0, 2)
+    print(f"θ={theta:5.3f} purity={np.trace(rho @ rho).real:.4f}")</code></pre></div>
+          <span class="out">θ=0.000 purity=1.0000
+θ=0.785 purity=0.7500
+θ=1.571 purity=0.5000
+θ=2.356 purity=0.7500
+θ=3.142 purity=1.0000</span>
+          <p><b>Чому.</b> Стан <span class="math">cos(θ/2)|00⟩ + sin(θ/2)|11⟩</span>. ρ<sub>q0</sub> = diag(cos²(θ/2), sin²(θ/2)), чистота = cos⁴ + sin⁴ = 1 − sin²(θ)/2.
+          На θ = 0 і π стан добутковий (|00⟩ або |11⟩), чистота 1; на π/2 — стан Белла, чистота 1/2. Заплутаність — не "так/ні", а неперервна величина,
+          якою керує кут. Так варіаційні схеми плавно "дозують" заплутаність.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 22</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Шум на GHZ: модель проти симуляції</span></div>
+        <p>Для GHZ на 3 кубітах (H(0), CX(0,1), CX(1,2)) з bit-flip шумом оцініть частку "правильних" результатів <code>'000'</code>/<code>'111'</code> при p ∈ {0, 0.01, 0.05, 0.1}.
+        Порівняйте з наївною оцінкою <span class="math">(1−p)⁵</span>: схема має 5 "точок", де може статися помилка. Чому симуляція кращa за оцінку?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t22.py</span></div><pre><code>from qsim import Circuit
+ghz = Circuit(3).h(0).cx(0, 1).cx(1, 2)
+print("p      P(000|111)  (1-p)^5  (1-p)^4")
+for p in [0.0, 0.01, 0.05, 0.1]:
+    counts = ghz.run_noisy(shots=4000, p_flip=p, seed=3)
+    good = (counts.get("000", 0) + counts.get("111", 0)) / 4000
+    print(f"{p:&lt;6} {good:&gt;10.3f} {(1 - p) ** 5:&gt;8.3f} {(1 - p) ** 4:&gt;8.3f}")</code></pre></div>
+          <span class="out">p      P(000|111)  (1-p)^5  (1-p)^4
+0.0         1.000    1.000    1.000
+0.01        0.959    0.951    0.961
+0.05        0.812    0.774    0.815
+0.1         0.663    0.590    0.656</span>
+          <p><b>Чому.</b> Перша "точка помилки" — X на q0 одразу після H, коли q0 у стані |+⟩. Але <span class="math">X|+⟩ = |+⟩</span>: ця помилка невидима. Лишається 4 шкідливих
+          точки, і <span class="math">(1−p)⁴</span> майже збігається з симуляцією (решта різниці — випадки, коли дві помилки компенсують одна одну, і статистика 4000 shots).
+          Урок для реальних систем: вплив шуму залежить від стану, тому оцінки "ймовірність успіху = добуток точностей гейтів" — лише грубий нижній орієнтир.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 23</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Звірка з Qiskit Statevector і AerSimulator</span></div>
+        <p>Побудуйте однакову схему в <code>qsim</code> і Qiskit. Порівняйте вектори стану точно, а counts — з Aer. Чому counts відрізняються навіть з однаковим seed?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">t23.py</span></div><pre><code>import numpy as np
+from qiskit import QuantumCircuit, transpile
+from qiskit.quantum_info import Statevector
+from qiskit_aer import AerSimulator
+from qsim import Circuit
+
+ours = Circuit(3).h(0).cx(0, 1).ry(0.3, 2).cz(1, 2)
+ref = QuantumCircuit(3); ref.h(0); ref.cx(0, 1); ref.ry(0.3, 2); ref.cz(1, 2)
+
+print("statevector equal:", np.allclose(ours.statevector(), Statevector(ref).data))
+print("ours :", ours.run(shots=4000, seed=1))
+ref.measure_all()
+sim = AerSimulator(seed_simulator=1)
+print("aer  :", dict(sorted(sim.run(transpile(ref, sim), shots=4000).result().get_counts().items())))</code></pre></div>
+          <span class="out">statevector equal: True
+ours : {'000': 1938, '011': 1982, '100': 42, '111': 38}
+aer  : {'000': 1894, '011': 2006, '100': 37, '111': 63}</span>
+          <p><b>Чому.</b> Вектори збігаються точно, бо визначення гейтів однакові. Counts — дві незалежні вибірки з однакового розподілу: seed у NumPy і в Aer керують
+          різними генераторами і різними алгоритмами семплювання, тож "однаковий seed" не означає однакові числа. Правильне порівняння counts — статистичне:
+          усі чотири частоти в межах кількох σ (для 4000 shots σ ≈ 31 біля 2000). Рядки <code>'100'</code> і <code>'111'</code> з'являються, бо RY(0.3) дає q2 = 1 з імовірністю sin²(0.15) ≈ 2.2%.</p>
+        </div></details>
+      </div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина V · Далі</div><div class="line"></div></div>
+
+    <section id="s23">
+      <h2><span class="num">23</span> Глибше: що читати і що розібрати в коді</h2>
+      <p class="section-desc">Від документації NumPy до вихідного коду справжніх симуляторів.</p>
+
+      <div class="res">
+        <div class="res-head"><span class="res-title">NumPy: Broadcasting</span><span class="lvl l1">базовий</span><span class="lvl type">документація</span></div>
+        <div class="res-meta"><a href="https://numpy.org/doc/stable/user/basics.broadcasting.html">numpy.org/doc/stable/user/basics.broadcasting.html</a></div>
+        <p>Правила, за якими NumPy узгоджує форми масивів. Потрібно, коли ви почнете векторизувати семплювання чи обчислення парностей по всіх індексах одразу.</p>
+      </div>
+      <div class="res">
+        <div class="res-head"><span class="res-title">NumPy: einsum і tensordot</span><span class="lvl l2">середній</span><span class="lvl type">документація</span></div>
+        <div class="res-meta"><a href="https://numpy.org/doc/stable/reference/generated/numpy.einsum.html">numpy.einsum</a> · <a href="https://numpy.org/doc/stable/reference/generated/numpy.tensordot.html">numpy.tensordot</a></div>
+        <p>Повна семантика рядків індексів і параметр <code>optimize</code> у einsum. Після цього варто переписати <code>apply_gate</code> на einsum з генерацією рядка індексів — хороша вправа.</p>
+      </div>
+      <div class="res">
+        <div class="res-head"><span class="res-title">NumPy: типи даних і точність</span><span class="lvl l1">базовий</span><span class="lvl type">документація</span></div>
+        <div class="res-meta"><a href="https://numpy.org/doc/stable/user/basics.types.html">numpy.org/doc/stable/user/basics.types.html</a></div>
+        <p>complex64 проти complex128, приведення типів. complex64 удвічі економить пам'ять, але похибка накопичується вже за сотні гейтів — Aer дозволяє обирати точність саме з цієї причини.</p>
+      </div>
+      <div class="res">
+        <div class="res-head"><span class="res-title">Qiskit: модуль quantum_info</span><span class="lvl l1">базовий</span><span class="lvl type">документація</span></div>
+        <div class="res-meta"><a href="https://quantum.cloud.ibm.com/docs/api/qiskit/quantum_info">quantum.cloud.ibm.com/docs/api/qiskit/quantum_info</a> (адреса документації IBM уже змінювалась — якщо не відкривається, шукайте "qiskit quantum_info")</div>
+        <p><code>Statevector</code>, <code>Operator</code>, <code>SparsePauliOp</code>, <code>DensityMatrix</code>, <code>partial_trace</code>. Це "дорослі" версії того, що ви написали тут; порівняйте
+        API і подивіться, як вони обробляють порядок кубітів.</p>
+      </div>
+      <div class="res">
+        <div class="res-head"><span class="res-title">IBM Quantum Learning: Basics of Quantum Information</span><span class="lvl l1">базовий</span><span class="lvl type">курс</span></div>
+        <div class="res-meta">John Watrous · уроки "Single systems" і "Multiple systems" · <a href="https://quantum.cloud.ibm.com/learning">quantum.cloud.ibm.com/learning</a></div>
+        <p>Строгий, але дуже чіткий виклад тієї математики, яку ми кодували: тензорні добутки, часткові вимірювання, конвенції порядку. Уроки містять Qiskit-приклади, які зручно
+        перевіряти власним симулятором.</p>
+      </div>
+      <div class="res">
+        <div class="res-head"><span class="res-title">Nielsen &amp; Chuang, розділи 2 і 4</span><span class="lvl l2">середній</span><span class="lvl type">книга</span></div>
+        <div class="res-meta">"Quantum Computation and Quantum Information", розд. 2.1–2.2 (лінійна алгебра, постулати), 4.1–4.3 (однокубітні й контрольовані гейти, розклад Toffoli)</div>
+        <p>Звідси розклад із задачі 14 і доведення універсальності гейтів. Пам'ятайте: у книзі порядок big-endian.</p>
+      </div>
+      <div class="res">
+        <div class="res-head"><span class="res-title">Вихідний код: PennyLane default.qubit</span><span class="lvl l2">середній</span><span class="lvl type">код</span></div>
+        <div class="res-meta"><a href="https://github.com/PennyLaneAI/pennylane">github.com/PennyLaneAI/pennylane</a> · каталог <code>pennylane/devices/qubit/</code> (структура репозиторію може змінюватись)</div>
+        <p>Python-симулятор, який застосовує гейти тим самим тензорним трюком (einsum/tensordot по осях). Найближчий до нашого коду "промисловий" приклад: подивіться, як там обробляються батчі параметрів.</p>
+      </div>
+      <div class="res">
+        <div class="res-head"><span class="res-title">Вихідний код: Qiskit Aer та Google qsim</span><span class="lvl l3">просунутий</span><span class="lvl type">код</span></div>
+        <div class="res-meta"><a href="https://github.com/Qiskit/qiskit-aer">github.com/Qiskit/qiskit-aer</a> · <a href="https://github.com/quantumlib/qsim">github.com/quantumlib/qsim</a></div>
+        <p>C++-симулятори з SIMD, OpenMP і GPU. Тут видно, як уникають копій (застосування гейта in-place по парах індексів), об'єднують сусідні гейти (gate fusion) і розпаралелюють.
+        Читати після того, як ваш симулятор працює і ви розумієте, де в ньому вузькі місця.</p>
+      </div>
+      <div class="res">
+        <div class="res-head"><span class="res-title">Тензорні мережі: quimb і "Hand-waving and interpretive dance"</span><span class="lvl l3">просунутий</span><span class="lvl type">код + стаття</span></div>
+        <div class="res-meta"><a href="https://github.com/jcmgray/quimb">github.com/jcmgray/quimb</a> · J. Bridgeman, C. Chubb, <a href="https://arxiv.org/abs/1603.03039">arXiv:1603.03039</a></div>
+        <p>Наступний крок після statevector: як симулювати 50–100 кубітів, якщо заплутаність обмежена. Стаття — найдоступніший вступ до діаграмної нотації тензорних мереж.</p>
+      </div>
+    </section>
+
+    <section id="s24">
+      <h2><span class="num">24</span> Чекліст: навик на базовому рівні, якщо ви можете…</h2>
+      <p class="section-desc">Пройдіться чесно. Кожен пункт — це те, що питають на співбесіді або що знадобиться в першому ж реальному проєкті.</p>
+
+      <div class="card">
+        <ul>
+          <li>☐ Без підглядання написати 2-кубітний симулятор (H, X, CX, вимірювання, counts у форматі Qiskit) за 30 хвилин.</li>
+          <li>☐ Пояснити little-endian: де q0 у рядку <code>'110'</code>, у <code>np.kron</code> і в тензорі після reshape.</li>
+          <li>☐ Розповісти, чому <code>psi @ psi</code> — помилка, і чим <code>eigh</code> кращий за <code>eig</code> для ермітових матриць.</li>
+          <li>☐ Застосувати гейт до довільних кубітів через reshape + tensordot + moveaxis або einsum, без матриць 2ⁿ×2ⁿ.</li>
+          <li>☐ Оцінити пам'ять і реалістичну межу statevector-симуляції (16·2ⁿ байт; 30 кубітів = 16 GB; 50 = 16 PiB).</li>
+          <li>☐ Порахувати ⟨Z…Z⟩ з counts і ⟨P⟩ для будь-якого Pauli-рядка зі стану, знати, як виміряти ⟨XX⟩ на залізі.</li>
+          <li>☐ Перевірити заплутаність через чистоту редукованої матриці густини.</li>
+          <li>☐ Написати property-based тест проти <code>qiskit.quantum_info.Statevector</code> і пояснити, чому counts так не тестують.</li>
+          <li>☐ Реалізувати Дойча або інший маленький алгоритм на своєму симуляторі й пояснити, звідки береться перевага.</li>
+          <li>☐ Пояснити, чому реальний шум не зводиться до bit-flip і що для нього використовують в Aer.</li>
+        </ul>
+      </div>
+
+      <div class="callout good"><div class="ic">🧭</div><div class="body">
+        <b>Куди далі.</b> Математика, яка тут стала кодом: <a href="06-linear-algebra-vectors-matrices.html">6. Вектори й матриці</a>,
+        <a href="07-linear-algebra-eigen-tensor.html">7. Власні значення й тензорний добуток</a>, <a href="08-complex-numbers-phase.html">8. Комплексні числа й фаза</a>,
+        <a href="09-probability-shots.html">9. Ймовірності й shots</a>. Наступний крок — справжній інструмент: <a href="11-qiskit-circuits-aer.html">11. Qiskit I: схеми й Aer</a>
+        і <a href="12-qiskit-runtime-real-qpu.html">12. Qiskit II: реальний QPU</a>. Як вбудувати симулятор у бекенд як тестовий провайдер — <a href="03-quantum-backend-python-ibm.html">туторіал 3</a>.
+      </div></div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Quantum Doc · частина серії туторіалів AI Delivery Planner. Код перевірено: Python 3.13.3, NumPy 2.5.4, Qiskit 2.5.2, qiskit-aer 0.17.2, pytest 9.1.1 (109 тестів пройшли), Apple M4.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*|\/\/[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b|\bthis\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case|const|let|var|function|interface|type|export|extends|implements|new|void|enum|typeof|instanceof|static|public|private|readonly|null|undefined)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+<script>
+(function(){
+  var root = document.documentElement, btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function current(){
+    var t = root.getAttribute('data-theme');
+    return t === 'light' || t === 'dark' ? t : (mq && mq.matches ? 'dark' : 'light');
+  }
+  function render(){
+    var dark = current() === 'dark';
+    btn.textContent = dark ? '☀️ Світла тема' : '🌙 Темна тема';
+    btn.setAttribute('aria-label', dark ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('docs-theme', next); }catch(e){}
+    render();
+  });
+  if(mq && mq.addEventListener) mq.addEventListener('change', render);
+  render();
+})();
+</script>
+</body>
+</html>

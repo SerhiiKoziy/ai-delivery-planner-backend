@@ -1,0 +1,2034 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>12. Qiskit II: Runtime і реальний QPU — Quantum Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<script>
+(function(){
+  try{ var t = localStorage.getItem('docs-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --bg:#fcfbff; --bg-soft:#f3f2fa; --card:#ffffff; --border:#e0e0ec;
+    --fg:#1c1c2a; --fg-muted:#5c6176;
+    --accent:#3a5ee8; --accent-soft:#ebedff;
+    --code-bg:#212338; --code-fg:#e8e8f4; --code-muted:#8d92ab;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#3a5ee8; --info-bg:#ebedff; --info-border:#c7cffc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#171822; --bg-soft:#1e1f2b; --card:#1e1f2b; --border:#2e3041;
+      --fg:#e6e7f3; --fg-muted:#9ba0b7;
+      --accent:#7a8eff; --accent-soft:#1f2344;
+      --code-bg:#11111b; --code-fg:#e6e7f3; --code-muted:#7e8399;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#8a9dff; --info-bg:#161a36; --info-border:#2c356e;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#171822; --bg-soft:#1e1f2b; --card:#1e1f2b; --border:#2e3041;
+    --fg:#e6e7f3; --fg-muted:#9ba0b7;
+    --accent:#7a8eff; --accent-soft:#1f2344;
+    --code-bg:#11111b; --code-fg:#e6e7f3; --code-muted:#7e8399;
+    --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+    --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+    --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+    --info:#8a9dff; --info-bg:#161a36; --info-border:#2c356e;
+    --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"],
+  #tab-quantum:checked ~ .nav-tabbar label[for="tab-quantum"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  #tab-quantum:checked ~ .nav-links.quantum{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+
+  /* --- python-doc extras --- */
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider:first-child{margin-top:8px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+  .qa summary .qnum{color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700; margin-right:8px;}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  /* --- quantum-doc extras --- */
+  .res{border:1px solid var(--border); border-radius:var(--radius); background:var(--card); padding:14px 16px; margin:12px 0;}
+  .res .res-head{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:4px;}
+  .res .res-title{font-weight:700; font-size:15px;}
+  .res .res-meta{font-size:12.5px; color:var(--fg-muted);}
+  .res p{margin:6px 0 0; font-size:14.3px;}
+  .lvl{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap;}
+  .lvl.l1{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .lvl.l2{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .lvl.l3{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .lvl.type{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .timeline{border-left:2px solid var(--accent); margin:20px 0 20px 8px; padding-left:20px;}
+  .timeline .ev{position:relative; margin:0 0 18px;}
+  .timeline .ev::before{content:""; position:absolute; left:-27px; top:6px; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid var(--bg);}
+  .timeline .yr{font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; font-size:14px;}
+  .timeline .ev-t{font-weight:700;}
+  .timeline .ev p{margin:4px 0 0; font-size:14.3px; color:var(--fg-muted);}
+  .math{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:1.05em; white-space:nowrap;}
+  .math-block{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:18px; text-align:center; padding:14px; margin:14px 0; border:1px dashed var(--border); border-radius:var(--radius); background:var(--bg-soft); overflow-x:auto;}
+
+  /* --- theme switch --- */
+  :root{color-scheme:light;}
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .theme-toggle{
+    cursor:pointer; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+    background:var(--bg-soft); color:var(--fg); font:inherit; font-size:12.5px; font-weight:600;
+    transition:background .15s, border-color .15s;
+  }
+  .theme-toggle:hover{background:var(--card); border-color:var(--accent);}
+  .theme-toggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .say{color:var(--fg-muted); font-size:.9em; font-weight:400; font-style:normal;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="top-row">
+      <div class="brand">⚛️ Квантове програмування <span>· AI Delivery Planner</span></div>
+      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Темна тема</button>
+    </div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Квантове програмування · Туторіал 12 · Навик «Qiskit на залізі»</div>
+  <h1>Qiskit II: перший запуск Bell-стану на реальному QPU IBM через Open Plan</h1>
+  <p class="lead">Практичний гайд «від реєстрації до гістограми»: IBMid, інстанс Open Plan, API-ключ і CRN, безпечне збереження
+  облікових даних, вибір бекенду й кубітів, dry-run на fake-бекенді, відправка задачі, повернення до неї за <code>job_id</code>,
+  аналіз шумної гістограми, облік використаних QPU-секунд. Потім — Estimator для ⟨ZZ⟩, рівні mitigation (TREX, ZNE, DD,
+  twirling) і що кожен коштує, режими виконання, міграція на нові executor-примітиви 0.50 і таблиця типових помилок.
+  Усі офлайн-приклади реально запущені на Qiskit 2.5.2 / qiskit-ibm-runtime 0.50; вихід реального QPU позначено як ілюстративний.</p>
+  <div class="pills">
+    <span class="pill">🔑 IBMid → інстанс → API key → CRN</span>
+    <span class="pill">🧪 Dry-run на FakeFez перед QPU</span>
+    <span class="pill">📊 Читання шумної гістограми</span>
+    <span class="pill">🛡️ TREX, ZNE, DD, twirling</span>
+    <span class="pill">🧩 20 задач із розв'язками</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-quantum" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+      <label for="tab-quantum" class="nav-tabbtn">⚛️ Квантове</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="../node-doc/01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="../node-doc/02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="../node-doc/03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="../node-doc/04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="../node-doc/05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="../node-doc/06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="../node-doc/07-fs-process-os.html">7. fs, process, os</a>
+        <a href="../node-doc/08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="../node-doc/09-http-networking.html">9. HTTP і мережа</a>
+        <a href="../node-doc/10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="../node-doc/11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="../node-doc/12-databases-orm.html">12. БД і ORM</a>
+        <a href="../node-doc/13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="../node-doc/14-security.html">14. Безпека Node</a>
+        <a href="../node-doc/15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="../node-doc/16-testing.html">16. Тестування</a>
+        <a href="../node-doc/17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="../node-doc/18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="../node-doc/19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="../node-doc/20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+      <nav class="nav-links quantum">
+        <a href="01-quanta-and-quantum-computing.html">1. Кванти й обчислення</a>
+        <a href="02-quantum-engineering-history.html">2. Квантова інженерія</a>
+        <a href="03-quantum-backend-python-ibm.html">3. Бекенд + IBM Quantum</a>
+        <a href="04-pet-project-quantum-routing.html">4. Пет-проєкт: маршрути</a>
+        <a href="05-quantum-engineer-roadmap.html">5. Шлях інженера: ресурси</a>
+        <a href="06-linear-algebra-vectors-matrices.html">6. Лін. алгебра I: вектори, матриці</a>
+        <a href="07-linear-algebra-eigen-tensor.html">7. Лін. алгебра II: власні, тензори</a>
+        <a href="08-complex-numbers-phase.html">8. Комплексні числа й фаза</a>
+        <a href="09-probability-shots.html">9. Ймовірності й shots</a>
+        <a href="10-numpy-statevector-simulator.html">10. NumPy: свій симулятор</a>
+        <a href="11-qiskit-circuits-aer.html">11. Qiskit I: схеми й Aer</a>
+        <a href="12-qiskit-runtime-real-qpu.html" class="active">12. Qiskit II: реальний QPU</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — Доступ і підготовка</div>
+    <ol>
+      <li><a href="#s1">1. Що ви вмітимете</a></li>
+      <li><a href="#s2">2. Ланцюжок доступу IBM</a></li>
+      <li><a href="#s3">3. Реєстрація: покроково</a></li>
+      <li><a href="#s4">4. Облікові дані й безпека</a></li>
+      <li><a href="#s5">5. Огляд бекендів і калібрувань</a></li>
+    </ol>
+    <div class="toc-group">Частина II — Перший запуск Bell</div>
+    <ol>
+      <li><a href="#s6">6. Dry-run на fake-бекенді</a></li>
+      <li><a href="#s7">7. Відправка на реальний QPU</a></li>
+      <li><a href="#s8">8. Повернення до job за ID</a></li>
+      <li><a href="#s9">9. Аналіз гістограми</a></li>
+      <li><a href="#s10">10. Бюджет Open Plan</a></li>
+    </ol>
+    <div class="toc-group">Частина III — Estimator і mitigation</div>
+    <ol>
+      <li><a href="#s11">11. Estimator: ⟨ZZ⟩ на залізі</a></li>
+      <li><a href="#s12">12. Рівні mitigation і ціна</a></li>
+      <li><a href="#s13">13. TREX і ZNE руками</a></li>
+      <li><a href="#s14">14. Режими виконання</a></li>
+      <li><a href="#s15">15. Executor-примітиви 0.50</a></li>
+      <li><a href="#s16">16. Troubleshooting</a></li>
+    </ol>
+    <div class="toc-group">Частина IV — Практика</div>
+    <ol>
+      <li><a href="#s17">17. Задачі <span class="toc-count">20</span></a></li>
+      <li><a href="#s18">18. Глибше: матеріали</a></li>
+      <li><a href="#s19">19. Чекліст навику</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Доступ і підготовка</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Що ви вмітимете після цього туторіалу</h2>
+      <p class="section-desc">Один конкретний навик, доведений до рівня «роблю сам, без підглядання»: запустити схему на справжньому квантовому процесорі і правильно прочитати, що повернулось.</p>
+
+      <p>У <a href="03-quantum-backend-python-ibm.html">туторіалі 3</a> ми дивились на QPU очима архітектора бекенду: адаптер провайдера,
+      Celery-воркер, ретраї, бюджет. У <a href="11-qiskit-circuits-aer.html">туторіалі 11</a> — збирали схеми й ганяли їх на Aer.
+      Цей туторіал — «перший виїзд на реальну дорогу»: що саме треба натиснути в кабінеті IBM, які рядки Python виконати, як
+      не спалити безкоштовні хвилини на помилці транспіляції і як інтерпретувати шумний результат.</p>
+
+      <div class="stat-row">
+        <div class="stat"><div class="k">Тест навику</div><div class="v">Bell на реальному QPU</div></div>
+        <div class="stat"><div class="k">Перевірено офлайн на</div><div class="v">Qiskit 2.5.2 · runtime 0.50</div></div>
+        <div class="stat"><div class="k">QPU-час на тест</div><div class="v">≈ кілька секунд</div></div>
+      </div>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Перший запуск на QPU — як перший прогін застосунку на справжньому дешевому Android-телефоні після роботи в
+        DevTools із device emulation. Код той самий, але з'являються реальні затримки, шум і "погода" конкретного
+        пристрою. Fake-бекенд — це профіль троттлінгу CPU/мережі, знятий з реального девайса на конкретну дату
+        (як снапшот BrowserStack); реальний QPU — той самий телефон сьогодні, з іншим зарядом батареї й фоновими процесами.
+        А Open Plan з його хвилинами — це ліміт хвилин GitHub Actions: спершу все ганяєте локально, на "залізо" — лише фінальний прогін.
+        <br><b>Де аналогія ламається:</b> калібрування QPU змінюються щодня, і на ваш job чекає черга інших користувачів —
+        результат не можна "перезапустити в один клік" миттєво.
+      </div>
+
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        <b>Чесно про перевірку:</b> у мене немає IBM-токена, тож на реальному залізі код не запускався. Усе, що працює офлайн
+        (fake-бекенди, local testing mode, Estimator, ручні TREX/ZNE) — реально виконано, і виходи на сторінці справжні.
+        Гістограми «з реального QPU» — <b>ілюстративні</b>, побудовані на типових для Heron-процесорів рівнях помилок, і підписані як такі.
+        API-сигнатури перевірено інтроспекцією встановленого <code>qiskit-ibm-runtime 0.50.0</code>.
+      </div></div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Ланцюжок доступу IBM: хто є хто</h2>
+      <p class="section-desc">Чотири сутності, які новачки плутають: акаунт, інстанс, ключ і бекенд.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 300" role="img" aria-label="Ланцюжок доступу до IBM Quantum. IBMid — особа, що логіниться. Акаунт IBM Cloud або IBM Quantum Platform містить інстанси. Інстанс з планом Open має ідентифікатор CRN і визначає, до яких бекендів і скільки хвилин у вас є доступ. API key прив'язаний до акаунта і доводить, хто ви. Python-код через QiskitRuntimeService з токеном і CRN отримує список бекендів, обирає бекенд, наприклад ibm_fez, і відправляє job. Job повертає job_id і результат">
+          <defs><marker id="q12a-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="30" width="130" height="62" rx="9" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="75" y="56" text-anchor="middle" fill="currentColor" font-weight="bold">IBMid</text>
+            <text x="75" y="76" text-anchor="middle" fill="var(--fg-muted)" font-size="11">хто ви (логін)</text>
+
+            <rect x="175" y="20" width="210" height="160" rx="10" fill="none" stroke="var(--accent)" stroke-width="1.4" stroke-dasharray="5,3"/>
+            <text x="187" y="38" fill="var(--accent)" font-weight="bold">Акаунт IBM Quantum Platform</text>
+            <rect x="190" y="50" width="180" height="58" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="280" y="71" text-anchor="middle" fill="currentColor" font-weight="bold">Інстанс (Open plan)</text>
+            <text x="280" y="88" text-anchor="middle" fill="var(--fg-muted)" font-size="11">CRN: crn:v1:bluemix:…</text>
+            <text x="280" y="102" text-anchor="middle" fill="var(--fg-muted)" font-size="11">ліміт хвилин, доступні QPU</text>
+            <rect x="190" y="118" width="180" height="50" rx="8" fill="none" stroke="currentColor"/>
+            <text x="280" y="139" text-anchor="middle" fill="currentColor" font-weight="bold">API key</text>
+            <text x="280" y="156" text-anchor="middle" fill="var(--fg-muted)" font-size="11">секрет, «пароль для коду»</text>
+
+            <rect x="420" y="40" width="150" height="110" rx="10" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="495" y="62" text-anchor="middle" fill="currentColor" font-weight="bold">Ваш Python</text>
+            <text x="495" y="82" text-anchor="middle" fill="var(--fg-muted)" font-size="11">QiskitRuntimeService(</text>
+            <text x="495" y="98" text-anchor="middle" fill="var(--fg-muted)" font-size="11">  token=…,</text>
+            <text x="495" y="114" text-anchor="middle" fill="var(--fg-muted)" font-size="11">  instance=CRN)</text>
+
+            <rect x="600" y="30" width="130" height="50" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="665" y="52" text-anchor="middle" fill="currentColor" font-weight="bold">Backend</text>
+            <text x="665" y="68" text-anchor="middle" fill="var(--fg-muted)" font-size="11">ibm_fez, ibm_torino…</text>
+            <rect x="600" y="110" width="130" height="50" rx="8" fill="none" stroke="currentColor"/>
+            <text x="665" y="132" text-anchor="middle" fill="currentColor" font-weight="bold">Job</text>
+            <text x="665" y="148" text-anchor="middle" fill="var(--fg-muted)" font-size="11">job_id, статус, usage</text>
+
+            <line x1="140" y1="61" x2="173" y2="61" stroke="currentColor" marker-end="url(#q12a-arr)"/>
+            <line x1="370" y1="140" x2="418" y2="110" stroke="currentColor" marker-end="url(#q12a-arr)"/>
+            <line x1="370" y1="80" x2="418" y2="80" stroke="currentColor" marker-end="url(#q12a-arr)"/>
+            <line x1="570" y1="70" x2="598" y2="58" stroke="currentColor" marker-end="url(#q12a-arr)"/>
+            <line x1="665" y1="80" x2="665" y2="108" stroke="currentColor" marker-end="url(#q12a-arr)"/>
+            <text x="10" y="230" fill="var(--fg-muted)" font-size="11.5">Ключ доводить «хто ви», CRN каже «з якого гаманця платити й до яких QPU є доступ», backend — «на якому чипі рахувати».</text>
+            <text x="10" y="252" fill="var(--fg-muted)" font-size="11.5">Помилка в будь-якій ланці дає різні повідомлення: 401 (ключ), «instance not found» (CRN), «backend not found» (план/регіон).</text>
+            <text x="10" y="274" fill="var(--fg-muted)" font-size="11.5">Один акаунт може мати кілька інстансів (Open, Pay-As-You-Go…), тому CRN краще задавати явно.</text>
+          </g>
+        </svg>
+        <figcaption>Схема 1. Чотири сутності доступу. Якщо щось не працює — ідіть по стрілках зліва направо.</figcaption>
+      </figure>
+
+      <table>
+        <tr><th>Сутність</th><th>Що це</th><th>Де взяти</th><th>Аналогія з бекенду</th></tr>
+        <tr><td><b>IBMid</b></td><td>Ваш логін в екосистемі IBM</td><td>Реєстрація на сайті IBM Quantum Platform</td><td>Обліковий запис у GitHub</td></tr>
+        <tr><td><b>Інстанс</b></td><td>Контейнер з планом (Open / Pay-As-You-Go / Premium), лімітами й доступом до QPU</td><td>Сторінка Instances у кабінеті</td><td>Проєкт у GCP з білінгом і квотами</td></tr>
+        <tr><td><b>CRN</b></td><td>Cloud Resource Name — унікальний ідентифікатор інстансу</td><td>Копіюється зі сторінки інстансу</td><td>ARN в AWS</td></tr>
+        <tr><td><b>API key</b></td><td>Секрет, яким код автентифікується</td><td>Dashboard → Create API key (показується один раз)</td><td>Personal access token</td></tr>
+        <tr><td><b>Backend</b></td><td>Конкретний QPU з власною топологією й калібровкою</td><td><code>service.backends()</code></td><td>Конкретний регіон/інстанс БД</td></tr>
+      </table>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Реєстрація й Open Plan: покроково</h2>
+      <p class="section-desc">Інтерфейс кабінету IBM змінюється частіше за API, тому кроки описано за змістом, а не за кнопками.</p>
+
+      <div class="timeline">
+        <div class="ev"><div class="yr">Крок 1</div><div class="ev-t">Створити IBMid і увійти в IBM Quantum Platform</div>
+          <p>Сайт платформи: <code>quantum.cloud.ibm.com</code> (адреса змінювалась у 2025 разом із переходом на нову платформу — якщо не відкривається, шукайте «IBM Quantum Platform sign in»). Потрібна email-адреса; для деяких регіонів — підтвердження кредитною карткою без списання (перевірте актуальні умови).</p></div>
+        <div class="ev"><div class="yr">Крок 2</div><div class="ev-t">Створити інстанс з планом Open</div>
+          <p>Open Plan — безкоштовний доступ до частини QPU з місячним лімітом часу (станом на 2025–2026 — <b>близько 10 хвилин QPU на 28-денне вікно</b>; уточніть у документації, умови змінювались). Дайте інстансу зрозуміле ім'я, наприклад <code>open-learning</code>.</p></div>
+        <div class="ev"><div class="yr">Крок 3</div><div class="ev-t">Скопіювати CRN інстансу</div>
+          <p>Рядок вигляду <code>crn:v1:bluemix:public:quantum-computing:us-east:a/…::</code>. Це не секрет у строгому сенсі, але й не публікуйте його без потреби.</p></div>
+        <div class="ev"><div class="yr">Крок 4</div><div class="ev-t">Створити API key</div>
+          <p>Ключ показується <b>один раз</b>. Одразу покладіть його в менеджер паролів або в змінну оточення. Якщо загубили — видаліть старий і створіть новий.</p></div>
+        <div class="ev"><div class="yr">Крок 5</div><div class="ev-t">Встановити пакети в окреме venv</div>
+          <p><code>pip install "qiskit&gt;=2" qiskit-ibm-runtime qiskit-aer</code>. Запишіть версії у lock-файл: API runtime змінюється кожні кілька місяців.</p></div>
+        <div class="ev"><div class="yr">Крок 6</div><div class="ev-t">Зберегти облікові дані й перевірити зв'язок</div>
+          <p>Див. розділ 4 і 5: <code>save_account</code> → <code>QiskitRuntimeService()</code> → <code>service.backends()</code>.</p></div>
+      </div>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Застарілі інструкції в інтернеті.</b> Старий канал <code>channel="ibm_quantum"</code> і сайт <code>quantum.ibm.com</code>
+        вимкнено у 2025 році. У встановленому <code>qiskit-ibm-runtime 0.50</code> валідні канали — лише
+        <code>"ibm_quantum_platform"</code> і <code>"ibm_cloud"</code> (перевірено в коді <code>accounts/account.py</code>).
+        Якщо туторіал з YouTube просить токен «з вкладки My Account на quantum.ibm.com» — він застарів.
+      </div></div>
+
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        <b>Обмеження Open Plan, які впливають на код</b> (за документацією IBM станом на 2025–2026, перевірте актуальне):
+        доступні режими виконання — <b>job і batch</b>, а <b>session недоступний</b>; черга спільна з іншими безкоштовними
+        користувачами, тому час очікування — від хвилин до годин; набір доступних QPU — підмножина флоту.
+      </div></div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Облікові дані: save_account і безпека</h2>
+      <p class="section-desc">Ключ від QPU — це гроші й квота. Ставтесь до нього як до AWS-ключа.</p>
+
+      <p>Сигнатура в 0.50 (отримана через <code>inspect.signature</code>):</p>
+      <div class="codecard"><div class="bar"><span class="path">qiskit_ibm_runtime 0.50 · QiskitRuntimeService.save_account</span></div><pre><code>save_account(token=None, url=None, instance=None, channel=None, filename=None,
+             name=None, proxies=None, verify=None, overwrite=False,
+             set_as_default=None, private_endpoint=False, region=None,
+             plans_preference=None, tags=None) -&gt; None</code></pre></div>
+
+      <p>Одноразовий скрипт (запускається локально, <b>не комітиться</b>):</p>
+      <div class="codecard"><div class="bar"><span class="path">scripts/save_ibm_account.py</span></div><pre><code>import os
+from qiskit_ibm_runtime import QiskitRuntimeService
+
+# Ключ і CRN беремо з оточення, а не з коду
+QiskitRuntimeService.save_account(
+    channel="ibm_quantum_platform",
+    token=os.environ["IBM_QUANTUM_TOKEN"],
+    instance=os.environ["IBM_QUANTUM_INSTANCE"],   # CRN інстансу Open
+    name="open-learning",                          # іменований профіль
+    set_as_default=True,
+    overwrite=True,                                # переписати профіль, якщо вже є
+)
+print("saved")</code></pre></div>
+
+      <p>Що відбувається: бібліотека пише JSON у <code>~/.qiskit/qiskit-ibm.json</code> (шлях за замовчуванням, можна змінити через
+      <code>filename=</code>). Після цього <code>QiskitRuntimeService()</code> без аргументів підхопить профіль за замовчуванням, а
+      <code>QiskitRuntimeService(name="open-learning")</code> — конкретний.</p>
+
+      <table>
+        <tr><th>Спосіб</th><th>Коли підходить</th><th>Ризик</th></tr>
+        <tr><td><code>save_account</code> → <code>~/.qiskit/qiskit-ibm.json</code></td><td>Ноутбук розробника</td><td>Файл у відкритому вигляді; не копіюйте домашню теку в образи Docker</td></tr>
+        <tr><td>Змінні оточення → <code>QiskitRuntimeService(channel=…, token=…, instance=…)</code></td><td>CI, сервер, контейнер</td><td>Не логуйте <code>os.environ</code>; секрети — через Secret Manager / k8s Secret</td></tr>
+        <tr><td>Токен у коді</td><td>Ніколи</td><td>Боти сканують GitHub за хвилини після push; ключ доведеться ревокнути</td></tr>
+      </table>
+
+      <div class="codecard"><div class="bar"><span class="path">.gitignore (фрагмент)</span></div><pre><code>.env
+.qiskit/
+qiskit-ibm.json
+*.job.json        # локальні файли з job_id — не секрет, але засмічують репо</code></pre></div>
+
+      <div class="callout bad"><div class="ic">🚫</div><div class="body">
+        <b>Якщо ключ потрапив у git:</b> одразу видаліть його в кабінеті IBM і створіть новий. Переписування історії
+        (<code>git filter-repo</code>) — другий крок, а не перший: копія вже могла піти у форки й кеші.
+      </div></div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Огляд бекендів і калібрувань</h2>
+      <p class="section-desc">Перед відправкою подивіться, на якому чипі рахуєте і які в нього помилки.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">scripts/list_backends.py</span></div><pre><code>from qiskit_ibm_runtime import QiskitRuntimeService
+
+service = QiskitRuntimeService(name="open-learning")
+
+for b in service.backends(simulator=False, operational=True):
+    st = b.status()
+    print(f"{b.name:14} qubits={b.num_qubits:4} pending_jobs={st.pending_jobs}")
+
+backend = service.least_busy(operational=True, simulator=False, min_num_qubits=2)
+print("chosen:", backend.name)</code></pre></div>
+
+      <p><code>least_busy</code> у 0.50 має сигнатуру <code>least_busy(min_num_qubits=None, instance=None, filters=None, use_fractional_gates=False, **kwargs)</code>;
+      <code>operational</code> і <code>simulator</code> ідуть через <code>**kwargs</code> як фільтри до <code>backends()</code>.
+      «Найменш завантажений» = найменше <code>pending_jobs</code>, а не «найкращий за якістю».</p>
+
+      <h3>Калібрування: Target</h3>
+      <p>Усе, що транспілятору треба знати про чип, лежить у <code>backend.target</code>: нативні гейти, пари кубітів, на яких є двокубітний гейт,
+      і помилка кожної операції. Однаковий API у реального бекенду і fake-бекенду — тому можна вчитися офлайн.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">work/pick_pair.py — реально запущено на FakeFez</span></div><pre><code>from qiskit_ibm_runtime.fake_provider import FakeFez
+
+be = FakeFez()            # знімок калібрування Heron r2 156 кубітів; для реального: service.backend("ibm_fez")
+t = be.target
+ro = {q: t["measure"][(q,)].error for q in range(be.num_qubits)}
+
+best = []
+for (a, b), props in t["cz"].items():
+    if props is None or props.error is None:
+        continue
+    best.append((props.error + ro[a] + ro[b], a, b, props.error, ro[a], ro[b]))
+best.sort()
+for s, a, b, cz, ra, rb in best[:3]:
+    print(f"({a},{b}) cz={cz:.4f} ro=({ra:.4f},{rb:.4f}) score={s:.4f}")
+print("worst:", best[-1][1:3], f"score={best[-1][0]:.4f}")
+print("native ops:", list(t.operation_names))</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">вивід</span></div><pre><code>(96,103) cz=0.0046 ro=(0.0024,0.0029) score=0.0100
+(103,96) cz=0.0046 ro=(0.0029,0.0024) score=0.0100
+(136,143) cz=0.0024 ro=(0.0046,0.0044) score=0.0115
+worst: (69, 68) score=1.0337
+native ops: ['switch_case', 'delay', 'id', 'x', 'cz', 'measure', 'if_else', 'rz', 'for_loop', 'reset', 'sx']</code></pre></div>
+
+      <p>Що тут видно:</p>
+      <ul>
+        <li>Нативний набір Heron — <code>cz, rz, sx, x</code> + вимірювання. <code>h</code> і <code>cx</code> там немає: їх розкладе транспілятор.</li>
+        <li>Помилка зчитування (<code>measure</code>) ~0.2–1.5 % — того ж порядку, що й помилка двокубітного гейта. Для короткої схеми Bell
+        саме readout часто домінує.</li>
+        <li>Пара <code>(68,69)</code> має помилку 1.0 — це «мертвий» каплер у знімку калібрування. Транспілятор з <code>optimization_level≥1</code>
+        зазвичай обходить такі пари, але якщо ви жорстко задасте <code>initial_layout=[68, 69]</code>, отримаєте шум замість Bell (див. розділ 9).</li>
+        <li>Також є <code>be.properties()</code> (старіший API): <code>readout_error(q)</code>, <code>t1(q)</code>, <code>t2(q)</code>. На FakeFez для кубіта 0:
+        readout 0.0115, T1 ≈ <span class="say">(≈ — «приблизно дорівнює»)</span> 48.8 мкс, T2 ≈ 42.4 мкс.</li>
+      </ul>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Fake ≠ сьогоднішній реальний чип.</b> FakeFez — знімок калібрування на дату релізу пакета (тут <code>backend_version 1.2.8</code>).
+        Реальний <code>ibm_fez</code> перекалібровується щодня; «найкраща пара» сьогодні може бути іншою. Для реального запуску
+        рахуйте score з <code>service.backend("ibm_fez").target</code> безпосередньо перед відправкою.
+      </div></div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · Перший запуск Bell</div><div class="line"></div></div>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Dry-run на fake-бекенді: безкоштовна репетиція</h2>
+      <p class="section-desc">Правило: жодна схема не йде на QPU, поки не пройшла той самий код на fake-бекенді.</p>
+
+      <p>Fake-бекенд (<code>qiskit_ibm_runtime.fake_provider</code>) має ту саму <code>target</code> (гейти, топологію, помилки), що й реальний чип
+      на дату знімка. Коли ви передаєте його в примітив як <code>mode=</code>, runtime вмикає <b>local testing mode</b>: схема симулюється
+      локально через Aer з шумовою моделлю цього чипа. Код при цьому <b>ідентичний</b> до реального запуску — відрізняється одна функція
+      <code>get_backend()</code>.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">bell_lab.py — один скрипт для fake і real</span></div><pre><code>"""Bell-стан: dry-run на fake-бекенді або запуск на реальному QPU.
+
+python bell_lab.py --mode fake      # безкоштовно, офлайн
+python bell_lab.py --mode real      # витрачає QPU-секунди Open Plan
+"""
+import argparse, json, time, warnings
+from pathlib import Path
+
+from qiskit import QuantumCircuit
+from qiskit.transpiler import generate_preset_pass_manager
+
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+SHOTS = 4000
+
+
+def get_backend(mode: str):
+    if mode == "fake":
+        from qiskit_ibm_runtime.fake_provider import FakeFez
+        return FakeFez()
+    from qiskit_ibm_runtime import QiskitRuntimeService
+    service = QiskitRuntimeService(name="open-learning")
+    return service.least_busy(operational=True, simulator=False, min_num_qubits=2)
+
+
+def bell() -&gt; QuantumCircuit:
+    qc = QuantumCircuit(2, name="bell")
+    qc.h(0)
+    qc.cx(0, 1)
+    qc.measure_all()
+    return qc
+
+
+def main(mode: str) -&gt; None:
+    backend = get_backend(mode)
+    pm = generate_preset_pass_manager(backend=backend, optimization_level=1)
+    isa = pm.run(bell())
+    print("backend:", backend.name)
+    print("ISA ops:", dict(isa.count_ops()), "depth:", isa.depth())
+    print("physical qubits:", isa.layout.final_index_layout())
+
+    from qiskit_ibm_runtime import SamplerV2 as Sampler   # див. розділ 15 про executor_sampler
+    sampler = Sampler(mode=backend)
+    sampler.options.environment.job_tags = ["bell-lab"]
+    job = sampler.run([isa], shots=SHOTS)
+    print("job_id:", job.job_id())
+    Path("last.job.json").write_text(json.dumps(
+        {"job_id": job.job_id(), "backend": backend.name, "ts": time.time()}))
+
+    result = job.result()                 # блокує до DONE/ERROR/CANCELLED
+    counts = result[0].data.meas.get_counts()
+    good = (counts.get("00", 0) + counts.get("11", 0)) / SHOTS
+    print("counts:", dict(sorted(counts.items())))
+    print(f"P(00)+P(11) = {good:.4f}")
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--mode", choices=["fake", "real"], default="fake")
+    main(ap.parse_args().mode)</code></pre></div>
+
+      <div class="codecard"><div class="bar"><span class="path">$ python bell_lab.py --mode fake   (реальний вивід)</span></div><pre><code>backend: fake_fez
+ISA ops: {'rz': 6, 'sx': 3, 'measure': 2, 'cz': 1, 'barrier': 1} depth: 8
+physical qubits: [0, 1]
+job_id: 6ad31f6d-ac9f-4672-9571-9812ca82f911
+counts: {'00': 1934, '01': 69, '10': 65, '11': 1932}
+P(00)+P(11) = 0.9665</code></pre></div>
+
+      <h3>Що зробив транспілятор</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 740 300" role="img" aria-label="Транспіляція схеми Bell під нативні гейти Heron. Зверху логічна схема: H на q0, потім CX з q0 на q1, потім вимірювання. Знизу ISA-схема на фізичних кубітах 0 і 1: на q0 RZ(π/2), SX, RZ(π/2), що дорівнює H; на q1 RZ, SX, RZ перед CZ і RZ, SX, RZ після CZ, що разом із CZ дає CNOT; потім вимірювання. Підпис: 10 гейтів замість 2, але лише один двокубітний CZ">
+          <defs><marker id="q12b-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="10" y="20" fill="var(--accent)" font-weight="bold">Логічна схема (те, що ви написали)</text>
+            <line x1="60" y1="50" x2="330" y2="50" stroke="currentColor"/>
+            <line x1="60" y1="95" x2="330" y2="95" stroke="currentColor"/>
+            <text x="20" y="54" fill="currentColor">q0</text><text x="20" y="99" fill="currentColor">q1</text>
+            <rect x="90" y="36" width="32" height="28" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="106" y="55" text-anchor="middle" fill="currentColor" font-weight="bold">H</text>
+            <circle cx="170" cy="50" r="5" fill="currentColor"/><line x1="170" y1="50" x2="170" y2="95" stroke="currentColor"/>
+            <circle cx="170" cy="95" r="11" fill="none" stroke="currentColor"/><line x1="159" y1="95" x2="181" y2="95" stroke="currentColor"/><line x1="170" y1="84" x2="170" y2="106" stroke="currentColor"/>
+            <rect x="240" y="36" width="30" height="28" rx="4" fill="none" stroke="currentColor"/><text x="255" y="55" text-anchor="middle" fill="currentColor">M</text>
+            <rect x="240" y="81" width="30" height="28" rx="4" fill="none" stroke="currentColor"/><text x="255" y="100" text-anchor="middle" fill="currentColor">M</text>
+            <text x="360" y="60" fill="var(--fg-muted)" font-size="11.5">h, cx — не нативні для Heron</text>
+            <text x="360" y="78" fill="var(--fg-muted)" font-size="11.5">генерує IBMInputValueError «not supported by the target»</text>
+
+            <line x1="200" y1="125" x2="200" y2="150" stroke="currentColor" marker-end="url(#q12b-arr)"/>
+            <text x="215" y="142" fill="var(--fg-muted)" font-size="11.5">generate_preset_pass_manager(backend, optimization_level=1).run(qc)</text>
+
+            <text x="10" y="172" fill="var(--accent)" font-weight="bold">ISA-схема (те, що реально виконує чип)</text>
+            <line x1="60" y1="205" x2="720" y2="205" stroke="currentColor"/>
+            <line x1="60" y1="255" x2="720" y2="255" stroke="currentColor"/>
+            <text x="10" y="209" fill="currentColor" font-size="11">fis. 0</text><text x="10" y="259" fill="currentColor" font-size="11">fis. 1</text>
+            <g font-size="10.5">
+              <rect x="70" y="192" width="54" height="26" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="97" y="209" text-anchor="middle" fill="currentColor">RZ π/2</text>
+              <rect x="130" y="192" width="34" height="26" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="147" y="209" text-anchor="middle" fill="currentColor">SX</text>
+              <rect x="170" y="192" width="54" height="26" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="197" y="209" text-anchor="middle" fill="currentColor">RZ π/2</text>
+              <rect x="70" y="242" width="54" height="26" rx="4" fill="none" stroke="currentColor"/><text x="97" y="259" text-anchor="middle" fill="currentColor">RZ π/2</text>
+              <rect x="130" y="242" width="34" height="26" rx="4" fill="none" stroke="currentColor"/><text x="147" y="259" text-anchor="middle" fill="currentColor">SX</text>
+              <rect x="170" y="242" width="54" height="26" rx="4" fill="none" stroke="currentColor"/><text x="197" y="259" text-anchor="middle" fill="currentColor">RZ π/2</text>
+              <circle cx="270" cy="205" r="5" fill="currentColor"/><line x1="270" y1="205" x2="270" y2="255" stroke="currentColor" stroke-width="1.5"/><circle cx="270" cy="255" r="5" fill="currentColor"/>
+              <text x="282" y="234" fill="var(--bad)" font-weight="bold">CZ</text>
+              <rect x="320" y="242" width="54" height="26" rx="4" fill="none" stroke="currentColor"/><text x="347" y="259" text-anchor="middle" fill="currentColor">RZ π/2</text>
+              <rect x="380" y="242" width="34" height="26" rx="4" fill="none" stroke="currentColor"/><text x="397" y="259" text-anchor="middle" fill="currentColor">SX</text>
+              <rect x="420" y="242" width="54" height="26" rx="4" fill="none" stroke="currentColor"/><text x="447" y="259" text-anchor="middle" fill="currentColor">RZ π/2</text>
+              <rect x="560" y="192" width="30" height="26" rx="4" fill="none" stroke="currentColor"/><text x="575" y="209" text-anchor="middle" fill="currentColor">M</text>
+              <rect x="560" y="242" width="30" height="26" rx="4" fill="none" stroke="currentColor"/><text x="575" y="259" text-anchor="middle" fill="currentColor">M</text>
+            </g>
+            <text x="70" y="186" fill="var(--accent)" font-size="10.5">= H</text>
+            <text x="70" y="290" fill="var(--fg-muted)" font-size="10.5">H на ціль + CZ + H на ціль = CNOT</text>
+            <text x="480" y="290" fill="var(--fg-muted)" font-size="10.5">10 гейтів, але лише 1 двокубітний</text>
+          </g>
+        </svg>
+        <figcaption>Схема 2. ISA (Instruction Set Architecture) — схема, записана лише нативними гейтами чипа на фізичних кубітах. Вивід зібрано з реальної транспіляції під FakeFez.</figcaption>
+      </figure>
+
+      <p>Зверніть увагу на тотожність <span class="math">H = RZ(π/2)·SX·RZ(π/2)</span> <span class="say">(π — «пі»)</span> (з точністю до глобальної фази — див.
+      <a href="08-complex-numbers-phase.html">туторіал 8</a>) і <span class="math">CNOT = (I⊗H)·CZ·(I⊗H)</span> <span class="say">(⊗ — «тензорно»: тензорний (кронекерів) добуток)</span>. Гейти <code>rz</code> на
+      IBM «віртуальні»: реалізуються зсувом фази керуючого сигналу, тривалість ≈ 0 і практично без помилки. Реальна ціна схеми —
+      <b>кількість і помилка CZ</b> плюс <b>помилка зчитування</b>.</p>
+
+      <div class="callout good"><div class="ic">✅</div><div class="body">
+        <b>Що ловить dry-run:</b> помилки імпортів і опцій, не-ISA схеми (у real-режимі SamplerV2 перевіряє ISA ще на клієнті й кидає
+        <code>IBMInputValueError: The instruction h on qubits (0,) is not supported by the target system…</code> — перевірено), неправильне
+        ім'я регістру (<code>meas</code> після <code>measure_all()</code>, <code>c</code> після <code>QuantumCircuit(2, 2)</code>), логіку постобробки.
+        Чого не ловить: черги, сьогоднішню калібровку, ліміти плану.
+      </div></div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Відправка на реальний QPU</h2>
+      <p class="section-desc">Той самий скрипт, інший прапорець. Головне — зберегти job_id до того, як чекати результат.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">$ python bell_lab.py --mode real   (ІЛЮСТРАТИВНИЙ вивід)</span></div><pre><code>backend: ibm_fez
+ISA ops: {'rz': 6, 'sx': 3, 'measure': 2, 'cz': 1, 'barrier': 1} depth: 8
+physical qubits: [12, 13]
+job_id: d1abc2ef3gh4ijk5lmn0        # формат ID на реальній платформі інший, ніж у local mode
+...                                 # тут може минути від хвилин до годин (черга)
+counts: {'00': 1914, '01': 72, '10': 101, '11': 1913}
+P(00)+P(11) = 0.9568</code></pre></div>
+
+      <p>Чому <code>job_id</code> пишемо у файл <b>до</b> <code>job.result()</code>: якщо закриєте ноутбук, впаде мережа або Ctrl+C — задача
+      все одно лишиться в черзі IBM і буде виконана (і буде списано час!). Без ID ви просто не знайдете результат, а з ID — повернетесь
+      до нього будь-коли (розділ 8).</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 250" role="img" aria-label="Стани задачі в qiskit-ibm-runtime 0.50: INITIALIZING, потім QUEUED, потім RUNNING, потім одне з фінальних станів DONE, ERROR або CANCELLED. Скасування можливе з QUEUED і RUNNING. Під діаграмою шкала часу: час у черзі не списується з квоти, списується лише час виконання на QPU — usage">
+          <defs><marker id="q12c-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="40" width="120" height="44" rx="22" fill="none" stroke="currentColor"/><text x="70" y="67" text-anchor="middle" fill="currentColor">INITIALIZING</text>
+            <rect x="170" y="40" width="110" height="44" rx="22" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="225" y="67" text-anchor="middle" fill="currentColor" font-weight="bold">QUEUED</text>
+            <rect x="320" y="40" width="110" height="44" rx="22" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="375" y="67" text-anchor="middle" fill="currentColor" font-weight="bold">RUNNING</text>
+            <rect x="480" y="6" width="110" height="38" rx="19" fill="var(--good-bg)" stroke="var(--good)"/><text x="535" y="30" text-anchor="middle" fill="currentColor" font-weight="bold">DONE</text>
+            <rect x="480" y="56" width="110" height="38" rx="19" fill="var(--bad-bg)" stroke="var(--bad)"/><text x="535" y="80" text-anchor="middle" fill="currentColor" font-weight="bold">ERROR</text>
+            <rect x="480" y="106" width="110" height="38" rx="19" fill="none" stroke="var(--fg-muted)"/><text x="535" y="130" text-anchor="middle" fill="currentColor">CANCELLED</text>
+            <line x1="130" y1="62" x2="168" y2="62" stroke="currentColor" marker-end="url(#q12c-arr)"/>
+            <line x1="280" y1="62" x2="318" y2="62" stroke="currentColor" marker-end="url(#q12c-arr)"/>
+            <line x1="430" y1="56" x2="478" y2="28" stroke="currentColor" marker-end="url(#q12c-arr)"/>
+            <line x1="430" y1="68" x2="478" y2="75" stroke="currentColor" marker-end="url(#q12c-arr)"/>
+            <path d="M225,84 Q300,140 478,125" fill="none" stroke="var(--fg-muted)" stroke-dasharray="4,3" marker-end="url(#q12c-arr)"/>
+            <text x="615" y="30" fill="var(--fg-muted)" font-size="11">JOB_FINAL_STATES</text>
+            <text x="615" y="80" fill="var(--fg-muted)" font-size="11">job.error_message()</text>
+            <text x="615" y="130" fill="var(--fg-muted)" font-size="11">job.cancel()</text>
+
+            <text x="10" y="180" fill="var(--accent)" font-weight="bold">Що списується з квоти</text>
+            <rect x="10" y="192" width="430" height="24" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="225" y="209" text-anchor="middle" fill="currentColor" font-size="11">черга: хвилини…години — безкоштовно</text>
+            <rect x="440" y="192" width="70" height="24" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="475" y="209" text-anchor="middle" fill="currentColor" font-size="11">usage</text>
+            <text x="520" y="209" fill="var(--fg-muted)" font-size="11">≈ секунди → job.usage()</text>
+            <text x="10" y="240" fill="var(--fg-muted)" font-size="11">У 0.50: JobStatus = Literal["INITIALIZING","QUEUED","RUNNING","CANCELLED","DONE","ERROR"]; у local mode повертається enum JobStatus з qiskit.providers.</text>
+          </g>
+        </svg>
+        <figcaption>Схема 3. Життєвий цикл задачі. Рядкові статуси перевірено в коді <code>runtime_job_v2.py</code> версії 0.50.</figcaption>
+      </figure>
+
+      <h3>Не блокувати, а опитувати</h3>
+      <div class="codecard"><div class="bar"><span class="path">poll.py</span></div><pre><code>import time
+
+FINAL = {"DONE", "ERROR", "CANCELLED"}
+
+def wait(job, every_s: float = 30, timeout_s: float = 6 * 3600):
+    started = time.monotonic()
+    while True:
+        status = str(job.status()).split(".")[-1].upper()   # str у cloud, enum у local mode
+        print(time.strftime("%H:%M:%S"), status)
+        if status in FINAL:
+            return status
+        if time.monotonic() - started &gt; timeout_s:
+            raise TimeoutError(f"job {job.job_id()} still {status}")
+        time.sleep(every_s)</code></pre></div>
+      <p>Нормалізація <code>str(...).split(".")[-1]</code> потрібна, бо в local testing mode <code>job.status()</code> повертає
+      <code>JobStatus.RUNNING</code> (enum), а в реальному — рядок <code>"RUNNING"</code> (обидва варіанти побачили при запуску).
+      Для бекенд-сервісу замість <code>time.sleep</code> — Celery-задача з <code>countdown</code>, як у <a href="03-quantum-backend-python-ibm.html#s13">туторіалі 3</a>.</p>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Повернення до job за ID</h2>
+      <p class="section-desc">Задача живе на стороні IBM. Ваш процес може вмирати скільки завгодно.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">fetch_job.py</span></div><pre><code>import json, sys
+from qiskit_ibm_runtime import QiskitRuntimeService
+
+service = QiskitRuntimeService(name="open-learning")
+job_id = sys.argv[1] if len(sys.argv) &gt; 1 else json.load(open("last.job.json"))["job_id"]
+
+job = service.job(job_id)                 # RuntimeJobV2
+print("status:", job.status(), "backend:", job.backend().name)
+
+if job.status() == "DONE":
+    pub = job.result()[0]
+    print("counts:", pub.data.meas.get_counts())
+    print("usage, s:", job.usage())       # 0, поки IBM не дорахувала; partial=True — проміжне
+elif job.status() == "ERROR":
+    print("error:", job.error_message())
+
+# Загубили ID? Шукаємо за тегом, який поставили при відправці
+for j in service.jobs(job_tags=["bell-lab"], limit=5):
+    print(j.job_id(), j.status(), j.creation_date)</code></pre></div>
+
+      <table>
+        <tr><th>Метод (0.50)</th><th>Що повертає</th><th>Нотатка</th></tr>
+        <tr><td><code>service.job(job_id)</code></td><td><code>RuntimeJobV2</code></td><td>Працює з будь-якої машини з тим самим акаунтом/інстансом</td></tr>
+        <tr><td><code>service.jobs(limit=10, job_tags=…, backend_name=…, pending=…, created_after=…)</code></td><td>список задач</td><td>Пошук «загублених» задач; теги ставте завжди</td></tr>
+        <tr><td><code>job.usage(partial=False)</code></td><td>секунди QPU (float)</td><td>За документацією методу — 0, доки облік не завершено</td></tr>
+        <tr><td><code>job.metrics()</code></td><td><code>dict</code></td><td>Таймстемпи, позиція в черзі тощо; структура може змінюватися</td></tr>
+        <tr><td><code>job.usage_estimation</code> (property)</td><td><code>dict</code> з <code>quantum_seconds</code></td><td>Оцінка часу після відправки, ще до виконання — можна скасувати задачу, якщо оцінка завелика</td></tr>
+        <tr><td><code>job.cancel()</code></td><td>—</td><td>Скасувати, якщо зрозуміли, що відправили не те</td></tr>
+      </table>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Аналіз гістограми: що означає «шумний Bell»</h2>
+      <p class="section-desc">Ідеал — лише 00 і 11 по 50 %. Реальність — 01 і 10 теж з'являються. Вчимося рахувати, наскільки все погано.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 300" role="img" aria-label="Порівняльна гістограма для 4000 shots. Ідеальний симулятор: 00 і 11 приблизно по 2000, 01 і 10 нуль. FakeFez з шумом: 00 1934, 01 69, 10 65, 11 1932. Реальний QPU, ілюстративно: 00 1914, 01 72, 10 101, 11 1913. Помітна асиметрія 10 більше за 01 на реальному QPU через релаксацію T1 під час зчитування">
+          <g font-size="11">
+            <line x1="60" y1="240" x2="720" y2="240" stroke="currentColor"/>
+            <line x1="60" y1="40" x2="60" y2="240" stroke="currentColor"/>
+            <text x="54" y="244" text-anchor="end" fill="var(--fg-muted)">0</text>
+            <text x="54" y="144" text-anchor="end" fill="var(--fg-muted)">1000</text>
+            <text x="54" y="44" text-anchor="end" fill="var(--fg-muted)">2000</text>
+            <line x1="60" y1="140" x2="720" y2="140" stroke="var(--border)" stroke-dasharray="3,3"/>
+            <!-- scale: 2000 -> 200px ; groups at 00,01,10,11 -->
+            <!-- 00 -->
+            <rect x="90" y="40" width="34" height="200" fill="var(--fg-muted)" opacity=".55"/>
+            <rect x="126" y="46.6" width="34" height="193.4" fill="var(--accent)"/>
+            <rect x="162" y="48.6" width="34" height="191.4" fill="var(--bad)" opacity=".8"/>
+            <text x="143" y="260" text-anchor="middle" fill="currentColor" font-weight="bold">00</text>
+            <!-- 01 -->
+            <rect x="256" y="240" width="34" height="0" fill="var(--fg-muted)"/>
+            <rect x="292" y="233.1" width="34" height="6.9" fill="var(--accent)"/>
+            <rect x="328" y="232.8" width="34" height="7.2" fill="var(--bad)" opacity=".8"/>
+            <text x="309" y="260" text-anchor="middle" fill="currentColor" font-weight="bold">01</text>
+            <text x="309" y="225" text-anchor="middle" fill="var(--fg-muted)">69 / 72</text>
+            <!-- 10 -->
+            <rect x="422" y="240" width="34" height="0" fill="var(--fg-muted)"/>
+            <rect x="458" y="233.5" width="34" height="6.5" fill="var(--accent)"/>
+            <rect x="494" y="229.9" width="34" height="10.1" fill="var(--bad)" opacity=".8"/>
+            <text x="475" y="260" text-anchor="middle" fill="currentColor" font-weight="bold">10</text>
+            <text x="475" y="222" text-anchor="middle" fill="var(--fg-muted)">65 / 101</text>
+            <!-- 11 -->
+            <rect x="588" y="40" width="34" height="200" fill="var(--fg-muted)" opacity=".55"/>
+            <rect x="624" y="46.8" width="34" height="193.2" fill="var(--accent)"/>
+            <rect x="660" y="48.7" width="34" height="191.3" fill="var(--bad)" opacity=".8"/>
+            <text x="641" y="260" text-anchor="middle" fill="currentColor" font-weight="bold">11</text>
+            <!-- legend -->
+            <rect x="90" y="280" width="12" height="10" fill="var(--fg-muted)" opacity=".55"/><text x="108" y="289" fill="currentColor">ідеал (≈2000/2000)</text>
+            <rect x="250" y="280" width="12" height="10" fill="var(--accent)"/><text x="268" y="289" fill="currentColor">FakeFez, реально запущено: P = 0.9665</text>
+            <rect x="520" y="280" width="12" height="10" fill="var(--bad)" opacity=".8"/><text x="538" y="289" fill="currentColor">реальний QPU (ілюстр.): 0.9568</text>
+          </g>
+        </svg>
+        <figcaption>Схема 4. 4000 shots. Синє — справжній прогін на FakeFez; червоне — ілюстративний «реальний» результат. Масштаб стовпців 01/10 — той самий, вони просто малі.</figcaption>
+      </figure>
+
+      <h3>Три числа, які варто порахувати завжди</h3>
+      <table>
+        <tr><th>Метрика</th><th>Формула</th><th>FakeFez (реально)</th><th>Сенс</th></tr>
+        <tr><td>Популяція «правильних» станів</td><td><span class="math">P = (n₀₀ + n₁₁)/N</span></td><td>3866/4000 = 0.9665</td><td>Проста оцінка якості; не є fidelity у строгому сенсі (не бачить фазових помилок)</td></tr>
+        <tr><td>Витік у 01/10</td><td><span class="math">L = 1 − P</span></td><td>0.0335</td><td>Сума readout + гейтових помилок, що зламали кореляцію</td></tr>
+        <tr><td>⟨ZZ⟩ з лічильників</td><td><span class="math">(n₀₀ − n₀₁ − n₁₀ + n₁₁)/N = 2P − 1</span></td><td>0.933</td><td>Те саме, що дасть Estimator для <code>ZZ</code> без mitigation</td></tr>
+        <tr><td>Статистична похибка P</td><td><span class="math">σ = √(P(1−P)/N)</span> <span class="say">(√ — «корінь з»; σ — «сигма»)</span></td><td>√(0.9665·0.0335/4000) ≈ 0.0028</td><td>Різниці менші за 2–3σ — це шум вибірки, а не різниця чипів (<a href="09-probability-shots.html">туторіал 9</a>)</td></tr>
+      </table>
+
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        <b>Читання бітрядка.</b> Qiskit — little-endian: у рядку <code>"10"</code> <b>правий</b> символ — кубіт 0, лівий — кубіт 1.
+        Тобто <code>"10"</code> = q1 виміряно як 1, q0 як 0. Асиметрія <code>10 &gt; 01</code> на реальних чипах часто означає, що
+        у одного кубіта помилка зчитування більша, або що стан |1⟩ <span class="say">(|1⟩ — «кет один»: вектор-стовпчик стану)</span> встиг зрелаксувати в |0⟩ за час вимірювання (T1, порядок сотень нс
+        вимірювання проти десятків-сотень мкс T1).
+      </div></div>
+
+      <h3>Вибір пари кубітів має значення</h3>
+      <p>Той самий Bell на FakeFez, 8000 shots, три розміщення (реальний прогін):</p>
+      <table>
+        <tr><th>Layout</th><th>00</th><th>01</th><th>10</th><th>11</th><th>P(00)+P(11)</th></tr>
+        <tr><td>автоматичний → [0, 1]</td><td>3889</td><td>118</td><td>121</td><td>3872</td><td>0.9701</td></tr>
+        <tr class="chosen"><td>найкращий score → [96, 103]</td><td>3892</td><td>45</td><td>40</td><td>4023</td><td><b>0.9894</b></td></tr>
+        <tr><td>«мертвий» каплер → [68, 69]</td><td>1849</td><td>2032</td><td>2204</td><td>1915</td><td>0.4705</td></tr>
+      </table>
+      <p>Остання стрічка — майже рівномірний шум: CZ з помилкою 1.0 повністю руйнує заплутаність. Мораль: <code>initial_layout</code>
+      задавайте лише свідомо, на основі свіжої <code>target</code>, і перевіряйте, що пара робоча.</p>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Бюджет Open Plan: скільки Bell влізе в 10 хвилин</h2>
+      <p class="section-desc">Рахуємо QPU-секунди так само, як рахували б гроші за API LLM.</p>
+
+      <p>Що відомо (з документації IBM, перевіряйте актуальне): ліміт Open Plan ≈ <b>600 с QPU</b> на вікно; списується <b>usage</b> —
+      час, коли QPU зайнятий вашою задачею (включно з підготовкою, ініціалізацією кубітів між shots, вимірюваннями), а не час у черзі.
+      Для маленької Sampler-задачі (одна-кілька 2-кубітних схем, тисячі shots) usage зазвичай <b>порядку 2–5 с</b> — фіксовані накладні
+      витрати домінують над часом самих shots (один shot — це мікросекунди + затримка повторення ~сотні мкс).</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 210" role="img" aria-label="Бюджет 600 секунд Open Plan. Варіант A: 150 окремих задач по одній схемі Bell, кожна приблизно 4 секунди, весь бюджет витрачено. Варіант B: одна задача з 20 схемами, приблизно 8 секунд; на решту бюджету можна зробити ще 70 таких задач. Висновок: пакуйте схеми в одну задачу">
+          <g font-size="11.5">
+            <text x="10" y="22" fill="var(--accent)" font-weight="bold">600 с QPU на вікно (≈10 хв)</text>
+            <text x="10" y="56" fill="currentColor">A: 1 схема = 1 job</text>
+            <rect x="170" y="40" width="540" height="26" fill="none" stroke="currentColor"/>
+            <g fill="var(--bad)" opacity=".75">
+              <rect x="171" y="41" width="3.2" height="24"/><rect x="175.6" y="41" width="3.2" height="24"/><rect x="180.2" y="41" width="3.2" height="24"/><rect x="184.8" y="41" width="3.2" height="24"/>
+              <rect x="189.4" y="41" width="519" height="24" opacity=".6"/>
+            </g>
+            <text x="440" y="84" text-anchor="middle" fill="var(--fg-muted)">~150 задач × ~4 с: бюджет вичерпано, і на кожну — окрема черга</text>
+            <text x="10" y="130" fill="currentColor">B: 20 схем в 1 job</text>
+            <rect x="170" y="114" width="540" height="26" fill="none" stroke="currentColor"/>
+            <rect x="171" y="115" width="7.2" height="24" fill="var(--good)"/>
+            <text x="186" y="132" fill="currentColor">≈ 8 с на 20 схем (ілюстр.)</text>
+            <text x="440" y="158" text-anchor="middle" fill="var(--fg-muted)">та сама кількість експериментів — у ~10 разів менше QPU-часу і одна черга</text>
+            <text x="10" y="196" fill="var(--fg-muted)" font-size="11">Числа usage — орієнтовні; точне значення після запуску дає job.usage(), поки задача в черзі — job.usage_estimation["quantum_seconds"].</text>
+          </g>
+        </svg>
+        <figcaption>Схема 5. Фіксовані накладні витрати на задачу роблять «одна схема — одна задача» найдорожчим способом витратити квоту.</figcaption>
+      </figure>
+
+      <div class="codecard"><div class="bar"><span class="path">budget.py — 1 job з багатьма PUB-ами</span></div><pre><code># Один run() = одна задача; кожен PUB — окрема схема/набір параметрів
+pubs = [(isa_bell,), (isa_bell_on_best_pair,), *[(c,) for c in readout_calibration_circuits]]
+job = sampler.run(pubs, shots=4000)
+...
+spent = job.usage()
+print(f"spent {spent:.1f} s; left ≈ {600 - spent_total - spent:.0f} s of Open Plan window")</code></pre></div>
+
+      <div class="rule-box"><b>Правило бюджету:</b> (1) dry-run на fake завжди; (2) пакуйте всі схеми експерименту в один <code>run()</code>;
+      (3) логувати <code>job.usage()</code> після кожної задачі в таблицю; (4) shots обирайте з потрібної похибки
+      (<span class="math">N ≈ z²·p(1−p)/ε²</span> <span class="say">(ε — «епсилон»)</span>), а не «про всяк випадок 100 000».</div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина III · Estimator і mitigation</div><div class="line"></div></div>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Estimator: ⟨ZZ⟩, ⟨XX⟩, ⟨ZI⟩ на залізі</h2>
+      <p class="section-desc">Sampler дає бітрядки; Estimator одразу дає середнє значення спостережуваної з похибкою — і вміє вбудовану mitigation.</p>
+
+      <p>Для стану Белла <span class="math">|Φ⁺⟩ = (|00⟩+|11⟩)/√2</span> <span class="say">(Φ — «фі велика»)</span> ідеальні значення: <span class="math">⟨ZZ⟩ = 1</span>,
+      <span class="math">⟨XX⟩ = 1</span>, <span class="math">⟨ZI⟩ = 0</span>. Перші два разом — «свідок» заплутаності: класична
+      суміш 00/11 дала б <span class="math">⟨ZZ⟩ = 1</span>, але <span class="math">⟨XX⟩ = 0</span>. Тобто Estimator бачить те, чого
+      не бачить гістограма в Z-базисі — фазову когерентність.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">estimator_bell.py — реально запущено (local mode, FakeFez)</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.quantum_info import SparsePauliOp
+from qiskit.transpiler import generate_preset_pass_manager
+from qiskit_ibm_runtime import EstimatorV2 as Estimator
+from qiskit_ibm_runtime.fake_provider import FakeFez
+
+backend = FakeFez()                     # real: service.least_busy(...)
+qc = QuantumCircuit(2)                  # БЕЗ вимірювань — Estimator додає їх сам
+qc.h(0)
+qc.cx(0, 1)
+
+isa = generate_preset_pass_manager(backend=backend, optimization_level=1).run(qc)
+# Спостережувані пишуться для логічних кубітів → переносимо на фізичні
+observables = [SparsePauliOp(p).apply_layout(isa.layout) for p in ("ZZ", "XX", "ZI")]
+
+est = Estimator(mode=backend, options={"resilience_level": 1, "default_shots": 8000})
+pub = est.run([(isa, observables)]).result()[0]
+print("evs :", pub.data.evs.round(4))
+print("stds:", pub.data.stds.round(4))</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">вивід (resilience_level 0 / 1 / 2 у local mode)</span></div><pre><code>lvl 0  evs [0.9488 0.938  0.0078]  stds [0.0035 0.0039 0.0112]
+lvl 1  evs [0.9405 0.9448 0.0052]  stds [0.0038 0.0037 0.0112]
+lvl 2  evs [0.94   0.9368 0.014 ]  stds [0.0038 0.0039 0.0112]
+UserWarning: The resilience_level option has no effect in local testing mode.</code></pre></div>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Важливий факт, перевірений запуском:</b> у local testing mode <code>resilience_level</code> <b>ігнорується</b> (runtime прямо пише
+        попередження). Різниця між рядками вище — лише статистичний шум. Тобто вбудовану mitigation офлайн протестувати не можна;
+        її ефект ви побачите тільки на реальному QPU. Як моделювати TREX і ZNE руками офлайн — у розділі 13.
+      </div></div>
+
+      <p>Чому <code>⟨ZZ⟩ ≈ 0.94</code>, а не 1: близько 0.06 «з'їдає» помилка зчитування двох кубітів (по ~1–1.5 %, кожна помилка
+      зчитування змінює знак ZZ, тож внесок ~2×(ε₀+ε₁)), решту — CZ і декогеренція. На реальному чипі з
+      <code>resilience_level=1</code> (TREX) значення підтягнеться ближче до 0.98–0.99 (очікування, не вимір).</p>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Рівні mitigation і що кожен коштує</h2>
+      <p class="section-desc">Suppression зменшує помилки під час виконання; mitigation виправляє середні значення постобробкою. Обидва платять shots і QPU-часом.</p>
+
+      <table>
+        <tr><th>Техніка</th><th>Що робить</th><th>Де вмикається (EstimatorOptions)</th><th>Ціна</th></tr>
+        <tr><td><b>Dynamical decoupling (DD)</b></td><td>Заповнює простої кубіта парами імпульсів (X–X, XY4), що «відлунюють» повільний дрейф фази</td><td><code>dynamical_decoupling.enable=True</code>, <code>sequence_type="XX" | "XpXm" | "XY4"</code></td><td>Майже безкоштовно; іноді шкодить на коротких схемах</td></tr>
+        <tr><td><b>Pauli twirling</b></td><td>Обгортає гейти й вимірювання випадковими Паулі, перетворюючи когерентні помилки в стохастичні (їх легше усереднити)</td><td><code>twirling.enable_gates</code>, <code>twirling.enable_measure</code>, <code>num_randomizations</code></td><td>Більше варіантів схем; та сама кількість shots розбивається між ними</td></tr>
+        <tr><td><b>TREX</b> (twirled readout error extinction)</td><td>Вимірює, як шум зчитування «стискає» очікувані значення, і ділить на цей коефіцієнт</td><td><code>resilience.measure_mitigation=True</code> (входить у <code>resilience_level=1</code>)</td><td>Калібрувальні схеми + збільшення дисперсії; помірно</td></tr>
+        <tr><td><b>ZNE</b> (zero-noise extrapolation)</td><td>Запускає схему з підсиленим шумом (λ <span class="say">(λ — «лямбда»)</span> = 1, 3, 5…) і екстраполює до λ = 0</td><td><code>resilience.zne_mitigation=True</code>, <code>zne.noise_factors</code>, <code>zne.extrapolator</code> (у <code>resilience_level=2</code>)</td><td>×(кількість noise factors) схем, глибші схеми, сильно зростає дисперсія</td></tr>
+        <tr><td><b>PEC</b></td><td>Квазіймовірнісне «скасування» вивченого шуму</td><td><code>resilience.pec_mitigation=True</code></td><td>Експоненційна за розміром схеми кількість семплів; рідко для Open Plan</td></tr>
+      </table>
+
+      <table>
+        <tr><th><code>resilience_level</code></th><th>Що вмикає (за документацією IBM)</th><th>Коли брати</th></tr>
+        <tr><td>0</td><td>Нічого; «сирі» значення</td><td>Бенчмарк шуму, навчання, ваша власна mitigation</td></tr>
+        <tr class="chosen"><td>1 (за замовчуванням для Estimator)</td><td>TREX (readout) + twirling вимірювань</td><td>Майже завжди: дешево і прибирає домінантну помилку малих схем</td></tr>
+        <tr><td>2</td><td>Рівень 1 + ZNE з gate twirling</td><td>Глибші схеми, де помилки гейтів важать більше за readout; дорожче в рази</td></tr>
+      </table>
+
+      <div class="codecard"><div class="bar"><span class="path">mitigation_options.py — опції, перевірені на EstimatorOptions 0.50</span></div><pre><code>from qiskit_ibm_runtime import EstimatorV2 as Estimator
+
+est = Estimator(mode=backend)
+est.options.default_shots = 8000
+est.options.resilience_level = 1                       # TREX
+est.options.dynamical_decoupling.enable = True
+est.options.dynamical_decoupling.sequence_type = "XY4"
+est.options.twirling.enable_gates = True
+est.options.twirling.num_randomizations = 32
+# Ручне налаштування ZNE замість рівня 2:
+est.options.resilience.zne_mitigation = True
+est.options.resilience.zne.noise_factors = (1, 3, 5)
+est.options.resilience.zne.extrapolator = "exponential"   # або "linear", ("exponential", "linear")</code></pre></div>
+      <p>Назви атрибутів (<code>resilience.zne.noise_factors</code>, <code>.extrapolator</code>, <code>.amplifier</code>,
+      <code>dynamical_decoupling.sequence_type</code>, <code>twirling.num_randomizations</code>, <code>.strategy</code> …) звірені з
+      <code>dir(EstimatorOptions())</code> у 0.50. Допустимі значення рядків — дивіться docstring своєї версії.</p>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> TREX і ZNE руками: розуміємо, а не вмикаємо прапорець</h2>
+      <p class="section-desc">Обидві техніки — лінійна алгебра на рівні другого курсу. Реалізуємо їх на FakeFez, де вбудована mitigation вимкнена.</p>
+
+      <h3>Readout mitigation через матрицю плутанини</h3>
+      <p>Ідея (сучасний TREX робить це хитріше, через twirling, але суть та сама): готуємо кожен базисний стан, міряємо, будуємо матрицю
+      <span class="math">M[i, j] = P(виміряли i | приготували j)</span>. Тоді виміряний розподіл <span class="math">p̃ = M·p</span> <span class="say">(p̃ — «p з хвилькою»)</span>, і
+      справжній <span class="math">p ≈ M⁻¹·p̃</span>. Для фронтендера: це як корекція аналітики на відомий bias вимірювання. Якщо з A/B-тестів ви знаєте, що
+      adblock "з'їдає" 20 % подій кнопки A і 5 % кнопки B, ви спершу міряєте цю матрицю втрат на контрольних подіях, а потім
+      "розвертаєте" сирі лічильники, щоб отримати справжні частки. Матриця плутанини — та сама відома "матриця втрат"
+      для бітів 0/1.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">readout_mitigation.py — реально запущено, 20 000 shots</span></div><pre><code>import numpy as np
+from qiskit import QuantumCircuit
+from qiskit.transpiler import generate_preset_pass_manager
+from qiskit_ibm_runtime import SamplerV2 as Sampler
+from qiskit_ibm_runtime.fake_provider import FakeFez
+
+be = FakeFez()
+pm = generate_preset_pass_manager(backend=be, optimization_level=1, initial_layout=[0, 1])
+keys = ["00", "01", "10", "11"]
+
+def prep(bits: str) -&gt; QuantumCircuit:      # bits у порядку Qiskit: "q1q0"
+    qc = QuantumCircuit(2)
+    if bits[1] == "1": qc.x(0)
+    if bits[0] == "1": qc.x(1)
+    qc.measure_all()
+    return pm.run(qc)
+
+bell = QuantumCircuit(2); bell.h(0); bell.cx(0, 1); bell.measure_all()
+res = Sampler(mode=be, options={"default_shots": 20000}).run(
+    [prep(k) for k in keys] + [pm.run(bell)]).result()    # 5 схем — ОДНА задача
+
+def probs(pub):
+    c = pub.data.meas.get_counts(); n = sum(c.values())
+    return np.array([c.get(k, 0) / n for k in keys])
+
+M = np.column_stack([probs(p) for p in res[:4]])   # стовпець j — приготували keys[j]
+raw = probs(res[4])
+mit = np.linalg.solve(M, raw)
+zz = lambda p: p[0] - p[1] - p[2] + p[3]
+print(np.round(M, 4)); print("raw", raw.round(4), "ZZ", round(zz(raw), 4))
+print("mit", mit.round(4), "ZZ", round(zz(mit), 4))</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">вивід</span></div><pre><code>[[0.989  0.0166 0.0187 0.0004]
+ [0.0056 0.978  0.0003 0.0186]
+ [0.0054 0.0001 0.9762 0.0177]
+ [0.     0.0052 0.0048 0.9634]]
+raw [0.4848 0.016  0.0154 0.4838] ZZ 0.9372
+mit [0.4898 0.004  0.004  0.5022] ZZ 0.984</code></pre></div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 250" role="img" aria-label="Матриця плутанини зчитування 4 на 4 як теплова карта. Діагональ від 0.963 до 0.989 — правильні зчитування. Позадіагональні елементи до 0.019 — помилки. Найбільша помилка: приготували 11, а зчитали 01 або 10 приблизно 1.7 відсотка — релаксація одиниці в нуль. Праворуч: сирий ZZ 0.937, після інверсії матриці 0.984, ідеал 1">
+          <g font-size="11">
+            <text x="40" y="20" fill="var(--accent)" font-weight="bold">M[виміряли, приготували] — FakeFez, кубіти 0,1</text>
+            <text x="20" y="140" fill="var(--fg-muted)" transform="rotate(-90 20 140)">виміряли</text>
+            <text x="170" y="236" text-anchor="middle" fill="var(--fg-muted)">приготували</text>
+            <g>
+              <text x="80" y="44" text-anchor="middle" fill="currentColor">00</text><text x="140" y="44" text-anchor="middle" fill="currentColor">01</text><text x="200" y="44" text-anchor="middle" fill="currentColor">10</text><text x="260" y="44" text-anchor="middle" fill="currentColor">11</text>
+              <text x="42" y="76" fill="currentColor">00</text><text x="42" y="121" fill="currentColor">01</text><text x="42" y="166" fill="currentColor">10</text><text x="42" y="211" fill="currentColor">11</text>
+              <rect x="52" y="52" width="56" height="42" fill="var(--accent)" opacity=".85"/><text x="80" y="78" text-anchor="middle" fill="#fff">.989</text>
+              <rect x="112" y="52" width="56" height="42" fill="var(--bad)" opacity=".35"/><text x="140" y="78" text-anchor="middle" fill="currentColor">.017</text>
+              <rect x="172" y="52" width="56" height="42" fill="var(--bad)" opacity=".35"/><text x="200" y="78" text-anchor="middle" fill="currentColor">.019</text>
+              <rect x="232" y="52" width="56" height="42" fill="none" stroke="var(--border)"/><text x="260" y="78" text-anchor="middle" fill="var(--fg-muted)">.000</text>
+              <rect x="52" y="97" width="56" height="42" fill="var(--bad)" opacity=".15"/><text x="80" y="123" text-anchor="middle" fill="currentColor">.006</text>
+              <rect x="112" y="97" width="56" height="42" fill="var(--accent)" opacity=".85"/><text x="140" y="123" text-anchor="middle" fill="#fff">.978</text>
+              <rect x="172" y="97" width="56" height="42" fill="none" stroke="var(--border)"/><text x="200" y="123" text-anchor="middle" fill="var(--fg-muted)">0</text>
+              <rect x="232" y="97" width="56" height="42" fill="var(--bad)" opacity=".32"/><text x="260" y="123" text-anchor="middle" fill="currentColor">.019</text>
+              <rect x="52" y="142" width="56" height="42" fill="var(--bad)" opacity=".15"/><text x="80" y="168" text-anchor="middle" fill="currentColor">.005</text>
+              <rect x="112" y="142" width="56" height="42" fill="none" stroke="var(--border)"/><text x="140" y="168" text-anchor="middle" fill="var(--fg-muted)">0</text>
+              <rect x="172" y="142" width="56" height="42" fill="var(--accent)" opacity=".85"/><text x="200" y="168" text-anchor="middle" fill="#fff">.976</text>
+              <rect x="232" y="142" width="56" height="42" fill="var(--bad)" opacity=".32"/><text x="260" y="168" text-anchor="middle" fill="currentColor">.018</text>
+              <rect x="52" y="187" width="56" height="42" fill="none" stroke="var(--border)"/><text x="80" y="213" text-anchor="middle" fill="var(--fg-muted)">0</text>
+              <rect x="112" y="187" width="56" height="42" fill="var(--bad)" opacity=".15"/><text x="140" y="213" text-anchor="middle" fill="currentColor">.005</text>
+              <rect x="172" y="187" width="56" height="42" fill="var(--bad)" opacity=".15"/><text x="200" y="213" text-anchor="middle" fill="currentColor">.005</text>
+              <rect x="232" y="187" width="56" height="42" fill="var(--accent)" opacity=".85"/><text x="260" y="213" text-anchor="middle" fill="#fff">.963</text>
+            </g>
+            <text x="340" y="80" fill="currentColor" font-weight="bold">⟨ZZ⟩</text>
+            <line x1="340" y1="100" x2="700" y2="100" stroke="var(--border)"/>
+            <rect x="340" y="110" width="337" height="22" fill="var(--fg-muted)" opacity=".5"/><text x="684" y="126" fill="currentColor">0.937 сирий</text>
+            <rect x="340" y="140" width="354" height="22" fill="var(--good)" opacity=".8"/><text x="340" y="178" fill="currentColor">0.984 після M⁻¹</text>
+            <line x1="700" y1="104" x2="700" y2="168" stroke="currentColor" stroke-dasharray="4,3"/><text x="700" y="96" text-anchor="end" fill="var(--fg-muted)">ідеал 1.0 →</text>
+            <text x="340" y="206" fill="var(--fg-muted)">Залишок 0.016 — помилки гейтів і декогеренція,</text>
+            <text x="340" y="222" fill="var(--fg-muted)">їх readout-калібрування не бачить → потрібен ZNE.</text>
+          </g>
+        </svg>
+        <figcaption>Схема 6. Матриця плутанини з реального прогону на FakeFez. Найбільші позадіагональні елементи — у стовпці «11»: одиниця релаксує в нуль.</figcaption>
+      </figure>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>Обмеження «повної» матриці:</b> розмір <span class="math">2ⁿ × 2ⁿ</span> і <span class="math">2ⁿ</span> калібрувальних схем — для 20 кубітів це
+        мільйон схем. Тому на практиці беруть тензорний добуток 2×2 матриць окремих кубітів (припущення про незалежність), M3 або TREX,
+        який узагалі не будує матрицю, а оцінює один коефіцієнт стиснення для кожної спостережуваної. Інверсія може дати і від'ємні
+        «ймовірності» — їх проектують назад на симплекс.
+      </div></div>
+
+      <h3>ZNE: екстраполяція до нульового шуму</h3>
+      <p>Шум підсилюють «згортанням» (folding): кожен <span class="math">CX</span> замінюють на <span class="math">CX·CX·CX</span> — логічно те саме
+      (бо <span class="math">CX² = I</span>), а помилок утричі більше. Міряють <span class="math">⟨O⟩(λ)</span> для кількох λ і екстраполюють до λ = 0.
+      Для перевірки візьмемо глибшу схему: Bell + 4 «порожні» пари <code>CX·CX</code>, ідеальне <span class="math">⟨ZZ⟩ = 1</span>.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">zne_manual.py — реально запущено, 40 000 shots на точку</span></div><pre><code>import numpy as np
+from qiskit import QuantumCircuit
+from qiskit.quantum_info import SparsePauliOp
+from qiskit.transpiler import generate_preset_pass_manager
+from qiskit_ibm_runtime import EstimatorV2 as Estimator
+from qiskit_ibm_runtime.fake_provider import FakeFez
+
+be = FakeFez()
+pm = generate_preset_pass_manager(backend=be, optimization_level=1, initial_layout=[0, 1])
+
+def circ(fold: int, layers: int = 4) -&gt; QuantumCircuit:
+    qc = QuantumCircuit(2); qc.h(0)
+    for _ in range(layers):
+        for _ in range(2 * fold):
+            qc.cx(0, 1); qc.barrier()   # barrier не дає транспілятору скоротити CX·CX = I
+    qc.cx(0, 1)
+    return qc
+
+pubs = []
+for f in (1, 3, 5):
+    isa = pm.run(circ(f))
+    pubs.append((isa, SparsePauliOp("ZZ").apply_layout(isa.layout)))
+    print("fold", f, "CZ =", isa.count_ops()["cz"])
+
+res = Estimator(mode=be, options={"default_shots": 40000}).run(pubs).result()
+y = np.array([float(p.data.evs) for p in res])
+lam = np.array([9, 25, 41]) / 9                 # реальний коефіцієнт підсилення = CZ / CZ₀
+print("evs", y.round(4))
+print("linear ZNE", np.polyval(np.polyfit(lam, y, 1), 0).round(4))
+print("exp ZNE   ", np.exp(np.polyval(np.polyfit(lam, np.log(y), 1), 0)).round(4))</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">вивід</span></div><pre><code>fold 1 CZ = 9
+fold 3 CZ = 25
+fold 5 CZ = 41
+evs [0.8516 0.6772 0.5412]
+linear ZNE 0.9326
+exp ZNE    0.9667</code></pre></div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 300" role="img" aria-label="Графік ZNE. Вісь X — коефіцієнт підсилення шуму лямбда від 0 до 5. Вісь Y — очікуване значення ZZ від 0.4 до 1. Три виміряні точки: лямбда 1 — 0.852, лямбда 2.78 — 0.677, лямбда 4.56 — 0.541. Лінійна екстраполяція дає 0.933 у нулі, експоненційна 0.967. Ідеал 1.0. Помилку зчитування ZNE не прибирає: ZNE не прибирає помилку зчитування, тому для неї потрібен ще TREX">
+          <g font-size="11">
+            <!-- axes: x 0..5 -> 80..680 (120 px/unit); y 0.4..1.0 -> 260..40 (366.7 px/unit) -->
+            <line x1="80" y1="260" x2="690" y2="260" stroke="currentColor"/>
+            <line x1="80" y1="30" x2="80" y2="260" stroke="currentColor"/>
+            <text x="80" y="276" text-anchor="middle" fill="var(--fg-muted)">0</text>
+            <text x="200" y="276" text-anchor="middle" fill="var(--fg-muted)">1</text>
+            <text x="320" y="276" text-anchor="middle" fill="var(--fg-muted)">2</text>
+            <text x="440" y="276" text-anchor="middle" fill="var(--fg-muted)">3</text>
+            <text x="560" y="276" text-anchor="middle" fill="var(--fg-muted)">4</text>
+            <text x="680" y="276" text-anchor="middle" fill="var(--fg-muted)">5</text>
+            <text x="385" y="294" text-anchor="middle" fill="var(--fg-muted)">λ — коефіцієнт підсилення шуму (CZ / CZ₀)</text>
+            <text x="72" y="264" text-anchor="end" fill="var(--fg-muted)">0.4</text>
+            <text x="72" y="190" text-anchor="end" fill="var(--fg-muted)">0.6</text>
+            <text x="72" y="117" text-anchor="end" fill="var(--fg-muted)">0.8</text>
+            <text x="72" y="44" text-anchor="end" fill="var(--fg-muted)">1.0</text>
+            <line x1="80" y1="40" x2="690" y2="40" stroke="var(--good)" stroke-dasharray="5,3"/>
+            <text x="686" y="35" text-anchor="end" fill="var(--good)">ідеал ⟨ZZ⟩ = 1</text>
+            <!-- linear fit: y = 0.9144 - 0.0815 λ ; at 0: 0.9144 -> y=260-(0.5144*366.7)=71.4 ; at 5: 0.507 -> 220.8 -->
+            <line x1="80" y1="64.7" x2="680" y2="224.8" stroke="var(--fg-muted)" stroke-dasharray="6,4"/>
+            <!-- exp fit approx: 0.9454*exp(-0.1206 λ)  points at 0,1,2,3,4,5 -->
+            <polyline points="80,52.2 200,94.7 320,132.0 440,164.9 560,193.8 680,219.3" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+            <!-- measured -->
+            <circle cx="200" cy="94.4" r="5" fill="var(--bad)"/>
+            <circle cx="413.3" cy="158.4" r="5" fill="var(--bad)"/>
+            <circle cx="626.7" cy="208.2" r="5" fill="var(--bad)"/>
+            <text x="210" y="89" fill="currentColor">0.852</text>
+            <text x="423" y="154" fill="currentColor">0.677</text>
+            <text x="636" y="204" fill="currentColor">0.541</text>
+            <circle cx="80" cy="52.2" r="5" fill="var(--accent)"/>
+            <circle cx="80" cy="64.7" r="5" fill="none" stroke="var(--fg-muted)" stroke-width="1.5"/>
+            <text x="92" y="56" fill="var(--accent)" font-weight="bold">exp → 0.967</text>
+            <text x="92" y="78" fill="var(--fg-muted)">lin → 0.933</text>
+            <rect x="420" y="60" width="250" height="44" rx="6" fill="var(--bg)" stroke="var(--border)"/>
+            <text x="430" y="78" fill="currentColor">● виміряно на FakeFez (40k shots)</text>
+            <text x="430" y="96" fill="var(--fg-muted)">лінії — екстраполяція до λ = 0</text>
+          </g>
+        </svg>
+        <figcaption>Схема 7. Ручний ZNE на реальних числах. Експоненційна модель ближча до фізики згасання; але навіть вона не доходить до 1 (0.967) — заважає помилка зчитування, яку folding не підсилює і тому не прибирає. Точки стохастичні: повторний запуск зсуває екстраполяцію на ±0.01–0.02. Тому на практиці ZNE поєднують з TREX (саме це і є <code>resilience_level=2</code>).</figcaption>
+      </figure>
+
+      <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">На співбесіді запитають</span>
+        «Чому не ставити завжди <code>resilience_level=2</code>?» — Тому що ZNE множить кількість схем і, головне, дисперсію:
+        екстраполяція підсилює статистичну похибку (у прикладі вище std точки ≈ 0.003, а екстрапольованого значення — кілька разів більше).
+        Щоб отримати ту саму точність, треба більше shots → більше QPU-секунд. Для коротких схем, де домінує readout, рівень 1 дає майже
+        весь виграш за малу ціну.
+      </div></div>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Режими виконання: job, batch, session</h2>
+      <p class="section-desc">Як задачі стають у чергу — і чому це важливо для варіаційних алгоритмів.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 250" role="img" aria-label="Порівняння режимів виконання на шкалі часу. Job mode: кожна задача окремо стає в чергу, між задачами інші користувачі. Batch: кілька незалежних задач подаються разом і плануються компактно, але між ними можуть бути чужі задачі. Session: QPU резервується за вами на вікно часу, задачі ітеративного циклу йдуть одна за одною без повторної черги; Open Plan сесії не підтримує">
+          <g font-size="11.5">
+            <line x1="120" y1="230" x2="720" y2="230" stroke="currentColor"/><text x="720" y="246" text-anchor="end" fill="var(--fg-muted)">час →</text>
+            <text x="10" y="50" fill="currentColor" font-weight="bold">job</text>
+            <text x="10" y="66" fill="var(--fg-muted)" font-size="10.5">Open: так</text>
+            <rect x="120" y="38" width="120" height="22" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="180" y="53" text-anchor="middle" fill="currentColor" font-size="10.5">черга</text>
+            <rect x="240" y="38" width="30" height="22" fill="var(--accent)"/><text x="255" y="53" text-anchor="middle" fill="#fff" font-size="10.5">J1</text>
+            <rect x="270" y="38" width="80" height="22" fill="var(--bg-soft)" stroke="var(--border)"/><text x="310" y="53" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">чужі</text>
+            <rect x="350" y="38" width="130" height="22" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="415" y="53" text-anchor="middle" fill="currentColor" font-size="10.5">знову черга</text>
+            <rect x="480" y="38" width="30" height="22" fill="var(--accent)"/><text x="495" y="53" text-anchor="middle" fill="#fff" font-size="10.5">J2</text>
+
+            <text x="10" y="115" fill="currentColor" font-weight="bold">batch</text>
+            <text x="10" y="131" fill="var(--fg-muted)" font-size="10.5">Open: так</text>
+            <rect x="120" y="103" width="120" height="22" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="180" y="118" text-anchor="middle" fill="currentColor" font-size="10.5">черга</text>
+            <rect x="240" y="103" width="30" height="22" fill="var(--accent)"/><text x="255" y="118" text-anchor="middle" fill="#fff" font-size="10.5">J1</text>
+            <rect x="270" y="103" width="30" height="22" fill="var(--accent)"/><text x="285" y="118" text-anchor="middle" fill="#fff" font-size="10.5">J2</text>
+            <rect x="300" y="103" width="40" height="22" fill="var(--bg-soft)" stroke="var(--border)"/>
+            <rect x="340" y="103" width="30" height="22" fill="var(--accent)"/><text x="355" y="118" text-anchor="middle" fill="#fff" font-size="10.5">J3</text>
+            <text x="385" y="118" fill="var(--fg-muted)" font-size="10.5">незалежні задачі, плануються разом</text>
+
+            <text x="10" y="180" fill="currentColor" font-weight="bold">session</text>
+            <text x="10" y="196" fill="var(--bad)" font-size="10.5">Open: ні*</text>
+            <rect x="120" y="168" width="120" height="22" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="180" y="183" text-anchor="middle" fill="currentColor" font-size="10.5">черга (раз)</text>
+            <rect x="240" y="162" width="330" height="34" fill="none" stroke="var(--accent)" stroke-dasharray="5,3"/>
+            <rect x="248" y="168" width="30" height="22" fill="var(--accent)"/><text x="263" y="183" text-anchor="middle" fill="#fff" font-size="10.5">J1</text>
+            <rect x="282" y="168" width="44" height="22" fill="var(--good-bg)" stroke="var(--good)"/><text x="304" y="183" text-anchor="middle" fill="currentColor" font-size="10">CPU</text>
+            <rect x="330" y="168" width="30" height="22" fill="var(--accent)"/><text x="345" y="183" text-anchor="middle" fill="#fff" font-size="10.5">J2</text>
+            <rect x="364" y="168" width="44" height="22" fill="var(--good-bg)" stroke="var(--good)"/><text x="386" y="183" text-anchor="middle" fill="currentColor" font-size="10">CPU</text>
+            <rect x="412" y="168" width="30" height="22" fill="var(--accent)"/><text x="427" y="183" text-anchor="middle" fill="#fff" font-size="10.5">J3</text>
+            <text x="580" y="183" fill="var(--fg-muted)" font-size="10.5">QPU зарезервовано</text>
+            <text x="120" y="216" fill="var(--fg-muted)" font-size="10.5">* за документацією IBM на 2025–2026: сесії — лише для платних планів; перевірте актуальне.</text>
+          </g>
+        </svg>
+        <figcaption>Схема 8. Session корисний для варіаційного циклу (VQE/QAOA): «QPU → класичний оптимізатор → QPU» без повторної черги. На Open Plan той самий цикл доведеться робити через job/batch, і кожна ітерація чекатиме в черзі.</figcaption>
+      </figure>
+
+      <div class="codecard"><div class="bar"><span class="path">batch_mode.py — Batch реально працює і з fake-бекендом (local mode)</span></div><pre><code>from qiskit_ibm_runtime import Batch, SamplerV2 as Sampler
+
+with Batch(backend=backend) as batch:          # max_time="1h" — опційний ліміт
+    sampler = Sampler(mode=batch)
+    jobs = [sampler.run([c], shots=2000) for c in isa_circuits]
+results = [j.result() for j in jobs]</code></pre></div>
+      <p>Сигнатури в 0.50: <code>Session(backend, max_time=None, *, create_new=True)</code> і <code>Batch(backend, max_time=None, *, create_new=True)</code>.
+      Детальніше про те, як режими лягають на архітектуру сервісу, — <a href="03-quantum-backend-python-ibm.html#s3">туторіал 3, розділ 3</a>.</p>
+    </section>
+
+    <section id="s15">
+      <h2><span class="num">15</span> Executor-примітиви в 0.50: що змінюється</h2>
+      <p class="section-desc">Свіжа зміна API, яку більшість туторіалів в інтернеті ще не відображає.</p>
+
+      <p>Попередження, яке ви побачите при <code>SamplerV2(...)</code> у 0.50 (дослівно з запуску):</p>
+      <div class="codecard"><div class="bar"><span class="path">DeprecationWarning</span></div><pre><code>The SamplerV2 class is deprecated as of qiskit-ibm-runtime 0.50.0 and will be removed no sooner
+than 3 months after the release date. `qiskit_ibm_runtime.executor_sampler.Sampler` provides a new
+Sampler implementation that runs all the pre- and post-processing in the client side. The top-level
+`qiskit_ibm_runtime.Sampler` import will be updated to point to the client-side sampler in an
+upcoming release, with the legacy Sampler being available until the deprecation is completed.</code></pre></div>
+
+      <div class="grid2">
+        <div class="codecard"><div class="bar"><span class="path">було (≤ 0.4x)</span></div><pre><code>from qiskit_ibm_runtime import SamplerV2 as Sampler
+from qiskit_ibm_runtime import EstimatorV2 as Estimator</code></pre></div>
+        <div class="codecard"><div class="bar"><span class="path">стає (0.50+)</span></div><pre><code>from qiskit_ibm_runtime.executor_sampler import Sampler
+from qiskit_ibm_runtime.executor_estimator import Estimator</code></pre></div>
+      </div>
+
+      <table>
+        <tr><th>Аспект</th><th>Що перевірено в 0.50</th></tr>
+        <tr><td>Конструктор</td><td><code>Sampler(mode: BackendV2 | Session | Batch | None = None, options=None)</code> — як і раніше</td></tr>
+        <tr><td>Local mode з FakeFez</td><td><code>executor_sampler.Sampler</code> — працює (Bell: 00 1945, 11 1928, 01 53, 10 74 на 4000 shots)</td></tr>
+        <tr><td>Executor Estimator на FakeFez</td><td>У нашому прогоні впав на 156-кубітному fake-бекенді (<code>max_memory_mb</code> в Aer, потім <code>ValueError: could not broadcast…</code>); легасі <code>EstimatorV2</code> — працює. Для офлайн-тестів Estimator поки тримайте легасі-клас або менший бекенд</td></tr>
+        <tr><td>Обробка</td><td>Пре- і постобробка (twirling, mitigation) — на клієнті, а не на сервері IBM; у результаті є <code>metadata["executor"]</code></td></tr>
+        <tr><td>Ліміт docstring</td><td>«When twirling is disabled, circuits must not contain BoxOp»; «Dynamical decoupling is incompatible with dynamic circuits»</td></tr>
+      </table>
+
+      <div class="callout good"><div class="ic">✅</div><div class="body">
+        <b>Інженерна порада:</b> імпортуйте примітиви в одному місці (<code>quantum/primitives.py</code>) і реекспортуйте. Тоді міграція — один рядок,
+        а не пошук по всьому коду. Саме тому в <a href="03-quantum-backend-python-ibm.html#s12">туторіалі 3</a> є адаптер провайдера.
+      </div></div>
+    </section>
+
+    <section id="s16">
+      <h2><span class="num">16</span> Troubleshooting: типові помилки першого запуску</h2>
+      <p class="section-desc">Симптом → причина → що зробити.</p>
+      <table>
+        <tr><th>Симптом</th><th>Ймовірна причина</th><th>Що зробити</th></tr>
+        <tr><td><code>401 Unauthorized</code> / помилка автентифікації при створенні сервісу</td><td>Невірний або видалений API key; пробіл/перенос рядка в env</td><td>Створити новий ключ; <code>token.strip()</code>; перезберегти з <code>overwrite=True</code></td></tr>
+        <tr><td><code>AccountAlreadyExistsError: Named account (open-learning) already exists. Set overwrite=True to overwrite.</code></td><td>Повторний <code>save_account</code> з тим самим <code>name</code> (наприклад, після ротації ключа)</td><td><code>overwrite=True</code> або видалити профіль з <code>~/.qiskit/qiskit-ibm.json</code></td></tr>
+        <tr><td>«Instance … not found» / порожній список бекендів</td><td>Неправильний CRN, інший акаунт, інстанс у іншому регіоні</td><td>Скопіювати CRN заново зі сторінки інстансу; передати <code>instance=</code> явно</td></tr>
+        <tr><td><code>InvalidAccountError: Invalid `channel` value. Expected one of ['ibm_cloud', 'ibm_quantum_platform'], got 'ibm_quantum'.</code></td><td>Старий код з <code>"ibm_quantum"</code> (повідомлення дослівне з 0.50)</td><td><code>channel="ibm_quantum_platform"</code></td></tr>
+        <tr><td><code>IBMInputValueError: The instruction h on qubits (0,) is not supported by the target system…</code></td><td>Відправили не-ISA схему</td><td><code>generate_preset_pass_manager(backend=backend).run(qc)</code> з <b>тим самим</b> backend</td></tr>
+        <tr><td>Estimator: помилка розмірності спостережуваної</td><td>Observable на 2 кубіти, а ISA-схема на 156</td><td><code>obs.apply_layout(isa.layout)</code></td></tr>
+        <tr><td><code>AttributeError: 'DataBin' object has no attribute 'c'</code></td><td>Регістр після <code>measure_all()</code> називається <code>meas</code></td><td><code>pub.data.meas</code> або подивитись <code>pub.data</code></td></tr>
+        <tr><td>Задача годинами в <code>QUEUED</code></td><td>Спільна черга Open Plan</td><td>Нормально. Зберегти job_id, повернутись пізніше; обрати інший бекенд через <code>least_busy</code></td></tr>
+        <tr><td><code>ERROR</code>, у <code>error_message()</code> — перевищення ліміту часу</td><td>Вичерпано квоту вікна або <code>max_execution_time</code></td><td>Перевірити usage в кабінеті; зменшити shots/схеми</td></tr>
+        <tr><td>Реальний результат гірший за fake</td><td>Дрейф калібрування, інша пара кубітів</td><td>Порівнювати з fake на тій самій фізичній парі; дивитись свіжу <code>target</code></td></tr>
+        <tr><td><code>usage()</code> повертає 0</td><td>Облік ще не завершено</td><td>Почекати; або <code>usage(partial=True)</code></td></tr>
+      </table>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина IV · Практика</div><div class="line"></div></div>
+
+    <section id="s17">
+      <h2><span class="num">17</span> Задачі з розв'язками</h2>
+      <p class="section-desc">20 задач: 5 легких, 9 середніх, 6 складних. Спершу розв'язуйте самі — офлайн-частину можна перевірити на FakeFez.</p>
+
+      <div class="legend">
+        <span><span class="dot" style="background:var(--good)"></span>Легко — перевірка розуміння</span>
+        <span><span class="dot" style="background:var(--warn)"></span>Середньо — розрахунок або код</span>
+        <span><span class="dot" style="background:var(--bad)"></span>Складно — проєктування й аналіз</span>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 1</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Відновіть ланцюжок доступу</span></div>
+        <p>Розставте в правильному порядку: <i>job_id</i>, <i>API key</i>, <i>IBMid</i>, <i>ISA-схема</i>, <i>інстанс Open (CRN)</i>, <i>least_busy()</i>, <i>save_account()</i>.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><b>IBMid → інстанс Open (CRN) → API key → save_account() → least_busy() → ISA-схема → job_id.</b></p>
+          <p>Чому так: без IBMid немає акаунта; інстанс створюється всередині акаунта; ключ генерується в акаунті і разом із CRN зберігається
+          локально. Лише маючи сервіс, можна отримати список бекендів і вибрати один. ISA-схему можна побудувати тільки під конкретний бекенд
+          (транспілятору потрібна його <code>target</code>), а <code>job_id</code> з'являється після <code>run()</code>.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 2</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Знайдіть три проблеми</span></div>
+        <div class="codecard"><div class="bar"><span class="path">setup.py (у репозиторії проєкту)</span></div><pre><code>from qiskit_ibm_runtime import QiskitRuntimeService
+QiskitRuntimeService.save_account(
+    channel="ibm_quantum",
+    token="a1b2c3d4e5...",
+    name="open-learning",
+)</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>1) <b>Токен у коді, у репозиторії</b> — витік секрету; брати з <code>os.environ</code>, а ключ, що вже потрапив у git, — ревокнути.</p>
+          <p>2) <b><code>channel="ibm_quantum"</code></b> — канал вимкнено; 0.50 кидає <code>InvalidAccountError: Invalid `channel` value. Expected one of ['ibm_cloud', 'ibm_quantum_platform']…</code>.</p>
+          <p>3) <b>Немає <code>instance=</code></b> (CRN) — при кількох інстансах сервіс може вибрати не той план; а при повторному запуску з тим самим <code>name</code>
+          без <code>overwrite=True</code> буде <code>AccountAlreadyExistsError</code>.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 3</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Що означає «10»</span></div>
+        <p>У гістограмі 3-кубітної схеми є ключ <code>"100"</code>. Який кубіт виміряно як 1?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><b>Кубіт 2.</b> Qiskit записує бітрядок little-endian: правий символ — кубіт 0, лівий — кубіт n−1. <code>"100"</code> = q2=1, q1=0, q0=0.
+          Як цілий індекс це 4 = 2². Плутанина з порядком — найчастіша причина «неправильних» відповідей у перших програмах.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 4</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Задача 3 години в QUEUED</span></div>
+        <p>Які стани фінальні? Що робити, якщо задача на Open Plan стоїть у <code>QUEUED</code> три години?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Фінальні: <code>DONE</code>, <code>ERROR</code>, <code>CANCELLED</code> (<code>RuntimeJobV2.JOB_FINAL_STATES</code> у 0.50).
+          Три години черги на безкоштовному плані — нормально; час у черзі не списується. Нічого не перевідправляйте (отримаєте дві задачі
+          і подвійне списання). Переконайтесь, що <code>job_id</code> збережено, закрийте ноутбук і поверніться через <code>service.job(id)</code>.
+          Якщо задача термінова — скасуйте її і подайте на інший бекенд з меншим <code>pending_jobs</code>.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 5</span><span class="taskdiff easy">Легко</span><span class="tasktitle">AttributeError у результаті</span></div>
+        <p>Код <code>pub.data.c.get_counts()</code> падає з <code>AttributeError: 'DataBin' object has no attribute 'c'</code>. Схема збудована через <code>measure_all()</code>. Чому?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><code>measure_all()</code> створює класичний регістр з ім'ям <b><code>meas</code></b>. Атрибути <code>DataBin</code> відповідають іменам класичних регістрів:
+          <code>pub.data.meas.get_counts()</code>. Регістр <code>c</code> з'являється, коли схему створено як <code>QuantumCircuit(2, 2)</code> і вимірювання
+          додано явно <code>measure([0,1],[0,1])</code>. Універсальний спосіб — <code>print(pub.data)</code>.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 6</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Скільки shots</span></div>
+        <p>(а) Скільки shots потрібно, щоб оцінити ймовірність з похибкою ±1 % на рівні довіри 95 % у найгіршому випадку?
+        (б) Ви вже знаєте, що <span class="math">P(00)+P(11) ≈ 0.97</span>, і хочете похибку ±0.5 %. Скільки тепер?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Біноміальна оцінка: <span class="math">σ = √(p(1−p)/N)</span>, півширина 95 % інтервалу <span class="math">ε = 1.96σ</span>, отже <span class="math">N = 1.96²·p(1−p)/ε²</span>.</p>
+          <p>(а) Найгірший випадок <span class="math">p = 0.5</span>: <span class="math">N = 3.8416·0.25/0.0001 ≈ <b>9604</b></span>.</p>
+          <p>(б) <span class="math">N = 3.8416·0.97·0.03/0.000025 ≈ <b>4472</b></span>. Хоча точність удвічі вища, shots менше — бо дисперсія біля 0 чи 1 мала.
+          Висновок для бюджету: shots рахують від потрібної похибки, а не «чим більше, тим краще». Детально — <a href="09-probability-shots.html">туторіал 9</a>.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 7</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Інтерпретуйте реальну гістограму</span></div>
+        <p>Ілюстративний результат Bell на реальному QPU, 4096 shots: <code>{'00': 1958, '01': 96, '10': 140, '11': 1902}</code>.
+        Порахуйте P(00)+P(11), ⟨ZZ⟩, статистичну похибку P і поясніть асиметрію 10 vs 01.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><span class="math">P = (1958+1902)/4096 = 3860/4096 = 0.9424</span>; <span class="math">⟨ZZ⟩ = 2P − 1 = 0.8848</span>.</p>
+          <p><span class="math">σ_P = √(0.9424·0.0576/4096) ≈ 0.0036</span>, отже <span class="math">σ_ZZ = 2σ_P ≈ 0.0073</span>.</p>
+          <p>Асиметрія: <code>"10"</code> = q1=1, q0=0. Найімовірніше джерело — стан <code>11</code>, у якому <b>q0</b> зрелаксував 1→0 (T1) або був
+          прочитаний як 0. <code>"01"</code> = q1 зрелаксував. 140 проти 96 — різниця ≈ 44 при σ різниці ≈ √(140+96) ≈ 15, тобто ~3σ: це не випадковість,
+          у кубіта q0 (фізичного, з layout!) помилка «1→0» помітно більша. Також <code>00</code> &gt; <code>11</code> на 56 — той самий ефект: релаксація
+          перетворює одиниці на нулі, а не навпаки.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 8</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">ISA-помилка, хоча транспіляція є</span></div>
+        <div class="codecard"><div class="bar"><span class="path">bug.py</span></div><pre><code>pm = generate_preset_pass_manager(backend=FakeFez(), optimization_level=1)
+isa = pm.run(bell())
+backend = service.least_busy(operational=True, simulator=False)
+job = Sampler(mode=backend).run([isa])      # IBMInputValueError ... not supported by the target</code></pre></div>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Схема транспільована під <b>FakeFez</b>, а відправлена на бекенд, який повернув <code>least_busy</code> (наприклад, <code>ibm_torino</code> або <code>ibm_kingston</code>).
+          ISA-схема прив'язана до конкретної <code>target</code>: фізичні номери кубітів, доступні пари CZ, іноді навіть набір гейтів (на старших Eagle-процесорах
+          двокубітний гейт — ECR, а не CZ). Виправлення — спершу вибрати бекенд, потім транспілювати під <b>нього ж</b>:</p>
+          <span class="out">backend = service.least_busy(operational=True, simulator=False)
+isa = generate_preset_pass_manager(backend=backend, optimization_level=1).run(bell())</span>
+          <p>Ще надійніше — функція, яка повертає пару <code>(backend, pm)</code>, щоб їх неможливо було розсинхронізувати.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 9</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Загублений job</span></div>
+        <p>Скрипт упав до запису <code>last.job.json</code>, але задача, судячи з кабінету, виконалась. Як її знайти з коду?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <span class="out">for j in service.jobs(job_tags=["bell-lab"], limit=10,
+                         created_after=datetime.now() - timedelta(hours=6)):
+    print(j.job_id(), j.status(), j.backend().name, j.creation_date)</span>
+          <p>Саме тому ми ставили <code>options.environment.job_tags</code> при відправці. Без тегів доведеться фільтрувати за
+          <code>backend_name</code> і часом. Другий урок: записуйте <code>job_id</code> одразу після <code>run()</code>, до <code>result()</code>.
+          У бекенд-сервісі — в БД в тій самій транзакції, що й запис «задача відправлена».</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 10</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Бюджет 10 хвилин</span></div>
+        <p>Ліміт — 600 с. Одна задача з однією Bell-схемою коштує ≈ 4 с usage, з 20 схемами — ≈ 8 с (ілюстративні оцінки). Вам потрібно 40 експериментів
+        (40 різних схем по 4000 shots). Порівняйте стратегії й залиште 20 % запасу.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Доступно з запасом: <span class="math">600 · 0.8 = 480 с</span>.</p>
+          <p>Стратегія «1 схема = 1 job»: <span class="math">40 · 4 = 160 с</span> + 40 разів черга. Влазить, але третина бюджету і години очікування.</p>
+          <p>Стратегія «20 схем у job»: 2 задачі · 8 с = <b>16 с</b>, дві черги. Економія ~10× і можна повторити весь експеримент ще багато разів
+          (наприклад, у різні дні — щоб побачити дрейф калібрування). Фіксовані накладні витрати на задачу — основна стаття, тому пакуйте.
+          Реальні числа беріть з <code>job.usage()</code> перших задач і уточнюйте план.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 11</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Найкраща пара кубітів</span></div>
+        <p>Напишіть <code>best_pair(target, two_q="cz")</code>, що повертає пару з мінімальною сумою помилки двокубітного гейта і зчитування обох кубітів,
+        без дублікатів (a,b)/(b,a) і з пропуском пар з <code>error ≥ 0.5</code>. Чому <code>least_busy</code> такого не робить?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <span class="out">def best_pair(target, two_q="cz"):
+    ro = lambda q: target["measure"][(q,)].error or 0.0
+    seen, scored = set(), []
+    for (a, b), p in target[two_q].items():
+        key = tuple(sorted((a, b)))
+        if key in seen or p is None or p.error is None or p.error &gt;= 0.5:
+            continue
+        seen.add(key)
+        scored.append((p.error + ro(a) + ro(b), a, b))
+    return min(scored)</span>
+          <p>На FakeFez це дає <code>(0.0100, 96, 103)</code> і P(00)+P(11) = 0.989 проти 0.970 на автоматичному розміщенні (розділ 9).
+          <code>least_busy</code> оптимізує <b>чергу</b> (<code>pending_jobs</code>), а не якість; до того ж вибирає бекенд, а не кубіти. Для пари використовуйте
+          <code>initial_layout=[a, b]</code>. На старших бекендах двокубітний гейт може називатися <code>ecr</code> — тому параметр <code>two_q</code>.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 12</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Один код — fake і real</span></div>
+        <p>Що конкретно перевіряє dry-run на FakeFez, а що — ні? Наведіть по три пункти.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><b>Перевіряє:</b> (1) що схема транспілюється і є ISA для цієї target; (2) що опції, PUB-и, імена регістрів і постобробка коректні — код
+          той самий; (3) порядок величин шуму і «чи взагалі видно сигнал» при обраній кількості shots.</p>
+          <p><b>Не перевіряє:</b> (1) сьогоднішню калібровку і дрейф; (2) черги, ліміти плану, автентифікацію, доступність бекенду;
+          (3) вбудовану mitigation — <code>resilience_level</code> у local mode ігнорується. Також fake-модель не містить усіх ефектів
+          (crosstalk, leakage, немарківський шум).</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 13</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">⟨ZZ⟩, ⟨ZI⟩ з лічильників і ⟨XX⟩ без Estimator</span></div>
+        <p>З гістограми FakeFez <code>{'00': 1934, '01': 69, '10': 65, '11': 1932}</code> порахуйте ⟨ZZ⟩ і ⟨IZ⟩ (Z на кубіті 0). Як отримати ⟨XX⟩, маючи тільки Sampler?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>⟨ZZ⟩: знак +1 для парної кількості одиниць. <span class="math">(1934 + 1932 − 69 − 65)/4000 = 0.933</span>.</p>
+          <p>⟨IZ⟩ (кубіт 0 — правий біт): +1 якщо q0=0. <span class="math">(1934 + 65 − 69 − 1932)/4000 = −0.0005 ≈ 0</span>. Ідеально — 0.</p>
+          <p>⟨XX⟩: перед вимірюванням додайте <code>H</code> на обидва кубіти (поворот X-базису в Z-базис), потім рахуйте так само, як ZZ.
+          Саме це Estimator робить усередині — групує спостережувані за базисами вимірювання. Для |Φ⁺⟩ має вийти ≈ +1, і разом з ⟨ZZ⟩ ≈ 1 це доводить
+          заплутаність (класична суміш дала б ⟨XX⟩ ≈ 0).</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 14</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Стеля через помилку зчитування</span></div>
+        <p>Помилки зчитування кубітів 0 і 1 на FakeFez — 0.0115 і 0.0117. Оцініть, яке максимальне ⟨ZZ⟩ ви побачите без mitigation навіть з ідеальними гейтами.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Кожна помилка зчитування з ймовірністю ε перевертає знак Z на цьому кубіті. Для незалежних помилок
+          <span class="math">⟨ZZ⟩_вим = (1 − 2ε₀)(1 − 2ε₁)·⟨ZZ⟩_іст = 0.977·0.9766 ≈ <b>0.954</b></span>.</p>
+          <p>Ми виміряли ~0.937–0.949: решта — помилки CZ і декогеренція. Висновок: для коротких схем readout — головний «податок», тому
+          <code>resilience_level=1</code> (TREX) дає основний виграш.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 15</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Інверсія readout для одного кубіта</span></div>
+        <p>Для кубіта відомо: <span class="math">P(0|1) = 0.03</span> (приготували 1, прочитали 0), <span class="math">P(1|0) = 0.01</span>. Після H виміряно
+        <span class="math">p̃₀ = 0.52</span>. Знайдіть виправлене <span class="math">p₀</span>.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Матриця плутанини (стовпці — приготований стан): <span class="math">M = [[0.99, 0.03], [0.01, 0.97]]</span>.</p>
+          <p><span class="math">p̃₀ = 0.99·p₀ + 0.03·(1 − p₀) = 0.03 + 0.96·p₀</span> ⇒ <span class="say">(⇒ — «звідси випливає»)</span> <span class="math">p₀ = (0.52 − 0.03)/0.96 = <b>0.5104</b></span>.</p>
+          <p>Інтерпретація: асиметричний шум зсуває розподіл у бік 0 (одиниці частіше «падають»). Ідеальне значення для H|0⟩ — 0.5; залишок 0.0104
+          — або статистика (при 4000 shots σ ≈ 0.008), або гейтова помилка. Узагальнення на n кубітів — <span class="math">M⁻¹</span> розміру 2ⁿ, або тензорний добуток
+          однокубітних матриць (див. <a href="07-linear-algebra-eigen-tensor.html">туторіал 7</a>).</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 16</span><span class="taskdiff hard">Складно</span><span class="tasktitle">ZNE руками і ціна в дисперсії</span></div>
+        <p>Виміряно <span class="math">E(λ=1) = 0.84</span>, <span class="math">E(λ=3) = 0.62</span>, кожне зі стандартною похибкою σ. (а) Лінійна екстраполяція до λ=0.
+        (б) Яка похибка екстрапольованого значення?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>(а) Пряма через дві точки: <span class="math">E(0) = E(1) − (E(3) − E(1))/2 = (3·E(1) − E(3))/2 = (2.52 − 0.62)/2 = <b>0.95</b></span>.</p>
+          <p>(б) <span class="math">Var[E(0)] = (9σ² + σ²)/4 = 2.5σ²</span> ⇒ <span class="math">σ₀ = √2.5·σ ≈ <b>1.58σ</b></span>. Щоб повернути початкову точність,
+          потрібно в 2.5 рази більше shots на кожну точку — плюс сама схема з λ=3 утричі глибша. Ось чому ZNE «дорогий» і чому екстраполяція
+          з 3 точок і нелінійною моделлю (як у <code>resilience_level=2</code>) ще дорожча за дисперсією.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 17</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Обрати режим і mitigation</span></div>
+        <p>Для кожного сценарію на Open Plan оберіть режим виконання і <code>resilience_level</code>: (а) Bell-тест навику; (б) 30 незалежних схем для
+        бенчмарку readout на різних парах; (в) VQE з 50 ітераціями оптимізатора; (г) схема з 60 CZ, вимірюється одна спостережувана.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>(а) <b>job</b>; Sampler без mitigation (вам і треба побачити сирий шум) або Estimator level 1 для порівняння.</p>
+          <p>(б) <b>один job з 30 PUB-ами</b> або <b>batch</b>; <code>resilience_level=0</code> — ви саме вимірюєте помилки, mitigation їх сховає.</p>
+          <p>(в) Ідеально — <b>session</b>, але на Open Plan він недоступний. Варіанти: job на кожну ітерацію (50 черг — може тривати добу), або
+          зменшити кількість ітерацій (оптимізатор з малою кількістю викликів, теплий старт із симулятора) і/або оцінювати кілька наборів параметрів в одному job.
+          Level 1.</p>
+          <p>(г) Глибока схема — помилки гейтів домінують: level 2 (ZNE) або level 1 + DD + twirling, якщо бюджет не дозволяє ZNE; збільшити shots з урахуванням
+          росту дисперсії (задача 16).</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 18</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Тестувати mitigation у CI</span></div>
+        <p>Ви пишете сервіс, що вмикає <code>resilience_level=2</code>. У CI немає токена. Як протестувати, що mitigation-конвеєр працює, якщо local mode його ігнорує?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Розділіть відповідальності: (1) <b>контракт</b> — юніт-тест, що в примітив передаються правильні опції (мок примітиву, перевірка <code>options.resilience_level == 2</code>,
+          <code>noise_factors</code>); (2) <b>математика</b> — власні функції екстраполяції й інверсії readout тестуються на синтетичних даних з відомою відповіддю
+          (наприклад, <span class="math">E(λ) = 0.97·e^{−0.12λ}</span> → має повернути 0.97); (3) <b>інтеграція офлайн</b> — ручні TREX/ZNE з розділу 13 на FakeFez як
+          регресійний тест («mitigated ближче до 1, ніж raw»); (4) <b>смоук на залізі</b> — рідкісний ручний або нічний job з малим бюджетом і тегом <code>ci-smoke</code>.
+          Не перевіряйте точні числа з шумних прогонів — тільки нерівності з запасом у кілька σ.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 19</span><span class="taskdiff hard">Складно</span><span class="tasktitle">«Захищений» скрипт першого запуску</span></div>
+        <p>Додайте до <code>bell_lab.py</code> запобіжники: не відправляти, якщо схема не ISA; shots ≤ 10 000; обов'язковий тег; підтвердження в консолі для режиму real;
+        запис job_id до очікування.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <span class="out">MAX_SHOTS = 10_000
+
+def assert_isa(circuit, backend):
+    t = backend.target
+    for inst in circuit.data:
+        name = inst.operation.name
+        if name in ("barrier",):
+            continue
+        qargs = tuple(circuit.find_bit(q).index for q in inst.qubits)
+        if not t.instruction_supported(name, qargs):
+            raise ValueError(f"not ISA: {name} on {qargs}")
+
+def submit(sampler, isa, backend, shots, mode):
+    assert shots &lt;= MAX_SHOTS, "shots cap"
+    assert_isa(isa, backend)
+    if mode == "real" and input(f"Send to {backend.name}? [y/N] ") != "y":
+        raise SystemExit("aborted")
+    sampler.options.environment.job_tags = ["bell-lab"]
+    job = sampler.run([isa], shots=shots)
+    Path("last.job.json").write_text(json.dumps({"job_id": job.job_id()}))
+    return job</span>
+          <p><code>Target.instruction_supported(name, qargs)</code> перевірено на FakeFez: <code>('h',(0,)) → False</code>, <code>('cz',(0,1)) → True</code>,
+          <code>('cz',(0,5)) → False</code> (немає з'єднання). SamplerV2 і сам перевіряє ISA на клієнті, але власна перевірка дає зрозуміле повідомлення
+          і працює однаково для всіх версій API. Підтвердження в консолі — дешевий захист від «запустив real замість fake».</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 20</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Real гірший за fake на тій самій парі</span></div>
+        <p>На FakeFez пара [96, 103] дала P = 0.989, а на реальному <code>ibm_fez</code> сьогодні — 0.962 (ілюстративно), 8000 shots. Це значуще? Які причини і як перевірити?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Похибки: <span class="math">σ_fake = √(0.989·0.011/8000) ≈ 0.0012</span>, <span class="math">σ_real = √(0.962·0.038/8000) ≈ 0.0021</span>,
+          σ різниці ≈ 0.0024. Різниця 0.027 ≈ <b>11σ</b> — точно не статистика.</p>
+          <p>Причини: (1) знімок калібрування FakeFez старий — сьогодні ця пара може бути гіршою (калібровки змінюються щодня, деякі каплери тимчасово
+          деградують); (2) fake-модель неповна: немає crosstalk, leakage, TLS-дефектів, немарківського шуму; (3) інший фізичний layout, якщо транспілятор
+          переставив кубіти.</p>
+          <p>Перевірка: подивитися <code>backend.target</code> реального бекенду на момент запуску (помилки CZ і readout цієї пари),
+          переконатися через <code>isa.layout.final_index_layout()</code>, що пара та сама; запустити readout-калібрування (розділ 13) у тому ж job;
+          порівняти з іншою парою з хорошим сьогоднішнім score.</p>
+        </div></details>
+      </div>
+    </section>
+
+    <section id="s18">
+      <h2><span class="num">18</span> Глибше: матеріали</h2>
+      <p class="section-desc">Адреси IBM змінювались у 2025 році; якщо посилання не відкривається — шукайте назву розділу в документації <code>quantum.cloud.ibm.com/docs</code>.</p>
+
+      <div class="res"><div class="res-head"><span class="res-title">IBM Quantum Platform docs: Set up your IBM Cloud account / Save your login credentials</span><span class="lvl l1">базовий</span><span class="lvl type">документація</span></div>
+        <div class="res-meta">quantum.cloud.ibm.com/docs/guides — розділи «Setup»</div>
+        <p>Першоджерело для кроків 1–6 розділу 3: як створити інстанс, де взяти CRN, як викликати <code>save_account</code>. Читати перед реєстрацією.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">IBM docs: Execution modes (job, batch, session) і Open Plan</span><span class="lvl l1">базовий</span><span class="lvl type">документація</span></div>
+        <div class="res-meta">guides/execution-modes; сторінка планів і лімітів</div>
+        <p>Актуальні правила: які режими доступні на якому плані, як рахується usage, що входить у ліміт. Перевіряйте перед плануванням бюджету.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">IBM docs: Error mitigation and suppression techniques; Configure error mitigation</span><span class="lvl l2">середній</span><span class="lvl type">документація</span></div>
+        <div class="res-meta">guides/error-mitigation-and-suppression-techniques, guides/configure-error-mitigation</div>
+        <p>Що саме вмикає кожен <code>resilience_level</code>, параметри TREX/ZNE/PEC, приклади. Після розділів 12–13 цього туторіалу.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">IBM docs: Local testing mode; Fake backends</span><span class="lvl l1">базовий</span><span class="lvl type">документація</span></div>
+        <div class="res-meta">guides/local-testing-mode</div>
+        <p>Що підтримується офлайн, а що ні (як ми бачили — mitigation ігнорується). Корисно для CI.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">IBM Quantum Learning: Quantum Computing in Practice</span><span class="lvl l2">середній</span><span class="lvl type">курс</span></div>
+        <div class="res-meta">quantum.cloud.ibm.com/learning — курс з відео й ноутбуками</div>
+        <p>Як інженери IBM думають про реальні запуски: шум, вибір кубітів, mitigation, «utility-scale» робочі процеси. Наступний крок після цього туторіалу.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">IBM Quantum Learning: Utility-scale quantum computing</span><span class="lvl l3">просунутий</span><span class="lvl type">курс</span></div>
+        <div class="res-meta">курс-семестр у Quantum Learning</div>
+        <p>Великі схеми на 100+ кубітів, ZNE/PEC на практиці, інтерпретація результатів. Коли Bell і малі схеми вже рутина.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">GitHub: Qiskit/qiskit-ibm-runtime — release notes</span><span class="lvl l2">середній</span><span class="lvl type">код</span></div>
+        <div class="res-meta">github.com/Qiskit/qiskit-ibm-runtime/releases</div>
+        <p>Де ви першими побачите депрекації на кшталт SamplerV2 → <code>executor_sampler.Sampler</code>. Читайте перед оновленням версії в lock-файлі.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">Kim et al., «Evidence for the utility of quantum computing before fault tolerance», Nature 2023</span><span class="lvl l3">просунутий</span><span class="lvl type">стаття</span></div>
+        <div class="res-meta">Nature 618, 500–505</div>
+        <p>Робота, у якій ZNE на реальному 127-кубітному процесорі дав результати, які важко отримати класично. Показує, навіщо вся машинерія mitigation.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">Temme, Bravyi, Gambetta, «Error mitigation for short-depth quantum circuits», PRL 2017</span><span class="lvl l3">просунутий</span><span class="lvl type">стаття</span></div>
+        <div class="res-meta">arXiv:1612.02058</div>
+        <p>Оригінальна ідея екстраполяції до нульового шуму і квазіймовірнісного методу (PEC). Математика — рівень розділу 13 і задачі 16.</p></div>
+
+      <p>У цій серії: <a href="03-quantum-backend-python-ibm.html">3 — архітектура бекенду з QPU</a>, <a href="04-pet-project-quantum-routing.html">4 — пет-проєкт на QAOA</a>,
+      <a href="09-probability-shots.html">9 — ймовірності й shots</a>, <a href="11-qiskit-circuits-aer.html">11 — Qiskit I: схеми й Aer</a>.</p>
+    </section>
+
+    <section id="s19">
+      <h2><span class="num">19</span> Чекліст: навик на базовому рівні, якщо ви можете…</h2>
+      <p class="section-desc">Кожен пункт — без підглядання в цей туторіал.</p>
+      <div class="card">
+        <ul>
+          <li>☐ Пояснити різницю між IBMid, інстансом (CRN), API key і бекендом — і за повідомленням про помилку сказати, яка ланка зламалась.</li>
+          <li>☐ Зберегти облікові дані через <code>save_account(channel="ibm_quantum_platform", …)</code> так, щоб токен не потрапив у git.</li>
+          <li>☐ Вивести список бекендів, вибрати <code>least_busy</code> і пояснити, чому це не «найкращий» бекенд.</li>
+          <li>☐ Прочитати з <code>backend.target</code> помилки CZ і зчитування та обрати пару кубітів.</li>
+          <li>☐ Транспілювати схему під той самий бекенд, на який відправляєте, і пояснити, з чого складається ISA-Bell.</li>
+          <li>☐ Прогнати код на fake-бекенді, потім — без змін логіки — на реальному QPU Open Plan.</li>
+          <li>☐ Зберегти <code>job_id</code> і через день отримати результат з іншої машини (<code>service.job</code>, <code>service.jobs(job_tags=…)</code>).</li>
+          <li>☐ З гістограми порахувати P(00)+P(11), ⟨ZZ⟩, статистичну похибку і пояснити асиметрію 01/10.</li>
+          <li>☐ Подивитися <code>job.usage()</code> і спланувати бюджет на місяць, пакуючи схеми в одну задачу.</li>
+          <li>☐ Отримати ⟨ZZ⟩ і ⟨XX⟩ через Estimator і пояснити, чому разом вони свідчать про заплутаність.</li>
+          <li>☐ Вибрати <code>resilience_level</code> під задачу й пояснити ціну TREX і ZNE; руками зробити readout-інверсію і лінійний ZNE.</li>
+          <li>☐ Знати, що в 0.50 SamplerV2/EstimatorV2 депрековані на користь executor-примітивів, і де змінити імпорт.</li>
+        </ul>
+      </div>
+      <div class="remember"><b>Головне:</b> реальний QPU — це віддалений, шумний, чергований і лімітований ресурс. Fake-бекенд для репетиції, job_id одразу
+      в сховище, схеми пакетом в одну задачу, ISA під той самий бекенд, і кожне число з заліза — з похибкою.</div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Quantum Doc · частина серії туторіалів AI Delivery Planner. Офлайн-приклади виконано на Qiskit 2.5.2, qiskit-aer 0.17.2, qiskit-ibm-runtime 0.50.0 (FakeFez, local testing mode); результати «реального QPU» ілюстративні.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*|\/\/[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b|\bthis\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case|const|let|var|function|interface|type|export|extends|implements|new|void|enum|typeof|instanceof|static|public|private|readonly|null|undefined)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+<script>
+(function(){
+  var root = document.documentElement, btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function current(){
+    var t = root.getAttribute('data-theme');
+    return t === 'light' || t === 'dark' ? t : (mq && mq.matches ? 'dark' : 'light');
+  }
+  function render(){
+    var dark = current() === 'dark';
+    btn.textContent = dark ? '☀️ Світла тема' : '🌙 Темна тема';
+    btn.setAttribute('aria-label', dark ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('docs-theme', next); }catch(e){}
+    render();
+  });
+  if(mq && mq.addEventListener) mq.addEventListener('change', render);
+  render();
+})();
+</script>
+</body>
+</html>

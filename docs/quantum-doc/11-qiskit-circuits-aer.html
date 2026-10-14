@@ -1,0 +1,2776 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>11. Qiskit I: схеми, транспіляція, Aer — Quantum Doc</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<script>
+(function(){
+  try{ var t = localStorage.getItem('docs-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --bg:#fcfbff; --bg-soft:#f3f2fa; --card:#ffffff; --border:#e0e0ec;
+    --fg:#1c1c2a; --fg-muted:#5c6176;
+    --accent:#3a5ee8; --accent-soft:#ebedff;
+    --code-bg:#212338; --code-fg:#e8e8f4; --code-muted:#8d92ab;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#3a5ee8; --info-bg:#ebedff; --info-border:#c7cffc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#171822; --bg-soft:#1e1f2b; --card:#1e1f2b; --border:#2e3041;
+      --fg:#e6e7f3; --fg-muted:#9ba0b7;
+      --accent:#7a8eff; --accent-soft:#1f2344;
+      --code-bg:#11111b; --code-fg:#e6e7f3; --code-muted:#7e8399;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#8a9dff; --info-bg:#161a36; --info-border:#2c356e;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#171822; --bg-soft:#1e1f2b; --card:#1e1f2b; --border:#2e3041;
+    --fg:#e6e7f3; --fg-muted:#9ba0b7;
+    --accent:#7a8eff; --accent-soft:#1f2344;
+    --code-bg:#11111b; --code-fg:#e6e7f3; --code-muted:#7e8399;
+    --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+    --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+    --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+    --info:#8a9dff; --info-bg:#161a36; --info-border:#2c356e;
+    --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"],
+  #tab-quantum:checked ~ .nav-tabbar label[for="tab-quantum"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  #tab-quantum:checked ~ .nav-links.quantum{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+
+  /* --- python-doc extras --- */
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider:first-child{margin-top:8px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+  .qa summary .qnum{color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700; margin-right:8px;}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  /* --- quantum-doc extras --- */
+  .res{border:1px solid var(--border); border-radius:var(--radius); background:var(--card); padding:14px 16px; margin:12px 0;}
+  .res .res-head{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:4px;}
+  .res .res-title{font-weight:700; font-size:15px;}
+  .res .res-meta{font-size:12.5px; color:var(--fg-muted);}
+  .res p{margin:6px 0 0; font-size:14.3px;}
+  .lvl{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap;}
+  .lvl.l1{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .lvl.l2{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .lvl.l3{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .lvl.type{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .timeline{border-left:2px solid var(--accent); margin:20px 0 20px 8px; padding-left:20px;}
+  .timeline .ev{position:relative; margin:0 0 18px;}
+  .timeline .ev::before{content:""; position:absolute; left:-27px; top:6px; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid var(--bg);}
+  .timeline .yr{font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; font-size:14px;}
+  .timeline .ev-t{font-weight:700;}
+  .timeline .ev p{margin:4px 0 0; font-size:14.3px; color:var(--fg-muted);}
+  .math{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:1.05em; white-space:nowrap;}
+  .math-block{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:18px; text-align:center; padding:14px; margin:14px 0; border:1px dashed var(--border); border-radius:var(--radius); background:var(--bg-soft); overflow-x:auto;}
+
+  /* --- theme switch --- */
+  :root{color-scheme:light;}
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .theme-toggle{
+    cursor:pointer; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+    background:var(--bg-soft); color:var(--fg); font:inherit; font-size:12.5px; font-weight:600;
+    transition:background .15s, border-color .15s;
+  }
+  .theme-toggle:hover{background:var(--card); border-color:var(--accent);}
+  .theme-toggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .say{color:var(--fg-muted); font-size:.9em; font-weight:400; font-style:normal;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="top-row">
+      <div class="brand">⚛️ Квантове програмування <span>· AI Delivery Planner</span></div>
+      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Темна тема</button>
+    </div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Квантове програмування · Туторіал 11 · Навик: Qiskit (локально)</div>
+  <h1>Qiskit I: схеми, транспіляція, Aer — усе, що можна зробити без акаунта IBM</h1>
+  <p class="lead">Перша половина навику "Qiskit": як збирати схеми з блоків і параметрів, як заглянути всередину через
+  <code>quantum_info</code>, що саме робить транспілятор із вашою схемою під реальний чіп, як запускати примітиви V2
+  на ноутбуці і як змоделювати шум справжнього процесора IBM через fake backend. Кожен приклад і кожна відповідь у
+  22 задачах реально запущені — виводи нижче справжні. Друга половина (акаунт, Runtime, реальний QPU через Open Plan) —
+  у <a href="12-qiskit-runtime-real-qpu.html">туторіалі 12</a>.</p>
+  <div class="pills">
+    <span class="pill">🧱 QuantumCircuit: блоки, параметри, порядок бітів</span>
+    <span class="pill">🔀 Транспіляція під FakeFez: layout, SWAP, рівні 0–3</span>
+    <span class="pill">🧪 Aer + шум реального чіпа</span>
+    <span class="pill">🏋️ 22 задачі з розв'язками</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-quantum" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+      <label for="tab-quantum" class="nav-tabbtn">⚛️ Квантове</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="../node-doc/01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="../node-doc/02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="../node-doc/03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="../node-doc/04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="../node-doc/05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="../node-doc/06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="../node-doc/07-fs-process-os.html">7. fs, process, os</a>
+        <a href="../node-doc/08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="../node-doc/09-http-networking.html">9. HTTP і мережа</a>
+        <a href="../node-doc/10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="../node-doc/11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="../node-doc/12-databases-orm.html">12. БД і ORM</a>
+        <a href="../node-doc/13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="../node-doc/14-security.html">14. Безпека Node</a>
+        <a href="../node-doc/15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="../node-doc/16-testing.html">16. Тестування</a>
+        <a href="../node-doc/17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="../node-doc/18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="../node-doc/19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="../node-doc/20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+      <nav class="nav-links quantum">
+        <a href="01-quanta-and-quantum-computing.html">1. Кванти й обчислення</a>
+        <a href="02-quantum-engineering-history.html">2. Квантова інженерія</a>
+        <a href="03-quantum-backend-python-ibm.html">3. Бекенд + IBM Quantum</a>
+        <a href="04-pet-project-quantum-routing.html">4. Пет-проєкт: маршрути</a>
+        <a href="05-quantum-engineer-roadmap.html">5. Шлях інженера: ресурси</a>
+        <a href="06-linear-algebra-vectors-matrices.html">6. Лін. алгебра I: вектори, матриці</a>
+        <a href="07-linear-algebra-eigen-tensor.html">7. Лін. алгебра II: власні, тензори</a>
+        <a href="08-complex-numbers-phase.html">8. Комплексні числа й фаза</a>
+        <a href="09-probability-shots.html">9. Ймовірності й shots</a>
+        <a href="10-numpy-statevector-simulator.html">10. NumPy: свій симулятор</a>
+        <a href="11-qiskit-circuits-aer.html" class="active">11. Qiskit I: схеми й Aer</a>
+        <a href="12-qiskit-runtime-real-qpu.html">12. Qiskit II: реальний QPU</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — QuantumCircuit</div>
+    <ol>
+      <li><a href="#s1">1. Встановлення і карта пакетів</a></li>
+      <li><a href="#s2">2. Анатомія схеми</a></li>
+      <li><a href="#s3">3. Порядок бітів: little-endian</a></li>
+      <li><a href="#s4">4. Композиція блоків</a></li>
+      <li><a href="#s5">5. Параметризовані схеми</a></li>
+    </ol>
+    <div class="toc-group">Частина II — quantum_info</div>
+    <ol>
+      <li><a href="#s6">6. Statevector і SparsePauliOp</a></li>
+      <li><a href="#s7">7. Operator: рівність схем</a></li>
+    </ol>
+    <div class="toc-group">Частина III — Транспіляція</div>
+    <ol>
+      <li><a href="#s8">8. Навіщо транспіляція: ISA</a></li>
+      <li><a href="#s9">9. Рівні оптимізації 0–3</a></li>
+      <li><a href="#s10">10. Layout, routing і SWAP</a></li>
+    </ol>
+    <div class="toc-group">Частина IV — Aer і примітиви</div>
+    <ol>
+      <li><a href="#s11">11. Примітиви V2 локально</a></li>
+      <li><a href="#s12">12. AerSimulator: методи</a></li>
+      <li><a href="#s13">13. Шум реального чіпа</a></li>
+      <li><a href="#s14">14. Динамічні схеми</a></li>
+    </ol>
+    <div class="toc-group">Частина V — Задачі</div>
+    <ol>
+      <li><a href="#tasks-easy">Легкі: 1–6 <span class="toc-count">6</span></a></li>
+      <li><a href="#tasks-mid">Середні: 7–18 <span class="toc-count">12</span></a></li>
+      <li><a href="#tasks-hard">Складні: 19–22 <span class="toc-count">4</span></a></li>
+    </ol>
+    <div class="toc-group">Частина VI — Далі</div>
+    <ol>
+      <li><a href="#deeper">Глибше: матеріали</a></li>
+      <li><a href="#checklist">Чекліст базового рівня</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · QuantumCircuit</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Встановлення і карта пакетів</h2>
+      <p class="section-desc">Що ставити, навіщо кожен пакет і де в цьому стеку живе ваш код.</p>
+
+      <p>Qiskit — це не одна бібліотека, а кілька пакетів з різними ролями. Для бекендера найзручніша аналогія:
+      <code>qiskit</code> — це "ORM + query builder" (описуєте, що хочете обчислити), транспілятор — "query planner"
+      під конкретну базу (конкретний чіп), а <code>qiskit-aer</code> і <code>qiskit-ibm-runtime</code> — два "драйвери":
+      локальний in-memory і віддалений хмарний.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">terminal</span></div><pre><code>python3 -m venv .venv &amp;&amp; source .venv/bin/activate
+pip install qiskit qiskit-aer qiskit-ibm-runtime   # ядро, симулятор, fake backends + Runtime
+pip install "qiskit[visualization]"                # matplotlib для qc.draw("mpl"), гістограми</code></pre></div>
+
+      <div class="codecard"><div class="bar"><span class="path">s1_versions.py</span></div><pre><code>import sys
+import qiskit, qiskit_aer, qiskit_ibm_runtime, numpy
+print("python", sys.version.split()[0])
+for m in (qiskit, qiskit_aer, qiskit_ibm_runtime, numpy):
+    print(f"{m.__name__:20} {m.__version__}")</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>python 3.13.3
+qiskit               2.5.2
+qiskit_aer           0.17.2
+qiskit_ibm_runtime   0.50.0
+numpy                2.5.4</code></pre></div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 300" role="img" aria-label="Карта пакетів Qiskit. Ваш Python-код будує QuantumCircuit пакета qiskit. Звідти три шляхи: quantum_info рахує точний стан і оператори для малих схем; транспілятор перетворює схему на ISA-схему під конкретний target; ISA-схема йде в примітиви Sampler або Estimator, які виконуються або локально в qiskit-aer, або на реальному QPU через qiskit-ibm-runtime. Fake backends з qiskit-ibm-runtime дають target і модель шуму реальних чіпів без акаунта.">
+          <defs><marker id="q11a-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="120" width="130" height="56" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.4"/>
+            <text x="75" y="144" text-anchor="middle" fill="currentColor" font-weight="bold">QuantumCircuit</text>
+            <text x="75" y="162" text-anchor="middle" fill="var(--fg-muted)" font-size="11">пакет qiskit</text>
+
+            <rect x="190" y="20" width="170" height="56" rx="10" fill="none" stroke="currentColor"/>
+            <text x="275" y="44" text-anchor="middle" fill="currentColor" font-weight="bold">quantum_info</text>
+            <text x="275" y="62" text-anchor="middle" fill="var(--fg-muted)" font-size="11">точна лінійна алгебра, ≤ ~25 q</text>
+
+            <rect x="190" y="120" width="170" height="56" rx="10" fill="none" stroke="currentColor"/>
+            <text x="275" y="144" text-anchor="middle" fill="currentColor" font-weight="bold">транспілятор</text>
+            <text x="275" y="162" text-anchor="middle" fill="var(--fg-muted)" font-size="11">→ ISA-схема під target</text>
+
+            <rect x="190" y="220" width="170" height="56" rx="10" fill="none" stroke="var(--fg-muted)" stroke-dasharray="4,3"/>
+            <text x="275" y="244" text-anchor="middle" fill="currentColor" font-weight="bold">fake backends</text>
+            <text x="275" y="262" text-anchor="middle" fill="var(--fg-muted)" font-size="11">target + шум без акаунта</text>
+
+            <rect x="410" y="120" width="140" height="56" rx="10" fill="var(--interview-bg)" stroke="var(--interview)" stroke-width="1.3"/>
+            <text x="480" y="144" text-anchor="middle" fill="currentColor" font-weight="bold">Sampler / Estimator</text>
+            <text x="480" y="162" text-anchor="middle" fill="var(--fg-muted)" font-size="11">примітиви V2</text>
+
+            <rect x="600" y="70" width="130" height="56" rx="10" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="665" y="94" text-anchor="middle" fill="currentColor" font-weight="bold">qiskit-aer</text>
+            <text x="665" y="112" text-anchor="middle" fill="var(--fg-muted)" font-size="11">ноутбук / CI</text>
+
+            <rect x="600" y="170" width="130" height="56" rx="10" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="665" y="194" text-anchor="middle" fill="currentColor" font-weight="bold">ibm-runtime</text>
+            <text x="665" y="212" text-anchor="middle" fill="var(--fg-muted)" font-size="11">реальний QPU (т. 12)</text>
+
+            <line x1="140" y1="140" x2="188" y2="60" stroke="currentColor" marker-end="url(#q11a-arr)"/>
+            <line x1="140" y1="148" x2="188" y2="148" stroke="currentColor" marker-end="url(#q11a-arr)"/>
+            <line x1="275" y1="220" x2="275" y2="178" stroke="var(--fg-muted)" stroke-dasharray="4,3" marker-end="url(#q11a-arr)"/>
+            <line x1="360" y1="148" x2="408" y2="148" stroke="currentColor" marker-end="url(#q11a-arr)"/>
+            <line x1="550" y1="140" x2="598" y2="104" stroke="currentColor" marker-end="url(#q11a-arr)"/>
+            <line x1="550" y1="158" x2="598" y2="192" stroke="currentColor" marker-end="url(#q11a-arr)"/>
+            <text x="18" y="200" fill="var(--fg-muted)" font-size="11">ваш код</text>
+            <text x="18" y="215" fill="var(--fg-muted)" font-size="11">описує "що"</text>
+            <text x="560" y="40" fill="var(--fg-muted)" font-size="11">"драйвери" виконання</text>
+          </g>
+        </svg>
+        <figcaption>Один і той самий QuantumCircuit проходить шлях "опис → ISA-схема → примітив → виконавець". У цьому туторіалі виконавець — Aer; у туторіалі 12 — реальний QPU.</figcaption>
+      </figure>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        <b>API Qiskit змінюється швидко.</b> Між 0.46 → 1.0 → 2.0 зникли <code>execute()</code>, <code>qiskit.Aer</code>,
+        <code>BasicAer</code>, примітиви V1, <code>QuantumInstance</code>, частина <code>qiskit.algorithms</code>.
+        Якщо туторіал з інтернету починається з <code>from qiskit import Aer, execute</code> — він для старого Qiskit.
+        Код нижче перевірено на версіях з виводу вище; при оновленні дивіться release notes.
+      </div></div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Анатомія схеми</h2>
+      <p class="section-desc">Регістри, гейти, бар'єр, вимірювання і метрики, які ви будете дивитись постійно.</p>
+
+      <p>Квантова схема — це <b>послідовність інструкцій</b> над кубітами і класичними бітами. Математично кожен гейт —
+      унітарна матриця (туторіали <a href="06-linear-algebra-vectors-matrices.html">6</a> і
+      <a href="07-linear-algebra-eigen-tensor.html">7</a>), а схема — їхній добуток. Для фронтендера схема дуже
+      схожа на waterfall у вкладці Performance/Network DevTools: горизонтальні доріжки — кубіти (як треки main thread,
+      worker, network), час іде зліва направо, а вертикальні з'єднання — двокубітні взаємодії, де дві доріжки
+      мусять "синхронізуватись", як <code>await</code> на результат іншого потоку.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">s2_anatomy.py</span></div><pre><code>from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
+
+qr = QuantumRegister(2, "q")
+cr = ClassicalRegister(2, "c")
+qc = QuantumCircuit(qr, cr, name="bell")
+qc.h(qr[0])
+qc.cx(qr[0], qr[1])
+qc.barrier()
+qc.measure(qr, cr)
+
+print(qc.draw("text"))
+print("qubits:", qc.num_qubits, "clbits:", qc.num_clbits)
+print("depth:", qc.depth(), "size:", qc.size())
+print("ops:", dict(qc.count_ops()))
+for inst in qc.data[:2]:
+    print(inst.operation.name, [qc.find_bit(q).index for q in inst.qubits])</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>     ┌───┐      ░ ┌─┐   
+q_0: ┤ H ├──■───░─┤M├───
+     └───┘┌─┴─┐ ░ └╥┘┌─┐
+q_1: ─────┤ X ├─░──╫─┤M├
+          └───┘ ░  ║ └╥┘
+c: 2/══════════════╩══╩═
+                   0  1 
+qubits: 2 clbits: 2
+depth: 3 size: 4
+ops: {'measure': 2, 'h': 1, 'cx': 1, 'barrier': 1}
+h [0]
+cx [0, 1]</code></pre></div>
+
+      <table>
+        <tr><th>Метрика</th><th>Що означає</th><th>Чому важлива на залізі</th></tr>
+        <tr><td><code>depth()</code></td><td>Довжина критичного шляху (шарів), якщо паралельні гейти виконуються одночасно</td><td>Час виконання ~ глибина; кубіти декогерують (T1/T2) — чим глибше, тим більше шуму</td></tr>
+        <tr><td><code>size()</code></td><td>Кількість інструкцій (бар'єри не рахуються)</td><td>Кожен гейт додає помилку</td></tr>
+        <tr><td><code>count_ops()</code></td><td>Словник "ім'я гейта → кількість"</td><td>Найдорожчі — двокубітні (<code>cz</code>/<code>ecr</code>): помилка ~10× більша за однокубітні</td></tr>
+        <tr><td><code>num_nonlocal_gates()</code></td><td>Кількість гейтів на 2+ кубіти</td><td>Головна метрика "вартості" схеми</td></tr>
+      </table>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для бекендера</div>
+        <code>barrier()</code> — як "fence" у конкурентному коді: забороняє транспілятору переставляти й злипати гейти через цю
+        лінію. На результат обчислення не впливає, але впливає на оптимізацію і на те, як схема малюється.
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Порядок бітів: little-endian</h2>
+      <p class="section-desc">Пастка номер один у Qiskit. Пройдіть її свідомо один раз — і не попадайтесь потім у проді.</p>
+
+      <p>У Qiskit <b>кубіт 0 — наймолодший біт</b>. У рядку результату <code>'001'</code> він стоїть <b>праворуч</b>,
+      як у звичайному двійковому числі: <span class="math">|q₂ q₁ q₀⟩</span>. Підручники (Nielsen &amp; Chuang) часто
+      пишуть навпаки — <span class="math">|q₀ q₁ q₂⟩</span>. Тому формули з книжки й вивід Qiskit можуть "не збігатися",
+      хоча обидва правильні.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">s3_bit_order.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.quantum_info import Statevector
+from qiskit.primitives import StatevectorSampler
+
+qc = QuantumCircuit(3)
+qc.x(0)                                   # перевертаємо ЛИШЕ кубіт 0
+sv = Statevector(qc)
+print({str(k): float(v) for k, v in sv.probabilities_dict().items()})
+
+qc.measure_all()
+counts = StatevectorSampler(seed=7).run([qc], shots=100).result()[0].data.meas.get_counts()
+print(counts)
+print("індекс базисного стану:", int("001", 2))   # = 1 → x0·2⁰</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>{'001': 1.0}
+{'001': 100}
+індекс базисного стану: 1</code></pre></div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 230" role="img" aria-label="Схема порядку бітів. Ліворуч три лінії кубітів q0, q1, q2, на q0 стоїть гейт X. Праворуч рядок результату 0 0 1, де крайній правий символ відповідає q0, середній q1, лівий q2. Під рядком: індекс у векторі стану дорівнює q0 помножити на 1 плюс q1 на 2 плюс q2 на 4, тобто 1. У SparsePauliOp рядок ZII означає Z на кубіті 2, теж справа наліво.">
+          <defs><marker id="q11b-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="20" y="48" fill="currentColor">q₀</text>
+            <text x="20" y="98" fill="currentColor">q₁</text>
+            <text x="20" y="148" fill="currentColor">q₂</text>
+            <line x1="45" y1="44" x2="250" y2="44" stroke="currentColor"/>
+            <line x1="45" y1="94" x2="250" y2="94" stroke="currentColor"/>
+            <line x1="45" y1="144" x2="250" y2="144" stroke="currentColor"/>
+            <rect x="100" y="28" width="34" height="32" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="117" y="49" text-anchor="middle" fill="currentColor" font-weight="bold">X</text>
+            <text x="262" y="48" fill="var(--accent)" font-weight="bold">1</text>
+            <text x="262" y="98" fill="var(--fg-muted)">0</text>
+            <text x="262" y="148" fill="var(--fg-muted)">0</text>
+
+            <text x="430" y="40" text-anchor="middle" fill="var(--fg-muted)" font-size="11">рядок у counts</text>
+            <rect x="380" y="52" width="34" height="40" rx="6" fill="none" stroke="currentColor"/>
+            <rect x="414" y="52" width="34" height="40" rx="6" fill="none" stroke="currentColor"/>
+            <rect x="448" y="52" width="34" height="40" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="397" y="78" text-anchor="middle" fill="currentColor" font-size="16">0</text>
+            <text x="431" y="78" text-anchor="middle" fill="currentColor" font-size="16">0</text>
+            <text x="465" y="78" text-anchor="middle" fill="var(--accent)" font-size="16" font-weight="bold">1</text>
+            <text x="397" y="110" text-anchor="middle" fill="var(--fg-muted)" font-size="11">q₂</text>
+            <text x="431" y="110" text-anchor="middle" fill="var(--fg-muted)" font-size="11">q₁</text>
+            <text x="465" y="110" text-anchor="middle" fill="var(--fg-muted)" font-size="11">q₀</text>
+            <path d="M272,44 C330,44 420,20 462,50" fill="none" stroke="var(--accent)" stroke-width="1.3" marker-end="url(#q11b-arr)"/>
+
+            <text x="530" y="66" fill="currentColor">індекс = q₀·1 + q₁·2 + q₂·4</text>
+            <text x="530" y="86" fill="var(--fg-muted)" font-size="11">= 1 → amplitude sv.data[1]</text>
+
+            <rect x="300" y="150" width="420" height="60" rx="10" fill="var(--warn-bg)" stroke="var(--warn-border)"/>
+            <text x="316" y="173" fill="currentColor" font-weight="bold">Те саме правило в SparsePauliOp:</text>
+            <text x="316" y="195" fill="var(--fg-muted)">"ZII" = Z на q₂;  "IIZ" = Z на q₀  (читаємо справа наліво)</text>
+          </g>
+        </svg>
+        <figcaption>Little-endian у Qiskit: кубіт 0 — праворуч і в рядках результатів, і в Pauli-рядках, і в індексі вектора стану.</figcaption>
+      </figure>
+
+      <div class="callout bad"><div class="ic">🐞</div><div class="body">
+        <b>Типовий баг у продакшн-коді:</b> бекенд декодує бітрядок у масив рішень як <code>[int(b) for b in bits]</code> і
+        отримує змінні у зворотному порядку. Правильно: <code>[int(b) for b in reversed(bits)]</code> — тоді елемент
+        <code>i</code> відповідає кубіту <code>i</code>. Саме так декодуються маршрути в
+        <a href="04-pet-project-quantum-routing.html">пет-проєкті 4</a>.
+      </div></div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Композиція блоків</h2>
+      <p class="section-desc">Схеми як функції: склеювати, вкладати, обертати, підносити до степеня, робити керованими.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">s4_compose.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.quantum_info import Operator
+
+# Блок, який будемо перевикористовувати
+prep = QuantumCircuit(2, name="prep")
+prep.h(0)
+prep.cx(0, 1)
+
+main = QuantumCircuit(3)
+main.compose(prep, qubits=[1, 2], inplace=True)   # вклеїти гейти "як є"
+main.append(prep.to_gate(), [0, 1])               # вставити як один блок-гейт
+print(main.draw("text"))
+
+undo = prep.inverse()                              # U† : гейти у зворотному порядку
+print(undo.draw("text"))
+print("prep·undo == I ?", Operator(prep.compose(undo)).equiv(Operator(QuantumCircuit(2))))
+
+t = QuantumCircuit(1, name="T")
+t.t(0)
+s_from_t = t.power(2)                              # T² = S
+s_ref = QuantumCircuit(1); s_ref.s(0)
+print("T^2 == S ?", Operator(s_from_t).equiv(Operator(s_ref)))
+
+ch = QuantumCircuit(1, name="H"); ch.h(0)
+cH = ch.to_gate().control(1)                       # керований H
+c = QuantumCircuit(2); c.append(cH, [0, 1])
+print(c.draw("text"))
+print(Operator(c).data.round(3))</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>               ┌───────┐
+q_0: ──────────┤0      ├
+     ┌───┐     │  prep │
+q_1: ┤ H ├──■──┤1      ├
+     └───┘┌─┴─┐└───────┘
+q_2: ─────┤ X ├─────────
+          └───┘         
+          ┌───┐
+q_0: ──■──┤ H ├
+     ┌─┴─┐└───┘
+q_1: ┤ X ├─────
+     └───┘     
+prep·undo == I ? True
+T^2 == S ? True
+          
+q_0: ──■──
+     ┌─┴─┐
+q_1: ┤ H ├
+     └───┘
+[[ 1.   +0.j  0.   +0.j -0.   +0.j  0.   +0.j]
+ [ 0.   +0.j  0.707+0.j  0.   +0.j  0.707+0.j]
+ [-0.   -0.j  0.   +0.j  1.   -0.j  0.   +0.j]
+ [ 0.   +0.j  0.707+0.j  0.   +0.j -0.707+0.j]]</code></pre></div>
+
+      <table>
+        <tr><th>Метод</th><th>Що робить</th><th>Коли брати</th></tr>
+        <tr><td><code>compose(other, qubits=…)</code></td><td>Вклеює гейти іншої схеми "розгорнутими"</td><td>Збирання великої схеми з кроків; <code>inplace=True</code> — не створювати копію</td></tr>
+        <tr><td><code>append(gate, qargs)</code></td><td>Додає одну інструкцію (можна блок, зроблений через <code>to_gate()</code>)</td><td>Щоб схема читалась як "блоки"; транспілятор все одно розгорне</td></tr>
+        <tr><td><code>inverse()</code></td><td>Повертає <span class="math">U†</span> <span class="say">(U† — «U-даґер»: ермітово спряжена, тобто транспонувати й комплексно спряжити)</span>: гейти у зворотному порядку, кожен інвертований</td><td>"Uncompute" допоміжних кубітів, тести <span class="math">U·U† = I</span></td></tr>
+        <tr><td><code>power(k)</code></td><td><span class="math">Uᵏ</span></td><td>Оракули у фазовій оцінці (QPE), Grover-ітерації</td></tr>
+        <tr><td><code>to_gate().control(n)</code></td><td>Керована версія блоку</td><td>QPE, умовні операції; дорого на залізі</td></tr>
+      </table>
+
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        Подивіться на матрицю керованого H у виводі: ненульові "H-елементи" стоять на індексах <b>1 і 3</b>, а не 2 і 3, як у
+        підручнику. Це той самий little-endian: керуючий <code>q0</code> — молодший біт, тож "керування = 1" — це непарні індекси.
+      </div></div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Параметризовані схеми</h2>
+      <p class="section-desc">Шаблон схеми з "дірками" під числа — основа всіх варіаційних алгоритмів (VQE, QAOA).</p>
+
+      <p>У варіаційних алгоритмах класичний оптимізатор сотні разів міняє кути і просить QPU перерахувати енергію.
+      Будувати схему з нуля щоразу дорого; правильно — один раз зібрати шаблон з <code>Parameter</code>,
+      один раз транспілювати, а потім лише підставляти значення. Для бекендера — це <b>prepared statement</b>:
+      план запиту будується раз, параметри біндяться при кожному виклику.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">s5_params.py</span></div><pre><code>import numpy as np
+from qiskit import QuantumCircuit
+from qiskit.circuit import Parameter, ParameterVector
+
+theta = Parameter("θ")
+phis = ParameterVector("φ", 2)
+
+ansatz = QuantumCircuit(2)
+ansatz.ry(theta, 0)
+ansatz.ry(phis[0], 1)
+ansatz.cx(0, 1)
+ansatz.rz(phis[1] + 2 * theta, 1)   # параметричні вирази теж можна
+print(ansatz.draw("text"))
+print("parameters:", ansatz.parameters)   # відсортовані за іменем
+print("num_parameters:", ansatz.num_parameters)
+
+bound = ansatz.assign_parameters({theta: np.pi / 2, phis: [0.1, 0.2]})
+print(bound.draw("text"))
+
+# позиційно — у порядку ansatz.parameters
+bound2 = ansatz.assign_parameters([0.1, 0.2, np.pi / 2])
+print(bound2 == bound)</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>      ┌───────┐                         
+q_0: ─┤ Ry(θ) ├────■────────────────────
+     ┌┴───────┴─┐┌─┴─┐┌────────────────┐
+q_1: ┤ Ry(φ[0]) ├┤ X ├┤ Rz(φ[1] + 2*θ) ├
+     └──────────┘└───┘└────────────────┘
+parameters: ParameterView([Parameter(θ), ParameterVectorElement(φ[0]), ParameterVectorElement(φ[1])])
+num_parameters: 3
+     ┌─────────┐                   
+q_0: ┤ Ry(π/2) ├──■────────────────
+     ├─────────┤┌─┴─┐┌────────────┐
+q_1: ┤ Ry(0.1) ├┤ X ├┤ Rz(3.3416) ├
+     └─────────┘└───┘└────────────┘
+False</code></pre></div>
+
+      <p>Останній рядок — <code>False</code>, і це не баг Qiskit, а пастка: при позиційній передачі значення йдуть
+      <b>у порядку <code>ansatz.parameters</code></b>, який відсортований за іменем, а не за порядком появи в коді.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">s5b_param_order.py</span></div><pre><code>import numpy as np
+from qiskit import QuantumCircuit
+from qiskit.circuit import Parameter, ParameterVector
+theta = Parameter("θ"); phis = ParameterVector("φ", 2)
+ansatz = QuantumCircuit(2)
+ansatz.ry(theta, 0); ansatz.ry(phis[0], 1); ansatz.cx(0, 1); ansatz.rz(phis[1] + 2 * theta, 1)
+bound = ansatz.assign_parameters({theta: np.pi / 2, phis: [0.1, 0.2]})
+print([p.name for p in ansatz.parameters])
+wrong = ansatz.assign_parameters([0.1, 0.2, np.pi / 2])   # "як я написав у коді"
+right = ansatz.assign_parameters([np.pi / 2, 0.1, 0.2])   # як у ansatz.parameters
+print("wrong == bound:", wrong == bound)
+print("right == bound:", right == bound)</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>['θ', 'φ[0]', 'φ[1]']
+wrong == bound: False
+right == bound: True</code></pre></div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 230" role="img" aria-label="Схема прив'язки параметрів. Шаблон схеми з трьома параметрами θ, φ[0], φ[1] транспілюється один раз. Далі масив значень, кожен рядок якого є набором трьох чисел у порядку ansatz.parameters, дає кілька конкретних схем або передається в примітив як PUB. Позначено пастку: позиційний порядок — це порядок ansatz.parameters, відсортованих за іменем, а безпечний спосіб — словник.">
+          <defs><marker id="q11c-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="40" width="200" height="110" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="110" y="62" text-anchor="middle" fill="currentColor" font-weight="bold">Шаблон (ansatz)</text>
+            <rect x="30" y="76" width="50" height="24" rx="4" fill="none" stroke="currentColor"/>
+            <text x="55" y="93" text-anchor="middle" fill="currentColor">Ry(θ)</text>
+            <rect x="90" y="76" width="56" height="24" rx="4" fill="none" stroke="currentColor"/>
+            <text x="118" y="93" text-anchor="middle" fill="currentColor">Ry(φ₀)</text>
+            <rect x="152" y="76" width="50" height="24" rx="4" fill="none" stroke="currentColor"/>
+            <text x="177" y="93" text-anchor="middle" fill="currentColor">Rz(…)</text>
+            <text x="110" y="128" text-anchor="middle" fill="var(--fg-muted)" font-size="11">транспілюємо ОДИН раз</text>
+
+            <rect x="270" y="30" width="190" height="130" rx="10" fill="none" stroke="currentColor"/>
+            <text x="365" y="52" text-anchor="middle" fill="currentColor" font-weight="bold">Значення</text>
+            <text x="290" y="76" fill="var(--fg-muted)" font-size="11">порядок: θ, φ[0], φ[1]</text>
+            <text x="290" y="98" fill="currentColor" font-family="monospace">[1.57, 0.10, 0.20]</text>
+            <text x="290" y="118" fill="currentColor" font-family="monospace">[0.30, 0.40, 0.50]</text>
+            <text x="290" y="138" fill="currentColor" font-family="monospace">[ …  ×  сотні  ]</text>
+
+            <rect x="520" y="30" width="210" height="60" rx="10" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="625" y="54" text-anchor="middle" fill="currentColor" font-weight="bold">PUB у примітив</text>
+            <text x="625" y="74" text-anchor="middle" fill="var(--fg-muted)" font-size="11">(isa_circuit, obs, values)</text>
+            <rect x="520" y="100" width="210" height="60" rx="10" fill="none" stroke="currentColor"/>
+            <text x="625" y="124" text-anchor="middle" fill="currentColor" font-weight="bold">assign_parameters</text>
+            <text x="625" y="144" text-anchor="middle" fill="var(--fg-muted)" font-size="11">конкретна схема (для draw/дебагу)</text>
+
+            <line x1="210" y1="95" x2="268" y2="95" stroke="currentColor" marker-end="url(#q11c-arr)"/>
+            <line x1="460" y1="80" x2="518" y2="62" stroke="currentColor" marker-end="url(#q11c-arr)"/>
+            <line x1="460" y1="112" x2="518" y2="128" stroke="currentColor" marker-end="url(#q11c-arr)"/>
+
+            <rect x="10" y="180" width="720" height="38" rx="8" fill="var(--bad-bg)" stroke="var(--bad-border)"/>
+            <text x="24" y="204" fill="currentColor">Пастка: позиційний список ↔ ansatz.parameters (відсортовано за іменем). Безпечно — dict {param: value}.</text>
+          </g>
+        </svg>
+        <figcaption>Параметризована схема — як prepared statement: план (транспіляція) один, значень — багато. У примітивах V2 масив значень передається прямо в PUB, без створення сотень схем.</figcaption>
+      </figure>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · quantum_info</div><div class="line"></div></div>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Statevector і SparsePauliOp</h2>
+      <p class="section-desc">Точна математика без шуму і без shots — ваш "unit-тест" для малих схем.</p>
+
+      <p><code>qiskit.quantum_info</code> рахує все точно, як NumPy (і, власне, через NumPy): вектор стану з
+      <span class="math">2ⁿ</span> комплексних амплітуд, оператори як матриці <span class="math">2ⁿ×2ⁿ</span>. Тому він
+      ідеальний для перевірки логіки на 2–20 кубітах і безнадійний для 50+. Ви вже написали подібне вручну в
+      <a href="10-numpy-statevector-simulator.html">туторіалі 10</a> — тут те саме, але готове.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">s6_quantum_info.py</span></div><pre><code>import numpy as np
+from qiskit import QuantumCircuit
+from qiskit.quantum_info import Statevector, SparsePauliOp, Operator
+
+bell = QuantumCircuit(2)
+bell.h(0)
+bell.cx(0, 1)
+
+sv = Statevector.from_instruction(bell)      # або Statevector(bell)
+print(np.round(sv.data, 3))
+print({str(k): round(float(v), 3) for k, v in sv.probabilities_dict().items()})
+print({str(k): complex(np.round(v, 3)) for k, v in sv.to_dict().items()})
+
+zz = SparsePauliOp("ZZ")
+zi = SparsePauliOp("ZI")                      # Z на кубіті 1 (лівий символ = старший кубіт)
+xx = SparsePauliOp("XX")
+for name, op in [("ZZ", zz), ("ZI", zi), ("XX", xx)]:
+    print(name, round(float(sv.expectation_value(op).real), 3))
+
+h = SparsePauliOp.from_list([("ZZ", 1.0), ("XI", -0.5), ("IX", -0.5)])
+print(h)
+print("⟨H⟩ =", round(float(sv.expectation_value(h).real), 3))
+print(np.round(h.to_matrix().real, 2))
+print(SparsePauliOp.from_sparse_list([("Z", [2], 1.0)], num_qubits=3))</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>[0.707+0.j 0.   +0.j 0.   +0.j 0.707+0.j]
+{'00': 0.5, '11': 0.5}
+{'00': (0.707+0j), '11': (0.707+0j)}
+ZZ 1.0
+ZI 0.0
+XX 1.0
+SparsePauliOp(['ZZ', 'XI', 'IX'],
+              coeffs=[ 1. +0.j, -0.5+0.j, -0.5+0.j])
+⟨H⟩ = 1.0
+[[ 1.  -0.5 -0.5  0. ]
+ [-0.5 -1.   0.  -0.5]
+ [-0.5  0.  -1.  -0.5]
+ [ 0.  -0.5 -0.5  1. ]]
+SparsePauliOp(['ZII'],
+              coeffs=[1.+0.j])</code></pre></div>
+
+      <p>Що тут відбулось:</p>
+      <ul>
+        <li><b>Амплітуди</b> <code>[0.707, 0, 0, 0.707]</code> — стан Белла <span class="math">(|00⟩ + |11⟩)/√2</span> <span class="say">(|00⟩ — «кет нуль-нуль»: вектор-стовпчик стану; √ — «корінь з»)</span>.</li>
+        <li><b>⟨ZZ⟩ = 1</b>: кубіти завжди однакові (парність +1). <b>⟨ZI⟩ = 0</b>: кожен окремо — монетка.
+        <b>⟨XX⟩ = 1</b>: кореляція є і в X-базисі — ось чому це заплутаність, а не просто "випадково однакові біти".</li>
+        <li><b>SparsePauliOp</b> — гамільтоніан як сума Pauli-рядків з коефіцієнтами. Саме в такому вигляді задачі оптимізації
+        (QUBO → Ising, <a href="04-pet-project-quantum-routing.html">туторіал 4</a>) і хімії подаються в Estimator.
+        <code>to_matrix()</code> — для перевірки руками на малих розмірах.</li>
+        <li><code>from_sparse_list</code> — зручно для великих систем: "Z на кубіті 2 з 3" без ручного вписування <code>I</code>.</li>
+      </ul>
+
+      <div class="callout info"><div class="ic">📐</div><div class="body">
+        Математика: <span class="math">⟨ψ|H|ψ⟩ = Σᵢ cᵢ ⟨ψ|Pᵢ|ψ⟩</span> <span class="say">(⟨ψ|H|ψ⟩ — «бра псі, H, кет псі»: середнє (очікуване) значення H у стані ψ; ⟨ψ| — «бра псі»: рядок, спряжено-транспонований кет; Σ — «сума», велика сигма)</span> — очікування лінійне, тому Estimator міряє кожен
+        Pauli-рядок окремо і складає з вагами. Деталі — в <a href="09-probability-shots.html">туторіалі 9</a> (дисперсія і shots).
+      </div></div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Operator: рівність схем і глобальна фаза</h2>
+      <p class="section-desc">Як довести, що дві схеми роблять одне й те саме, — і чому <code>==</code> іноді бреше.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">s7_equivalence.py</span></div><pre><code>import numpy as np
+from qiskit import QuantumCircuit
+from qiskit.quantum_info import Operator
+
+# 1) CNOT = (I⊗H)·CZ·(I⊗H)
+a = QuantumCircuit(2); a.cx(0, 1)
+b = QuantumCircuit(2); b.h(1); b.cz(0, 1); b.h(1)
+print("CX ≡ H·CZ·H :", Operator(a).equiv(Operator(b)))
+
+# 2) SWAP = три CNOT
+s = QuantumCircuit(2); s.swap(0, 1)
+c3 = QuantumCircuit(2); c3.cx(0, 1); c3.cx(1, 0); c3.cx(0, 1)
+print("SWAP ≡ 3·CX :", Operator(s).equiv(Operator(c3)))
+
+# 3) Глобальна фаза: RZ(π) = -i·Z
+rz = QuantumCircuit(1); rz.rz(np.pi, 0)
+z = QuantumCircuit(1); z.z(0)
+print("RZ(π) == Z   :", Operator(rz) == Operator(z))       # точна рівність матриць
+print("RZ(π) ≡ Z    :", Operator(rz).equiv(Operator(z)))   # з точністю до глобальної фази
+print(np.round(Operator(rz).data, 3))</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>CX ≡ H·CZ·H : True
+SWAP ≡ 3·CX : True
+RZ(π) == Z   : False
+RZ(π) ≡ Z    : True
+[[0.-1.j 0.+0.j]
+ [0.+0.j 0.+1.j]]</code></pre></div>
+
+      <p><span class="math">RZ(π) = diag(−i, i) = −i·Z</span> <span class="say">(π — «пі»)</span>. Матриці різні (<code>==</code> → <code>False</code>), але відрізняються
+      лише <b>глобальною фазою</b> <span class="math">−i</span>, яку не можна виміряти жодним експериментом
+      (<a href="08-complex-numbers-phase.html">туторіал 8</a>). <code>equiv()</code> порівнює саме з точністю до глобальної
+      фази — у тестах майже завжди потрібен він. Те саме видно у виводі транспілятора: <code>global phase: 3π/4</code> —
+      транспілятор її відстежує, але на залізі вона нічого не змінює.</p>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Глобальна фаза — як <code>transform: rotate(30deg)</code> на корені всієї сцени, коли користувач бачить лише
+        <i>взаємне</i> розташування елементів: повернули все разом — для "виміру" нічого не змінилось. Відносна фаза — як
+        <code>rotate()</code> лише на одному дочірньому елементі: тепер змінилось, як елементи накладаються один на одного,
+        і це видно (у квантовому випадку — через інтерференцію). Тому <code>Operator.equiv</code> порівнює "з точністю до
+        повороту всієї сцени", а <code>==</code> — побітово, як snapshot-тест, що падає навіть на нерелевантній різниці.
+        <br><b>Де аналогія ламається:</b> у CSS поворот усієї сцени все ж видно відносно вікна браузера; у квантовому
+        стані "вікна" немає — глобальна фаза не спостережувана в принципі.
+      </div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина III · Транспіляція</div><div class="line"></div></div>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Навіщо транспіляція: ISA</h2>
+      <p class="section-desc">Ваша схема написана "мовою високого рівня". Чип розуміє 5 гейтів і має обмежені з'єднання.</p>
+
+      <p>Реальний процесор IBM Heron (FakeFez — його знімок калібрувань) вміє лише <code>rz</code>, <code>sx</code>,
+      <code>x</code>, <code>id</code> і двокубітний <code>cz</code>, і лише між фізично сусідніми кубітами.
+      Схема, що складається тільки з таких інструкцій на дозволених парах, називається <b>ISA-схемою</b>
+      (Instruction Set Architecture). З 2024 року IBM Runtime <b>приймає лише ISA-схеми</b> — транспіляція на вашому боці
+      обов'язкова.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">s8_transpile_bell.py</span></div><pre><code>from qiskit import QuantumCircuit, transpile
+from qiskit.transpiler import generate_preset_pass_manager, CouplingMap
+from qiskit_ibm_runtime.fake_provider import FakeFez
+
+backend = FakeFez()
+print(backend.name, backend.num_qubits, "qubits")
+print("basis:", sorted(n for n in backend.operation_names
+                      if n not in ("for_loop", "if_else", "switch_case", "delay", "reset", "measure")))
+
+bell = QuantumCircuit(2)
+bell.h(0); bell.cx(0, 1); bell.measure_all()
+
+pm = generate_preset_pass_manager(optimization_level=1, backend=backend, seed_transpiler=42)
+isa = pm.run(bell)
+print(isa.draw("text", idle_wires=False, fold=-1))
+print("layout (віртуальний → фізичний):", isa.layout.final_index_layout())
+print("ops:", dict(isa.count_ops()), "depth:", isa.depth())</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>fake_fez 156 qubits
+basis: ['cz', 'id', 'rz', 'sx', 'x']
+global phase: 3π/4
+         ┌─────────┐┌────┐┌─────────┐                                ░ ┌─┐   
+q_0 -&gt; 0 ┤ Rz(π/2) ├┤ √X ├┤ Rz(π/2) ├─■──────────────────────────────░─┤M├───
+         ├─────────┤├────┤├─────────┤ │ ┌─────────┐┌────┐┌─────────┐ ░ └╥┘┌─┐
+q_1 -&gt; 1 ┤ Rz(π/2) ├┤ √X ├┤ Rz(π/2) ├─■─┤ Rz(π/2) ├┤ √X ├┤ Rz(π/2) ├─░──╫─┤M├
+         └─────────┘└────┘└─────────┘   └─────────┘└────┘└─────────┘ ░  ║ └╥┘
+ meas: 2/═══════════════════════════════════════════════════════════════╩══╩═
+                                                                        0  1 
+layout (віртуальний → фізичний): [0, 1]
+ops: {'rz': 6, 'sx': 3, 'measure': 2, 'cz': 1, 'barrier': 1} depth: 8</code></pre></div>
+
+      <p>Один <code>H</code> став <span class="math">Rz(π/2)·√X·Rz(π/2)</span>, а <code>CX</code> — це <code>CZ</code>, обгорнутий
+      "H-подібними" послідовностями на цільовому кубіті (тотожність <span class="math">CX = (I⊗H)·CZ·(I⊗H)</span> <span class="say">(⊗ — «тензорно»: тензорний (кронекерів) добуток)</span>).
+      Запис <code>q_0 -> 0</code> — ваш віртуальний кубіт 0 посаджено на фізичний кубіт 0.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 250" role="img" aria-label="Етапи транспіляції в Qiskit. Init: розкладання багатокубітних блоків на 1- і 2-кубітні. Layout: вибір, який віртуальний кубіт сидить на якому фізичному. Routing: вставлення SWAP-ів, щоб двокубітні гейти діяли лише на сусідніх кубітах. Translation: переклад у базисні гейти чипа rz, sx, x, cz. Optimization: злиття і скорочення гейтів. Scheduling: розставлення затримок у часі. На виході ISA-схема.">
+          <defs><marker id="q11d-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="30" width="100" height="70" rx="10" fill="none" stroke="currentColor"/>
+            <text x="60" y="58" text-anchor="middle" fill="currentColor" font-weight="bold">init</text>
+            <text x="60" y="78" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">розкласти блоки</text>
+            <text x="60" y="91" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">на 1q / 2q</text>
+
+            <rect x="130" y="30" width="100" height="70" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="180" y="58" text-anchor="middle" fill="currentColor" font-weight="bold">layout</text>
+            <text x="180" y="78" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">віртуальні →</text>
+            <text x="180" y="91" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">фізичні кубіти</text>
+
+            <rect x="250" y="30" width="100" height="70" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="300" y="58" text-anchor="middle" fill="currentColor" font-weight="bold">routing</text>
+            <text x="300" y="78" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">SWAP-и для</text>
+            <text x="300" y="91" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">несусідніх пар</text>
+
+            <rect x="370" y="30" width="100" height="70" rx="10" fill="none" stroke="currentColor"/>
+            <text x="420" y="58" text-anchor="middle" fill="currentColor" font-weight="bold">translation</text>
+            <text x="420" y="78" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">→ rz, sx, x, cz</text>
+            <text x="420" y="91" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">(basis gates)</text>
+
+            <rect x="490" y="30" width="100" height="70" rx="10" fill="none" stroke="currentColor"/>
+            <text x="540" y="58" text-anchor="middle" fill="currentColor" font-weight="bold">optimization</text>
+            <text x="540" y="78" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">злиття,</text>
+            <text x="540" y="91" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">скорочення</text>
+
+            <rect x="610" y="30" width="120" height="70" rx="10" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="670" y="58" text-anchor="middle" fill="currentColor" font-weight="bold">ISA-схема</text>
+            <text x="670" y="78" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">(+ scheduling)</text>
+            <text x="670" y="91" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">готова до QPU</text>
+
+            <line x1="110" y1="65" x2="128" y2="65" stroke="currentColor" marker-end="url(#q11d-arr)"/>
+            <line x1="230" y1="65" x2="248" y2="65" stroke="currentColor" marker-end="url(#q11d-arr)"/>
+            <line x1="350" y1="65" x2="368" y2="65" stroke="currentColor" marker-end="url(#q11d-arr)"/>
+            <line x1="470" y1="65" x2="488" y2="65" stroke="currentColor" marker-end="url(#q11d-arr)"/>
+            <line x1="590" y1="65" x2="608" y2="65" stroke="currentColor" marker-end="url(#q11d-arr)"/>
+
+            <text x="10" y="140" fill="currentColor" font-weight="bold">Що впливає на результат:</text>
+            <text x="10" y="164" fill="var(--fg-muted)">• target (backend): basis gates, coupling map, похибки кожного кубіта і пари</text>
+            <text x="10" y="186" fill="var(--fg-muted)">• optimization_level 0–3: скільки часу витратити на пошук кращого layout/routing</text>
+            <text x="10" y="208" fill="var(--fg-muted)">• seed_transpiler: layout/routing (Sabre) стохастичні — фіксуйте seed для відтворюваності</text>
+            <text x="10" y="230" fill="var(--fg-muted)">• initial_layout: якщо хочете самі вибрати фізичні кубіти</text>
+            <text x="190" y="20" text-anchor="middle" fill="var(--accent)" font-size="11">найдорожчі етапи — layout + routing</text>
+          </g>
+        </svg>
+        <figcaption>Транспілятор — це компілятор у буквальному сенсі: пайплайн проходів (passes) з IR (DAG-схемою) посередині. Кожен етап можна підмінити власним passом.</figcaption>
+      </figure>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для бекендера</div>
+        Транспіляція — це <b>query planner</b> + <b>компілятор під конкретний CPU</b>. Одна і та сама SQL-квері має різні плани
+        для різних індексів; одна і та сама схема має різні ISA-схеми для різних чипів і навіть для того самого чипа в
+        різні дні (калібрування змінюються).
+      </div>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Транспіляція — це Babel/SWC + бандлер із <code>browserslist</code>. <b>Basis gates</b> — синтаксис, який підтримує
+        цільовий браузер: усе, чого немає (H, CX), переписується в те, що є (RZ, SX, CZ), як optional chaining у старий ES5.
+        <b>Coupling map</b> — які API реально доступні на таргеті; коли двокубітний гейт просять між несусідніми кубітами,
+        транспілятор вставляє SWAP-и — як поліфіли, що збільшують бандл (тут — глибину й помилку).
+        <b>optimization_level</b> 0–3 — рівні terser/мініфікатора: довше збирається, менший результат.
+        ISA-схема — уже скомпільований під конкретний таргет бандл: запускати на іншому чипі його не можна.
+        <br><b>Де аналогія ламається:</b> "таргет" тут не лише тип чипа, а й його сьогоднішні калібрування — той самий
+        бандл завтра може бути не оптимальним.
+      </div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Рівні оптимізації 0–3</h2>
+      <p class="section-desc">Скільки CZ ви заощадите, якщо дасте транспілятору подумати довше.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">s9_levels.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.circuit.library import QFTGate
+from qiskit.transpiler import generate_preset_pass_manager
+from qiskit_ibm_runtime.fake_provider import FakeFez
+
+backend = FakeFez()
+qft = QuantumCircuit(5)
+qft.append(QFTGate(5), range(5))
+qft.measure_all()
+
+print(f"{'level':&gt;5} {'depth':&gt;6} {'cz':&gt;4} {'1q':&gt;5}")
+for level in range(4):
+    pm = generate_preset_pass_manager(optimization_level=level, backend=backend, seed_transpiler=7)
+    isa = pm.run(qft)
+    ops = isa.count_ops()
+    one_q = sum(v for k, v in ops.items() if k in ("rz", "sx", "x"))
+    print(f"{level:&gt;5} {isa.depth():&gt;6} {ops.get('cz', 0):&gt;4} {one_q:&gt;5}")</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>level  depth   cz    1q
+    0    217   62   249
+    1    120   44   172
+    2     81   28   109
+    3     79   28   107</code></pre></div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 260" role="img" aria-label="Стовпчикова діаграма для QFT на 5 кубітах, транспільованої під FakeFez. Кількість CZ: рівень 0 — 62, рівень 1 — 44, рівень 2 — 28, рівень 3 — 28. Глибина: рівень 0 — 217, рівень 1 — 120, рівень 2 — 81, рівень 3 — 79. Від рівня 0 до рівня 2 двокубітних гейтів стало вдвічі менше.">
+          <g font-size="12">
+            <text x="20" y="22" fill="currentColor" font-weight="bold">QFT(5) → FakeFez: кількість CZ і глибина (реальний прогін)</text>
+            <line x1="60" y1="220" x2="720" y2="220" stroke="var(--fg-muted)"/>
+            <!-- CZ bars: scale 2.5px per CZ -->
+            <rect x="90" y="65" width="50" height="155" fill="var(--accent)" opacity=".85"/>
+            <rect x="250" y="110" width="50" height="110" fill="var(--accent)" opacity=".85"/>
+            <rect x="410" y="150" width="50" height="70" fill="var(--accent)" opacity=".85"/>
+            <rect x="570" y="150" width="50" height="70" fill="var(--accent)" opacity=".85"/>
+            <text x="115" y="58" text-anchor="middle" fill="currentColor" font-weight="bold">62</text>
+            <text x="275" y="103" text-anchor="middle" fill="currentColor" font-weight="bold">44</text>
+            <text x="435" y="143" text-anchor="middle" fill="currentColor" font-weight="bold">28</text>
+            <text x="595" y="143" text-anchor="middle" fill="currentColor" font-weight="bold">28</text>
+            <!-- depth bars: scale 0.7px per layer -->
+            <rect x="145" y="68" width="40" height="152" fill="var(--interview)" opacity=".55"/>
+            <rect x="305" y="136" width="40" height="84" fill="var(--interview)" opacity=".55"/>
+            <rect x="465" y="163" width="40" height="57" fill="var(--interview)" opacity=".55"/>
+            <rect x="625" y="165" width="40" height="55" fill="var(--interview)" opacity=".55"/>
+            <text x="165" y="62" text-anchor="middle" fill="var(--fg-muted)" font-size="11">217</text>
+            <text x="325" y="130" text-anchor="middle" fill="var(--fg-muted)" font-size="11">120</text>
+            <text x="485" y="157" text-anchor="middle" fill="var(--fg-muted)" font-size="11">81</text>
+            <text x="645" y="159" text-anchor="middle" fill="var(--fg-muted)" font-size="11">79</text>
+            <text x="137" y="240" text-anchor="middle" fill="currentColor">level 0</text>
+            <text x="297" y="240" text-anchor="middle" fill="currentColor">level 1</text>
+            <text x="457" y="240" text-anchor="middle" fill="currentColor">level 2</text>
+            <text x="617" y="240" text-anchor="middle" fill="currentColor">level 3</text>
+            <rect x="470" y="34" width="12" height="12" fill="var(--accent)" opacity=".85"/>
+            <text x="488" y="45" fill="currentColor" font-size="11">CZ (двокубітні)</text>
+            <rect x="590" y="34" width="12" height="12" fill="var(--interview)" opacity=".55"/>
+            <text x="608" y="45" fill="currentColor" font-size="11">глибина</text>
+          </g>
+        </svg>
+        <figcaption>Різниця між рівнем 0 і 2–3 — більш ніж удвічі менше CZ. На залізі це означає помітно вищу точність результату.</figcaption>
+      </figure>
+
+      <table>
+        <tr><th>Рівень</th><th>Що робить</th><th>Коли</th></tr>
+        <tr><td>0</td><td>Тривіальний layout, мінімальні перетворення</td><td>Дебаг, коли треба бачити "свою" схему; бенчмарк самого транспілятора</td></tr>
+        <tr><td>1</td><td>Легка оптимізація, швидко</td><td>Ітерації в dev, великі схеми, де час транспіляції критичний</td></tr>
+        <tr><td>2</td><td>Default (перевірено на Qiskit 2.5) — більше спроб layout/routing, сильніші оптимізації</td><td>Розумний дефолт для запуску на QPU</td></tr>
+        <tr><td>3</td><td>Найагресивніша оптимізація, ресинтез 2-кубітних блоків</td><td>Фінальні запуски, коли кожен CZ на рахунку</td></tr>
+      </table>
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">
+        Default рівень змінювався між версіями: у Qiskit 2.5 і <code>transpile()</code>, і <code>generate_preset_pass_manager</code> за замовчуванням беруть 2, а в старих версіях дефолтом був 1.
+        Завжди передавайте <code>optimization_level</code> явно — так поведінка не "попливе" після оновлення.
+      </div></div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Layout, routing і SWAP</h2>
+      <p class="section-desc">Найдорожча частина транспіляції — коли схема хоче взаємодію кубітів, які на чипі не сусіди.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">s10_swap.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.circuit.library import QFT
+from qiskit.transpiler import generate_preset_pass_manager, CouplingMap
+
+# Лінійний чіп 0-1-2 і схема, якій потрібна взаємодія 0↔2
+line = CouplingMap.from_line(3)
+qc = QuantumCircuit(3)
+qc.h(0)
+qc.cx(0, 2)
+pm0 = generate_preset_pass_manager(optimization_level=0, coupling_map=line,
+                                   basis_gates=["cx", "rz", "sx", "x", "swap"],
+                                   initial_layout=[0, 1, 2], seed_transpiler=1)
+out = pm0.run(qc)
+print(out.draw("text", fold=-1))
+print(dict(out.count_ops()))</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>global phase: π/4
+         ┌─────────┐┌────┐┌─────────┐        
+q_0 -&gt; 0 ┤ Rz(π/2) ├┤ √X ├┤ Rz(π/2) ├─X──────
+         └─────────┘└────┘└─────────┘ │      
+q_1 -&gt; 1 ─────────────────────────────X───■──
+                                        ┌─┴─┐
+q_2 -&gt; 2 ───────────────────────────────┤ X ├
+                                        └───┘
+{'rz': 2, 'sx': 1, 'swap': 1, 'cx': 1}</code></pre></div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 270" role="img" aria-label="Схема маршрутизації. Ліворуч лінійний чип з трьома кубітами 0, 1, 2, з'єднаними лише 0–1 і 1–2. Схема хоче CX між 0 і 2. Транспілятор вставляє SWAP між 0 і 1, стан кубіта 0 переїжджає на фізичний кубіт 1, і тоді CX виконується між 1 і 2. Праворуч вартість: SWAP дорівнює трьом CNOT, отже CX на відстані d коштує приблизно 3(d−1)+1 двокубітних гейтів. На FakeFez: сусідні кубіти — 1 CZ, відстань 2 — 4 CZ, відстань 8 — 22 CZ.">
+          <defs><marker id="q11e-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="20" y="24" fill="currentColor" font-weight="bold">Чип: лінія 0 — 1 — 2</text>
+            <circle cx="60" cy="70" r="20" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <circle cx="160" cy="70" r="20" fill="none" stroke="currentColor"/>
+            <circle cx="260" cy="70" r="20" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="60" y="75" text-anchor="middle" fill="currentColor" font-weight="bold">0</text>
+            <text x="160" y="75" text-anchor="middle" fill="currentColor" font-weight="bold">1</text>
+            <text x="260" y="75" text-anchor="middle" fill="currentColor" font-weight="bold">2</text>
+            <line x1="80" y1="70" x2="140" y2="70" stroke="currentColor" stroke-width="2"/>
+            <line x1="180" y1="70" x2="240" y2="70" stroke="currentColor" stroke-width="2"/>
+            <path d="M60,92 C100,135 220,135 260,92" fill="none" stroke="var(--bad)" stroke-dasharray="5,4"/>
+            <text x="160" y="140" text-anchor="middle" fill="var(--bad)">CX(0,2) — немає зв'язку ✗</text>
+
+            <text x="20" y="180" fill="currentColor" font-weight="bold">Рішення routing:</text>
+            <rect x="20" y="192" width="80" height="30" rx="6" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="60" y="212" text-anchor="middle" fill="currentColor">SWAP(0,1)</text>
+            <line x1="100" y1="207" x2="128" y2="207" stroke="currentColor" marker-end="url(#q11e-arr)"/>
+            <rect x="130" y="192" width="80" height="30" rx="6" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="170" y="212" text-anchor="middle" fill="currentColor">CX(1,2)</text>
+            <text x="20" y="246" fill="var(--fg-muted)" font-size="11">стан "q0" тепер живе на фізичному 1 → final layout змінився</text>
+
+            <rect x="380" y="30" width="350" height="210" rx="10" fill="var(--bg)" stroke="var(--border)"/>
+            <text x="396" y="54" fill="currentColor" font-weight="bold">Вартість на FakeFez (Bell, реальний прогін)</text>
+            <text x="396" y="80" fill="var(--fg-muted)">SWAP = 3 × CNOT  ⇒  CX на відстані d ≈ 3(d−1) + 1</text>
+            <rect x="396" y="98" width="12" height="20" fill="var(--good)"/>
+            <text x="416" y="113" fill="currentColor">d = 1 (кубіти 0,1): 1 CZ</text>
+            <rect x="396" y="128" width="48" height="20" fill="var(--warn)"/>
+            <text x="452" y="143" fill="currentColor">d = 2 (0,2): 4 CZ</text>
+            <rect x="396" y="158" width="264" height="20" fill="var(--bad)"/>
+            <text x="396" y="198" fill="currentColor">d = 8 (0,20): 22 CZ, глибина 31</text>
+            <text x="396" y="222" fill="var(--fg-muted)" font-size="11">задача 11 нижче — той самий експеримент</text>
+          </g>
+        </svg>
+        <figcaption>Routing — це пошук шляху на графі зв'язності (coupling map). Кожен SWAP — три двокубітні гейти, тобто три джерела помилки. Хороший layout мінімізує кількість SWAP-ів.</figcaption>
+      </figure>
+
+      <p>Чипи IBM Eagle/Heron мають топологію <b>heavy-hex</b>: кожен кубіт має 2–3 сусіди (на новому Nighthawk — квадратна
+      ґратка з 4 сусідами, див. <a href="02-quantum-engineering-history.html">туторіал 2</a>). Тому алгоритми, де "всі
+      взаємодіють з усіма" (QAOA на щільному графі, QFT), платять за SWAP-и найбільше.</p>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина IV · Aer і примітиви</div><div class="line"></div></div>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Примітиви V2 локально</h2>
+      <p class="section-desc">Той самий інтерфейс, що на реальному QPU, — тільки виконується у вашому процесі.</p>
+
+      <p>У Qiskit 2.x є рівно два "ендпоінти" для запуску: <b>Sampler</b> (поверни бітрядки) і <b>Estimator</b>
+      (поверни <span class="math">⟨O⟩</span>). Обидва приймають список <b>PUB</b>-ів (Primitive Unified Bloc) і
+      повертають результат на кожен PUB. Є три реалізації одного контракту:</p>
+      <table>
+        <tr><th>Реалізація</th><th>Пакет</th><th>Шум</th><th>Для чого</th></tr>
+        <tr><td><code>StatevectorSampler</code> / <code>StatevectorEstimator</code></td><td><code>qiskit.primitives</code></td><td>ні (Estimator — точний, без shots)</td><td>unit-тести логіки, малі схеми</td></tr>
+        <tr><td><code>SamplerV2</code> / <code>EstimatorV2</code></td><td><code>qiskit_aer.primitives</code></td><td>можна (модель з backend)</td><td>реалістична симуляція, CI</td></tr>
+        <tr><td><code>SamplerV2</code> / <code>EstimatorV2</code></td><td><code>qiskit_ibm_runtime</code></td><td>справжній</td><td>реальний QPU (<a href="12-qiskit-runtime-real-qpu.html">туторіал 12</a>)</td></tr>
+      </table>
+
+      <div class="codecard"><div class="bar"><span class="path">s11_primitives.py</span></div><pre><code>import numpy as np
+from qiskit import QuantumCircuit
+from qiskit.circuit import Parameter
+from qiskit.quantum_info import SparsePauliOp
+from qiskit.primitives import StatevectorSampler, StatevectorEstimator
+
+bell = QuantumCircuit(2)
+bell.h(0); bell.cx(0, 1)
+bell_m = bell.measure_all(inplace=False)      # регістр отримає ім'я "meas"
+
+sampler = StatevectorSampler(seed=11)
+job = sampler.run([bell_m], shots=1000)       # список PUB-ів
+pub = job.result()[0]                          # результат першого PUB
+print(type(pub.data.meas).__name__, pub.data.meas.num_shots, pub.data.meas.num_bits)
+print(pub.data.meas.get_counts())
+print(pub.data.meas.get_bitstrings()[:5])
+print(pub.data.meas.array[:3].ravel())         # упаковані байти
+
+estimator = StatevectorEstimator()
+obs = [SparsePauliOp("ZZ"), SparsePauliOp("XX"), SparsePauliOp("ZI")]
+res = estimator.run([(bell, obs)]).result()[0]
+print("evs:", res.data.evs, "stds:", res.data.stds)
+
+# PUB з параметрами: одна схема × масив значень = broadcasting
+th = Parameter("θ")
+qc = QuantumCircuit(1); qc.ry(th, 0)
+thetas = np.linspace(0, np.pi, 5).reshape(-1, 1)
+r = estimator.run([(qc, SparsePauliOp("Z"), thetas)]).result()[0]
+print("shape:", r.data.evs.shape, np.round(r.data.evs, 3))</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>BitArray 1000 2
+{'00': 520, '11': 480}
+['00', '00', '11', '00', '00']
+[0 0 3]
+evs: [1. 1. 0.] stds: [0. 0. 0.]
+shape: (5,) [ 1.     0.707  0.    -0.707 -1.   ]</code></pre></div>
+
+      <ul>
+        <li><code>pub.data.meas</code> — ім'я поля = <b>ім'я класичного регістра</b>. <code>measure_all()</code> створює регістр
+        <code>meas</code>; якщо ви оголосили <code>ClassicalRegister(2, "c")</code> — буде <code>pub.data.c</code>.
+        Це найчастіша причина <code>AttributeError</code> при переході з V1.</li>
+        <li><code>BitArray</code> зберігає результати упакованими байтами (<code>array</code>), а <code>get_counts()</code> /
+        <code>get_bitstrings()</code> — зручні подання. Для великих обсягів даних працюйте з <code>array</code> напряму.</li>
+        <li><b>Broadcasting</b> як у NumPy: одна схема + масив параметрів форми <code>(5, 1)</code> → <code>evs</code> форми
+        <code>(5,)</code>. Жодних циклів у Python і жодних 5 окремих job-ів.</li>
+      </ul>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 250" role="img" aria-label="Форми даних у PUB Estimator. Схема з одним параметром θ. Спостережувані — масив форми 2 на 1: Z і X. Значення параметрів — масив форми 1 на 9 на 1: дев'ять кутів. За правилами broadcasting NumPy форми 2 на 1 і 1 на 9 дають результат evs форми 2 на 9: рядок Z і рядок X для кожного з дев'яти кутів. Один PUB — одна задача, без циклів.">
+          <defs><marker id="q11f-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="20" y="24" fill="currentColor" font-weight="bold">PUB = (circuit, observables, parameter_values)</text>
+            <rect x="20" y="44" width="140" height="60" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="90" y="70" text-anchor="middle" fill="currentColor" font-weight="bold">circuit</text>
+            <text x="90" y="90" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Ry(θ), 1 параметр</text>
+
+            <rect x="190" y="44" width="70" height="60" rx="8" fill="none" stroke="currentColor"/>
+            <text x="225" y="66" text-anchor="middle" fill="currentColor">Z</text>
+            <line x1="190" y1="74" x2="260" y2="74" stroke="var(--border)"/>
+            <text x="225" y="94" text-anchor="middle" fill="currentColor">X</text>
+            <text x="225" y="122" text-anchor="middle" fill="var(--fg-muted)" font-size="11">obs: (2, 1)</text>
+
+            <g>
+              <rect x="290" y="56" width="270" height="36" rx="8" fill="none" stroke="currentColor"/>
+              <text x="305" y="79" fill="currentColor" font-family="monospace" font-size="11">θ₀ θ₁ θ₂ θ₃ θ₄ θ₅ θ₆ θ₇ θ₈</text>
+              <text x="425" y="122" text-anchor="middle" fill="var(--fg-muted)" font-size="11">values: (1, 9) × 1 параметр</text>
+            </g>
+
+            <line x1="370" y1="135" x2="370" y2="158" stroke="currentColor" marker-end="url(#q11f-arr)"/>
+            <rect x="190" y="162" width="370" height="70" rx="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="205" y="186" fill="currentColor" font-family="monospace" font-size="11">⟨Z⟩: cos θ₀ … cos θ₈</text>
+            <text x="205" y="210" fill="currentColor" font-family="monospace" font-size="11">⟨X⟩: sin θ₀ … sin θ₈</text>
+            <text x="590" y="194" fill="currentColor" font-weight="bold">evs: (2, 9)</text>
+            <text x="590" y="214" fill="var(--fg-muted)" font-size="11">як np.broadcast</text>
+          </g>
+        </svg>
+        <figcaption>Форма результату — це broadcast форм спостережуваних і масиву параметрів (без останньої осі — кількості параметрів). Саме так варіаційні алгоритми рахують десятки точок одним викликом. Повний код — задача 9.</figcaption>
+      </figure>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> AerSimulator: методи</h2>
+      <p class="section-desc">Aer — це не "один симулятор", а кілька алгоритмів під різні класи схем.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">s12_aer_methods.py</span></div><pre><code>import time
+from qiskit import QuantumCircuit, transpile
+from qiskit_aer import AerSimulator
+
+def ghz(n):
+    qc = QuantumCircuit(n)
+    qc.h(0)
+    for i in range(n - 1):
+        qc.cx(i, i + 1)
+    qc.measure_all()
+    return qc
+
+sim = AerSimulator(method="statevector", seed_simulator=3)
+r = sim.run(transpile(ghz(3), sim), shots=2000).result()
+print(r.get_counts())
+print(AerSimulator().available_methods())
+
+mps = AerSimulator(method="matrix_product_state", seed_simulator=3)
+t0 = time.perf_counter()
+r = mps.run(transpile(ghz(60), mps), shots=1000).result()
+counts = r.get_counts()
+print("60 кубітів MPS:", {k[:6] + "…" + k[-6:]: v for k, v in counts.items()}, f"{time.perf_counter()-t0:.2f}s")
+try:
+    AerSimulator(method="statevector").run(transpile(ghz(60), sim), shots=10).result()
+except Exception as e:
+    print("statevector 60q:", type(e).__name__, str(e)[:160])</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>{'000': 993, '111': 1007}
+('automatic', 'statevector', 'density_matrix', 'stabilizer', 'matrix_product_state', 'extended_stabilizer', 'unitary', 'superop')
+60 кубітів MPS: {'000000…000000': 515, '111111…111111': 485} 0.14s
+statevector 60q: CircuitTooWideForTarget 'Number of qubits (60) in circuit-50 is greater than maximum (30) in the coupling_map'</code></pre></div>
+
+      <table>
+        <tr><th>Метод</th><th>Пам'ять / час</th><th>Коли</th></tr>
+        <tr><td><code>statevector</code></td><td><span class="math">16·2ⁿ</span> байт: 30 кубітів ≈ <span class="say">(≈ — «приблизно дорівнює»)</span> 16 ГБ</td><td>Загальний випадок до ~30 кубітів</td></tr>
+        <tr><td><code>density_matrix</code></td><td><span class="math">16·4ⁿ</span> — вдвічі "більше кубітів" пам'яті</td><td>Точний шум на малих схемах (≤ ~15 кубітів)</td></tr>
+        <tr><td><code>stabilizer</code></td><td>поліноміально</td><td>Лише Clifford-гейти (H, S, CX…) — тисячі кубітів, корекція помилок</td></tr>
+        <tr><td><code>matrix_product_state</code></td><td>залежить від <b>заплутаності</b>, не від n</td><td>Широкі, але "слабко заплутані" схеми: 60–100+ кубітів</td></tr>
+        <tr><td><code>automatic</code> (default)</td><td>—</td><td>Aer сам вибирає за складом схеми</td></tr>
+      </table>
+
+      <p>60-кубітний GHZ на MPS — за десяту частку секунди, а statevector навіть не дає транспілювати (на цьому
+      ноутбуці ліміт — 30 кубітів, він рахується з доступної RAM). Але MPS — не магія: на випадковій сильно заплутаній
+      схемі він програє (задача 19).</p>
+
+      <div class="callout fun"><div class="ic">🗜️</div><div class="body">
+        <b>Для фронтендера:</b> MPS — це як gzip/brotli для стану. Бандл із повторюваними шаблонами стискається в рази,
+        бо між сусідніми частинами мало "нової інформації" (мала заплутаність) — опис компактний. Сильна заплутаність — це
+        як уже стиснений JPEG чи випадкові байти: компресор не виграє нічого, і MPS-симулятор деградує до повного
+        statevector за пам'яттю й часом.
+      </div></div>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Шум реального чіпа</h2>
+      <p class="section-desc">Fake backend = знімок калібрувань реального процесора: топологія + похибки кожного кубіта і кожної пари.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">s13_noise.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.transpiler import generate_preset_pass_manager
+from qiskit.quantum_info import hellinger_fidelity
+from qiskit_aer import AerSimulator
+from qiskit_ibm_runtime.fake_provider import FakeFez
+
+def ghz(n):
+    qc = QuantumCircuit(n)
+    qc.h(0)
+    for i in range(n - 1):
+        qc.cx(i, i + 1)
+    qc.measure_all()
+    return qc
+
+backend = FakeFez()
+noisy_sim = AerSimulator.from_backend(backend, seed_simulator=5)   # шум і топологія з калібрувань
+ideal_sim = AerSimulator(seed_simulator=5)
+
+pm = generate_preset_pass_manager(optimization_level=1, backend=backend, seed_transpiler=5)
+print(f"{'n':&gt;3} {'cz':&gt;4} {'depth':&gt;6} {'P(ok) noisy':&gt;12} {'Hellinger':&gt;10}")
+for n in (2, 3, 5, 8, 12):
+    isa = pm.run(ghz(n))
+    ideal = ideal_sim.run(isa, shots=4000).result().get_counts()
+    noisy = noisy_sim.run(isa, shots=4000).result().get_counts()
+    ok = (noisy.get("0" * n, 0) + noisy.get("1" * n, 0)) / 4000
+    print(f"{n:&gt;3} {isa.count_ops().get('cz', 0):&gt;4} {isa.depth():&gt;6} {ok:&gt;12.3f} {hellinger_fidelity(ideal, noisy):&gt;10.3f}")</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>  n   cz  depth  P(ok) noisy  Hellinger
+  2    1      8        0.969      0.969
+  3    2     12        0.963      0.963
+  5    4     20        0.937      0.937
+  8    7     32        0.886      0.886
+ 12   11     48        0.852      0.851</code></pre></div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 260" role="img" aria-label="Графік частки правильних результатів GHZ-стану на шумній моделі FakeFez залежно від кількості кубітів. 2 кубіти: 0.969, 3: 0.963, 5: 0.937, 8: 0.886, 12: 0.852. Кількість CZ росте лінійно: 1, 2, 4, 7, 11, а точність падає приблизно на 1 відсоток на кожен CZ разом з вимірюваннями.">
+          <g font-size="12">
+            <text x="20" y="22" fill="currentColor" font-weight="bold">GHZ на шумній моделі FakeFez: P(000…0 або 111…1)</text>
+            <line x1="70" y1="220" x2="710" y2="220" stroke="var(--fg-muted)"/>
+            <line x1="70" y1="40" x2="70" y2="220" stroke="var(--fg-muted)"/>
+            <!-- y: 0.80 → 220, 1.00 → 40 ; scale 900px per 1.0 -->
+            <text x="62" y="44" text-anchor="end" fill="var(--fg-muted)" font-size="11">1.00</text>
+            <text x="62" y="134" text-anchor="end" fill="var(--fg-muted)" font-size="11">0.90</text>
+            <text x="62" y="224" text-anchor="end" fill="var(--fg-muted)" font-size="11">0.80</text>
+            <line x1="70" y1="130" x2="710" y2="130" stroke="var(--border)" stroke-dasharray="3,3"/>
+            <!-- x: n=2 →110, n=12 → 690 ; 58px per qubit -->
+            <polyline points="110,67.9 168,73.3 284,96.7 458,142.6 690,173.2" fill="none" stroke="var(--accent)" stroke-width="2"/>
+            <circle cx="110" cy="67.9" r="4" fill="var(--accent)"/>
+            <circle cx="168" cy="73.3" r="4" fill="var(--accent)"/>
+            <circle cx="284" cy="96.7" r="4" fill="var(--accent)"/>
+            <circle cx="458" cy="142.6" r="4" fill="var(--accent)"/>
+            <circle cx="690" cy="173.2" r="4" fill="var(--accent)"/>
+            <text x="110" y="58" text-anchor="middle" fill="currentColor" font-size="11">0.969</text>
+            <text x="168" y="64" text-anchor="middle" fill="currentColor" font-size="11">0.963</text>
+            <text x="284" y="87" text-anchor="middle" fill="currentColor" font-size="11">0.937</text>
+            <text x="458" y="133" text-anchor="middle" fill="currentColor" font-size="11">0.886</text>
+            <text x="690" y="164" text-anchor="middle" fill="currentColor" font-size="11">0.852</text>
+            <text x="110" y="238" text-anchor="middle" fill="currentColor">n=2</text>
+            <text x="168" y="238" text-anchor="middle" fill="currentColor">3</text>
+            <text x="284" y="238" text-anchor="middle" fill="currentColor">5</text>
+            <text x="458" y="238" text-anchor="middle" fill="currentColor">8</text>
+            <text x="690" y="238" text-anchor="middle" fill="currentColor">12</text>
+            <text x="110" y="254" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">1 CZ</text>
+            <text x="284" y="254" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">4 CZ</text>
+            <text x="458" y="254" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">7 CZ</text>
+            <text x="690" y="254" text-anchor="middle" fill="var(--fg-muted)" font-size="10.5">11 CZ</text>
+          </g>
+        </svg>
+        <figcaption>Реальний прогін: кожен CZ, кожен однокубітний гейт і кожне вимірювання додають свою помилку. Для 2 кубітів помилка (~3%) — здебільшого помилки зчитування.</figcaption>
+      </figure>
+
+      <p><b>Hellinger fidelity</b> — міра схожості двох розподілів (1 — однакові, 0 — не перетинаються):
+      <span class="math">F = (Σₓ √(p(x)·q(x)))²</span>. Для GHZ, де ідеал — 50/50 між двома рядками, вона майже дорівнює
+      частці "правильних" результатів, як і видно в таблиці.</p>
+
+      <h3>Примітиви Aer з шумом</h3>
+      <div class="codecard"><div class="bar"><span class="path">s13b_aer_primitives.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.quantum_info import SparsePauliOp
+from qiskit.transpiler import generate_preset_pass_manager
+from qiskit_aer.primitives import SamplerV2, EstimatorV2
+from qiskit_ibm_runtime.fake_provider import FakeFez
+
+backend = FakeFez()
+pm = generate_preset_pass_manager(optimization_level=1, backend=backend, seed_transpiler=5)
+
+bell = QuantumCircuit(2)
+bell.h(0); bell.cx(0, 1)
+
+# Sampler: шумна модель FakeFez, той самий інтерфейс, що в Runtime
+sampler = SamplerV2.from_backend(backend, seed=5)
+isa = pm.run(bell.measure_all(inplace=False))
+counts = sampler.run([isa], shots=2000).result()[0].data.meas.get_counts()
+print(counts)
+zz_from_counts = (counts["00"] + counts["11"] - counts.get("01", 0) - counts.get("10", 0)) / 2000
+print("⟨ZZ⟩ з counts:", round(zz_from_counts, 3))
+
+# Estimator: спостережувану треба "перекласти" на фізичні кубіти ISA-схеми
+estimator = EstimatorV2.from_backend(backend, options={"run_options": {"seed": 5},
+                                                       "default_precision": 0.01})
+isa_c = pm.run(bell)
+obs = SparsePauliOp("ZZ").apply_layout(isa_c.layout)
+print("obs на 156 кубітах:", obs.num_qubits)
+r = estimator.run([(isa_c, obs)]).result()[0]
+print("⟨ZZ⟩ з Estimator:", round(float(r.data.evs), 3), "±", round(float(r.data.stds), 3))</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>{'00': 966, '11': 967, '10': 33, '01': 34}
+⟨ZZ⟩ з counts: 0.933
+obs на 156 кубітах: 156
+⟨ZZ⟩ з Estimator: 0.992 ± 0.01</code></pre></div>
+
+      <div class="callout warn"><div class="ic">🔎</div><div class="body">
+        <b>Зверніть увагу на розбіжність 0.933 vs 0.992.</b> З counts ми бачимо і гейтовий шум, і помилки зчитування.
+        Aer Estimator рахує очікування через знімок стану всередині симулятора — за поведінкою в цьому прогоні він
+        <b>не враховує помилки вимірювання</b> (readout), лише гейтовий шум. Тому числа з Aer Estimator оптимістичніші,
+        ніж будуть на реальному QPU. Перевіряйте реалістичність через Sampler, а не тільки через Estimator.
+      </div></div>
+
+      <div class="callout interview"><div class="ic">💼</div><div class="body"><span class="tag">Важлива деталь</span>
+        <code>SparsePauliOp("ZZ").apply_layout(isa.layout)</code> — обов'язковий крок для Estimator після транспіляції:
+        логічна спостережувана на 2 кубітах "перекладається" на 156 фізичних кубітів з урахуванням того, куди транспілятор
+        посадив ваші кубіти. Забули — отримаєте помилку розміру або, гірше, виміряєте не ті кубіти.
+      </div></div>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Динамічні схеми</h2>
+      <p class="section-desc">Виміряти посеред схеми і залежно від результату виконати гейт — "if" у квантовій програмі.</p>
+
+      <p>Класичний приклад — <b>телепортація</b>: Аліса вимірює два кубіти, а Боб застосовує <code>X</code> і/або <code>Z</code>
+      залежно від результатів. У Qiskit це <code>with qc.if_test((clbit, value)):</code>. Aer це симулює, сучасні процесори
+      IBM виконують це в реальному часі (feed-forward за мікросекунди).</p>
+
+      <div class="codecard"><div class="bar"><span class="path">s14_teleport.py</span></div><pre><code>import numpy as np
+from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister, transpile
+from qiskit_aer import AerSimulator
+
+# Телепортація стану RY(θ)|0⟩ з q0 на q2 з класичним feed-forward
+theta = 1.2
+q = QuantumRegister(3, "q")
+m = ClassicalRegister(2, "m")       # результати Аліси
+out = ClassicalRegister(1, "out")   # вимірювання Боба
+qc = QuantumCircuit(q, m, out)
+qc.ry(theta, 0)                     # стан, який телепортуємо
+qc.h(1); qc.cx(1, 2)                # пара Белла між q1 і q2
+qc.cx(0, 1); qc.h(0)
+qc.measure(0, m[0]); qc.measure(1, m[1])
+with qc.if_test((m[1], 1)):
+    qc.x(2)
+with qc.if_test((m[0], 1)):
+    qc.z(2)
+qc.measure(2, out[0])
+print(qc.draw("text", fold=-1))
+
+sim = AerSimulator(seed_simulator=9)
+counts = sim.run(transpile(qc, sim), shots=20000).result().get_counts()
+p1 = sum(v for k, v in counts.items() if k.split()[0] == "1") / 20000
+print("приклад ключа:", next(iter(counts)))
+print(f"P(out=1) = {p1:.3f}, теорія sin²(θ/2) = {np.sin(theta/2)**2:.3f}")</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>       ┌─────────┐          ┌───┐┌─┐                                                       
+  q_0: ┤ Ry(1.2) ├───────■──┤ H ├┤M├───────────────────────────────────────────────────────
+       └──┬───┬──┘     ┌─┴─┐└┬─┬┘└╥┘                                                       
+  q_1: ───┤ H ├─────■──┤ X ├─┤M├──╫────────────────────────────────────────────────────────
+          └───┘   ┌─┴─┐└───┘ └╥┘  ║   ┌──────  ┌───┐ ───────┐   ┌──────  ┌───┐ ───────┐ ┌─┐
+  q_2: ───────────┤ X ├───────╫───╫───┤ If-0  ─┤ X ├  End-0 ├───┤ If-0  ─┤ Z ├  End-0 ├─┤M├
+                  └───┘       ║   ║   └──╥───  └───┘ ───────┘   └──╥───  └───┘ ───────┘ └╥┘
+                              ║   ║ ┌────╨────┐               ┌────╨────┐                ║ 
+  m: 2/═══════════════════════╩═══╩═╡ m_1=0x1 ╞═══════════════╡ m_0=0x1 ╞════════════════╬═
+                              1   0 └─────────┘               └─────────┘                ║ 
+out: 1/══════════════════════════════════════════════════════════════════════════════════╩═
+                                                                                         0 
+приклад ключа: 0 11
+P(out=1) = 0.315, теорія sin²(θ/2) = 0.319</code></pre></div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 740 250" role="img" aria-label="Схема телепортації з feed-forward. Кубіт q0 містить стан Ry(θ)|0⟩. Кубіти q1 і q2 утворюють пару Белла. Аліса робить CX q0→q1 і H на q0, вимірює q0 і q1 у класичні біти m0 і m1. Класичні дроти від m1 і m0 керують гейтами X і Z на q2. Після цього q2 містить початковий стан, і вимірювання дає P(1) = sin²(θ/2) ≈ 0.319, експериментально 0.315.">
+          <defs><marker id="q11g-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="14" y="54" fill="currentColor">q₀</text>
+            <text x="14" y="104" fill="currentColor">q₁</text>
+            <text x="14" y="154" fill="currentColor">q₂</text>
+            <line x1="40" y1="50" x2="380" y2="50" stroke="currentColor"/>
+            <line x1="40" y1="100" x2="380" y2="100" stroke="currentColor"/>
+            <line x1="40" y1="150" x2="700" y2="150" stroke="currentColor"/>
+            <rect x="50" y="36" width="64" height="28" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="82" y="55" text-anchor="middle" fill="currentColor" font-size="11">Ry(θ)</text>
+            <rect x="60" y="86" width="28" height="28" rx="4" fill="none" stroke="currentColor"/>
+            <text x="74" y="105" text-anchor="middle" fill="currentColor">H</text>
+            <circle cx="130" cy="100" r="4" fill="currentColor"/>
+            <line x1="130" y1="100" x2="130" y2="150" stroke="currentColor"/>
+            <circle cx="130" cy="150" r="9" fill="none" stroke="currentColor"/>
+            <line x1="121" y1="150" x2="139" y2="150" stroke="currentColor"/><line x1="130" y1="141" x2="130" y2="159" stroke="currentColor"/>
+            <text x="100" y="186" fill="var(--fg-muted)" font-size="11">пара Белла</text>
+            <circle cx="190" cy="50" r="4" fill="currentColor"/>
+            <line x1="190" y1="50" x2="190" y2="100" stroke="currentColor"/>
+            <circle cx="190" cy="100" r="9" fill="none" stroke="currentColor"/>
+            <line x1="181" y1="100" x2="199" y2="100" stroke="currentColor"/><line x1="190" y1="91" x2="190" y2="109" stroke="currentColor"/>
+            <rect x="220" y="36" width="28" height="28" rx="4" fill="none" stroke="currentColor"/>
+            <text x="234" y="55" text-anchor="middle" fill="currentColor">H</text>
+            <rect x="290" y="36" width="32" height="28" rx="4" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="306" y="55" text-anchor="middle" fill="currentColor" font-size="11">M</text>
+            <rect x="290" y="86" width="32" height="28" rx="4" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="306" y="105" text-anchor="middle" fill="currentColor" font-size="11">M</text>
+            <text x="330" y="40" fill="var(--fg-muted)" font-size="11">m₀</text>
+            <text x="330" y="90" fill="var(--fg-muted)" font-size="11">m₁</text>
+            <!-- classical wires (double) -->
+            <path d="M322,104 L450,104 L450,136" fill="none" stroke="var(--interview)" stroke-width="1.2"/>
+            <path d="M322,98 L454,98 L454,136" fill="none" stroke="var(--interview)" stroke-width="1.2"/>
+            <path d="M322,54 L540,54 L540,136" fill="none" stroke="var(--interview)" stroke-width="1.2"/>
+            <path d="M322,48 L544,48 L544,136" fill="none" stroke="var(--interview)" stroke-width="1.2"/>
+            <rect x="430" y="136" width="44" height="28" rx="4" fill="var(--interview-bg)" stroke="var(--interview)"/>
+            <text x="452" y="155" text-anchor="middle" fill="currentColor">X</text>
+            <rect x="520" y="136" width="44" height="28" rx="4" fill="var(--interview-bg)" stroke="var(--interview)"/>
+            <text x="542" y="155" text-anchor="middle" fill="currentColor">Z</text>
+            <text x="452" y="186" text-anchor="middle" fill="var(--fg-muted)" font-size="11">if m₁ = 1</text>
+            <text x="542" y="186" text-anchor="middle" fill="var(--fg-muted)" font-size="11">if m₀ = 1</text>
+            <rect x="620" y="136" width="32" height="28" rx="4" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="636" y="155" text-anchor="middle" fill="currentColor" font-size="11">M</text>
+            <text x="560" y="222" fill="currentColor">P(1) = sin²(θ/2) = 0.319</text>
+            <text x="560" y="240" fill="var(--fg-muted)" font-size="11">виміряно: 0.315 (20 000 shots)</text>
+            <text x="200" y="222" fill="var(--interview)" font-size="11">фіолетові лінії — класичні біти (feed-forward)</text>
+          </g>
+        </svg>
+        <figcaption>Ключ результату <code>'0 11'</code> — це регістри через пробіл, <b>останній оголошений — ліворуч</b> (<code>out m</code>). Little-endian діє і на рівні регістрів.</figcaption>
+      </figure>
+
+      <div class="callout info"><div class="ic">💡</div><div class="body">
+        Динамічні схеми — фундамент квантової корекції помилок (виміряти синдром → виправити) і способу зменшувати глибину
+        схем. Для базового рівня достатньо розуміти <code>if_test</code> і <code>reset</code>; <code>for_loop</code>,
+        <code>while_loop</code>, <code>switch</code> — поглиблення.
+      </div></div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина V · Задачі</div><div class="line"></div></div>
+
+    <section id="tasks-easy">
+      <h2><span class="num">E</span> Легкі задачі: 1–6</h2>
+      <p class="section-desc">Спершу спробуйте самі в своєму venv, потім відкривайте відповідь. Усі відповіді — реальний вивід.</p>
+
+      <div class="task" id="task1">
+        <div class="task-head"><span class="tasknum">Задача 1</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Інший стан Белла: Φ⁻</span></div>
+        <p>Побудуйте схему, що готує <span class="math">|Φ⁻⟩ = (|00⟩ − |11⟩)/√2</span> <span class="say">(Φ — «фі велика»)</span>, і доведіть через <code>Statevector</code>,
+        що стан саме такий.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task01.py</span></div><pre><code>import numpy as np
+from qiskit import QuantumCircuit
+from qiskit.quantum_info import Statevector
+
+phi_minus = QuantumCircuit(2)
+phi_minus.x(0)          # |01⟩ (кубіт 0 = 1)
+phi_minus.h(0)          # (|00⟩ − |01⟩)/√2
+phi_minus.cx(0, 1)      # (|00⟩ − |11⟩)/√2
+sv = Statevector(phi_minus)
+print(np.round(sv.data.real, 3))
+target = Statevector([1, 0, 0, -1] / np.sqrt(2))
+print("рівні:", sv.equiv(target))</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>[ 0.707  0.     0.    -0.707]
+рівні: True</code></pre></div>
+          <p><b>Чому так:</b> <code>H</code> на <span class="math">|1⟩</span> дає <span class="math">|−⟩ = (|0⟩ − |1⟩)/√2</span> <span class="say">(|−⟩ — «кет мінус»: (|0⟩−|1⟩)/√2)</span> — мінус і
+          є відносною фазою. CX "копіює" базисний біт у кубіт 1, а знак лишається біля доданка <span class="math">|11⟩</span>.
+          Альтернатива: звичайний Bell і потім <code>Z</code> на будь-якому кубіті. <code>Statevector.equiv</code> порівнює з точністю
+          до глобальної фази — для перевірки "той самий фізичний стан" це правильний інструмент.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task2">
+        <div class="task-head"><span class="tasknum">Задача 2</span><span class="taskdiff easy">Легко</span><span class="tasktitle">GHZ на 4 кубітах і менша глибина</span></div>
+        <p>Зберіть GHZ-стан <span class="math">(|0000⟩ + |1111⟩)/√2</span>, виміряйте 1000 shots. Потім перебудуйте його так, щоб глибина
+        була меншою, і поясніть, як це масштабується для n = 16.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task02.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.primitives import StatevectorSampler
+
+ghz = QuantumCircuit(4)
+ghz.h(0)
+for i in range(3):
+    ghz.cx(i, i + 1)
+ghz.measure_all()
+counts = StatevectorSampler(seed=4).run([ghz], shots=1000).result()[0].data.meas.get_counts()
+print(counts)
+print("depth:", ghz.depth())
+
+# Глибина log2(n): розгалуження "деревом"
+tree = QuantumCircuit(4)
+tree.h(0)
+tree.cx(0, 2)
+tree.cx(0, 1); tree.cx(2, 3)   # ці два CX паралельні
+tree.measure_all()
+print("depth tree:", tree.depth())
+print(StatevectorSampler(seed=4).run([tree], shots=1000).result()[0].data.meas.get_counts())</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>{'1111': 529, '0000': 471}
+depth: 5
+depth tree: 4
+{'1111': 529, '0000': 471}</code></pre></div>
+          <p><b>Чому так:</b> ланцюжок CX — послідовний (глибина ~n), а "дерево" подвоює кількість заплутаних кубітів на кожному
+          кроці (глибина ~log₂n): для 16 кубітів 15 шарів CX проти 4. На залізі з heavy-hex топологією дерево може вимагати
+          SWAP-ів, тож остаточне рішення — після транспіляції (дивіться <code>depth()</code> ISA-схеми). Однаковий результат
+          (529/471) — бо однаковий seed семплера.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task3">
+        <div class="task-head"><span class="tasknum">Задача 3</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Знайдіть баг: "кубіт 0 = 1"</span></div>
+        <p>Колега пише тест: "після <code>x(0)</code> у 2-кубітній схемі має бути <code>counts['10'] == 100</code>". Тест падає.
+        Що не так?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task03.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.primitives import StatevectorSampler
+
+qc = QuantumCircuit(2)
+qc.x(0)            # хочемо "кубіт 0 = 1, кубіт 1 = 0"
+qc.measure_all()
+counts = StatevectorSampler(seed=1).run([qc], shots=100).result()[0].data.meas.get_counts()
+print("counts:", counts)
+print("counts.get('10'):", counts.get("10", 0))   # баг: очікували 100
+bits = next(iter(counts))
+print("кубіт 0 =", bits[-1], "| кубіт 1 =", bits[-2])
+print("правильний ключ:", "".join(reversed("10")))</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>counts: {'01': 100}
+counts.get('10'): 0
+кубіт 0 = 1 | кубіт 1 = 0
+правильний ключ: 01</code></pre></div>
+          <p><b>Чому так:</b> little-endian (<a href="#s3">розділ 3</a>). Колега записав стан у "книжковому" порядку <span class="math">q₀q₁</span>,
+          а Qiskit друкує <span class="math">q₁q₀</span>. Правило для тестів: доступ до кубіта <code>i</code> — <code>bits[-1 - i]</code>,
+          або перевертайте рядок один раз у функції-декодері.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task4">
+        <div class="task-head"><span class="tasknum">Задача 4</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Передбачте depth і size</span></div>
+        <p>Без запуску визначте <code>depth()</code>, <code>size()</code> і кількість двокубітних гейтів для схеми:
+        <code>h(0); h(1); h(2); cx(0,1); x(2); cx(1,2); t(0)</code>.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task04.py</span></div><pre><code>from qiskit import QuantumCircuit
+qc = QuantumCircuit(3)
+qc.h(0); qc.h(1); qc.h(2)
+qc.cx(0, 1)
+qc.x(2)
+qc.cx(1, 2)
+qc.t(0)
+print(qc.draw("text"))
+print("depth:", qc.depth(), "size:", qc.size(), "2q:", qc.num_nonlocal_gates())</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>     ┌───┐     ┌───┐
+q_0: ┤ H ├──■──┤ T ├
+     ├───┤┌─┴─┐└───┘
+q_1: ┤ H ├┤ X ├──■──
+     ├───┤├───┤┌─┴─┐
+q_2: ┤ H ├┤ X ├┤ X ├
+     └───┘└───┘└───┘
+depth: 3 size: 7 2q: 2</code></pre></div>
+          <p><b>Чому так:</b> шар 1 — три <code>H</code> паралельно; шар 2 — <code>cx(0,1)</code> і <code>x(2)</code> паралельно
+          (різні кубіти); шар 3 — <code>cx(1,2)</code> і <code>t(0)</code>. Глибина — це найдовший ланцюжок залежностей,
+          як критичний шлях у мережевому графіку проєкту (або як затримка поширення в комбінаційній логіці).</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task5">
+        <div class="task-head"><span class="tasknum">Задача 5</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Параметри "переплутались"</span></div>
+        <p>Схема <code>ry(beta) → rz(alpha)</code> з <code>beta = π</code> має давати <span class="math">|1⟩</span>, але
+        <code>assign_parameters([np.pi, 0.0])</code> дає <span class="math">|0⟩</span>. Знайдіть причину і виправте.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task05.py</span></div><pre><code>import numpy as np
+from qiskit import QuantumCircuit
+from qiskit.circuit import Parameter
+from qiskit.quantum_info import Statevector
+
+beta = Parameter("beta")     # оголошено першим
+alpha = Parameter("alpha")   # оголошено другим
+qc = QuantumCircuit(1)
+qc.ry(beta, 0)
+qc.rz(alpha, 0)
+print([p.name for p in qc.parameters])            # порядок — за алфавітом!
+
+values = {"beta": np.pi, "alpha": 0.0}           # хочемо |1⟩
+buggy = qc.assign_parameters([np.pi, 0.0])        # "beta, alpha" — як у коді
+fixed = qc.assign_parameters({beta: values["beta"], alpha: values["alpha"]})
+fmt = lambda c: {str(k): round(float(v), 3) for k, v in Statevector(c).probabilities_dict().items()}
+print("buggy:", fmt(buggy))
+print("fixed:", fmt(fixed))</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>['alpha', 'beta']
+buggy: {'0': 1.0}
+fixed: {'0': 0.0, '1': 1.0}</code></pre></div>
+          <p><b>Чому так:</b> позиційний список зіставляється з <code>qc.parameters</code>, які відсортовані за іменем:
+          <code>alpha</code> перед <code>beta</code>. Тому <code>π</code> пішло в <code>alpha</code> (фаза, на ймовірності не впливає),
+          а <code>beta = 0</code>. У продакшн-коді — тільки словник <code>{Parameter: value}</code> або явне
+          <code>dict(zip(qc.parameters, values))</code> з перевіркою імен.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task6">
+        <div class="task-head"><span class="tasknum">Задача 6</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Тест U·U† = I</span></div>
+        <p>Згенеруйте випадкову 3-кубітну схему (<code>random_circuit</code>, seed=21) і напишіть перевірку, що схема разом з
+        інверсією — тотожність. Покажіть, що без <code>inverse()</code> тест падає.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task06.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.circuit.random import random_circuit
+from qiskit.quantum_info import Operator
+
+u = random_circuit(3, depth=6, max_operands=2, seed=21)
+print("ops:", dict(u.count_ops()))
+full = u.compose(u.inverse())
+print("U·U† ≡ I :", Operator(full).equiv(Operator(QuantumCircuit(3))))
+bad = u.compose(u)                       # забули inverse()
+print("U·U ≡ I  :", Operator(bad).equiv(Operator(QuantumCircuit(3))))</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>ops: {'swap': 2, 'rzz': 1, 's': 1, 'sxdg': 1, 'ryy': 1, 'z': 1, 'rxx': 1, 'rzx': 1}
+U·U† ≡ I : True
+U·U ≡ I  : False</code></pre></div>
+          <p><b>Чому так:</b> унітарні матриці оборотні, <span class="math">U⁻¹ = U†</span>
+          (<a href="06-linear-algebra-vectors-matrices.html">туторіал 6</a>). Такий тест — найкращий спосіб перевірити власні
+          "будівельні блоки" (оракули, ансатци) у CI: дешево, детерміновано, без shots.</p>
+        </div></details>
+      </div>
+    </section>
+
+    <section id="tasks-mid">
+      <h2><span class="num">M</span> Середні задачі: 7–18</h2>
+      <p class="section-desc">Тут уже треба поєднувати кілька інструментів: Operator, Estimator, транспілятор, шумову модель.</p>
+
+      <div class="task" id="task7">
+        <div class="task-head"><span class="tasknum">Задача 7</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Симетрія CZ і "розворот" CX</span></div>
+        <p>Доведіть через <code>Operator</code>: (а) <code>CZ(0,1) ≡ CZ(1,0)</code> <span class="say">(≡ — «тотожно дорівнює»)</span>; (б) <code>CX(0,1) ≢ CX(1,0)</code> <span class="say">(≢ — «не тотожно дорівнює»)</span>;
+        (в) <code>CX(1,0) ≡ (H⊗H)·CX(0,1)·(H⊗H)</code>.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task07.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.quantum_info import Operator
+
+def op(build):
+    qc = QuantumCircuit(2); build(qc); return Operator(qc)
+
+cz01 = op(lambda c: c.cz(0, 1))
+cz10 = op(lambda c: c.cz(1, 0))
+cx01 = op(lambda c: c.cx(0, 1))
+cx10 = op(lambda c: c.cx(1, 0))
+def flipped(c):
+    c.h([0, 1]); c.cx(0, 1); c.h([0, 1])
+print("CZ(0,1) ≡ CZ(1,0):", cz01.equiv(cz10))
+print("CX(0,1) ≡ CX(1,0):", cx01.equiv(cx10))
+print("CX(1,0) ≡ (H⊗H)·CX(0,1)·(H⊗H):", cx10.equiv(op(flipped)))</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>CZ(0,1) ≡ CZ(1,0): True
+CX(0,1) ≡ CX(1,0): False
+CX(1,0) ≡ (H⊗H)·CX(0,1)·(H⊗H): True</code></pre></div>
+          <p><b>Чому так:</b> <span class="math">CZ = diag(1, 1, 1, −1)</span> — фаза −1 лише на <span class="math">|11⟩</span>, тому
+          "хто керує" не має значення. Саме тому IBM Heron використовує CZ як рідний гейт: напрям не важливий для транспілятора.
+          H переводить Z-базис в X-базис, і в X-базисі ролі керування й цілі CX міняються місцями.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task8">
+        <div class="task-head"><span class="tasknum">Задача 8</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">RX(π) — це X? А керовані?</span></div>
+        <p>Порівняйте <code>RX(π)</code> і <code>X</code> через <code>==</code> і <code>equiv</code>. Потім порівняйте
+        <code>CRX(π)</code> і <code>CX</code> та поясніть різницю.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task08.py</span></div><pre><code>import numpy as np
+from qiskit import QuantumCircuit
+from qiskit.quantum_info import Operator, Statevector
+
+rx = QuantumCircuit(1); rx.rx(np.pi, 0)
+x = QuantumCircuit(1); x.x(0)
+print("==   :", Operator(rx) == Operator(x))
+print("equiv:", Operator(rx).equiv(Operator(x)))
+print(np.round(Operator(rx).data, 3))
+# Але як КЕРОВАНІ гейти вони різні:
+crx = QuantumCircuit(2); crx.crx(np.pi, 0, 1)
+cx = QuantumCircuit(2); cx.cx(0, 1)
+print("CRX(π) ≡ CX:", Operator(crx).equiv(Operator(cx)))
+plus = QuantumCircuit(2); plus.h(0)
+a = Statevector(plus.compose(crx)); b = Statevector(plus.compose(cx))
+print(np.round(a.data, 3)); print(np.round(b.data, 3))</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>==   : False
+equiv: True
+[[0.+0.j 0.-1.j]
+ [0.-1.j 0.+0.j]]
+CRX(π) ≡ CX: False
+[0.707+0.j    0.   +0.j    0.   +0.j    0.   -0.707j]
+[0.707+0.j 0.   +0.j 0.   +0.j 0.707+0.j]</code></pre></div>
+          <p><b>Чому так:</b> <span class="math">RX(π) = −i·X</span> — та сама операція з глобальною фазою. Але коли гейт стає
+          <b>керованим</b>, фаза <span class="math">−i</span> застосовується лише до гілки "керування = 1" і стає
+          <b>відносною</b>: у результаті <span class="math">(|00⟩ − i|11⟩)/√2</span> замість <span class="math">(|00⟩ + |11⟩)/√2</span>.
+          Урок: "рівність з точністю до глобальної фази" не зберігається при додаванні контролю. Детально про фази —
+          <a href="08-complex-numbers-phase.html">туторіал 8</a>.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task9">
+        <div class="task-head"><span class="tasknum">Задача 9</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Свіп RY(θ): ⟨Z⟩ = cos θ, ⟨X⟩ = sin θ одним PUB</span></div>
+        <p>Одним викликом <code>StatevectorEstimator</code> порахуйте <span class="math">⟨Z⟩</span> і <span class="math">⟨X⟩</span>
+        для 9 кутів від 0 до 2π і порівняйте з теорією.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task09.py</span></div><pre><code>import numpy as np
+from qiskit import QuantumCircuit
+from qiskit.circuit import Parameter
+from qiskit.quantum_info import SparsePauliOp
+from qiskit.primitives import StatevectorEstimator
+
+theta = Parameter("θ")
+qc = QuantumCircuit(1)
+qc.ry(theta, 0)
+
+thetas = np.linspace(0, 2 * np.pi, 9)                       # shape (9,)
+observables = [[SparsePauliOp("Z")], [SparsePauliOp("X")]]   # shape (2, 1)
+pub = (qc, observables, thetas.reshape(1, 9, 1))             # params (1, 9) + 1 параметр
+res = StatevectorEstimator().run([pub]).result()[0]
+print("evs.shape:", res.data.evs.shape)                      # (2, 9) — broadcasting
+print(f"{'θ/π':&gt;5} {'⟨Z⟩':&gt;7} {'cos θ':&gt;7} {'⟨X⟩':&gt;7} {'sin θ':&gt;7}")
+for t, z, x in zip(thetas, res.data.evs[0], res.data.evs[1]):
+    print(f"{t/np.pi:&gt;5.2f} {z:&gt;7.3f} {np.cos(t):&gt;7.3f} {x:&gt;7.3f} {np.sin(t):&gt;7.3f}")</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>evs.shape: (2, 9)
+  θ/π     ⟨Z⟩   cos θ     ⟨X⟩   sin θ
+ 0.00   1.000   1.000   0.000   0.000
+ 0.25   0.707   0.707   0.707   0.707
+ 0.50   0.000   0.000   1.000   1.000
+ 0.75  -0.707  -0.707   0.707   0.707
+ 1.00  -1.000  -1.000   0.000   0.000
+ 1.25  -0.707  -0.707  -0.707  -0.707
+ 1.50  -0.000  -0.000  -1.000  -1.000
+ 1.75   0.707   0.707  -0.707  -0.707
+ 2.00   1.000   1.000  -0.000  -0.000</code></pre></div>
+          <p><b>Чому так:</b> <span class="math">RY(θ)|0⟩ = cos(θ/2)|0⟩ + sin(θ/2)|1⟩</span> <span class="say">(θ — «тета»)</span>, тому
+          <span class="math">⟨Z⟩ = cos²(θ/2) − sin²(θ/2) = cos θ</span>, а <span class="math">⟨X⟩ = 2 sin(θ/2) cos(θ/2) = sin θ</span>
+          — точка рухається по великому колу сфери Блоха в площині XZ. Форми <code>(2,1)</code> і <code>(1,9)</code> дають
+          <code>(2,9)</code> — схема на <a href="#s11">діаграмі розділу 11</a>.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task10">
+        <div class="task-head"><span class="tasknum">Задача 10</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">⟨H⟩ руками, потім кодом</span></div>
+        <p>Стан: <code>h(0)</code> на двох кубітах, тобто <span class="math">|0⟩₁ ⊗ |+⟩₀</span> <span class="say">(|+⟩ — «кет плюс»: (|0⟩+|1⟩)/√2)</span>. Гамільтоніан:
+        <code>ZZ + 0.5·IX − 2·ZI</code>. Спершу порахуйте <span class="math">⟨H⟩</span> на папері, потім перевірте.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task10.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.quantum_info import Statevector, SparsePauliOp
+
+qc = QuantumCircuit(2)
+qc.h(0)                         # |ψ⟩ = |0⟩_1 ⊗ |+⟩_0
+H = SparsePauliOp.from_list([("ZZ", 1.0), ("IX", 0.5), ("ZI", -2.0)])
+sv = Statevector(qc)
+for label, coeff in H.to_list():
+    print(label, coeff.real, "→", round(float(sv.expectation_value(SparsePauliOp(label)).real), 3))
+print("⟨H⟩ =", round(float(sv.expectation_value(H).real), 3))</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>ZZ 1.0 → 0.0
+IX 0.5 → 1.0
+ZI -2.0 → 1.0
+⟨H⟩ = -1.5</code></pre></div>
+          <p><b>Чому так:</b> стан — добуток, тому очікування множаться: <span class="math">⟨Z₁⟩ = 1</span> (кубіт 1 у |0⟩),
+          <span class="math">⟨Z₀⟩ = 0</span>, <span class="math">⟨X₀⟩ = 1</span>. Отже <span class="math">⟨ZZ⟩ = 1·0 = 0</span>,
+          <span class="math">⟨IX⟩ = 1</span>, <span class="math">⟨ZI⟩ = 1</span>, і <span class="math">⟨H⟩ = 0 + 0.5 − 2 = −1.5</span>.
+          Пам'ятайте: у рядку <code>"IX"</code> правий символ — кубіт 0.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task11">
+        <div class="task-head"><span class="tasknum">Задача 11</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Ціна несусідніх кубітів на FakeFez</span></div>
+        <p>Транспілюйте Bell-схему під <code>FakeFez</code> з <code>initial_layout</code> = <code>[0,1]</code>, <code>[0,2]</code>,
+        <code>[0,20]</code>. Скільки CZ у кожному випадку і чому? Що з фінальним layout?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task11.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.transpiler import generate_preset_pass_manager
+from qiskit_ibm_runtime.fake_provider import FakeFez
+
+backend = FakeFez()
+cmap = backend.coupling_map
+print("сусіди 0:", sorted(cmap.neighbors(0)), "| сусіди 2:", sorted(cmap.neighbors(2)))
+print("відстань 0→2:", cmap.distance(0, 2), "| 0→20:", cmap.distance(0, 20))
+
+bell = QuantumCircuit(2); bell.h(0); bell.cx(0, 1); bell.measure_all()
+for layout in ([0, 1], [0, 2], [0, 20]):
+    pm = generate_preset_pass_manager(optimization_level=1, backend=backend,
+                                      initial_layout=layout, seed_transpiler=3)
+    isa = pm.run(bell)
+    print(f"layout={layout}: cz={isa.count_ops().get('cz', 0)}, depth={isa.depth()}, "
+          f"фінальні фізичні кубіти={isa.layout.final_index_layout()}")</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>сусіди 0: [1] | сусіди 2: [1, 3]
+відстань 0→2: 2 | 0→20: 8
+layout=[0, 1]: cz=1, depth=8, фінальні фізичні кубіти=[0, 1]
+layout=[0, 2]: cz=4, depth=14, фінальні фізичні кубіти=[0, 1]
+layout=[0, 20]: cz=22, depth=31, фінальні фізичні кубіти=[16, 23]</code></pre></div>
+          <p><b>Чому так:</b> відстань 2 → один SWAP (3 CZ) + сам CX (1 CZ) = 4. Відстань 8 → 7 SWAP-ів = 21 + 1 = 22. Після
+          SWAP-ів стани "переїхали": <code>final_index_layout</code> показує, на яких фізичних кубітах вони опинились у кінці —
+          саме ці кубіти і вимірюються. Висновок: <b>ніколи не задавайте initial_layout "навмання"</b> — або залиште вибір
+          транспілятору, або вибирайте свідомо (задача 20).</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task12">
+        <div class="task-head"><span class="tasknum">Задача 12</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Стохастичність транспілятора</span></div>
+        <p>Транспілюйте QFT на 6 кубітах під FakeFez на рівні 3 з десятьма різними <code>seed_transpiler</code>. Чи однаковий
+        результат? Як використати це в продакшні?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task12.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.circuit.library import QFTGate
+from qiskit.transpiler import generate_preset_pass_manager
+from qiskit_ibm_runtime.fake_provider import FakeFez
+
+backend = FakeFez()
+qc = QuantumCircuit(6); qc.append(QFTGate(6), range(6)); qc.measure_all()
+results = []
+for seed in range(10):
+    pm = generate_preset_pass_manager(optimization_level=3, backend=backend, seed_transpiler=seed)
+    isa = pm.run(qc)
+    results.append((isa.count_ops().get("cz", 0), isa.depth(), seed))
+print("cz по seed:", [r[0] for r in results])
+best = min(results)
+print("найкращий:", {"cz": best[0], "depth": best[1], "seed": best[2]})
+print("найгірший cz:", max(results)[0])</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>cz по seed: [48, 46, 46, 46, 46, 46, 48, 46, 46, 46]
+найкращий: {'cz': 46, 'depth': 106, 'seed': 9}
+найгірший cz: 48</code></pre></div>
+          <p><b>Чому так:</b> алгоритми layout/routing (Sabre) — евристики з випадковістю. Різниця тут невелика (46 vs 48 CZ), але
+          на великих схемах буває 10–20%. Практика: (1) завжди фіксуйте seed — відтворюваність і кешування ISA-схем;
+          (2) для дорогих запусків — "best of N": транспілювати N разів і брати мінімум за CZ/глибиною. Це дешево, бо
+          транспіляція локальна, а QPU-час — ні.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task13">
+        <div class="task-head"><span class="tasknum">Задача 13</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">FakeKyiv vs FakeFez</span></div>
+        <p>Порівняйте Bell-стан на шумних моделях <code>FakeKyiv</code> (Eagle, 127 кубітів) і <code>FakeFez</code> (Heron, 156).
+        Який рідний двокубітний гейт у кожного? Яка Hellinger fidelity?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task13.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.transpiler import generate_preset_pass_manager
+from qiskit.quantum_info import hellinger_fidelity
+from qiskit_aer import AerSimulator
+from qiskit_ibm_runtime.fake_provider import FakeFez, FakeKyiv
+
+bell = QuantumCircuit(2); bell.h(0); bell.cx(0, 1); bell.measure_all()
+ideal = {"00": 2000, "11": 2000}
+for backend in (FakeKyiv(), FakeFez()):
+    pm = generate_preset_pass_manager(optimization_level=1, backend=backend, seed_transpiler=1)
+    isa = pm.run(bell)
+    twoq = {k: v for k, v in isa.count_ops().items() if k in ("cz", "ecr", "cx")}
+    noisy = AerSimulator.from_backend(backend, seed_simulator=1).run(isa, shots=4000).result().get_counts()
+    print(f"{backend.name:10} {backend.num_qubits} q, 2q-гейти={twoq}, "
+          f"Hellinger={hellinger_fidelity(ideal, noisy):.3f}, counts={dict(sorted(noisy.items()))}")</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>fake_kyiv  127 q, 2q-гейти={'ecr': 1}, Hellinger=0.981, counts={'00': 1916, '01': 47, '10': 30, '11': 2007}
+fake_fez   156 q, 2q-гейти={'cz': 1}, Hellinger=0.972, counts={'00': 1903, '01': 56, '10': 57, '11': 1984}</code></pre></div>
+          <p><b>Чому так:</b> Eagle використовує <code>ecr</code> (echoed cross-resonance), Heron — <code>cz</code>. На Bell-схемі
+          результат визначають одна пара кубітів і зчитування, тому тут FakeKyiv навіть трохи кращий — це <b>знімок
+          калібрувань</b> конкретних кубітів, а не загальний рейтинг процесорів. На глибоких схемах Heron зазвичай виграє
+          завдяки нижчій похибці двокубітних гейтів у середньому. Урок: порівнюйте бекенди на <i>своїй</i> схемі.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task14">
+        <div class="task-head"><span class="tasknum">Задача 14</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Скільки shots потрібно</span></div>
+        <p>Для Bell-стану оцініть <span class="math">P(00)</span> на 100, 1000 і 10 000 shots, повторивши кожен експеримент 200 разів.
+        Порівняйте розкид з теорією <span class="math">σ = √(p(1−p)/N)</span>. (Підказка: подумайте, що буде з
+        <code>seed=123</code>.)</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task14.py</span></div><pre><code>import numpy as np
+from qiskit import QuantumCircuit
+from qiskit.primitives import StatevectorSampler
+
+bell = QuantumCircuit(2); bell.h(0); bell.cx(0, 1); bell.measure_all()
+sampler = StatevectorSampler(seed=np.random.default_rng(123))  # генератор, а не int!
+print(f"{'shots':&gt;6} {'σ емпір.':&gt;9} {'σ теорія':&gt;9}")
+for shots in (100, 1000, 10000):
+    ests = []
+    for _ in range(200):
+        c = sampler.run([bell], shots=shots).result()[0].data.meas.get_counts()
+        ests.append(c.get("00", 0) / shots)
+    print(f"{shots:&gt;6} {np.std(ests):&gt;9.4f} {np.sqrt(0.25 / shots):&gt;9.4f}")</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code> shots  σ емпір.  σ теорія
+   100    0.0533    0.0500
+  1000    0.0159    0.0158
+ 10000    0.0053    0.0050</code></pre></div>
+          <p><b>Чому так:</b> перша спроба автора з <code>seed=123</code> (int) дала σ = 0.0000 — кожен <code>run()</code> починав
+          той самий генератор з нуля і повертав однакові counts. Генератор <code>np.random.default_rng(123)</code> зберігає стан
+          між викликами. Самі числа: σ спадає як <span class="math">1/√N</span> — щоб зменшити похибку вдесятеро, треба в 100 разів
+          більше shots. Для ±1% (σ ≈ 0.01) при p = 0.5 — ~2500 shots; виведення — у <a href="09-probability-shots.html">туторіалі 9</a>.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task15">
+        <div class="task-head"><span class="tasknum">Задача 15</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Дойч–Йожа на 3 кубітах</span></div>
+        <p>Функція <span class="math">f: {0,1}³ → {0,1}</span> або константна, або збалансована. Реалізуйте 4 оракули (2 константні,
+        2 збалансовані) і алгоритм Дойча–Йожи, який визначає тип <b>одним</b> запитом до оракула.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task15.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.primitives import StatevectorSampler
+
+N = 3  # вхідних кубітів; кубіт N — допоміжний (ancilla)
+
+def oracle(kind):
+    o = QuantumCircuit(N + 1, name=f"U_f[{kind}]")
+    if kind == "const0":
+        pass                              # f(x) = 0
+    elif kind == "const1":
+        o.x(N)                            # f(x) = 1
+    elif kind == "balanced_parity":
+        for i in range(N):                # f(x) = x0 ⊕ x1 ⊕ x2
+            o.cx(i, N)
+    elif kind == "balanced_x1":
+        o.cx(1, N)                        # f(x) = x1
+    return o
+
+def deutsch_jozsa(kind):
+    qc = QuantumCircuit(N + 1, N)
+    qc.x(N); qc.h(range(N + 1))           # ancilla в |−⟩, входи в |+⟩^N
+    qc.compose(oracle(kind), inplace=True)
+    qc.h(range(N))
+    qc.measure(range(N), range(N))
+    return qc
+
+sampler = StatevectorSampler(seed=2)
+for kind in ("const0", "const1", "balanced_parity", "balanced_x1"):
+    counts = sampler.run([deutsch_jozsa(kind)], shots=500).result()[0].data.c.get_counts()
+    verdict = "constant" if set(counts) == {"0" * N} else "balanced"
+    print(f"{kind:16} {counts} → {verdict}")
+print(deutsch_jozsa("balanced_parity").draw("text"))</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>const0           {'000': 500} → constant
+const1           {'000': 500} → constant
+balanced_parity  {'111': 500} → balanced
+balanced_x1      {'010': 500} → balanced
+     ┌───┐          ┌───┐     ┌─┐           
+q_0: ┤ H ├───────■──┤ H ├─────┤M├───────────
+     ├───┤       │  └───┘┌───┐└╥┘     ┌─┐   
+q_1: ┤ H ├───────┼────■──┤ H ├─╫──────┤M├───
+     ├───┤       │    │  └───┘ ║ ┌───┐└╥┘┌─┐
+q_2: ┤ H ├───────┼────┼────■───╫─┤ H ├─╫─┤M├
+     ├───┤┌───┐┌─┴─┐┌─┴─┐┌─┴─┐ ║ └───┘ ║ └╥┘
+q_3: ┤ X ├┤ H ├┤ X ├┤ X ├┤ X ├─╫───────╫──╫─
+     └───┘└───┘└───┘└───┘└───┘ ║       ║  ║ 
+c: 3/══════════════════════════╩═══════╩══╩═
+                               0       1  2 </code></pre></div>
+          <p><b>Чому так:</b> допоміжний кубіт у <span class="math">|−⟩</span> перетворює оракул на <b>фазовий</b>:
+          <span class="math">|x⟩ → (−1)^{f(x)}|x⟩</span> (phase kickback). Після останніх H амплітуда <span class="math">|000⟩</span>
+          дорівнює <span class="math">(1/8) Σₓ (−1)^{f(x)}</span>: для константної f це ±1 (всі доданки однакового знака), для
+          збалансованої — 0 (рівно половина +1 і половина −1, деструктивна інтерференція). Класично в найгіршому випадку
+          потрібно <span class="math">2^{n−1}+1 = 5</span> запитів. Навчальний алгоритм: практичної переваги не дає, але
+          ідеально показує інтерференцію.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task16">
+        <div class="task-head"><span class="tasknum">Задача 16</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Бернштейн–Вазірані: секрет за один запит</span></div>
+        <p>Оракул рахує <span class="math">f(x) = s·x mod 2</span> для прихованого рядка <span class="math">s</span>. Реалізуйте
+        алгоритм для <span class="math">s = 1011</span> і <span class="math">0110</span> так, щоб виміряний рядок <b>дослівно</b>
+        збігався з s (обережно з порядком бітів).</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task16.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.primitives import StatevectorSampler
+
+def bernstein_vazirani(secret: str) -&gt; QuantumCircuit:
+    n = len(secret)
+    qc = QuantumCircuit(n + 1, n)
+    qc.x(n); qc.h(range(n + 1))
+    # f(x) = s·x mod 2. secret записаний як звичайний рядок: secret[-1] — це біт кубіта 0
+    for i, bit in enumerate(reversed(secret)):
+        if bit == "1":
+            qc.cx(i, n)
+    qc.h(range(n))
+    qc.measure(range(n), range(n))
+    return qc
+
+for s in ("1011", "0110"):
+    counts = StatevectorSampler(seed=5).run([bernstein_vazirani(s)], shots=200).result()[0].data.c.get_counts()
+    print(s, "→", counts)</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>1011 → {'1011': 200}
+0110 → {'0110': 200}</code></pre></div>
+          <p><b>Чому так:</b> після phase kickback стан входів — <span class="math">Σₓ (−1)^{s·x}|x⟩</span>, а це рівно
+          <span class="math">H^{⊗n}|s⟩</span>. Ще одне <span class="math">H^{⊗n}</span> повертає <span class="math">|s⟩</span>.
+          Ключова деталь — <code>reversed(secret)</code>: символ <code>secret[-1]</code> — це кубіт 0, тоді і вивід Qiskit
+          (кубіт 0 праворуч) збігається з рядком. Без reversed ви отримали б <code>1101</code> замість <code>1011</code>.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task17">
+        <div class="task-head"><span class="tasknum">Задача 17</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Grover на 2 кубітах для будь-якої цілі</span></div>
+        <p>Напишіть <code>grover2(target)</code>, що з однієї ітерації знаходить будь-який із 4 рядків з імовірністю 100%.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task17.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.primitives import StatevectorSampler
+
+def grover2(target: str) -&gt; QuantumCircuit:
+    qc = QuantumCircuit(2)
+    qc.h([0, 1])
+    # Оракул: фазовий фліп |target⟩. Нулі "перетворюємо" на одиниці X-ами, щоб працював CZ
+    zeros = [i for i, b in enumerate(reversed(target)) if b == "0"]
+    if zeros: qc.x(zeros)
+    qc.cz(0, 1)
+    if zeros: qc.x(zeros)
+    # Дифузор: 2|s⟩⟨s| − I
+    qc.h([0, 1]); qc.x([0, 1]); qc.cz(0, 1); qc.x([0, 1]); qc.h([0, 1])
+    qc.measure_all()
+    return qc
+
+for t in ("00", "01", "10", "11"):
+    c = StatevectorSampler(seed=8).run([grover2(t)], shots=1000).result()[0].data.meas.get_counts()
+    print(t, "→", c)
+print(grover2("10").draw("text"))</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>00 → {'00': 1000}
+01 → {'01': 1000}
+10 → {'10': 1000}
+11 → {'11': 1000}
+        ┌───┐┌───┐   ┌───┐┌───┐┌───┐   ┌───┐┌───┐ ░ ┌─┐   
+   q_0: ┤ H ├┤ X ├─■─┤ X ├┤ H ├┤ X ├─■─┤ X ├┤ H ├─░─┤M├───
+        ├───┤└───┘ │ ├───┤├───┤└───┘ │ ├───┤├───┤ ░ └╥┘┌─┐
+   q_1: ┤ H ├──────■─┤ H ├┤ X ├──────■─┤ X ├┤ H ├─░──╫─┤M├
+        └───┘        └───┘└───┘        └───┘└───┘ ░  ║ └╥┘
+meas: 2/═════════════════════════════════════════════╩══╩═
+                                                     0  1 </code></pre></div>
+          <p><b>Чому так:</b> оракул ставить мінус перед цільовим станом (CZ "бачить" лише <span class="math">|11⟩</span>, тому
+          нулі цілі тимчасово перевертаємо X-ами). Дифузор — відбиття відносно середнього: амплітуди
+          <span class="math">(½, ½, ½, −½)</span> → середнє ¼ → відбиття <span class="math">2·¼ − a</span> дає
+          <span class="math">(0, 0, 0, 1)</span>. Для N = 4 одна ітерація — точно. Для більших N — див. задачу 22.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task18">
+        <div class="task-head"><span class="tasknum">Задача 18</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Умовне скидання через if_test</span></div>
+        <p>Без гейта <code>reset</code> зробіть так, щоб кубіт після першого вимірювання завжди повертався в <span class="math">|0⟩</span>.
+        Доведіть другим вимірюванням.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task18.py</span></div><pre><code>from qiskit import QuantumCircuit, transpile
+from qiskit_aer import AerSimulator
+
+qc = QuantumCircuit(1, 2)
+qc.h(0)                         # 50/50
+qc.measure(0, 0)                # перше вимірювання → c[0]
+with qc.if_test((qc.clbits[0], 1)):
+    qc.x(0)                     # якщо виміряли 1 — повертаємо в |0⟩
+qc.measure(0, 1)                # контрольне вимірювання → c[1]
+
+sim = AerSimulator(seed_simulator=4)
+print(sim.run(transpile(qc, sim), shots=1000).result().get_counts())</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>{'00': 498, '01': 502}</code></pre></div>
+          <p><b>Чому так:</b> ключі — <code>c[1]c[0]</code>. Перший біт (праворуч) — 50/50, другий (ліворуч) — завжди 0.
+          Після вимірювання стан колапсує в <span class="math">|0⟩</span> або <span class="math">|1⟩</span>; у другому випадку
+          <code>X</code> повертає його в <span class="math">|0⟩</span>. Саме так влаштовано <code>reset</code> на багатьох
+          платформах і "перевикористання" кубітів посеред схеми.</p>
+        </div></details>
+      </div>
+    </section>
+
+    <section id="tasks-hard">
+      <h2><span class="num">H</span> Складні задачі: 19–22</h2>
+      <p class="section-desc">Задачі, які вже схожі на реальну роботу: вибір симулятора, вибір кубітів, вартість гейтів, налаштування алгоритму.</p>
+
+      <div class="task" id="task19">
+        <div class="task-head"><span class="tasknum">Задача 19</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Коли MPS виграє, а коли програє</span></div>
+        <p>Порівняйте час <code>statevector</code> і <code>matrix_product_state</code> на GHZ (20 і 24 кубіти) і на випадкових
+        схемах (12×12 і 16×16). Поясніть результат через заплутаність.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task19.py</span></div><pre><code>import time
+from qiskit import QuantumCircuit, transpile
+from qiskit.circuit.random import random_circuit
+from qiskit_aer import AerSimulator
+
+def run(method, qc, shots=100):
+    sim = AerSimulator(method=method, seed_simulator=1)
+    tqc = transpile(qc, sim, seed_transpiler=1)
+    t0 = time.perf_counter()
+    sim.run(tqc, shots=shots).result()
+    return time.perf_counter() - t0
+
+def ghz(n):
+    qc = QuantumCircuit(n); qc.h(0)
+    for i in range(n - 1): qc.cx(i, i + 1)
+    qc.measure_all(); return qc
+
+for n in (20, 24):
+    print(f"GHZ-{n}: statevector {run('statevector', ghz(n)):.2f}s | MPS {run('matrix_product_state', ghz(n)):.3f}s", flush=True)
+for n in (12, 16):
+    rnd = random_circuit(n, depth=n, max_operands=2, measure=True, seed=7)
+    print(f"random {n}q×{n}: statevector {run('statevector', rnd):.2f}s | MPS {run('matrix_product_state', rnd):.2f}s", flush=True)</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід (один прогін; час залежить від машини)</span></div><pre><code>GHZ-20: statevector 0.03s | MPS 0.002s
+GHZ-24: statevector 0.30s | MPS 0.002s
+random 12q×12: statevector 0.00s | MPS 0.00s
+random 16q×16: statevector 0.01s | MPS 6.30s</code></pre></div>
+          <p><b>Чому так:</b> statevector платить <span class="math">2ⁿ</span> незалежно від схеми: 24 кубіти — уже приблизно в 10 разів
+          повільніше, ніж 20. MPS зберігає стан як ланцюжок малих тензорів, розмір яких визначає <b>заплутаність</b> між
+          лівою і правою частинами ланцюжка. GHZ має мінімальну заплутаність (bond dimension 2) — MPS майже безкоштовний.
+          Випадкова схема з двокубітними гейтами між далекими кубітами швидко "заплутує все з усім", і MPS деградує до
+          експоненти з великою константою: на 16×16 він уже в сотні разів повільніший. Практичне правило: MPS — для широких
+          неглибоких схем з локальною взаємодією (саме такі використовувала IBM у "utility"-експериментах, див.
+          <a href="02-quantum-engineering-history.html">туторіал 2</a>).</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task20">
+        <div class="task-head"><span class="tasknum">Задача 20</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Вибрати найкращі кубіти за калібруваннями</span></div>
+        <p>Через <code>backend.target</code> знайдіть на FakeFez пару сусідніх кубітів з мінімальною сумарною похибкою
+        (CZ + readout обох) і з максимальною. Запустіть Bell на обох парах у шумному Aer і порівняйте Hellinger fidelity.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task20.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.transpiler import generate_preset_pass_manager
+from qiskit.quantum_info import hellinger_fidelity
+from qiskit_aer import AerSimulator
+from qiskit_ibm_runtime.fake_provider import FakeFez
+
+backend = FakeFez()
+target = backend.target
+
+def pair_cost(a, b):
+    """Сумарна похибка: CZ на парі + readout обох кубітів."""
+    cz = target["cz"][(a, b)].error
+    ro = target["measure"][(a,)].error + target["measure"][(b,)].error
+    return cz + ro
+
+pairs = [qargs for qargs in target["cz"] if target["cz"][qargs].error is not None]
+ranked = sorted(pairs, key=lambda p: pair_cost(*p))
+best, worst = ranked[0], ranked[-1]
+print("пар CZ:", len(pairs))
+print("найкраща:", best, f"{pair_cost(*best):.4f}", "| найгірша:", worst, f"{pair_cost(*worst):.4f}")
+
+bell = QuantumCircuit(2); bell.h(0); bell.cx(0, 1); bell.measure_all()
+sim = AerSimulator.from_backend(backend, seed_simulator=2)
+for name, layout in (("best", list(best)), ("worst", list(worst))):
+    pm = generate_preset_pass_manager(optimization_level=1, backend=backend,
+                                      initial_layout=layout, seed_transpiler=2)
+    counts = sim.run(pm.run(bell), shots=4000).result().get_counts()
+    print(f"{name:5} {layout}: Hellinger = {hellinger_fidelity({'00': 1, '11': 1}, counts):.3f}")</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>пар CZ: 352
+найкраща: (96, 103) 0.0100 | найгірша: (69, 68) 1.0337
+best  [96, 103]: Hellinger = 0.990
+worst [69, 68]: Hellinger = 0.460</code></pre></div>
+          <figure class="diagram">
+            <svg viewBox="0 0 740 200" role="img" aria-label="Порівняння Bell-стану на двох парах кубітів FakeFez. Найкраща пара 96 і 103: сумарна похибка 0.010, Hellinger fidelity 0.990. Найгірша пара 69 і 68: сумарна похибка понад 1, тобто зв'язок фактично непрацездатний у цьому знімку калібрувань, Hellinger 0.460 — майже випадковий результат.">
+              <g font-size="12">
+                <text x="20" y="24" fill="currentColor" font-weight="bold">Bell на FakeFez: та сама схема, різні фізичні кубіти</text>
+                <text x="20" y="70" fill="currentColor">пара (96, 103)</text>
+                <rect x="140" y="54" width="554" height="24" rx="4" fill="var(--good)"/>
+                <text x="700" y="71" fill="currentColor" font-weight="bold">0.990</text>
+                <text x="140" y="96" fill="var(--fg-muted)" font-size="11">похибка CZ + readout: 0.010</text>
+                <text x="20" y="140" fill="currentColor">пара (69, 68)</text>
+                <rect x="140" y="124" width="257" height="24" rx="4" fill="var(--bad)"/>
+                <text x="404" y="141" fill="currentColor" font-weight="bold">0.460</text>
+                <text x="140" y="166" fill="var(--fg-muted)" font-size="11">похибка ≈ 1.03 — у знімку калібрувань пара фактично "мертва"</text>
+                <text x="140" y="190" fill="var(--fg-muted)" font-size="11">шкала: Hellinger fidelity від 0 до 1</text>
+              </g>
+            </svg>
+            <figcaption>Один і той самий чип — від 99% до "майже монетки" залежно від того, які кубіти використати.</figcaption>
+          </figure>
+          <p><b>Чому так:</b> <code>target</code> — це "паспорт" бекенда: для кожної інструкції і кожного набору кубітів —
+          тривалість і похибка з останніх калібрувань. Похибка ≥ 1 означає, що пара в цьому знімку непрацездатна (на реальних
+          пристроях IBM такі кубіти/зв'язки позначаються як неробочі, і транспілятор їх уникає, якщо не змусити його
+          <code>initial_layout</code>). Транспілятор на рівнях 2–3 сам враховує похибки під час вибору layout (VF2Layout);
+          ручний вибір має сенс, коли у вас кілька незалежних схем і ви хочете розкласти їх по чипу, або для
+          бенчмарків.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task21">
+        <div class="task-head"><span class="tasknum">Задача 21</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Скільки коштує Toffoli</span></div>
+        <p>Доведіть, що <span class="math">CCZ = (I⊗I⊗H)·CCX·(I⊗I⊗H)</span>. Потім порахуйте кількість двокубітних гейтів у CCX:
+        (а) на ідеальному all-to-all з базисом <code>cx</code>; (б) на FakeFez з лінійним layout 0-1-2; (в) на FakeFez з
+        layout на вибір транспілятора.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task21.py</span></div><pre><code>from qiskit import QuantumCircuit
+from qiskit.quantum_info import Operator
+from qiskit.transpiler import generate_preset_pass_manager
+from qiskit_ibm_runtime.fake_provider import FakeFez
+
+ccz = QuantumCircuit(3); ccz.ccz(0, 1, 2)
+via_ccx = QuantumCircuit(3); via_ccx.h(2); via_ccx.ccx(0, 1, 2); via_ccx.h(2)
+print("CCZ ≡ H·CCX·H:", Operator(ccz).equiv(Operator(via_ccx)))
+
+backend = FakeFez()
+for layout, label in (([0, 1, 2], "лінія 0-1-2"), (None, "вибір транспілятора")):
+    pm = generate_preset_pass_manager(optimization_level=3, backend=backend,
+                                      initial_layout=layout, seed_transpiler=1)
+    isa = pm.run(via_ccx)
+    print(f"{label:22} cz={isa.count_ops().get('cz', 0)}, depth={isa.depth()}")
+basis = generate_preset_pass_manager(optimization_level=3, basis_gates=["cx", "rz", "sx", "x"], seed_transpiler=1).run(via_ccx)
+print("all-to-all, базис cx: cx =", basis.count_ops().get("cx", 0))</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>CCZ ≡ H·CCX·H: True
+лінія 0-1-2            cz=10, depth=37
+вибір транспілятора    cz=7, depth=29
+all-to-all, базис cx: cx = 6</code></pre></div>
+          <p><b>Чому так:</b> мінімальний відомий розклад Toffoli на CNOT-и — 6 CNOT, і він вимагає взаємодії <b>всіх трьох</b>
+          пар кубітів. На heavy-hex трикутників немає (кожна трійка — у кращому разі ланцюжок), тому третю пару доводиться
+          "доставляти" SWAP-ами або ресинтезувати під лінію: 10 CZ на лінії 0-1-2 і 7 CZ, коли транспілятор сам підібрав
+          розміщення і розклад. Мораль для алгоритмів: багатокубітні керовані гейти (оракули Гровера, <code>mcx</code>) —
+          найдорожча частина схеми на залізі. Рахуйте CZ <i>після</i> транспіляції, а не в абстрактній схемі.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task22">
+        <div class="task-head"><span class="tasknum">Задача 22</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Grover на 3 кубітах: скільки ітерацій</span></div>
+        <p>Реалізуйте загальний Гровер (оракул і дифузор через <code>mcx</code>) для цілі <code>'101'</code> серед N = 8 станів.
+        Порахуйте <span class="math">P(101)</span> для 0–4 ітерацій і порівняйте з формулою
+        <span class="math">P_k = sin²((2k+1)·θ)</span>, де <span class="math">sin θ = 1/√N</span>. Чому "більше ітерацій" — гірше?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <div class="codecard"><div class="bar"><span class="path">task22.py</span></div><pre><code>import numpy as np
+from qiskit import QuantumCircuit
+from qiskit.primitives import StatevectorSampler
+
+def phase_flip(target: str) -&gt; QuantumCircuit:
+    n = len(target)
+    o = QuantumCircuit(n, name="oracle")
+    zeros = [i for i, b in enumerate(reversed(target)) if b == "0"]
+    if zeros: o.x(zeros)
+    o.h(n - 1); o.mcx(list(range(n - 1)), n - 1); o.h(n - 1)   # multi-controlled Z
+    if zeros: o.x(zeros)
+    return o
+
+def diffuser(n: int) -&gt; QuantumCircuit:
+    d = QuantumCircuit(n, name="diffuser")
+    d.h(range(n)); d.compose(phase_flip("0" * n), inplace=True); d.h(range(n))
+    return d
+
+def grover(target: str, iterations: int) -&gt; QuantumCircuit:
+    n = len(target)
+    qc = QuantumCircuit(n); qc.h(range(n))
+    for _ in range(iterations):
+        qc.compose(phase_flip(target), inplace=True)
+        qc.compose(diffuser(n), inplace=True)
+    qc.measure_all()
+    return qc
+
+n, N = 3, 8
+k_opt = int(np.floor(np.pi / 4 * np.sqrt(N)))
+print("оптимум ітерацій:", k_opt)
+for k in range(0, 5):
+    c = StatevectorSampler(seed=3).run([grover("101", k)], shots=4000).result()[0].data.meas.get_counts()
+    theo = np.sin((2 * k + 1) * np.arcsin(1 / np.sqrt(N))) ** 2
+    print(f"k={k}: P('101') = {c.get('101', 0)/4000:.3f}  теорія {theo:.3f}")</code></pre></div>
+          <div class="codecard"><div class="bar"><span class="path">▶ вивід</span></div><pre><code>оптимум ітерацій: 2
+k=0: P('101') = 0.131  теорія 0.125
+k=1: P('101') = 0.767  теорія 0.781
+k=2: P('101') = 0.944  теорія 0.945
+k=3: P('101') = 0.328  теорія 0.330
+k=4: P('101') = 0.014  теорія 0.012</code></pre></div>
+          <figure class="diagram">
+            <svg viewBox="0 0 740 250" role="img" aria-label="Стовпчикова діаграма ймовірності знайти ціль 101 в алгоритмі Гровера на 3 кубітах залежно від кількості ітерацій k. k=0: 0.131, k=1: 0.767, k=2: 0.944 — максимум, k=3: 0.328, k=4: 0.014. Теоретичні значення 0.125, 0.781, 0.945, 0.330, 0.012 позначені рисками. Після оптимуму ймовірність падає, бо вектор стану проскакує ціль.">
+              <g font-size="12">
+                <text x="20" y="22" fill="currentColor" font-weight="bold">Grover, N = 8, ціль '101': P(ціль) від кількості ітерацій</text>
+                <line x1="60" y1="210" x2="720" y2="210" stroke="var(--fg-muted)"/>
+                <!-- scale: 160 px per 1.0 -->
+                <rect x="100" y="189" width="70" height="21" fill="var(--fg-muted)" opacity=".6"/>
+                <rect x="230" y="87.3" width="70" height="122.7" fill="var(--accent)" opacity=".75"/>
+                <rect x="360" y="58.96" width="70" height="151.04" fill="var(--good)"/>
+                <rect x="490" y="157.5" width="70" height="52.5" fill="var(--warn)" opacity=".8"/>
+                <rect x="620" y="207.8" width="70" height="2.2" fill="var(--bad)"/>
+                <line x1="95" y1="190" x2="175" y2="190" stroke="currentColor" stroke-dasharray="3,2"/>
+                <line x1="225" y1="85" x2="305" y2="85" stroke="currentColor" stroke-dasharray="3,2"/>
+                <line x1="355" y1="58.8" x2="435" y2="58.8" stroke="currentColor" stroke-dasharray="3,2"/>
+                <line x1="485" y1="157.2" x2="565" y2="157.2" stroke="currentColor" stroke-dasharray="3,2"/>
+                <line x1="615" y1="208.1" x2="695" y2="208.1" stroke="currentColor" stroke-dasharray="3,2"/>
+                <text x="135" y="182" text-anchor="middle" fill="currentColor" font-size="11">0.131</text>
+                <text x="265" y="78" text-anchor="middle" fill="currentColor" font-size="11">0.767</text>
+                <text x="395" y="50" text-anchor="middle" fill="currentColor" font-size="11" font-weight="bold">0.944</text>
+                <text x="525" y="149" text-anchor="middle" fill="currentColor" font-size="11">0.328</text>
+                <text x="655" y="200" text-anchor="middle" fill="currentColor" font-size="11">0.014</text>
+                <text x="135" y="228" text-anchor="middle" fill="currentColor">k=0</text>
+                <text x="265" y="228" text-anchor="middle" fill="currentColor">k=1</text>
+                <text x="395" y="228" text-anchor="middle" fill="currentColor">k=2 (оптимум)</text>
+                <text x="525" y="228" text-anchor="middle" fill="currentColor">k=3</text>
+                <text x="655" y="228" text-anchor="middle" fill="currentColor">k=4</text>
+                <text x="470" y="44" fill="var(--fg-muted)" font-size="11">пунктир — теорія sin²((2k+1)θ)</text>
+              </g>
+            </svg>
+            <figcaption>Гровер — це поворот на кут 2θ за ітерацію в площині "ціль / решта". Після ⌊π/4·√N⌋ <span class="say">(⌊π/4·√N⌋ — «підлога»: округлення вниз)</span> поворотів вектор найближчий до цілі, далі — проскакує.</figcaption>
+          </figure>
+          <p><b>Чому так:</b> початковий стан має кут <span class="math">θ = arcsin(1/√8) ≈ 20.7°</span> з "рештою". Кожна ітерація
+          (оракул + дифузор = два відбиття) повертає стан на <span class="math">2θ</span> до цілі. Після k ітерацій кут
+          <span class="math">(2k+1)θ</span>: при k = 2 це ≈ 103.5°, найближче до 90° → P ≈ 0.945. При k = 3 — ≈ 145° → проскочили.
+          Для бекенду це означає: кількість ітерацій — параметр, який треба <b>рахувати</b>, а не "чим більше, тим краще".
+          Якщо кількість розв'язків невідома — використовують варіації з випадковою кількістю ітерацій або quantum counting.
+          І пам'ятайте задачу 21: кожна ітерація на 3+ кубітах — це дорогі <code>mcx</code>, тож на сьогоднішньому залізі
+          Гровер корисний як навчальний, а не практичний алгоритм.</p>
+        </div></details>
+      </div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина VI · Далі</div><div class="line"></div></div>
+
+    <section id="deeper">
+      <h2><span class="num">↗</span> Глибше: матеріали</h2>
+      <p class="section-desc">Конкретні розділи, куди йти після цього туторіалу. Адреси сайту IBM уже кілька разів змінювались —
+      якщо посилання не відкривається, шукайте назву розділу на docs.quantum.ibm.com / quantum.cloud.ibm.com.</p>
+
+      <div class="res">
+        <div class="res-head"><span class="res-title">Qiskit docs → Guides → "Construct circuits"</span><span class="lvl l1">базовий</span><span class="lvl type">документація</span></div>
+        <div class="res-meta">IBM Quantum Documentation, розділ Guides</div>
+        <p>Офіційна версія розділів 2–5: регістри, композиція, параметри, класичні вирази для динамічних схем. Читати одразу
+        після цього туторіалу — там є нюанси API, які змінюються між версіями.</p>
+      </div>
+      <div class="res">
+        <div class="res-head"><span class="res-title">Qiskit docs → Guides → "Transpile" (transpiler stages, optimization levels, custom passes)</span><span class="lvl l2">середній</span><span class="lvl type">документація</span></div>
+        <div class="res-meta">IBM Quantum Documentation</div>
+        <p>Детальний опис стадій з розділу 8, як писати власні <code>PassManager</code>-и і проходи. Коли: як тільки ваші схеми
+        стають більшими за 10 кубітів і кількість CZ починає вирішувати.</p>
+      </div>
+      <div class="res">
+        <div class="res-head"><span class="res-title">Qiskit docs → Guides → "Primitives" (Sampler/Estimator inputs and outputs)</span><span class="lvl l1">базовий</span><span class="lvl type">документація</span></div>
+        <div class="res-meta">IBM Quantum Documentation</div>
+        <p>Формати PUB, broadcasting, <code>BitArray</code>, опції точності. Обов'язково перед <a href="12-qiskit-runtime-real-qpu.html">туторіалом 12</a>.</p>
+      </div>
+      <div class="res">
+        <div class="res-head"><span class="res-title">Qiskit Aer documentation (qiskit.github.io/qiskit-aer)</span><span class="lvl l2">середній</span><span class="lvl type">документація</span></div>
+        <div class="res-meta">Методи симуляції, шумові моделі, GPU-симуляція</div>
+        <p>Як будувати власні <code>NoiseModel</code> (depolarizing, thermal relaxation, readout), коли не підходить знімок
+        з fake backend. Корисно для тестів стійкості алгоритму до шуму.</p>
+      </div>
+      <div class="res">
+        <div class="res-head"><span class="res-title">IBM Quantum Learning: "Quantum Computing in Practice" та "Utility-scale quantum computing"</span><span class="lvl l2">середній</span><span class="lvl type">курс</span></div>
+        <div class="res-meta">IBM Quantum Learning, безкоштовно</div>
+        <p>Практичні курси, де той самий стек (транспіляція, примітиви, шум) застосовується до реальних задач. Йдуть добре
+        паралельно з туторіалом 12.</p>
+      </div>
+      <div class="res">
+        <div class="res-head"><span class="res-title">IBM Quantum Learning: "Fundamentals of Quantum Algorithms" (John Watrous)</span><span class="lvl l2">середній</span><span class="lvl type">курс</span></div>
+        <div class="res-meta">Уроки про Дойча–Йожу, Бернштейна–Вазірані, Саймона, Гровера</div>
+        <p>Строге пояснення задач 15–17 і 22: query model, phase kickback, амплітудне підсилення. Є і відеоверсія на каналі Qiskit.</p>
+      </div>
+      <div class="res">
+        <div class="res-head"><span class="res-title">Qiskit YouTube: "Understanding Quantum Information &amp; Computation" і Qiskit Global Summer School</span><span class="lvl l1">базовий</span><span class="lvl type">відео</span></div>
+        <div class="res-meta">Канал Qiskit</div>
+        <p>Відео-лекції; summer school щороку має практичні лаби саме на Qiskit SDK + Runtime.</p>
+      </div>
+      <div class="res">
+        <div class="res-head"><span class="res-title">GitHub: Qiskit/qiskit — тести і release notes</span><span class="lvl l3">просунутий</span><span class="lvl type">код</span></div>
+        <div class="res-meta">github.com/Qiskit/qiskit, теки <code>test/</code> і <code>releasenotes/</code></div>
+        <p>Найкращий спосіб зрозуміти точну поведінку API — подивитися тести. Release notes — перше, що читати при оновленні
+        версії. Ядро транспілятора частково на Rust (<code>crates/</code>) — якщо цікавить роль compiler engineer
+        (<a href="05-quantum-engineer-roadmap.html">туторіал 5</a>).</p>
+      </div>
+    </section>
+
+    <section id="checklist">
+      <h2><span class="num">✓</span> Чекліст базового рівня</h2>
+      <p class="section-desc">Навик "Qiskit I" на базовому рівні, якщо ви можете без підглядання:</p>
+      <div class="card">
+        <ul>
+          <li>☐ зібрати схему з блоків (<code>compose</code>, <code>to_gate</code>, <code>inverse</code>, <code>control</code>) і пояснити її <code>depth</code> і кількість 2q-гейтів;</li>
+          <li>☐ правильно читати бітрядки і Pauli-рядки (little-endian) і написати декодер результату без бага;</li>
+          <li>☐ параметризувати схему і безпечно біндити значення (dict, а не позиційний список);</li>
+          <li>☐ перевірити схему точно: <code>Statevector</code>, <code>expectation_value</code>, <code>Operator.equiv</code>, і пояснити, чим <code>equiv</code> відрізняється від <code>==</code>;</li>
+          <li>☐ транспілювати під fake backend, пояснити кожен етап, прочитати layout і знайти SWAP-и;</li>
+          <li>☐ вибрати optimization_level і seed свідомо і порівняти кілька варіантів за CZ/глибиною;</li>
+          <li>☐ запустити Sampler і Estimator локально, розібрати результат (<code>data.&lt;регістр&gt;</code>, <code>evs</code>, broadcasting);</li>
+          <li>☐ змоделювати шум реального чіпа, порахувати Hellinger fidelity і пояснити, звідки береться помилка;</li>
+          <li>☐ вибрати метод Aer під схему (statevector vs MPS vs stabilizer);</li>
+          <li>☐ реалізувати Bernstein–Vazirani і Grover на 2–3 кубітах і пояснити, чому вони працюють.</li>
+        </ul>
+      </div>
+
+      <div class="callout good"><div class="ic">➡️</div><div class="body">
+        <b>Далі:</b> <a href="12-qiskit-runtime-real-qpu.html">туторіал 12</a> — той самий Bell-стан на справжньому QPU IBM через Open
+        Plan. Математичний фундамент — <a href="06-linear-algebra-vectors-matrices.html">6</a>,
+        <a href="07-linear-algebra-eigen-tensor.html">7</a>, <a href="08-complex-numbers-phase.html">8</a>,
+        <a href="09-probability-shots.html">9</a>; власний симулятор — <a href="10-numpy-statevector-simulator.html">10</a>.
+        Застосування в бекенді — <a href="03-quantum-backend-python-ibm.html">3</a> і пет-проєкт
+        <a href="04-pet-project-quantum-routing.html">4</a>.
+      </div></div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Quantum Doc · частина серії туторіалів AI Delivery Planner. Код перевірено на Python 3.13, qiskit 2.5.2, qiskit-aer 0.17.2, qiskit-ibm-runtime 0.50.0 (fake backends) — API Qiskit змінюється швидко, звіряйтесь з release notes.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*|\/\/[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b|\bthis\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case|const|let|var|function|interface|type|export|extends|implements|new|void|enum|typeof|instanceof|static|public|private|readonly|null|undefined)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+<script>
+(function(){
+  var root = document.documentElement, btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function current(){
+    var t = root.getAttribute('data-theme');
+    return t === 'light' || t === 'dark' ? t : (mq && mq.matches ? 'dark' : 'light');
+  }
+  function render(){
+    var dark = current() === 'dark';
+    btn.textContent = dark ? '☀️ Світла тема' : '🌙 Темна тема';
+    btn.setAttribute('aria-label', dark ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('docs-theme', next); }catch(e){}
+    render();
+  });
+  if(mq && mq.addEventListener) mq.addEventListener('change', render);
+  render();
+})();
+</script>
+</body>
+</html>
