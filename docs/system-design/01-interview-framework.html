@@ -1,0 +1,2030 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Фреймворк System Design співбесіди — System Design</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><rect x=%2710%27 y=%2740%27 width=%2735%27 height=%2750%27 fill=%27white%27/><rect x=%2755%27 y=%2710%27 width=%2735%27 height=%2780%27 fill=%27white%27/></svg>">
+<script>
+(function(){
+  try{ var t = localStorage.getItem('docs-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+    --fg:#e7eaf2; --fg-muted:#9aa2b4;
+    --accent:#6d9bff; --accent-soft:#1c2740;
+    --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+    --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+    --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+    --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+    --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+    --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"],
+  #tab-sysdesign:checked ~ .nav-tabbar label[for="tab-sysdesign"],
+  #tab-quantum:checked ~ .nav-tabbar label[for="tab-quantum"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  #tab-quantum:checked ~ .nav-links.quantum{display:flex;}
+  #tab-sysdesign:checked ~ .nav-links.sysdesign{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+
+  /* --- python-doc extras --- */
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider:first-child{margin-top:8px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+  .qa summary .qnum{color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700; margin-right:8px;}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  /* --- quantum-doc extras --- */
+  .res{border:1px solid var(--border); border-radius:var(--radius); background:var(--card); padding:14px 16px; margin:12px 0;}
+  .res .res-head{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:4px;}
+  .res .res-title{font-weight:700; font-size:15px;}
+  .res .res-meta{font-size:12.5px; color:var(--fg-muted);}
+  .res p{margin:6px 0 0; font-size:14.3px;}
+  .lvl{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap;}
+  .lvl.l1{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .lvl.l2{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .lvl.l3{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .lvl.type{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .timeline{border-left:2px solid var(--accent); margin:20px 0 20px 8px; padding-left:20px;}
+  .timeline .ev{position:relative; margin:0 0 18px;}
+  .timeline .ev::before{content:""; position:absolute; left:-27px; top:6px; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid var(--bg);}
+  .timeline .yr{font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; font-size:14px;}
+  .timeline .ev-t{font-weight:700;}
+  .timeline .ev p{margin:4px 0 0; font-size:14.3px; color:var(--fg-muted);}
+  .math{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:1.05em; white-space:nowrap;}
+  .math-block{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:18px; text-align:center; padding:14px; margin:14px 0; border:1px dashed var(--border); border-radius:var(--radius); background:var(--bg-soft); overflow-x:auto;}
+
+
+  /* --- system-design extras --- */
+  .say{color:var(--fg-muted); font-size:.9em; font-weight:400; font-style:normal;}
+  .steps{counter-reset:st; list-style:none; padding-left:0;}
+  .steps > li{counter-increment:st; position:relative; padding-left:38px; margin:12px 0;}
+  .steps > li::before{content:counter(st); position:absolute; left:0; top:0; width:26px; height:26px; border-radius:50%;
+    background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:13px; text-align:center; line-height:26px;}
+  .vs{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:16px 0;}
+  @media (max-width:700px){.vs{grid-template-columns:1fr;}}
+  .vs > div{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--card);}
+  .vs h4{margin:0 0 6px; font-size:15px;}
+  .vs ul{margin:6px 0 0; padding-left:18px; font-size:14.3px;}
+  /* --- theme switch --- */
+  :root{color-scheme:light;}
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .theme-toggle{
+    cursor:pointer; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+    background:var(--bg-soft); color:var(--fg); font:inherit; font-size:12.5px; font-weight:600;
+    transition:background .15s, border-color .15s;
+  }
+  .theme-toggle:hover{background:var(--card); border-color:var(--accent);}
+  .theme-toggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="top-row">
+      <div class="brand">🏗️ Системний дизайн <span>· AI Delivery Planner</span></div>
+      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Темна тема</button>
+    </div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">System Design · Туторіал 1</div>
+  <h1>Фреймворк співбесіди, вимоги й оцінки на серветці</h1>
+  <p class="lead">Як проходить і як оцінюється System Design інтерв'ю, покроковий шаблон відповіді з тайм-бюджетом, back-of-the-envelope оцінки (QPS, сховище, bandwidth, числа латентності, «дев'ятки» доступності) і повний міні-розбір задачі від вимог до trade-offs.</p>
+  <div class="pills">
+    <span class="pill">Middle → Senior → Staff</span>
+    <span class="pill">Requirements → API → HLD → Deep dive</span>
+    <span class="pill">QPS · storage · bandwidth</span>
+    <span class="pill">Latency numbers</span>
+    <span class="pill">Availability nines</span>
+    <span class="pill">Trade-offs і red flags</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-sysdesign" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-quantum" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-sysdesign" class="nav-tabbtn">🏗️ System Design</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+      <label for="tab-quantum" class="nav-tabbtn">⚛️ Квантове</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links sysdesign">
+        <a href="01-interview-framework.html" class="active">1. Фреймворк співбесіди</a>
+        <a href="02-networking-entry.html">2. Мережа: DNS, CDN, LB, API</a>
+        <a href="03-caching.html">3. Кешування углиб</a>
+        <a href="04-databases-storage.html">4. БД I: моделі, індекси, ACID</a>
+        <a href="05-replication-sharding.html">5. БД II: реплікація, шардинг</a>
+        <a href="06-distributed-systems.html">6. Розподілені системи</a>
+        <a href="07-async-messaging.html">7. Черги, Kafka, саги</a>
+        <a href="08-reliability-scale.html">8. Надійність і rate limiting</a>
+        <a href="09-classic-url-id-kv.html">9. Задачі I: URL, ID, KV</a>
+        <a href="10-classic-feed-chat.html">10. Задачі II: стрічка, чат</a>
+        <a href="11-classic-storage-video-crawler.html">11. Задачі III: файли, відео</a>
+        <a href="12-classic-geo-booking-topk.html">12. Задачі IV: гео, бронювання</a>
+        <a href="13-tricky-topics-qa.html">13. Трікі теми й Q&amp;A</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="../node-doc/01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="../node-doc/02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="../node-doc/03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="../node-doc/04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="../node-doc/05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="../node-doc/06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="../node-doc/07-fs-process-os.html">7. fs, process, os</a>
+        <a href="../node-doc/08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="../node-doc/09-http-networking.html">9. HTTP і мережа</a>
+        <a href="../node-doc/10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="../node-doc/11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="../node-doc/12-databases-orm.html">12. БД і ORM</a>
+        <a href="../node-doc/13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="../node-doc/14-security.html">14. Безпека Node</a>
+        <a href="../node-doc/15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="../node-doc/16-testing.html">16. Тестування</a>
+        <a href="../node-doc/17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="../node-doc/18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="../node-doc/19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="../node-doc/20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+      <nav class="nav-links quantum">
+        <a href="../quantum-doc/01-quanta-and-quantum-computing.html">1. Кванти й обчислення</a>
+        <a href="../quantum-doc/02-quantum-engineering-history.html">2. Квантова інженерія</a>
+        <a href="../quantum-doc/03-quantum-backend-python-ibm.html">3. Бекенд + IBM Quantum</a>
+        <a href="../quantum-doc/04-pet-project-quantum-routing.html">4. Пет-проєкт: маршрути</a>
+        <a href="../quantum-doc/05-quantum-engineer-roadmap.html">5. Шлях інженера: ресурси</a>
+        <a href="../quantum-doc/06-linear-algebra-vectors-matrices.html">6. Лін. алгебра I: вектори, матриці</a>
+        <a href="../quantum-doc/07-linear-algebra-eigen-tensor.html">7. Лін. алгебра II: власні, тензори</a>
+        <a href="../quantum-doc/08-complex-numbers-phase.html">8. Комплексні числа й фаза</a>
+        <a href="../quantum-doc/09-probability-shots.html">9. Ймовірності й shots</a>
+        <a href="../quantum-doc/10-numpy-statevector-simulator.html">10. NumPy: свій симулятор</a>
+        <a href="../quantum-doc/11-qiskit-circuits-aer.html">11. Qiskit I: схеми й Aer</a>
+        <a href="../quantum-doc/12-qiskit-runtime-real-qpu.html">12. Qiskit II: реальний QPU</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — Як влаштована співбесіда</div>
+    <ol>
+      <li><a href="#s1">1. Що насправді оцінюють</a></li>
+      <li><a href="#s2">2. Рівні: middle, senior, staff</a></li>
+      <li><a href="#s3">3. Фреймворк і тайм-бюджет</a></li>
+      <li><a href="#s4">4. Вимоги й уточнюючі питання</a></li>
+      <li><a href="#s5">5. Сутності, API, high-level, deep dives</a></li>
+    </ol>
+    <div class="toc-group">Частина II — Оцінки на серветці</div>
+    <ol>
+      <li><a href="#s6">6. Степені двійки й числа латентності</a></li>
+      <li><a href="#s7">7. QPS, сховище, bandwidth: Twitter і фото</a></li>
+      <li><a href="#s8">8. Доступність і «дев'ятки»</a></li>
+    </ol>
+    <div class="toc-group">Частина III — Комунікація й практика</div>
+    <ol>
+      <li><a href="#s9">9. Trade-offs, red flags, дошка</a></li>
+      <li><a href="#s10">10. Топ-25 питань і де їх розібрано</a></li>
+      <li><a href="#s11">11. Повний міні-розбір: Pastebin</a></li>
+    </ol>
+    <div class="toc-group">Частина IV — Закріплення</div>
+    <ol>
+      <li><a href="#s12">12. Трікі питання</a></li>
+      <li><a href="#s13">13. Задачі</a></li>
+      <li><a href="#s14">14. Шпаргалка і що читати далі</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Як влаштована співбесіда</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Що насправді оцінюють на System Design</h2>
+      <p class="section-desc">System Design інтерв'ю — це не іспит на «правильну архітектуру». Правильної відповіді немає. Оцінюють, <b>як ви думаєте</b> над відкритою, розмитою задачею в умовах обмеженого часу, і чи схожий цей процес на роботу інженера вашого рівня.</p>
+
+      <p>Типовий формат: 45–60 хвилин, одна задача на кшталт «Спроектуйте Twitter», «Спроектуйте URL shortener» чи «Спроектуйте чат», віртуальна дошка (Excalidraw, Miro, CoderPad whiteboard, іноді Google Docs). Інтерв'юер — зазвичай досвідчений інженер, який грає роль одночасно замовника (відповідає на питання про вимоги) і колеги на design review (ставить незручні питання про масштаб і відмови).</p>
+
+      <p>Більшість великих компаній (Meta, Google, Amazon, Uber, Stripe тощо — за публічними описами їхніх процесів та гайдами на кшталт Hello Interview) оцінюють приблизно чотири осі. Назви різняться, суть однакова:</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 270" role="img" aria-label="Ментальна модель оцінювання. У центрі сигнал для рішення про найм. До нього ведуть чотири осі: навігація проблемою (уточнює вимоги, обмежує scope), дизайн рішення (робоча архітектура, що закриває вимоги), технічна глибина (deep dives, числа, відмови) і комунікація (веде розмову, пояснює trade-offs). Знизу примітка: 45 хвилин розмови перетворюються на сигнал за кожною віссю">
+          <defs><marker id="sd01-a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="20" width="230" height="72" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="125" y="44" text-anchor="middle" fill="currentColor" font-weight="bold">1. Навігація проблемою</text>
+            <text x="125" y="64" text-anchor="middle" fill="var(--fg-muted)" font-size="11">уточнює вимоги, обмежує scope,</text>
+            <text x="125" y="80" text-anchor="middle" fill="var(--fg-muted)" font-size="11">знаходить головну складність</text>
+
+            <rect x="490" y="20" width="230" height="72" rx="10" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="605" y="44" text-anchor="middle" fill="currentColor" font-weight="bold">2. Дизайн рішення</text>
+            <text x="605" y="64" text-anchor="middle" fill="var(--fg-muted)" font-size="11">робоча архітектура, яка реально</text>
+            <text x="605" y="80" text-anchor="middle" fill="var(--fg-muted)" font-size="11">закриває вимоги, без зайвого</text>
+
+            <rect x="10" y="170" width="230" height="72" rx="10" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="125" y="194" text-anchor="middle" fill="currentColor" font-weight="bold">3. Технічна глибина</text>
+            <text x="125" y="214" text-anchor="middle" fill="var(--fg-muted)" font-size="11">deep dives, числа, відмови,</text>
+            <text x="125" y="230" text-anchor="middle" fill="var(--fg-muted)" font-size="11">знає, як це працює всередині</text>
+
+            <rect x="490" y="170" width="230" height="72" rx="10" fill="var(--interview-bg)" stroke="var(--interview)"/>
+            <text x="605" y="194" text-anchor="middle" fill="currentColor" font-weight="bold">4. Комунікація</text>
+            <text x="605" y="214" text-anchor="middle" fill="var(--fg-muted)" font-size="11">веде розмову сам, проговорює</text>
+            <text x="605" y="230" text-anchor="middle" fill="var(--fg-muted)" font-size="11">trade-offs, слухає підказки</text>
+
+            <rect x="285" y="105" width="160" height="56" rx="28" fill="var(--card)" stroke="currentColor" stroke-width="1.5"/>
+            <text x="365" y="129" text-anchor="middle" fill="currentColor" font-weight="bold">Сигнал «hire»</text>
+            <text x="365" y="147" text-anchor="middle" fill="var(--fg-muted)" font-size="11">на якому рівні?</text>
+
+            <line x1="240" y1="80" x2="292" y2="112" stroke="currentColor" marker-end="url(#sd01-a1)"/>
+            <line x1="490" y1="80" x2="438" y2="112" stroke="currentColor" marker-end="url(#sd01-a1)"/>
+            <line x1="240" y1="182" x2="292" y2="154" stroke="currentColor" marker-end="url(#sd01-a1)"/>
+            <line x1="490" y1="182" x2="438" y2="154" stroke="currentColor" marker-end="url(#sd01-a1)"/>
+            <text x="365" y="262" text-anchor="middle" fill="var(--fg-muted)" font-size="11">45 хвилин розмови → окрема оцінка за кожною віссю → підсумкове рішення і рівень</text>
+          </g>
+        </svg>
+        <figcaption>Чотири осі оцінювання. Зверніть увагу: «правильна архітектура» — лише одна з чотирьох. Блискучий дизайн, який ви мовчки намалювали за 40 хвилин, програє посередньому, але добре аргументованому.</figcaption>
+      </figure>
+
+      <h3>Чим SD інтерв'ю відрізняється від алгоритмічного</h3>
+      <div class="vs">
+        <div><h4>Coding / LeetCode</h4><ul>
+          <li>Є правильна відповідь і тести</li>
+          <li>Задача повністю специфікована</li>
+          <li>Оцінка: коректність, складність, чистота коду</li>
+          <li>Можна «завалити», не знайшовши трюк</li>
+        </ul></div>
+        <div><h4>System Design</h4><ul>
+          <li>Правильної відповіді немає — є обґрунтовані</li>
+          <li>Задача навмисно розмита, вимоги треба <b>витягнути</b></li>
+          <li>Оцінка: процес, трейдофи, глибина, комунікація</li>
+          <li>«Завалюють» мовчанням, хаосом, відсутністю аргументів</li>
+        </ul></div>
+      </div>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Уявіть, що вас просять «зробити дашборд для адмінки». Слабкий кандидат одразу ставить <code>create-react-app</code> і малює таблицю. Сильний питає: «Скільки рядків? Потрібна realtime-оновлюваність? Хто користувачі — 5 адмінів чи 50 000 клієнтів? Мобільні?» — і лише після цього вибирає між client-side пагінацією, віртуалізованим списком і server-side курсорами. System Design — це той самий процес, тільки на рівні бекенду і мільйонів користувачів. Де аналогія ламається: на фронтенді помилка в архітектурі часто виправляється рефакторингом за тиждень; у розподіленій системі неправильний вибір ключа шардингу чи моделі даних може коштувати місяців міграції.
+      </div>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> пам'ятайте, що інтерв'юер пише нотатки <i>протягом</i> розмови і потім заповнює форму з конкретними пунктами. Найкраще, що ви можете зробити, — давати йому «цитати» для форми: «Я обираю X, бо нефункціональна вимога Y; ціна — Z». Кожне таке речення — готовий рядок у фідбеку.</div></div>
+
+      <div class="callout bad"><div class="ic">🚩</div><div class="body"><b>Типова помилка:</b> вважати, що треба «вгадати», як це зроблено в реальному Twitter. Ніхто не очікує, що ви знаєте внутрішню архітектуру X. Очікують, що ви дійдете до розумної архітектури <i>самі</i>, з поясненнями. Згадка реальних систем (Twitter fan-out, Discord на ScyllaDB) — плюс, але лише як аргумент, а не як заміна мисленню.</div></div>
+
+      <div class="remember">System Design інтерв'ю = структурована розмова про trade-offs під відкриту задачу. Процес і аргументи важать більше за конкретну картинку.</div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Рівні очікувань: middle, senior, staff</h2>
+      <p class="section-desc">Та сама задача «Спроектуйте news feed» дається на всіх рівнях. Різниться не задача, а планка: хто веде розмову, наскільки глибоко ви йдете і чи бачите систему в часі та в організації.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 280" role="img" aria-label="Сходинки рівнів. Middle: робочий дизайн з підказками інтерв'юера, знає основні блоки, одна тема в глибину. Senior: веде розмову сам, два-три deep dives, трейдофи з числами, передбачає відмови. Staff і вище: ставить під сумнів вимоги, думає про еволюцію системи, вартість, міграції, ризики і вплив на інші команди. Висота сходинки відображає очікувану самостійність і глибину">
+          <g font-size="12">
+            <rect x="10" y="160" width="225" height="100" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="122" y="182" text-anchor="middle" fill="currentColor" font-weight="bold">Middle</text>
+            <text x="122" y="202" text-anchor="middle" fill="var(--fg-muted)" font-size="11">робочий дизайн, можна з</text>
+            <text x="122" y="218" text-anchor="middle" fill="var(--fg-muted)" font-size="11">підказками; знає блоки</text>
+            <text x="122" y="234" text-anchor="middle" fill="var(--fg-muted)" font-size="11">(кеш, черга, репліки);</text>
+            <text x="122" y="250" text-anchor="middle" fill="var(--fg-muted)" font-size="11">1 тема в глибину</text>
+
+            <rect x="252" y="100" width="225" height="160" rx="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="364" y="122" text-anchor="middle" fill="currentColor" font-weight="bold">Senior</text>
+            <text x="364" y="142" text-anchor="middle" fill="var(--fg-muted)" font-size="11">веде розмову сам</text>
+            <text x="364" y="158" text-anchor="middle" fill="var(--fg-muted)" font-size="11">2–3 deep dives</text>
+            <text x="364" y="174" text-anchor="middle" fill="var(--fg-muted)" font-size="11">trade-offs з числами</text>
+            <text x="364" y="190" text-anchor="middle" fill="var(--fg-muted)" font-size="11">передбачає відмови,</text>
+            <text x="364" y="206" text-anchor="middle" fill="var(--fg-muted)" font-size="11">hot keys, consistency</text>
+            <text x="364" y="222" text-anchor="middle" fill="var(--fg-muted)" font-size="11">сам знаходить</text>
+            <text x="364" y="238" text-anchor="middle" fill="var(--fg-muted)" font-size="11">bottlenecks</text>
+
+            <rect x="494" y="30" width="225" height="230" rx="8" fill="var(--fun-bg)" stroke="var(--fun)"/>
+            <text x="606" y="52" text-anchor="middle" fill="currentColor" font-weight="bold">Staff+</text>
+            <text x="606" y="72" text-anchor="middle" fill="var(--fg-muted)" font-size="11">все, що в senior, плюс:</text>
+            <text x="606" y="92" text-anchor="middle" fill="var(--fg-muted)" font-size="11">ставить під сумнів вимоги</text>
+            <text x="606" y="108" text-anchor="middle" fill="var(--fg-muted)" font-size="11">еволюція: v1 → v2 → v3</text>
+            <text x="606" y="124" text-anchor="middle" fill="var(--fg-muted)" font-size="11">вартість ($), операційність</text>
+            <text x="606" y="140" text-anchor="middle" fill="var(--fg-muted)" font-size="11">міграції без downtime</text>
+            <text x="606" y="156" text-anchor="middle" fill="var(--fg-muted)" font-size="11">multi-region, DR</text>
+            <text x="606" y="172" text-anchor="middle" fill="var(--fg-muted)" font-size="11">межі сервісів і команд</text>
+            <text x="606" y="188" text-anchor="middle" fill="var(--fg-muted)" font-size="11">«що я б НЕ будував»</text>
+            <text x="606" y="216" text-anchor="middle" fill="var(--fg-muted)" font-size="11">інтерв'юер майже</text>
+            <text x="606" y="232" text-anchor="middle" fill="var(--fg-muted)" font-size="11">не втручається</text>
+            <text x="10" y="20" fill="var(--fg-muted)" font-size="11">↑ самостійність і глибина</text>
+          </g>
+        </svg>
+        <figcaption>Висота сходинки — це скільки ви робите <b>без підказок</b>. На middle інтерв'юер може вести вас за руку; на senior він лише перевіряє; на staff він відходить убік і дивиться, як ви керуєте неоднозначністю.</figcaption>
+      </figure>
+
+      <table>
+        <tr><th>Аспект</th><th>Middle</th><th>Senior</th><th>Staff+</th></tr>
+        <tr><td>Хто веде</td><td>Спільно, інтерв'юер підштовхує</td><td>Кандидат; інтерв'юер лише звужує</td><td>Кандидат повністю, включно з пріоритетами</td></tr>
+        <tr><td>Вимоги</td><td>Перелічує основні фічі</td><td>Фічі + кількісні NFR (латентність, масштаб, consistency)</td><td>Сперечається з вимогами, пропонує спрощення, бачить бізнес-контекст</td></tr>
+        <tr><td>High-level</td><td>Коректний, може бути простим</td><td>Коректний і масштабований, без зайвих компонентів</td><td>Плюс план еволюції і межі відповідальності</td></tr>
+        <tr><td>Deep dives</td><td>1, часто за запитом інтерв'юера</td><td>2–3, кандидат сам обирає найризикованіші місця</td><td>Глибоко в найскладніше + операційні аспекти (міграції, rollout, моніторинг)</td></tr>
+        <tr><td>Trade-offs</td><td>Знає, що вони існують</td><td>Називає альтернативи з аргументами і числами</td><td>Зважує їх з точки зору вартості, команди, ризику, часу</td></tr>
+        <tr><td>Відмови</td><td>На питання «а якщо впаде?» відповідає</td><td>Сам згадує SPOF, retries, idempotency</td><td>Blast radius, degradation, DR, SLO</td></tr>
+      </table>
+
+      <div class="callout info"><div class="ic">ℹ️</div><div class="body">У багатьох компаніях саме System Design вирішує, на який рівень вас візьмуть (leveling). Алгоритмічні раунди часто дають «так/ні», а SD — «так, але як middle» чи «так, як senior». Тому для senior-позиції SD — найважливіший раунд.</div></div>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> якщо ви претендуєте на senior, не чекайте, поки інтерв'юер спитає «а що з кешем?». Скажіть самі: «Тепер подивимось на найслабші місця. Я бачу три: гарячі ключі для селебріті, консистентність лічильників і fan-out. Почну з fan-out, бо він визначає архітектуру». Це і є сигнал «drives the conversation».</div></div>
+
+      <div class="callout bad"><div class="ic">🚩</div><div class="body"><b>Помилка рівня:</b> на senior-співбесіді витратити 30 хвилин на ідеальну схему таблиць і не дійти до масштабування. Або навпаки — на middle-співбесіді кинутись у Raft і vector clocks, не маючи робочої базової схеми. Спершу робоче рішення, потім глибина.</div></div>
+
+      <div class="remember">Рівень = скільки ви робите самостійно і наскільки глибоко. Senior веде і сам знаходить слабкі місця; staff ще й бачить систему в часі, грошах і організації.</div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Фреймворк: шість кроків і тайм-бюджет</h2>
+      <p class="section-desc">Шаблон потрібен не для того, щоб відповідати однаково, а щоб не загубитись під стресом. Найпоширеніший варіант (його в різних формулюваннях використовують Hello Interview, Alex Xu та більшість менторів) — шість кроків.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 230" role="img" aria-label="Шість кроків фреймворку зліва направо: 1 вимоги функціональні і нефункціональні, 2 core entities, 3 API, 4 high-level design, 5 deep dives, 6 підсумок, bottlenecks і trade-offs. Над кроком 1 і 2 позначено, що оцінки на серветці робляться за потреби, коли вони впливають на рішення. Знизу стрілка зворотного зв'язку від deep dives назад до вимог: якщо deep dive показав, що вимога неможлива, повертаємось і переглядаємо її">
+          <defs><marker id="sd01-a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="5" y="60" width="110" height="74" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="60" y="82" text-anchor="middle" fill="currentColor" font-weight="bold">1. Вимоги</text>
+            <text x="60" y="102" text-anchor="middle" fill="var(--fg-muted)" font-size="11">функціональні</text>
+            <text x="60" y="118" text-anchor="middle" fill="var(--fg-muted)" font-size="11">+ нефункц.</text>
+
+            <rect x="127" y="60" width="110" height="74" rx="8" fill="var(--card)" stroke="currentColor"/>
+            <text x="182" y="82" text-anchor="middle" fill="currentColor" font-weight="bold">2. Сутності</text>
+            <text x="182" y="102" text-anchor="middle" fill="var(--fg-muted)" font-size="11">User, Tweet,</text>
+            <text x="182" y="118" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Follow…</text>
+
+            <rect x="249" y="60" width="110" height="74" rx="8" fill="var(--card)" stroke="currentColor"/>
+            <text x="304" y="82" text-anchor="middle" fill="currentColor" font-weight="bold">3. API</text>
+            <text x="304" y="102" text-anchor="middle" fill="var(--fg-muted)" font-size="11">ендпоінти, що</text>
+            <text x="304" y="118" text-anchor="middle" fill="var(--fg-muted)" font-size="11">покривають FR</text>
+
+            <rect x="371" y="60" width="110" height="74" rx="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="426" y="82" text-anchor="middle" fill="currentColor" font-weight="bold">4. High-level</text>
+            <text x="426" y="102" text-anchor="middle" fill="var(--fg-muted)" font-size="11">блоки і потоки</text>
+            <text x="426" y="118" text-anchor="middle" fill="var(--fg-muted)" font-size="11">під кожен FR</text>
+
+            <rect x="493" y="60" width="110" height="74" rx="8" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="548" y="82" text-anchor="middle" fill="currentColor" font-weight="bold">5. Deep dives</text>
+            <text x="548" y="102" text-anchor="middle" fill="var(--fg-muted)" font-size="11">закриваємо</text>
+            <text x="548" y="118" text-anchor="middle" fill="var(--fg-muted)" font-size="11">NFR, 2–3 теми</text>
+
+            <rect x="615" y="60" width="110" height="74" rx="8" fill="var(--interview-bg)" stroke="var(--interview)"/>
+            <text x="670" y="82" text-anchor="middle" fill="currentColor" font-weight="bold">6. Підсумок</text>
+            <text x="670" y="102" text-anchor="middle" fill="var(--fg-muted)" font-size="11">bottlenecks,</text>
+            <text x="670" y="118" text-anchor="middle" fill="var(--fg-muted)" font-size="11">trade-offs</text>
+
+            <line x1="115" y1="97" x2="125" y2="97" stroke="currentColor" marker-end="url(#sd01-a2)"/>
+            <line x1="237" y1="97" x2="247" y2="97" stroke="currentColor" marker-end="url(#sd01-a2)"/>
+            <line x1="359" y1="97" x2="369" y2="97" stroke="currentColor" marker-end="url(#sd01-a2)"/>
+            <line x1="481" y1="97" x2="491" y2="97" stroke="currentColor" marker-end="url(#sd01-a2)"/>
+            <line x1="603" y1="97" x2="613" y2="97" stroke="currentColor" marker-end="url(#sd01-a2)"/>
+
+            <rect x="40" y="10" width="160" height="34" rx="17" fill="none" stroke="var(--fun)" stroke-dasharray="4 3"/>
+            <text x="120" y="31" text-anchor="middle" fill="var(--fun)" font-size="11">± оцінки (якщо важливі)</text>
+            <line x1="120" y1="44" x2="120" y2="58" stroke="var(--fun)" stroke-dasharray="3 3"/>
+
+            <path d="M548,136 L548,180 L60,180 L60,138" fill="none" stroke="var(--fg-muted)" stroke-dasharray="5 4" marker-end="url(#sd01-a2)"/>
+            <text x="304" y="200" text-anchor="middle" fill="var(--fg-muted)" font-size="11">зворотний зв'язок: deep dive показав, що вимога нереальна → чесно переглядаємо її</text>
+          </g>
+        </svg>
+        <figcaption>Кроки 1–3 швидкі (разом ~10–15 хв), але визначають усе інше. Крок 4 — «скелет, що працює». Крок 5 — те, за що дають senior-оцінку. Оцінки (back-of-the-envelope) робимо тоді, коли число змінить рішення, а не ритуально.</figcaption>
+      </figure>
+
+      <h3>Що відбувається на кожному кроці</h3>
+      <ol class="steps">
+        <li><b>Вимоги (Requirements).</b> 3–5 функціональних вимог («користувач може опублікувати пост», «бачить стрічку людей, на яких підписаний») і 3–5 нефункціональних з числами там, де можливо («стрічка відкривається за &lt;200 мс p99», «доступність важливіша за узгодженість: стрічка може відставати на кілька секунд», «100M DAU»). Явно проговорити <b>out of scope</b>.</li>
+        <li><b>Core entities.</b> Перелік основних сутностей: <code>User</code>, <code>Post</code>, <code>Follow</code>, <code>Media</code>. Без повних схем — поля додамо, коли знадобиться. Це словник для API і дизайну.</li>
+        <li><b>API.</b> По одному-два ендпоінти на кожну функціональну вимогу: <code>POST /posts</code>, <code>GET /feed?cursor=…</code>. Користувача беремо з токена, а не з тіла запиту. Протокол — за замовчуванням REST (деталі в <a href="02-networking-entry.html">туторіалі 2</a>).</li>
+        <li><b>High-level design.</b> Проходимо API по черзі й малюємо компоненти, які потрібні, щоб кожен ендпоінт запрацював: клієнт → LB/gateway → сервіс → БД/blob. Тут система має бути <i>коректною</i>, але ще не обов'язково масштабованою.</li>
+        <li><b>Deep dives.</b> Повертаємось до нефункціональних вимог і по черзі закриваємо їх: масштаб читання (кеш, репліки), гарячі ключі, fan-out, консистентність, відмови. Обираємо 2–3 найризикованіші місця.</li>
+        <li><b>Підсумок.</b> Коротко: що є bottleneck, що ми свідомо спростили, що робили б далі (моніторинг, multi-region, аналітика). Якщо часу немає — хоча б одне речення.</li>
+      </ol>
+
+      <h3>Тайм-бюджет на 45 і 60 хвилин</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 215" role="img" aria-label="Два горизонтальні стовпчики тайм-бюджету. 45 хвилин: знайомство 3 хвилини, вимоги і оцінки 6, сутності і API 6, high-level 12, deep dives 12, підсумок і питання 6. 60 хвилин: знайомство 5, вимоги і оцінки 8, сутності і API 7, high-level 15, deep dives 18, підсумок і питання 7. Масштаб: 10 пікселів на хвилину">
+          <g font-size="12">
+            <text x="10" y="63" fill="currentColor" font-weight="bold">45 хв</text>
+            <rect x="110" y="40" width="30" height="36" fill="var(--border)" stroke="var(--fg-muted)"/>
+            <rect x="140" y="40" width="60" height="36" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <rect x="200" y="40" width="60" height="36" fill="var(--fun-bg)" stroke="var(--fun)"/>
+            <rect x="260" y="40" width="120" height="36" fill="var(--good-bg)" stroke="var(--good)"/>
+            <rect x="380" y="40" width="120" height="36" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <rect x="500" y="40" width="60" height="36" fill="var(--interview-bg)" stroke="var(--interview)"/>
+            <text x="125" y="63" text-anchor="middle" fill="currentColor">3</text>
+            <text x="170" y="63" text-anchor="middle" fill="currentColor">6</text>
+            <text x="230" y="63" text-anchor="middle" fill="currentColor">6</text>
+            <text x="320" y="63" text-anchor="middle" fill="currentColor">12</text>
+            <text x="440" y="63" text-anchor="middle" fill="currentColor">12</text>
+            <text x="530" y="63" text-anchor="middle" fill="currentColor">6</text>
+
+            <text x="10" y="123" fill="currentColor" font-weight="bold">60 хв</text>
+            <rect x="110" y="100" width="50" height="36" fill="var(--border)" stroke="var(--fg-muted)"/>
+            <rect x="160" y="100" width="80" height="36" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <rect x="240" y="100" width="70" height="36" fill="var(--fun-bg)" stroke="var(--fun)"/>
+            <rect x="310" y="100" width="150" height="36" fill="var(--good-bg)" stroke="var(--good)"/>
+            <rect x="460" y="100" width="180" height="36" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <rect x="640" y="100" width="70" height="36" fill="var(--interview-bg)" stroke="var(--interview)"/>
+            <text x="135" y="123" text-anchor="middle" fill="currentColor">5</text>
+            <text x="200" y="123" text-anchor="middle" fill="currentColor">8</text>
+            <text x="275" y="123" text-anchor="middle" fill="currentColor">7</text>
+            <text x="385" y="123" text-anchor="middle" fill="currentColor">15</text>
+            <text x="550" y="123" text-anchor="middle" fill="currentColor">18</text>
+            <text x="675" y="123" text-anchor="middle" fill="currentColor">7</text>
+
+            <rect x="10" y="166" width="14" height="14" fill="var(--border)" stroke="var(--fg-muted)"/>
+            <text x="30" y="178" fill="var(--fg-muted)" font-size="11">Знайомство</text>
+            <rect x="130" y="166" width="14" height="14" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="150" y="178" fill="var(--fg-muted)" font-size="11">Вимоги + оцінки</text>
+            <rect x="260" y="166" width="14" height="14" fill="var(--fun-bg)" stroke="var(--fun)"/>
+            <text x="280" y="178" fill="var(--fg-muted)" font-size="11">Сутності + API</text>
+            <rect x="385" y="166" width="14" height="14" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="405" y="178" fill="var(--fg-muted)" font-size="11">High-level</text>
+            <rect x="490" y="166" width="14" height="14" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="510" y="178" fill="var(--fg-muted)" font-size="11">Deep dives</text>
+            <rect x="600" y="166" width="14" height="14" fill="var(--interview-bg)" stroke="var(--interview)"/>
+            <text x="620" y="178" fill="var(--fg-muted)" font-size="11">Підсумок + Q&amp;A</text>
+            <text x="10" y="205" fill="var(--fg-muted)" font-size="11">Числа — хвилини. Найбільший шматок завжди deep dives: саме там формується рівень.</text>
+          </g>
+        </svg>
+        <figcaption>Орієнтовний розподіл часу. Головне правило: до 15–20-ї хвилини на дошці вже має бути high-level схема. Якщо на 25-й хвилині ви досі обговорюєте вимоги — ви не встигнете показати глибину.</figcaption>
+      </figure>
+
+      <div class="callout warn"><div class="ic">⏱️</div><div class="body"><b>Контроль часу — ваша відповідальність.</b> Поставте собі «контрольні точки»: 5 хв — вимоги записані; 12–15 хв — API; 20–25 хв — high-level; далі deep dives. Корисна фраза: «Я бачу, що в нас лишилось 15 хвилин. Пропоную розібрати fan-out і кешування — це два найбільші ризики. Згодні?»</div></div>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Фреймворк нагадує те, як ви робите фічу в React: спершу TypeScript-типи (сутності), потім контракт з бекендом (API), потім компоненти і data flow (high-level), і лише потім оптимізації — <code>memo</code>, віртуалізація, code splitting (deep dives). Ніхто не починає з <code>useMemo</code>, поки компонент не рендериться правильно. Де ламається: у React ви можете прототипувати швидко і викинути; на співбесіді у вас одна спроба, і інтерв'юер бачить кожен «рефакторинг».
+      </div>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> на старті коротко анонсуйте план: «Спершу уточню вимоги, потім визначу сутності та API, намалюю базову архітектуру і далі заглиблюсь у масштабування. Окей?» Це 10 секунд, але інтерв'юер одразу бачить структуру, а ви отримуєте його згоду на порядок.</div></div>
+
+      <div class="callout bad"><div class="ic">🚩</div><div class="body"><b>Пастки фреймворку:</b> (1) механічно рахувати оцінки, які ні на що не впливають («отже, 3.4 ПБ… рухаємось далі»); (2) малювати детальну схему БД з усіма полями на 10-й хвилині; (3) «наскрізний» шаблон без адаптації — для задачі «rate limiter» розділ «сутності» майже порожній, і це нормально.</div></div>
+
+      <div class="remember">Вимоги → сутності → API → high-level → deep dives → підсумок. High-level має з'явитись до ~20-ї хвилини; найбільше часу — на deep dives.</div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Вимоги й уточнюючі питання</h2>
+      <p class="section-desc">Перші 5–8 хвилин визначають усю співбесіду. Мета — перетворити «Спроектуйте Twitter» на короткий список фіч і вимірюваних обмежень, під які можна будувати і з якими можна сперечатися.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 255" role="img" aria-label="Воронка звуження задачі. Верхній шар: «Спроектуй Twitter» — розмито і нескінченно. Другий шар: сценарії користувачів — хто, що робить, скільки їх. Третій: уточнюючі питання — пріоритизуємо і називаємо out of scope. Нижній вузький шар: три фічі плюс чотири нефункціональні вимоги, записані на дошці">
+          <g font-size="12">
+            <polygon points="20,20 420,20 390,70 50,70" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="220" y="50" text-anchor="middle" fill="currentColor" font-weight="bold">«Спроектуй Twitter»</text>
+            <polygon points="50,75 390,75 360,125 80,125" fill="var(--card)" stroke="currentColor"/>
+            <text x="220" y="105" text-anchor="middle" fill="currentColor">сценарії користувачів</text>
+            <polygon points="80,130 360,130 330,180 110,180" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="220" y="160" text-anchor="middle" fill="currentColor">уточнюючі питання</text>
+            <polygon points="110,185 330,185 300,235 140,235" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="220" y="215" text-anchor="middle" fill="currentColor" font-weight="bold">3 фічі + 4 NFR</text>
+
+            <line x1="410" y1="45" x2="445" y2="45" stroke="var(--fg-muted)" stroke-dasharray="3 3"/>
+            <text x="452" y="49" fill="var(--fg-muted)" font-size="11">розмито, можна будувати нескінченно</text>
+            <line x1="380" y1="100" x2="445" y2="100" stroke="var(--fg-muted)" stroke-dasharray="3 3"/>
+            <text x="452" y="104" fill="var(--fg-muted)" font-size="11">хто користувачі? що вони роблять?</text>
+            <line x1="350" y1="155" x2="445" y2="155" stroke="var(--fg-muted)" stroke-dasharray="3 3"/>
+            <text x="452" y="159" fill="var(--fg-muted)" font-size="11">масштаб? consistency? out of scope?</text>
+            <line x1="320" y1="210" x2="445" y2="210" stroke="var(--fg-muted)" stroke-dasharray="3 3"/>
+            <text x="452" y="214" fill="var(--fg-muted)" font-size="11">записано на дошці, інтерв'юер згоден</text>
+          </g>
+        </svg>
+        <figcaption>Вихід воронки — короткий письмовий список. Він стає «контрактом» на решту інтерв'ю: кожен компонент на схемі має бути виправданий однією з цих вимог.</figcaption>
+      </figure>
+
+      <h3>Функціональні vs нефункціональні</h3>
+      <div class="vs">
+        <div><h4>Функціональні (FR) — «що робить»</h4><ul>
+          <li>Формулюються як «Користувач може…»</li>
+          <li>«…опублікувати твіт до 280 символів»</li>
+          <li>«…підписатися на іншого користувача»</li>
+          <li>«…бачити стрічку твітів підписок, новіші зверху»</li>
+          <li>Обмежте 3–4 core-фічами; решту — в out of scope</li>
+        </ul></div>
+        <div><h4>Нефункціональні (NFR) — «наскільки добре»</h4><ul>
+          <li>Масштаб: DAU, записів/день, розмір даних</li>
+          <li>Латентність: «стрічка &lt; 200 мс p99»</li>
+          <li>Доступність vs узгодженість (CAP-вибір для <i>кожної</i> фічі)</li>
+          <li>Durability: «пости не губляться ніколи»</li>
+          <li>Особливості: read-heavy? гарячі ключі? мобільні клієнти? безпека?</li>
+        </ul></div>
+      </div>
+
+      <p><span class="say">(p99 — «99-й перцентиль»: 99% запитів швидші за це значення, 1% — повільніші. p50 — медіана. Для UX важливі саме хвости розподілу: користувач, який робить 100 запитів за сесію, майже гарантовано зустріне хоча б один запит з p99.)</span></p>
+
+      <h3>Банк уточнюючих питань</h3>
+      <table>
+        <tr><th>Про що</th><th>Питання</th><th>На що впливає відповідь</th></tr>
+        <tr><td>Користувачі</td><td>Хто користувачі? B2C чи B2B? Скільки DAU/MAU?</td><td>Порядок масштабу, multi-tenancy</td></tr>
+        <tr><td>Core-фічі</td><td>Які 2–3 сценарії найважливіші? Що точно не робимо?</td><td>Scope і API</td></tr>
+        <tr><td>Співвідношення</td><td>Більше читають чи пишуть? Наскільки?</td><td>Кеш, репліки, fan-out on write vs read</td></tr>
+        <tr><td>Консистентність</td><td>Чи страшно, якщо користувач побачить дані з затримкою в секунди? А дубль?</td><td>Strong vs eventual, idempotency</td></tr>
+        <tr><td>Латентність</td><td>Яка цільова латентність? Real-time чи достатньо «скоро»?</td><td>Кеш, препросчет, push vs pull</td></tr>
+        <tr><td>Дані</td><td>Розмір одного об'єкта? Є медіа? Як довго зберігаємо?</td><td>Blob storage, CDN, retention, вартість</td></tr>
+        <tr><td>Географія</td><td>Глобальний сервіс чи один регіон?</td><td>CDN, multi-region, GeoDNS</td></tr>
+        <tr><td>Пікові події</td><td>Є передбачувані сплески (Чорна п'ятниця, фінал Ліги чемпіонів, продаж квитків)?</td><td>Peak factor, autoscaling, черги, waiting room</td></tr>
+      </table>
+
+      <div class="callout good"><div class="ic">✅</div><div class="body"><b>Прийом «запропонуй — не питай».</b> Замість «Яка має бути латентність?» скажіть: «Припускаю, що стрічка має відкриватися за ~200 мс, а нові пости можуть з'являтися з затримкою до кількох секунд. Підходить?» Інтерв'юер майже завжди погоджується, а ви демонструєте продуктове мислення і економите час.</div></div>
+
+      <h3>Як це роблять у реальних системах</h3>
+      <p>Реальні дизайн-документи (design docs) у великих компаніях мають майже ту саму структуру: <i>Goals / Non-goals</i>, <i>Requirements</i>, <i>Proposed design</i>, <i>Alternatives considered</i>. Розділ <b>Non-goals</b> не менш важливий, ніж Goals: саме він захищає команду від розростання scope. На співбесіді ваш «out of scope» — це той самий Non-goals.</p>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Функціональні вимоги — це user stories з Jira («як користувач я хочу…»). Нефункціональні — це Core Web Vitals і бюджети: LCP &lt; 2.5 с, бандл &lt; 200 KB, підтримка Safari 15. Ви ж не почнете оптимізувати бандл, не знаючи, який бюджет. Де аналогія ламається: на бекенді NFR суперечать один одному жорсткіше (доступність vs узгодженість — фундаментальний компроміс, а не питання часу на оптимізацію).
+      </div>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> NFR формулюйте <b>в контексті системи</b>, а не загально. Погано: «система має бути масштабованою і доступною». Добре: «Читань у ~100 разів більше, ніж записів; стрічка має відкриватися &lt;200 мс p99; можна показати пост із затримкою до 5 с (eventual consistency), але не можна втратити опублікований пост».</div></div>
+
+      <div class="callout bad"><div class="ic">🚩</div><div class="body"><b>Red flags:</b> одразу малювати схему без жодного питання; ставити 20 питань поспіль і «допитувати» інтерв'юера 15 хвилин; записати «high availability, low latency, scalability» без чисел і контексту; не записати вимоги на дошці (через 20 хвилин ніхто не пам'ятає, про що домовились).</div></div>
+
+      <div class="remember">3–4 FR + 3–5 NFR з числами + out of scope, записані на дошці. Пропонуйте припущення замість відкритих питань.</div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Сутності, API, high-level design і deep dives</h2>
+      <p class="section-desc">Після вимог — швидкий перехід до «скелета»: словник сутностей, контракт API і найпростіша робоча архітектура. Потім ми систематично ламаємо її нефункціональними вимогами і лагодимо в deep dives.</p>
+
+      <h3>Core entities: словник, а не схема</h3>
+      <p>Для Twitter-подібної задачі достатньо одного рядка на дошці: <code>User, Tweet, Follow, Media, Like</code>. Поля додаємо пізніше, коли вони знадобляться для рішення (наприклад, <code>created_at</code> і <code>author_id</code> з'являться, коли обговорюватимемо пагінацію і шардинг). Детальне моделювання даних — у <a href="04-databases-storage.html">туторіалі 4</a>.</p>
+
+      <h3>API: по ендпоінту на вимогу</h3>
+      <div class="codecard"><div class="bar"><span class="path">api.http</span></div><pre><code>POST /v1/tweets                      → 201 { "id": "...", "created_at": "..." }
+     body: { "text": "...", "media_ids": ["..."] }
+     header: Idempotency-Key: 6f1c...   (повтор після таймауту не створить дубль)
+
+POST /v1/users/{id}/follow           → 204
+GET  /v1/feed?cursor=abc&amp;limit=20     → 200 { "items": [...], "next_cursor": "def" }
+
+# userId — з токена (Authorization: Bearer ...), а не з тіла запиту:
+# інакше будь-хто публікує від імені будь-кого</code></pre></div>
+
+      <p>Кілька дрібниць, які інтерв'юери помічають: множинні іменники в шляхах (<code>/tweets</code>), cursor-пагінація для стрічок (offset ламається при вставках), ключ ідемпотентності для операцій зі сторонніми ефектами, версія в шляху. Детально про все це — в <a href="02-networking-entry.html#s10">розділі API design туторіалу 2</a>.</p>
+
+      <h3>High-level: спершу коректно, потім масштабовано</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 340" role="img" aria-label="Еволюція дизайну. Верхній ряд v1: клієнт, API-сервер, одна база даних — працює і закриває функціональні вимоги. Нижня частина v2 після deep dives: клієнт іде через load balancer до кількох API-серверів, які читають з кешу і пишуть у primary базу з репліками для читань; медіа йдуть через CDN з blob storage; важкі операції на кшталт fan-out ідуть через чергу у воркери">
+          <defs><marker id="sd01-a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="10" y="55" fill="currentColor" font-weight="bold">v1</text>
+            <rect x="60" y="30" width="100" height="40" rx="8" fill="var(--card)" stroke="currentColor"/>
+            <text x="110" y="55" text-anchor="middle" fill="currentColor">Клієнт</text>
+            <rect x="210" y="30" width="110" height="40" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="265" y="55" text-anchor="middle" fill="currentColor">API-сервер</text>
+            <rect x="370" y="30" width="100" height="40" rx="4" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="420" y="55" text-anchor="middle" fill="currentColor">БД</text>
+            <line x1="160" y1="50" x2="208" y2="50" stroke="currentColor" marker-end="url(#sd01-a3)"/>
+            <line x1="320" y1="50" x2="368" y2="50" stroke="currentColor" marker-end="url(#sd01-a3)"/>
+            <text x="500" y="46" fill="var(--fg-muted)" font-size="11">закриває всі FR,</text>
+            <text x="500" y="62" fill="var(--fg-muted)" font-size="11">але не NFR (масштаб, SPOF)</text>
+            <line x1="10" y1="95" x2="720" y2="95" stroke="var(--border)" stroke-dasharray="6 4"/>
+            <text x="365" y="112" text-anchor="middle" fill="var(--fg-muted)" font-size="11">deep dives: читань ×100, медіа, fan-out, відмови ↓</text>
+
+            <text x="10" y="200" fill="currentColor" font-weight="bold">v2</text>
+            <rect x="40" y="180" width="80" height="40" rx="8" fill="var(--card)" stroke="currentColor"/>
+            <text x="80" y="205" text-anchor="middle" fill="currentColor">Клієнт</text>
+            <rect x="150" y="180" width="60" height="40" rx="4" fill="var(--card)" stroke="currentColor"/>
+            <text x="180" y="205" text-anchor="middle" fill="currentColor">LB</text>
+            <rect x="248" y="172" width="110" height="40" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <rect x="240" y="180" width="110" height="40" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="295" y="205" text-anchor="middle" fill="currentColor">API × N</text>
+            <rect x="420" y="135" width="110" height="40" rx="4" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="475" y="160" text-anchor="middle" fill="currentColor">Кеш (Redis)</text>
+            <rect x="420" y="200" width="110" height="40" rx="4" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="475" y="225" text-anchor="middle" fill="currentColor">БД primary</text>
+            <rect x="590" y="200" width="120" height="40" rx="4" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="650" y="225" text-anchor="middle" fill="currentColor">Read replicas</text>
+            <rect x="420" y="270" width="110" height="40" rx="4" fill="var(--fun-bg)" stroke="var(--fun)"/>
+            <text x="475" y="295" text-anchor="middle" fill="currentColor">Черга</text>
+            <rect x="590" y="270" width="120" height="40" rx="4" fill="var(--fun-bg)" stroke="var(--fun)"/>
+            <text x="650" y="295" text-anchor="middle" fill="currentColor">Fan-out воркери</text>
+            <rect x="40" y="270" width="80" height="40" rx="20" fill="var(--interview-bg)" stroke="var(--interview)"/>
+            <text x="80" y="295" text-anchor="middle" fill="currentColor">CDN</text>
+            <rect x="150" y="270" width="120" height="40" rx="4" fill="var(--card)" stroke="currentColor"/>
+            <text x="210" y="295" text-anchor="middle" fill="currentColor">Blob (S3)</text>
+
+            <line x1="120" y1="200" x2="148" y2="200" stroke="currentColor" marker-end="url(#sd01-a3)"/>
+            <line x1="210" y1="200" x2="238" y2="200" stroke="currentColor" marker-end="url(#sd01-a3)"/>
+            <line x1="350" y1="192" x2="418" y2="160" stroke="currentColor" marker-end="url(#sd01-a3)"/>
+            <line x1="350" y1="210" x2="418" y2="220" stroke="currentColor" marker-end="url(#sd01-a3)"/>
+            <line x1="350" y1="216" x2="418" y2="285" stroke="currentColor" stroke-dasharray="5 4" marker-end="url(#sd01-a3)"/>
+            <line x1="530" y1="220" x2="588" y2="220" stroke="var(--good)" stroke-dasharray="5 4" marker-end="url(#sd01-a3)"/>
+            <line x1="530" y1="290" x2="588" y2="290" stroke="currentColor" marker-end="url(#sd01-a3)"/>
+            <line x1="80" y1="222" x2="80" y2="268" stroke="currentColor" marker-end="url(#sd01-a3)"/>
+            <line x1="148" y1="290" x2="122" y2="290" stroke="currentColor" marker-end="url(#sd01-a3)"/>
+            <text x="560" y="250" fill="var(--fg-muted)" font-size="10">реплікація</text>
+            <text x="20" y="330" fill="var(--fg-muted)" font-size="11">суцільна стрілка — синхронний виклик; пунктир — асинхронно (черга, реплікація)</text>
+          </g>
+        </svg>
+        <figcaption>Спершу v1 — «наївна», але коректна. Потім кожен новий блок у v2 з'являється як відповідь на конкретну NFR: кеш і репліки — на read-heavy навантаження, CDN — на медіа, черга — на дорогий fan-out. Без такої мотивації блок на схемі — red flag.</figcaption>
+      </figure>
+
+      <h3>Deep dives: як обрати теми</h3>
+      <p>Обирайте те, що є <b>найризикованішим для саме цієї задачі</b>, а не улюблену тему. Евристика: пройдіться по NFR і спитайте себе «яка вимога найважче виконується в v1?».</p>
+      <table>
+        <tr><th>Задача</th><th>Типові deep dives</th></tr>
+        <tr><td>News feed</td><td>Fan-out on write vs read, селебріті, кеш стрічки, пагінація</td></tr>
+        <tr><td>Чат</td><td>WebSocket-з'єднання і маршрутизація повідомлень, порядок, офлайн-доставка, зберігання історії</td></tr>
+        <tr><td>URL shortener</td><td>Генерація унікальних коротких ID, кеш редиректів, аналітика кліків</td></tr>
+        <tr><td>Ticketmaster</td><td>Конкуренція за місця, тимчасові резервації, waiting room</td></tr>
+        <tr><td>Uber</td><td>Гео-індекс (geohash/H3), частота оновлень локацій, матчинг</td></tr>
+        <tr><td>Dropbox</td><td>Chunking, дедуплікація, синхронізація і конфлікти</td></tr>
+      </table>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> перед deep dive скажіть, <i>чому</i> саме ця тема: «Найбільший ризик — гарячі ключі: пост селебріті з 100M підписників. Давайте розберемо, як не покласти один шард». Якщо інтерв'юер хоче іншу тему — він скаже, і це нормально: на senior-рівні він часто сам «веде» в одну з тем, щоб перевірити глибину.</div></div>
+
+      <div class="callout bad"><div class="ic">🚩</div><div class="body"><b>Помилки:</b> малювати v2 одразу, «бо так у всіх» (Kafka, Kubernetes, мікросервіси без жодної причини); deep dive у тему, яка не стосується задачі; «я б додав кеш» без пояснення, що кешуємо, з яким ключем, TTL і як інвалідовуємо.</div></div>
+
+      <div class="remember">Сутності — один рядок. API — по ендпоінту на FR. High-level — спершу коректний (v1), потім кожен новий блок виправданий конкретною NFR.</div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · Оцінки на серветці</div><div class="line"></div></div>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Степені двійки й числа латентності</h2>
+      <p class="section-desc">Back-of-the-envelope («на звороті конверта») — це грубі оцінки з точністю до порядку. Щоб робити їх швидко і впевнено, потрібен маленький набір чисел, які варто знати напам'ять. Їх небагато.</p>
+
+      <h3>Порядки величин</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 180" role="img" aria-label="Сходинки порядків величин: кожен крок у тисячу разів більший. KB — два в десятому, приблизно тисяча: твіт близько 0.3 KB, JSON-відповідь. MB — два в двадцятому, мільйон: фото 1–5 MB. GB — два в тридцятому, мільярд: фільм, оперативна пам'ять процесу. TB — два в сороковому, трильйон: диск сервера, середня база. PB — два в п'ятдесятому: дані великого продукту. EB — два в шістдесятому: сховище гіперскейлера">
+          <defs><marker id="sd01-a4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <line x1="20" y1="22" x2="710" y2="22" stroke="var(--fg-muted)" marker-end="url(#sd01-a4)"/>
+            <text x="365" y="16" text-anchor="middle" fill="var(--fg-muted)" font-size="11">кожен крок ×1000 (≈ ×2¹⁰)</text>
+            <rect x="15" y="40" width="110" height="100" rx="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="70" y="62" text-anchor="middle" fill="currentColor" font-weight="bold">KB</text>
+            <text x="70" y="82" text-anchor="middle" fill="currentColor" font-size="11">2¹⁰ ≈ 10³</text>
+            <text x="70" y="104" text-anchor="middle" fill="var(--fg-muted)" font-size="11">твіт ~0.3 KB</text>
+            <text x="70" y="120" text-anchor="middle" fill="var(--fg-muted)" font-size="11">JSON-відповідь</text>
+            <rect x="133" y="40" width="110" height="100" rx="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="188" y="62" text-anchor="middle" fill="currentColor" font-weight="bold">MB</text>
+            <text x="188" y="82" text-anchor="middle" fill="currentColor" font-size="11">2²⁰ ≈ 10⁶</text>
+            <text x="188" y="104" text-anchor="middle" fill="var(--fg-muted)" font-size="11">фото 1–5 MB</text>
+            <text x="188" y="120" text-anchor="middle" fill="var(--fg-muted)" font-size="11">JS-бандл</text>
+            <rect x="251" y="40" width="110" height="100" rx="8" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="306" y="62" text-anchor="middle" fill="currentColor" font-weight="bold">GB</text>
+            <text x="306" y="82" text-anchor="middle" fill="currentColor" font-size="11">2³⁰ ≈ 10⁹</text>
+            <text x="306" y="104" text-anchor="middle" fill="var(--fg-muted)" font-size="11">фільм HD</text>
+            <text x="306" y="120" text-anchor="middle" fill="var(--fg-muted)" font-size="11">RAM процесу</text>
+            <rect x="369" y="40" width="110" height="100" rx="8" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="424" y="62" text-anchor="middle" fill="currentColor" font-weight="bold">TB</text>
+            <text x="424" y="82" text-anchor="middle" fill="currentColor" font-size="11">2⁴⁰ ≈ 10¹²</text>
+            <text x="424" y="104" text-anchor="middle" fill="var(--fg-muted)" font-size="11">диск сервера</text>
+            <text x="424" y="120" text-anchor="middle" fill="var(--fg-muted)" font-size="11">середня БД</text>
+            <rect x="487" y="40" width="110" height="100" rx="8" fill="var(--bad-bg)" stroke="var(--bad)"/>
+            <text x="542" y="62" text-anchor="middle" fill="currentColor" font-weight="bold">PB</text>
+            <text x="542" y="82" text-anchor="middle" fill="currentColor" font-size="11">2⁵⁰ ≈ 10¹⁵</text>
+            <text x="542" y="104" text-anchor="middle" fill="var(--fg-muted)" font-size="11">дані великого</text>
+            <text x="542" y="120" text-anchor="middle" fill="var(--fg-muted)" font-size="11">продукту</text>
+            <rect x="605" y="40" width="110" height="100" rx="8" fill="var(--bad-bg)" stroke="var(--bad)"/>
+            <text x="660" y="62" text-anchor="middle" fill="currentColor" font-weight="bold">EB</text>
+            <text x="660" y="82" text-anchor="middle" fill="currentColor" font-size="11">2⁶⁰ ≈ 10¹⁸</text>
+            <text x="660" y="104" text-anchor="middle" fill="var(--fg-muted)" font-size="11">сховище</text>
+            <text x="660" y="120" text-anchor="middle" fill="var(--fg-muted)" font-size="11">гіперскейлера</text>
+            <text x="365" y="168" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Префікси: тисяча (K), мільйон (M), мільярд (G/B), трильйон (T). На співбесіді 2¹⁰ = 1024 сміливо округлюємо до 1000.</text>
+          </g>
+        </svg>
+        <figcaption>Шість сходинок, кожна ×1000. Корисно мати «якір» для кожної: якщо ви отримали «100 PB тексту твітів», одразу видно, що десь помилка на порядок-два.</figcaption>
+      </figure>
+
+      <p><span class="say">(Запис 10⁹ читається «десять у дев'ятому», тобто мільярд. Знак ≈ — «приблизно дорівнює». Знак ≫ — «набагато більше», наприклад, читань ≫ записів означає різницю на порядки.)</span></p>
+
+      <div class="cheat"><table>
+        <tr><th>Що</th><th>Значення</th><th>Як запам'ятати</th></tr>
+        <tr><td>Секунд у добі</td><td>86 400</td><td>рахуємо як ≈ 10⁵ (похибка ~15%, прийнятно)</td></tr>
+        <tr><td>Секунд у місяці</td><td>≈ 2.6 млн</td><td>≈ 2.5 × 10⁶</td></tr>
+        <tr><td>Секунд у році</td><td>≈ 31.5 млн</td><td>≈ π × 10⁷ (кумедний, але точний мнемонік)</td></tr>
+        <tr><td>1 млн запитів/добу</td><td>≈ 12 QPS</td><td>10⁶ / 10⁵ ≈ 10 (точніше 11.6)</td></tr>
+        <tr><td>1 млрд запитів/добу</td><td>≈ 12 000 QPS</td><td>10⁹ / 10⁵ = 10⁴</td></tr>
+        <tr><td>1 символ ASCII / UTF-8 кирилиця</td><td>1 B / 2 B</td><td>emoji — до 4 B</td></tr>
+        <tr><td>UUID / bigint / timestamp</td><td>16 B / 8 B / 8 B</td><td>UUID як рядок — 36 B</td></tr>
+      </table></div>
+
+      <p><span class="say">(QPS — «queries per second», запитів на секунду; часто ще кажуть RPS — requests per second. Для записів іноді окремо пишуть write QPS / TPS.)</span></p>
+
+      <h3>Числа латентності, які варто знати</h3>
+      <p>Класичний список «Latency Numbers Every Programmer Should Know» популяризували Джефф Дін (Google) і Пітер Норвіг; пізніше його оновлювали (зокрема, інтерактивна версія Colin Scott). Конкретні значення змінюються з поколіннями заліза, але <b>співвідношення</b> — пам'ять ≪ мережа в ДЦ ≪ диск ≪ міжконтинентальна мережа — стабільні. Саме їх і треба пам'ятати.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 320" role="img" aria-label="Логарифмічна діаграма латентностей. L1 кеш близько 1 наносекунди, L2 кеш близько 7 наносекунд, оперативна пам'ять 100 наносекунд. Надіслати 1 KB по мережі 1 гігабіт — 10 мікросекунд, випадкове читання 4 KB з SSD близько 100 мікросекунд, round trip у межах дата-центру близько 500 мікросекунд. Послідовне читання 1 MB з SSD близько 1 мілісекунди, seek на HDD 10 мілісекунд, послідовне читання 1 MB з HDD близько 20 мілісекунд, пакет з Каліфорнії до Нідерландів і назад близько 150 мілісекунд. Кожна поділка шкали — у тисячу разів більше">
+          <g font-size="11">
+            <text x="10" y="22" fill="var(--fg-muted)">Логарифмічна шкала: кожна поділка ×1000</text>
+            <text x="10" y="52" fill="currentColor">L1 cache</text>
+            <rect x="250" y="40" width="46" height="16" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="302" y="52" fill="var(--fg-muted)">~1 ns</text>
+            <text x="10" y="76" fill="currentColor">L2 cache</text>
+            <rect x="250" y="64" width="85" height="16" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="341" y="76" fill="var(--fg-muted)">~7 ns</text>
+            <text x="10" y="100" fill="currentColor">RAM (main memory)</text>
+            <rect x="250" y="88" width="138" height="16" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="394" y="100" fill="var(--fg-muted)">100 ns</text>
+            <text x="10" y="124" fill="currentColor">Надіслати 1 KB по 1 Гбіт/с</text>
+            <rect x="250" y="112" width="230" height="16" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="486" y="124" fill="var(--fg-muted)">10 µs</text>
+            <text x="10" y="148" fill="currentColor">SSD: випадкове читання 4 KB</text>
+            <rect x="250" y="136" width="276" height="16" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="532" y="148" fill="var(--fg-muted)">~100 µs</text>
+            <text x="10" y="172" fill="currentColor">Round trip у дата-центрі</text>
+            <rect x="250" y="160" width="308" height="16" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="564" y="172" fill="var(--fg-muted)">~500 µs</text>
+            <text x="10" y="196" fill="currentColor">SSD: послідовно 1 MB</text>
+            <rect x="250" y="184" width="322" height="16" fill="var(--bad-bg)" stroke="var(--bad)"/>
+            <text x="578" y="196" fill="var(--fg-muted)">~1 ms</text>
+            <text x="10" y="220" fill="currentColor">HDD: seek</text>
+            <rect x="250" y="208" width="368" height="16" fill="var(--bad-bg)" stroke="var(--bad)"/>
+            <text x="624" y="220" fill="var(--fg-muted)">~10 ms</text>
+            <text x="10" y="244" fill="currentColor">HDD: послідовно 1 MB</text>
+            <rect x="250" y="232" width="382" height="16" fill="var(--bad-bg)" stroke="var(--bad)"/>
+            <text x="638" y="244" fill="var(--fg-muted)">~20 ms</text>
+            <text x="10" y="268" fill="currentColor">Каліфорнія → Нідерланди → назад</text>
+            <rect x="250" y="256" width="422" height="16" fill="var(--bad-bg)" stroke="var(--bad)"/>
+            <text x="678" y="268" fill="var(--fg-muted)">150 ms</text>
+            <line x1="250" y1="284" x2="712" y2="284" stroke="var(--fg-muted)"/>
+            <line x1="296" y1="280" x2="296" y2="288" stroke="var(--fg-muted)"/>
+            <line x1="434" y1="280" x2="434" y2="288" stroke="var(--fg-muted)"/>
+            <line x1="572" y1="280" x2="572" y2="288" stroke="var(--fg-muted)"/>
+            <line x1="710" y1="280" x2="710" y2="288" stroke="var(--fg-muted)"/>
+            <text x="296" y="302" text-anchor="middle" fill="var(--fg-muted)">1 ns</text>
+            <text x="434" y="302" text-anchor="middle" fill="var(--fg-muted)">1 µs</text>
+            <text x="572" y="302" text-anchor="middle" fill="var(--fg-muted)">1 ms</text>
+            <text x="704" y="302" text-anchor="middle" fill="var(--fg-muted)">1 s</text>
+          </g>
+        </svg>
+        <figcaption>Зелене — наносекунди (пам'ять), жовте — мікросекунди (мережа в ДЦ, SSD), червоне — мілісекунди (диски HDD, міжконтинентальна мережа). Значення — класичні орієнтири; сучасні NVMe SSD читають випадковий блок за десятки мікросекунд, але порядок відносно RAM і мережі той самий.</figcaption>
+      </figure>
+
+      <p><span class="say">(ns — наносекунда, 10⁻⁹ с; µs — мікросекунда, 10⁻⁶ с; ms — мілісекунда, 10⁻³ с.)</span></p>
+
+      <h3>Висновки, які з цього випливають</h3>
+      <ul>
+        <li><b>Пам'ять приблизно в 1000 разів швидша за мережу в ДЦ</b>, а мережевий round trip до Redis (~0.5 мс) все одно набагато дешевший за запит до БД, якому треба читати з диска і виконувати план. Тому кеш у пам'яті працює.</li>
+        <li><b>Мережа в межах ДЦ швидша, ніж здається</b>: прочитати 1 MB з пам'яті сусіднього сервера часто швидше, ніж з локального HDD. На цьому побудовані розподілені кеші й in-memory сховища.</li>
+        <li><b>Між континентами ~100–150 мс туди-назад</b> — це фізика (швидкість світла в оптоволокні ≈ 200 000 км/с), не оптимізується кодом. Тому CDN, edge і multi-region: дані треба тримати ближче до користувача.</li>
+        <li><b>Послідовне читання ≫ випадкового</b> (особливо на HDD). Звідси дизайн LSM-дерев, Kafka (append-only лог) і пакетної обробки — див. <a href="04-databases-storage.html">туторіал 4</a> і <a href="07-async-messaging.html">туторіал 7</a>.</li>
+        <li><b>Сценарій «N послідовних запитів»</b>: 5 послідовних викликів сервісів по ~20 мс = 100 мс тільки на очікування. Паралельте незалежні виклики або денормалізуйте.</li>
+      </ul>
+
+      <h3>Пропускна здатність «одного вузла» (дуже грубо)</h3>
+      <table>
+        <tr><th>Компонент</th><th>Порядок величини</th><th>Коментар</th></tr>
+        <tr><td>Stateless API-сервер</td><td>~10³–10⁴ RPS</td><td>Сильно залежить від логіки і мови; I/O-bound сервіс з async-фреймворком — більше</td></tr>
+        <tr><td>Реляційна БД (Postgres/MySQL), 1 вузол</td><td>~10³–10⁴ простих запитів/с</td><td>Читання по індексу; складні JOIN — значно менше</td></tr>
+        <tr><td>Redis, 1 вузол</td><td>порядку 10⁵ простих операцій/с</td><td>Ядро однопотокове; більше — з pipelining або кластером</td></tr>
+        <tr><td>Kafka-брокер</td><td>сотні MB/с</td><td>Послідовний запис на диск + batching</td></tr>
+        <tr><td>Мережева карта сервера</td><td>10–100 Гбіт/с</td><td>1 Гбіт/с ≈ 125 MB/с</td></tr>
+        <tr><td>Одне WebSocket-з'єднання на сервері</td><td>десятки KB пам'яті</td><td>Сотні тисяч — мільйони з'єднань на добре налаштованій машині</td></tr>
+      </table>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body">Ці числа — не факти про конкретне залізо, а <b>порядки для оцінки</b>. На співбесіді так і кажіть: «Припустимо, один інстанс тримає порядку 5K RPS — тоді на пік 100K потрібно ~20 інстансів плюс запас». Інтерв'юер оцінює хід думки, а не точність.</div></div>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Ви вже знаєте цю ієрархію з браузера: змінна в пам'яті (наносекунди) → <code>localStorage</code> (синхронний, швидко) → IndexedDB (асинхронно) → Cache Storage сервіс-воркера → мережа до CDN (десятки мс) → мережа до origin в іншому регіоні (сотні мс). React Query зі <code>staleTime</code> — це рішення «не йти на повільніший рівень, якщо дані досить свіжі». Де ламається: у браузері користувач один; на сервері ваш «кеш» ділять мільйони запитів, і з'являються проблеми, яких на фронтенді немає — stampede, гарячі ключі, інвалідація між вузлами (<a href="03-caching.html">туторіал 3</a>).
+      </div>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> числа латентності найчастіше використовуються як аргумент: «Синхронний виклик у інший регіон додасть ~100 мс до кожного запиту, тому реплікуємо дані асинхронно і читаємо локально» або «Читання з Redis — ~1 мс проти 10–50 мс складного запиту до БД, тому кешуємо готову стрічку».</div></div>
+
+      <div class="remember">Пам'ять ~100 ns, мережа в ДЦ ~0.5 ms, диск ~мс, інший континент ~150 ms. Доба ≈ 10⁵ с; 1 млрд/добу ≈ 10⁴ QPS.</div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> QPS, сховище, bandwidth: Twitter і фото-сервіс</h2>
+      <p class="section-desc">Оцінка — це ланцюжок множень від кількох припущень. Головне — проговорити припущення вголос, округлювати агресивно і зробити з результату <b>висновок для дизайну</b>.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 270" role="img" aria-label="Граф оцінок. Із вхідного блоку DAU помножити на дії на день виходять три гілки. Перша: поділити на 10 в п'ятому секунд — середній QPS, помножити на 2–3 — піковий QPS, поділити на пропускну здатність сервера — кількість серверів. Друга: помножити на розмір запису — байти на день, помножити на 365, кількість років і реплікацію — загальне сховище. Третя: read QPS помножити на розмір відповіді, помножити на 8 біт — bandwidth у гігабітах на секунду, звідки висновок про CDN">
+          <defs><marker id="sd01-a5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="110" width="140" height="50" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="80" y="131" text-anchor="middle" fill="currentColor" font-weight="bold">DAU</text>
+            <text x="80" y="149" text-anchor="middle" fill="var(--fg-muted)" font-size="11">× дій на день</text>
+
+            <rect x="190" y="20" width="160" height="50" rx="6" fill="var(--card)" stroke="currentColor"/>
+            <text x="270" y="41" text-anchor="middle" fill="currentColor">÷ 10⁵ с</text>
+            <text x="270" y="59" text-anchor="middle" fill="var(--fg-muted)" font-size="11">= середній QPS</text>
+            <rect x="380" y="20" width="150" height="50" rx="6" fill="var(--card)" stroke="currentColor"/>
+            <text x="455" y="41" text-anchor="middle" fill="currentColor">× 2–3 (peak)</text>
+            <text x="455" y="59" text-anchor="middle" fill="var(--fg-muted)" font-size="11">= піковий QPS</text>
+            <rect x="560" y="20" width="160" height="50" rx="6" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="640" y="41" text-anchor="middle" fill="currentColor">÷ QPS на сервер</text>
+            <text x="640" y="59" text-anchor="middle" fill="var(--fg-muted)" font-size="11">= кількість інстансів</text>
+
+            <rect x="190" y="110" width="160" height="50" rx="6" fill="var(--card)" stroke="currentColor"/>
+            <text x="270" y="131" text-anchor="middle" fill="currentColor">× розмір запису</text>
+            <text x="270" y="149" text-anchor="middle" fill="var(--fg-muted)" font-size="11">= байтів на день</text>
+            <rect x="380" y="110" width="150" height="50" rx="6" fill="var(--card)" stroke="currentColor"/>
+            <text x="455" y="131" text-anchor="middle" fill="currentColor">× 365 × років</text>
+            <text x="455" y="149" text-anchor="middle" fill="var(--fg-muted)" font-size="11">× реплікація</text>
+            <rect x="560" y="110" width="160" height="50" rx="6" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="640" y="131" text-anchor="middle" fill="currentColor">= сховище</text>
+            <text x="640" y="149" text-anchor="middle" fill="var(--fg-muted)" font-size="11">шардинг? blob? tiering?</text>
+
+            <rect x="190" y="200" width="160" height="50" rx="6" fill="var(--card)" stroke="currentColor"/>
+            <text x="270" y="221" text-anchor="middle" fill="currentColor">read QPS</text>
+            <text x="270" y="239" text-anchor="middle" fill="var(--fg-muted)" font-size="11">× розмір відповіді</text>
+            <rect x="380" y="200" width="150" height="50" rx="6" fill="var(--card)" stroke="currentColor"/>
+            <text x="455" y="221" text-anchor="middle" fill="currentColor">× 8 біт</text>
+            <text x="455" y="239" text-anchor="middle" fill="var(--fg-muted)" font-size="11">= біт/с</text>
+            <rect x="560" y="200" width="160" height="50" rx="6" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="640" y="221" text-anchor="middle" fill="currentColor">= bandwidth</text>
+            <text x="640" y="239" text-anchor="middle" fill="var(--fg-muted)" font-size="11">потрібен CDN?</text>
+
+            <line x1="150" y1="125" x2="188" y2="50" stroke="currentColor" marker-end="url(#sd01-a5)"/>
+            <line x1="150" y1="135" x2="188" y2="135" stroke="currentColor" marker-end="url(#sd01-a5)"/>
+            <line x1="150" y1="145" x2="188" y2="220" stroke="currentColor" marker-end="url(#sd01-a5)"/>
+            <line x1="350" y1="45" x2="378" y2="45" stroke="currentColor" marker-end="url(#sd01-a5)"/>
+            <line x1="530" y1="45" x2="558" y2="45" stroke="currentColor" marker-end="url(#sd01-a5)"/>
+            <line x1="350" y1="135" x2="378" y2="135" stroke="currentColor" marker-end="url(#sd01-a5)"/>
+            <line x1="530" y1="135" x2="558" y2="135" stroke="currentColor" marker-end="url(#sd01-a5)"/>
+            <line x1="350" y1="225" x2="378" y2="225" stroke="currentColor" marker-end="url(#sd01-a5)"/>
+            <line x1="530" y1="225" x2="558" y2="225" stroke="currentColor" marker-end="url(#sd01-a5)"/>
+          </g>
+        </svg>
+        <figcaption>Три гілки: навантаження (скільки серверів), сховище (чи влазить в одну БД, чи потрібен шардинг/blob), трафік (чи потрібен CDN). Праві зелені блоки — це <b>висновки</b>; без них оцінка марна.</figcaption>
+      </figure>
+
+      <h3>Приклад 1: Twitter-подібний сервіс</h3>
+      <p>Припущення (проговорюємо вголос, числа — порядок, а не реальні дані X): <b>300M DAU</b>, у середньому <b>2 твіти</b> на користувача на день (насправді більшість не пише нічого, а меншість пише багато — нас цікавить середнє), читань у <b>~100 разів</b> більше, ніж записів, твіт з метаданими ≈ <b>300 B</b>, сторінка стрічки — 20 твітів. Для орієнтиру: у 2013 році Twitter публічно говорив про ~500M твітів на добу, тож порядок 600M/добу правдоподібний.</p>
+      <ol class="steps">
+        <li><b>Записи:</b> 300M × 2 = 600M твітів/добу. 6×10⁸ / 10⁵ ≈ <b>6 000 QPS</b> (точно — 6 944; похибка округлення доби нас влаштовує). Пік ×2 ≈ <b>~14K QPS</b>.</li>
+        <li><b>Читання:</b> ×100 → <b>~700K QPS</b> у середньому, ~1.4M у піку. Висновок: <i>read-heavy</i>, жодна одна БД це не витримає → кеш стрічок, репліки, препросчет (fan-out) — <a href="10-classic-feed-chat.html">туторіал 10</a>.</li>
+        <li><b>Сховище тексту:</b> 600M × 300 B = 180 GB/добу → ×365 ×5 років ≈ 330 TB → ×3 репліки ≈ <b>~1 PB</b>. Висновок: потрібен шардинг метаданих (<a href="05-replication-sharding.html">туторіал 5</a>).</li>
+        <li><b>Медіа:</b> якщо 10% твітів мають медіа по ~1 MB → 60M × 1 MB = <b>60 TB/добу</b>, за 5 років ≈ 110 PB до реплікації. Висновок: медіа — в blob storage (S3-подібне) і CDN, а не в БД. Медіа домінує над текстом на два порядки.</li>
+        <li><b>Трафік стрічки:</b> 700K × 20 × 300 B × 8 ≈ <b>~33 Гбіт/с</b> лише тексту — нормально для флоту серверів. Медіа віддає CDN.</li>
+      </ol>
+
+      <h3>Приклад 2: фото-сервіс (Instagram-подібний)</h3>
+      <p>Припущення: <b>500M DAU</b>, кожен п'ятий завантажує одне фото на день (0.2 завантаження/користувача), оригінал + варіанти розмірів ≈ <b>2 MB</b>, кожне фото переглядають у середньому <b>250 разів</b>, віддаємо стиснений варіант ≈ <b>200 KB</b>.</p>
+      <ol class="steps">
+        <li><b>Завантаження:</b> 100M/добу → ~<b>1 200 QPS</b>, пік ~2.4K. Невелике число, але кожен запит — мегабайти: upload краще робити напряму в blob storage через pre-signed URL, а не проганяти байти через API-сервери.</li>
+        <li><b>Сховище:</b> 100M × 2 MB = <b>200 TB/добу</b> → 5 років ≈ 365 PB; з потрійною реплікацією ≈ 1.1 EB. На практиці об'єктні сховища використовують erasure coding з накладними витратами порядку 1.3–1.5× замість 3×, плюс холодні класи зберігання для старих фото.</li>
+        <li><b>Перегляди:</b> 100M × 250 = 25 млрд/добу → <b>~290K QPS</b>.</li>
+        <li><b>Egress:</b> 290K × 200 KB × 8 ≈ <b>~460 Гбіт/с</b> у середньому, ~1 Тбіт/с у піку. Висновок: без CDN це неможливо і дуже дорого; CDN hit ratio має бути дуже високим.</li>
+      </ol>
+
+      <div class="codecard"><div class="bar"><span class="path">estimate.py</span></div><pre><code>DAY = 86_400  # секунд у добі; в голові рахуємо як ≈ 10**5
+
+def human(n, unit="B"):
+    for p in ["", "K", "M", "G", "T", "P", "E"]:
+        if abs(n) &lt; 1000:
+            return f"{n:.1f} {p}{unit}"
+        n /= 1000
+    return f"{n:.1f} Z{unit}"
+
+def estimate(name, dau, writes_per_user, reads_per_write, bytes_per_write,
+             bytes_per_read, peak=2, years=5, replicas=3):
+    writes_day = dau * writes_per_user
+    w_qps = writes_day / DAY
+    r_qps = w_qps * reads_per_write
+    storage = writes_day * bytes_per_write * 365 * years * replicas
+    egress = r_qps * bytes_per_read * 8          # біт/с
+    print(f"--- {name}")
+    print(f"write QPS: avg {w_qps:,.0f}, peak {w_qps*peak:,.0f}")
+    print(f"read  QPS: avg {r_qps:,.0f}, peak {r_qps*peak:,.0f}")
+    print(f"storage {years}y x{replicas}: {human(storage)}")
+    print(f"egress avg: {human(egress, 'bit/s')}")
+
+estimate("twitter text", 300e6, 2, 100, 300, 20 * 300)
+estimate("photos", 500e6, 0.2, 250, 2e6, 200e3)
+
+# --- twitter text
+# write QPS: avg 6,944, peak 13,889
+# read  QPS: avg 694,444, peak 1,388,889
+# storage 5y x3: 985.5 TB
+# egress avg: 33.3 Gbit/s
+# --- photos
+# write QPS: avg 1,157, peak 2,315
+# read  QPS: avg 289,352, peak 578,704
+# storage 5y x3: 1.1 EB
+# egress avg: 463.0 Gbit/s</code></pre></div>
+
+      <div class="callout good"><div class="ic">✅</div><div class="body"><b>Прийоми швидкої арифметики:</b> (1) переводьте все в степені 10 і додавайте показники: 3×10⁸ × 3×10² = 9×10¹⁰ ≈ 10¹¹ B = 100 GB; (2) доба = 10⁵ с; (3) пік = ×2–3 для звичайного трафіку, ×10 і більше — для подій (запуск продажу квитків, Новий рік у месенджерах); (4) вголос називайте результат одиницями, які мають сенс: «~1 PB — це вже точно не одна машина».</div></div>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Ви робите те саме, коли рахуєте бюджет бандла: «20 сторінок × 150 KB JS = 3 MB, а на 3G це ~10 с — отже потрібен code splitting». Число саме по собі нічого не означає, важить висновок «потрібен code splitting». Так і тут: «460 Гбіт/с» → «потрібен CDN».
+      </div>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> спитайте, чи хоче інтерв'юер детальних оцінок. Сучасна практика (так рекомендує, зокрема, Hello Interview) — <b>не робити оцінки на початку ритуально</b>, а рахувати тоді, коли число впливає на рішення: «Чи влізуть усі короткі URL в пам'ять одного Redis? 1 млрд × 100 B = 100 GB — на межі, тому шардуємо кеш». Але якщо інтерв'юер просить — робіть повний розрахунок спокійно і вголос.</div></div>
+
+      <div class="callout bad"><div class="ic">🚩</div><div class="body"><b>Помилки в оцінках:</b> плутати біти й байти (×8!); плутати середній і піковий QPS; рахувати хвилину з точністю до другого знака і витратити 7 хвилин; забути реплікацію і індекси (індекси можуть займати стільки ж, скільки дані); забути, що «читань у 100 разів більше» стосується запитів, а не байтів.</div></div>
+
+      <div class="remember">DAU × дії ÷ 10⁵ = QPS; × peak; × розмір × час × репліки = сховище; QPS × відповідь × 8 = біт/с. Кожне число закінчується висновком для дизайну.</div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Доступність і «дев'ятки»</h2>
+      <p class="section-desc">«Доступність 99.99%» звучить красиво, поки не перекласти її в хвилини простою. А ще важливо розуміти, як доступність компонентів складається: послідовні залежності її знижують, резервування — підвищує.</p>
+
+      <div class="cheat"><table>
+        <tr><th>Доступність</th><th>Простій на рік</th><th>на місяць (30 д)</th><th>на добу</th><th>Що це означає на практиці</th></tr>
+        <tr><td>99% («дві дев'ятки»)</td><td>3.65 дня</td><td>7.2 год</td><td>14.4 хв</td><td>Внутрішні інструменти</td></tr>
+        <tr><td>99.9% («три»)</td><td>8.76 год</td><td>43.2 хв</td><td>1.44 хв</td><td>Типовий SaaS; вистачає часу людині прокинутись і полагодити</td></tr>
+        <tr><td>99.95%</td><td>4.38 год</td><td>21.6 хв</td><td>43.2 с</td><td>Часта цифра в SLA хмарних сервісів</td></tr>
+        <tr><td>99.99% («чотири»)</td><td>52.6 хв</td><td>4.32 хв</td><td>8.64 с</td><td>Потрібна автоматика: людина не встигає реагувати</td></tr>
+        <tr><td>99.999% («п'ять»)</td><td>5.26 хв</td><td>25.9 с</td><td>0.86 с</td><td>Телеком, ядро платежів; дуже дорого</td></tr>
+      </table></div>
+      <p>Як запам'ятати: <b>99.9% ≈ 9 годин на рік, 99.99% ≈ 1 година, 99.999% ≈ 5 хвилин</b>. Кожна дев'ятка — у 10 разів менше простою і помітно дорожча інженерія.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 290" role="img" aria-label="Як складається доступність. Зверху послідовний ланцюжок з трьох компонентів по 99.9 відсотка кожен: LB, API, БД. Загальна доступність — добуток, приблизно 99.7 відсотка, гірше за кожен окремо. Знизу два паралельні репліки по 99 відсотків кожна; система недоступна лише коли обидві лежать одночасно: 1 мінус 0.01 на 0.01 дорівнює 99.99 відсотка, за умови незалежних відмов">
+          <defs><marker id="sd01-a6" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="10" y="20" fill="currentColor" font-weight="bold">Послідовно (усі мають працювати)</text>
+            <rect x="20" y="35" width="120" height="44" rx="6" fill="var(--card)" stroke="currentColor"/>
+            <text x="80" y="54" text-anchor="middle" fill="currentColor">LB</text>
+            <text x="80" y="70" text-anchor="middle" fill="var(--fg-muted)" font-size="11">99.9%</text>
+            <rect x="180" y="35" width="120" height="44" rx="6" fill="var(--card)" stroke="currentColor"/>
+            <text x="240" y="54" text-anchor="middle" fill="currentColor">API</text>
+            <text x="240" y="70" text-anchor="middle" fill="var(--fg-muted)" font-size="11">99.9%</text>
+            <rect x="340" y="35" width="120" height="44" rx="6" fill="var(--card)" stroke="currentColor"/>
+            <text x="400" y="54" text-anchor="middle" fill="currentColor">БД</text>
+            <text x="400" y="70" text-anchor="middle" fill="var(--fg-muted)" font-size="11">99.9%</text>
+            <rect x="520" y="35" width="190" height="44" rx="6" fill="var(--bad-bg)" stroke="var(--bad)"/>
+            <text x="615" y="54" text-anchor="middle" fill="currentColor" font-weight="bold">≈ 99.7%</text>
+            <text x="615" y="70" text-anchor="middle" fill="var(--fg-muted)" font-size="11">A = A₁ · A₂ · A₃</text>
+            <line x1="140" y1="57" x2="178" y2="57" stroke="currentColor" marker-end="url(#sd01-a6)"/>
+            <line x1="300" y1="57" x2="338" y2="57" stroke="currentColor" marker-end="url(#sd01-a6)"/>
+            <line x1="460" y1="57" x2="518" y2="57" stroke="var(--fg-muted)" stroke-dasharray="4 3" marker-end="url(#sd01-a6)"/>
+
+            <text x="10" y="125" fill="currentColor" font-weight="bold">Паралельно (достатньо однієї)</text>
+            <circle cx="100" cy="200" r="6" fill="currentColor"/>
+            <rect x="200" y="140" width="180" height="44" rx="6" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="290" y="159" text-anchor="middle" fill="currentColor">Репліка 1</text>
+            <text x="290" y="175" text-anchor="middle" fill="var(--fg-muted)" font-size="11">99%</text>
+            <rect x="200" y="216" width="180" height="44" rx="6" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="290" y="235" text-anchor="middle" fill="currentColor">Репліка 2</text>
+            <text x="290" y="251" text-anchor="middle" fill="var(--fg-muted)" font-size="11">99%</text>
+            <circle cx="460" cy="200" r="6" fill="currentColor"/>
+            <line x1="106" y1="198" x2="198" y2="164" stroke="currentColor" marker-end="url(#sd01-a6)"/>
+            <line x1="106" y1="202" x2="198" y2="236" stroke="currentColor" marker-end="url(#sd01-a6)"/>
+            <line x1="380" y1="162" x2="456" y2="196" stroke="currentColor"/>
+            <line x1="380" y1="238" x2="456" y2="204" stroke="currentColor"/>
+            <rect x="520" y="178" width="190" height="44" rx="6" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="615" y="197" text-anchor="middle" fill="currentColor" font-weight="bold">99.99%</text>
+            <text x="615" y="213" text-anchor="middle" fill="var(--fg-muted)" font-size="11">A = 1 − (1−A₁)(1−A₂)</text>
+            <line x1="466" y1="200" x2="518" y2="200" stroke="var(--fg-muted)" stroke-dasharray="4 3" marker-end="url(#sd01-a6)"/>
+            <text x="365" y="282" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Паралельна формула працює лише для НЕЗАЛЕЖНИХ відмов: одна зона, один деплой, один баг → корельовані відмови</text>
+          </g>
+        </svg>
+        <figcaption>Ланцюжок залежностей «з'їдає» дев'ятки: 10 сервісів по 99.9% у критичному шляху дають ~99%. Резервування їх «додає», але тільки якщо відмови незалежні (різні зони доступності, різні версії деплою).</figcaption>
+      </figure>
+
+      <p>Перевіримо: 0.999³ = 0.997 (≈ 99.7%); дві незалежні репліки по 99%: 1 − 0.01 × 0.01 = 0.9999. Звідси два практичні правила: <b>скорочуйте синхронний критичний шлях</b> (асинхронні залежності не входять у добуток доступності запиту) і <b>резервуйте кожну ланку</b>, прибираючи single point of failure (SPOF).</p>
+
+      <h3>Доступність ≠ durability</h3>
+      <p><b>Availability</b> — чи можна зараз виконати запит. <b>Durability</b> — ймовірність, що збережені дані не будуть втрачені. Amazon S3 Standard, за документацією AWS, спроектований на 99.99% доступності і 99.999999999% («11 дев'яток») durability: файл може бути тимчасово недоступний, але практично ніколи не губиться. На співбесіді для платежів чи повідомлень наголошуйте саме на durability («підтверджений запис не губиться»), а не лише на uptime.</p>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Послідовна залежність — це <code>await a(); await b(); await c();</code> з трьома зовнішніми API: якщо будь-який впав, сторінка не рендериться. Паралельне резервування — це fallback: <code>Promise.any([cdn1(), cdn2()])</code> для завантаження скрипта з двох CDN. А graceful degradation — це <code>Promise.allSettled</code> і показ сторінки без блоку рекомендацій, якщо його сервіс упав. Де ламається: на фронтенді «відмова» зазвичай бінарна; у розподілених системах частіше бувають часткові відмови — сервіс відповідає, але повільно, що часто гірше за повну відмову (див. timeouts і circuit breaker у <a href="08-reliability-scale.html">туторіалі 8</a>).
+      </div>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> якщо ви кажете «99.99%», будьте готові пояснити, як ви цього досягнете: кілька AZ, автоматичний failover, відсутність SPOF, health checks, rollback деплоїв. І пам'ятайте, що найчастіша причина інцидентів — не залізо, а зміни (деплої, конфіги). Тому canary і feature flags — теж інструменти доступності.</div></div>
+
+      <div class="remember">99.9% ≈ 9 год/рік, 99.99% ≈ 1 год, 99.999% ≈ 5 хв. Послідовні залежності множать доступності (гірше), незалежні репліки — множать ймовірності відмови (краще).</div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина III · Комунікація й практика</div><div class="line"></div></div>
+
+    <section id="s9">
+      <h2><span class="num">09</span> Trade-offs, red flags і як малювати на дошці</h2>
+      <p class="section-desc">Senior-кандидата від middle найчастіше відрізняє не знання технологій, а вміння сказати: «Є два варіанти, ось ціна кожного, з наших вимог випливає ось цей». Це навичка, яку можна натренувати шаблоном.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 270" role="img" aria-label="Терези trade-off. Ліва чаша: strong consistency — плюс завжди свіжі дані, мінус латентність і доступність. Права чаша: eventual consistency — плюс швидко і доступно, мінус можна побачити старі дані. Опора терезів — вимога. Вимога «стрічка може відставати на 5 секунд» нахиляє терези в бік eventual consistency">
+          <g font-size="12">
+            <rect x="20" y="72" width="240" height="72" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="140" y="94" text-anchor="middle" fill="currentColor" font-weight="bold">Strong consistency</text>
+            <text x="140" y="114" text-anchor="middle" fill="var(--good)" font-size="11">+ завжди свіжі дані</text>
+            <text x="140" y="132" text-anchor="middle" fill="var(--bad)" font-size="11">− латентність, доступність</text>
+            <rect x="470" y="104" width="240" height="72" rx="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="590" y="126" text-anchor="middle" fill="currentColor" font-weight="bold">Eventual consistency</text>
+            <text x="590" y="146" text-anchor="middle" fill="var(--good)" font-size="11">+ швидко, доступно</text>
+            <text x="590" y="164" text-anchor="middle" fill="var(--bad)" font-size="11">− можна побачити старе</text>
+            <line x1="90" y1="150" x2="640" y2="190" stroke="currentColor" stroke-width="3"/>
+            <line x1="140" y1="144" x2="140" y2="153" stroke="currentColor"/>
+            <line x1="590" y1="176" x2="590" y2="186" stroke="currentColor"/>
+            <polygon points="365,170 335,230 395,230" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="365" y="222" text-anchor="middle" fill="currentColor" font-size="11">NFR</text>
+            <text x="365" y="255" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Опора — вимога: «стрічка може відставати на 5 с» → терези хиляться до eventual. Для балансу рахунку — навпаки.</text>
+          </g>
+        </svg>
+        <figcaption>Trade-off не вирішується «в загальному». Його вирішує конкретна вимога, яку ви записали на початку. Тому сильні кандидати весь час посилаються на дошку з NFR.</figcaption>
+      </figure>
+
+      <div class="rule-box"><b>Шаблон речення про trade-off:</b> «Для <i>[задача]</i> я розглядаю <i>[A]</i> і <i>[B]</i>. <i>[A]</i> дає <i>[перевага]</i>, але коштує <i>[ціна]</i>. Оскільки в нас <i>[NFR з дошки]</i>, обираю <i>[A]</i>. Якщо <i>[умова зміниться]</i>, перейшов би на <i>[B]</i>».</div>
+
+      <h3>Типові осі компромісів</h3>
+      <table>
+        <tr><th>Вісь</th><th>Приклад вибору</th><th>Що вирішує</th></tr>
+        <tr><td>Consistency ↔ availability / latency</td><td>Синхронна реплікація vs асинхронна</td><td>Чи можна показати застарілі дані</td></tr>
+        <tr><td>Read ↔ write cost</td><td>Fan-out on write (дорогий запис, дешеве читання) vs on read</td><td>Співвідношення read/write, селебріті</td></tr>
+        <tr><td>Latency ↔ throughput</td><td>Batching (вище throughput, вища латентність)</td><td>Real-time чи аналітика</td></tr>
+        <tr><td>Простота ↔ гнучкість</td><td>Моноліт vs мікросервіси; SQL vs NoSQL</td><td>Розмір команди, етап продукту</td></tr>
+        <tr><td>Вартість ↔ продуктивність</td><td>Все в RAM vs SSD + кеш; 3 репліки vs erasure coding</td><td>Бюджет, гарячі vs холодні дані</td></tr>
+        <tr><td>Свіжість ↔ навантаження</td><td>Короткий TTL кешу vs довгий</td><td>Наскільки критичні застарілі дані</td></tr>
+      </table>
+
+      <h3>Red flags, які записують інтерв'юери</h3>
+      <div class="grid2">
+        <div class="card"><b>Процес</b><ul>
+          <li>Почав малювати без вимог</li>
+          <li>Не встиг high-level до 25-ї хвилини</li>
+          <li>Мовчить по 2–3 хвилини</li>
+          <li>Ігнорує підказки («а що, якщо…?»)</li>
+          <li>Сперечається замість обговорювати</li>
+        </ul></div>
+        <div class="card"><b>Технічні</b><ul>
+          <li>Buzzwords без пояснень («тут Kafka»)</li>
+          <li>Single point of failure, який не помічає</li>
+          <li>«Кеш вирішить усе» без інвалідації</li>
+          <li>Distributed transactions усюди, або навпаки — не бачить проблеми dual write</li>
+          <li>Один вибір без жодної альтернативи</li>
+          <li>Over-engineering: 15 мікросервісів для MVP</li>
+        </ul></div>
+      </div>
+
+      <div class="callout good"><div class="ic">✅</div><div class="body"><b>Як реагувати на підказку.</b> Якщо інтерв'юер питає «А що станеться, коли цей сервер впаде?» — це майже завжди натяк, що ви щось пропустили. Не захищайтесь. Скажіть: «Хороше питання — це SPOF. Додамо другу репліку і автоматичний failover; при цьому треба вирішити проблему split brain…» і продовжуйте.</div></div>
+
+      <h3>Як малювати на дошці / в Excalidraw</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 250" role="img" aria-label="Легенда для дошки. Клієнт — округлений прямокутник. Сервіс — прямокутник. База даних — циліндр. Черга або лог — прямокутник з вертикальними поділками. Кеш — прямокутник з пунктирною рамкою. CDN або blob storage — овальний прямокутник. Суцільна стрілка — синхронний запит, пунктирна — асинхронна подія, зелена пунктирна — реплікація">
+          <defs><marker id="sd01-a7" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="20" y="30" width="90" height="40" rx="12" fill="var(--card)" stroke="currentColor"/>
+            <text x="65" y="55" text-anchor="middle" fill="currentColor">Client</text>
+            <text x="120" y="55" fill="var(--fg-muted)" font-size="11">Клієнт / мобайл</text>
+            <rect x="260" y="30" width="90" height="40" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="305" y="55" text-anchor="middle" fill="currentColor">Service</text>
+            <text x="360" y="55" fill="var(--fg-muted)" font-size="11">Сервіс (stateless)</text>
+            <path d="M500,36 L500,66 A45,8 0 0 0 590,66 L590,36" fill="var(--good-bg)" stroke="var(--good)"/>
+            <ellipse cx="545" cy="36" rx="45" ry="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="545" y="62" text-anchor="middle" fill="currentColor">DB</text>
+            <text x="600" y="55" fill="var(--fg-muted)" font-size="11">БД (SQL/NoSQL)</text>
+
+            <rect x="20" y="120" width="90" height="40" rx="3" fill="var(--fun-bg)" stroke="var(--fun)"/>
+            <line x1="50" y1="120" x2="50" y2="160" stroke="var(--fun)"/>
+            <line x1="65" y1="120" x2="65" y2="160" stroke="var(--fun)"/>
+            <line x1="80" y1="120" x2="80" y2="160" stroke="var(--fun)"/>
+            <line x1="95" y1="120" x2="95" y2="160" stroke="var(--fun)"/>
+            <text x="120" y="145" fill="var(--fg-muted)" font-size="11">Черга / лог</text>
+            <rect x="260" y="120" width="90" height="40" rx="3" fill="var(--warn-bg)" stroke="var(--warn)" stroke-dasharray="5 3"/>
+            <text x="305" y="145" text-anchor="middle" fill="currentColor">Cache</text>
+            <text x="360" y="145" fill="var(--fg-muted)" font-size="11">Кеш (Redis)</text>
+            <rect x="500" y="120" width="90" height="40" rx="20" fill="var(--interview-bg)" stroke="var(--interview)"/>
+            <text x="545" y="145" text-anchor="middle" fill="currentColor">CDN</text>
+            <text x="600" y="145" fill="var(--fg-muted)" font-size="11">CDN / blob</text>
+
+            <line x1="20" y1="210" x2="108" y2="210" stroke="currentColor" marker-end="url(#sd01-a7)"/>
+            <text x="120" y="214" fill="var(--fg-muted)" font-size="11">синхронний запит</text>
+            <line x1="260" y1="210" x2="348" y2="210" stroke="currentColor" stroke-dasharray="6 4" marker-end="url(#sd01-a7)"/>
+            <text x="360" y="214" fill="var(--fg-muted)" font-size="11">асинхронно / подія</text>
+            <line x1="500" y1="210" x2="588" y2="210" stroke="var(--good)" stroke-dasharray="3 3" marker-end="url(#sd01-a7)"/>
+            <text x="600" y="214" fill="var(--fg-muted)" font-size="11">реплікація</text>
+            <text x="365" y="242" text-anchor="middle" fill="var(--fg-muted)" font-size="11">Підписуйте стрілки дієсловом і даними: «POST /tweets», «TweetCreated», «read by user_id»</text>
+          </g>
+        </svg>
+        <figcaption>Узгоджена мікро-легенда економить час і робить схему читабельною. Найважливіше — відрізняти синхронні виклики від асинхронних: саме від цього залежить латентність і доступність запиту.</figcaption>
+      </figure>
+      <ul>
+        <li><b>Потік зліва направо</b>: клієнт ліворуч, сховища праворуч. Записи і читання можна малювати окремими шляхами (часто це різні сервіси).</li>
+        <li><b>Нумеруйте кроки</b> на стрілках (1, 2, 3…), коли пояснюєте сценарій: інтерв'юер легко переказує його у фідбеку.</li>
+        <li><b>Вимоги, API і оцінки — у кутку дошки</b>, щоб на них можна було показати пальцем під час deep dive.</li>
+        <li><b>Не перемальовуйте</b> — додавайте. Excalidraw: тримайте заготовку з базовими фігурами (бібліотеки фігур є вбудовані), дублюйте блоки через Alt/Option+drag. Потренуйтеся заздалегідь — незнайомий інструмент з'їдає 5 хвилин.</li>
+        <li><b>Деталі всередині блоку</b>: для БД підпишіть ключ шардингу і основні таблиці (<code>tweets: PK(user_id, tweet_id)</code>); для кешу — ключ і TTL.</li>
+      </ul>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        Добра схема на дошці — як добре названі компоненти і пропси в React DevTools: подивившись на дерево, ви розумієте data flow без читання коду. Погана схема — як дерево з <code>&lt;Wrapper&gt;&lt;Container&gt;&lt;Box&gt;</code>: блоки є, а що куди тече — неясно. Де ламається: у React потік даних однонаправлений; в архітектурі є зворотні й асинхронні потоки (події, реплікація), і їх треба явно розрізняти.
+      </div>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> «озвучуйте» схему, поки малюєте: «Користувач робить POST /tweets → API Gateway автентифікує → Tweet Service пише в БД, шардовану за user_id → публікує подію TweetCreated у чергу → fan-out воркери оновлюють кеші стрічок». Мовчазне малювання — втрачений сигнал.</div></div>
+
+      <div class="remember">Trade-off = дві альтернативи + ціна кожної + посилання на NFR. Стрілки підписані, синхронне відрізнено від асинхронного, вимоги — в кутку дошки.</div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Топ-25 питань і де їх розібрано</h2>
+      <p class="section-desc">Набір класичних задач досить стабільний. Список нижче — компіляція з книжок Alex Xu, Hello Interview, system-design-primer і публічних розповідей кандидатів. Кожна задача тренує певний набір «будівельних блоків».</p>
+
+      <table>
+        <tr><th>#</th><th>Задача</th><th>Головний виклик</th><th>Туторіал</th></tr>
+        <tr><td>1</td><td>URL shortener (bit.ly)</td><td>Генерація ID, read-heavy кеш</td><td><a href="09-classic-url-id-kv.html">09</a></td></tr>
+        <tr><td>2</td><td>Unique ID generator (Snowflake)</td><td>Унікальність без координації, сортованість</td><td><a href="09-classic-url-id-kv.html">09</a>, <a href="05-replication-sharding.html">05</a></td></tr>
+        <tr><td>3</td><td>Distributed key-value store</td><td>Partitioning, реплікація, кворуми</td><td><a href="09-classic-url-id-kv.html">09</a>, <a href="06-distributed-systems.html">06</a></td></tr>
+        <tr><td>4</td><td>Rate limiter</td><td>Алгоритми, розподілений лічильник</td><td><a href="09-classic-url-id-kv.html">09</a>, <a href="08-reliability-scale.html">08</a></td></tr>
+        <tr><td>5</td><td>News feed / Twitter timeline</td><td>Fan-out, селебріті</td><td><a href="10-classic-feed-chat.html">10</a></td></tr>
+        <tr><td>6</td><td>Instagram (фото + стрічка)</td><td>Blob + CDN, стрічка</td><td><a href="10-classic-feed-chat.html">10</a>, <a href="11-classic-storage-video-crawler.html">11</a></td></tr>
+        <tr><td>7</td><td>Chat (WhatsApp / Messenger)</td><td>WebSocket, доставка, порядок</td><td><a href="10-classic-feed-chat.html">10</a></td></tr>
+        <tr><td>8</td><td>Slack / Discord (канали, групи)</td><td>Fan-out у великі канали, історія</td><td><a href="10-classic-feed-chat.html">10</a></td></tr>
+        <tr><td>9</td><td>Notification system</td><td>Черги, ретраї, дедуплікація, провайдери</td><td><a href="10-classic-feed-chat.html">10</a>, <a href="07-async-messaging.html">07</a></td></tr>
+        <tr><td>10</td><td>Typeahead / autocomplete</td><td>Trie, препросчет топ-K, латентність</td><td><a href="10-classic-feed-chat.html">10</a></td></tr>
+        <tr><td>11</td><td>Google Drive / Dropbox</td><td>Chunking, dedup, синхронізація</td><td><a href="11-classic-storage-video-crawler.html">11</a></td></tr>
+        <tr><td>12</td><td>YouTube / Netflix</td><td>Транскодинг, ABR, CDN</td><td><a href="11-classic-storage-video-crawler.html">11</a></td></tr>
+        <tr><td>13</td><td>Web crawler</td><td>Frontier, ввічливість, дедуп URL</td><td><a href="11-classic-storage-video-crawler.html">11</a></td></tr>
+        <tr><td>14</td><td>Uber / Lyft</td><td>Гео-індекс, часті оновлення, матчинг</td><td><a href="12-classic-geo-booking-topk.html">12</a></td></tr>
+        <tr><td>15</td><td>Yelp / proximity service</td><td>Geohash / quadtree, read-heavy</td><td><a href="12-classic-geo-booking-topk.html">12</a></td></tr>
+        <tr><td>16</td><td>Ticketmaster / бронювання</td><td>Конкуренція, резервації, waiting room</td><td><a href="12-classic-geo-booking-topk.html">12</a></td></tr>
+        <tr><td>17</td><td>Leaderboard / Top-K</td><td>Sorted sets, count-min sketch</td><td><a href="12-classic-geo-booking-topk.html">12</a></td></tr>
+        <tr><td>18</td><td>Payment system</td><td>Ідемпотентність, ledger, звірка</td><td><a href="12-classic-geo-booking-topk.html">12</a></td></tr>
+        <tr><td>19</td><td>Distributed cache</td><td>Eviction, consistent hashing, hot keys</td><td><a href="03-caching.html">03</a></td></tr>
+        <tr><td>20</td><td>Message queue (Kafka-подібна)</td><td>Партиції, offset, гарантії доставки</td><td><a href="07-async-messaging.html">07</a></td></tr>
+        <tr><td>21</td><td>Pastebin</td><td>Blob + метадані, TTL — розбір нижче</td><td><a href="#s11">01 §11</a></td></tr>
+        <tr><td>22</td><td>Ad click aggregator / метрики</td><td>Стрімінг, агрегати, exactly-once</td><td><a href="07-async-messaging.html">07</a>, <a href="13-tricky-topics-qa.html">13</a></td></tr>
+        <tr><td>23</td><td>Distributed job scheduler</td><td>Leader election, at-least-once, ретраї</td><td><a href="06-distributed-systems.html">06</a>, <a href="07-async-messaging.html">07</a></td></tr>
+        <tr><td>24</td><td>Google Docs (спільне редагування)</td><td>OT / CRDT, WebSocket</td><td><a href="13-tricky-topics-qa.html">13</a></td></tr>
+        <tr><td>25</td><td>API gateway / load balancer</td><td>L4/L7, health checks, auth</td><td><a href="02-networking-entry.html">02</a></td></tr>
+      </table>
+
+      <div class="callout info"><div class="ic">ℹ️</div><div class="body">Компанії мають «улюблені» задачі під свій домен: e-commerce — кошик, інвентар, Flash sale; fintech — платежі, ledger; соцмережі — стрічка, чат. Перед співбесідою подумайте, як виглядала б <i>їхня</i> система: це часто і є задача.</div></div>
+
+      <div class="remember">Задач ~25, будівельних блоків ~10 (кеш, черга, реплікація, шардинг, CDN, WebSocket, гео-індекс, ID, ідемпотентність, консистентність). Вчіть блоки, а задачі — як вправи на них.</div>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Повний міні-розбір: Pastebin за 45 хвилин</h2>
+      <p class="section-desc">Проженемо фреймворк на компактній задачі «Спроектуйте Pastebin» — сервіс, куди вставляють текст і отримують коротке посилання. Нижче — те, що реально прозвучало б на співбесіді, у тому ж порядку.</p>
+
+      <h3>Крок 1. Вимоги (≈5 хв)</h3>
+      <div class="grid2">
+        <div class="card"><b>Функціональні</b><ul>
+          <li>Користувач створює paste (текст до 10 MB) і отримує унікальне коротке посилання</li>
+          <li>Будь-хто з посиланням читає paste</li>
+          <li>Paste може мати термін життя (TTL); після нього недоступний</li>
+          <li><i>Out of scope:</i> редагування, акаунти, пошук, підсвітка синтаксису</li>
+        </ul></div>
+        <div class="card"><b>Нефункціональні</b><ul>
+          <li>10M нових paste на добу, читань ~10× більше</li>
+          <li>Читання &lt; 100 мс p99 (для популярних — з кешу/CDN)</li>
+          <li>Durability: створений paste не губиться до TTL</li>
+          <li>Посилання не можна вгадати перебором</li>
+          <li>Доступність важливіша за миттєву консистентність</li>
+        </ul></div>
+      </div>
+
+      <h3>Крок 1½. Оцінки — лише ті, що впливають на рішення</h3>
+      <ul>
+        <li><b>QPS:</b> 10⁷ / 10⁵ ≈ 100 записів/с, ~1 000 читань/с, пік ×3. Скромно — один шар stateless-серверів за LB.</li>
+        <li><b>Сховище:</b> середній paste ~10 KB → 100 GB/добу → ~36 TB/рік. Висновок: вміст — в object storage (S3), у БД — лише метадані (~100 B на запис → ~365 GB/рік, вистачить однієї добре налаштованої БД з репліками на роки).</li>
+        <li><b>Простір ключів:</b> base62 з 8 символів = 62⁸ ≈ 2.2×10¹⁴ комбінацій; за 10 років ми створимо ~3.7×10¹⁰ — заповненість ~0.02%, колізії випадкових ключів рідкісні, а перебір безнадійний.</li>
+      </ul>
+
+      <h3>Крок 2–3. Сутності та API (≈5 хв)</h3>
+      <div class="codecard"><div class="bar"><span class="path">pastebin-api.http</span></div><pre><code>Paste { key, blob_ref, size, created_at, expires_at }
+
+POST /v1/pastes            body: { "content": "...", "ttl_seconds": 86400 }
+  → 201 { "key": "aZ3k9QxT", "url": "https://pb.example/aZ3k9QxT" }
+
+GET  /v1/pastes/{key}      → 200 text/plain  |  404 якщо немає або прострочено
+
+# Для великих paste (&gt; ~1 MB): POST /v1/pastes/uploads → pre-signed URL,
+# клієнт кладе вміст напряму в S3, потім підтверджує створення.</code></pre></div>
+
+      <h3>Крок 4. High-level design (≈10 хв)</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 300" role="img" aria-label="Архітектура Pastebin. Клієнт іде через CDN і load balancer у Paste API, який генерує ключ. Paste API читає гарячі paste з Redis, метадані зберігає в Metadata DB, вміст — в S3. Великі paste клієнт завантажує напряму в S3 за pre-signed URL. Окремий cleanup-процес видаляє прострочені записи з БД і об'єкти з S3">
+          <defs><marker id="sd01-a8" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="120" width="80" height="40" rx="10" fill="var(--card)" stroke="currentColor"/>
+            <text x="50" y="145" text-anchor="middle" fill="currentColor">Клієнт</text>
+            <rect x="120" y="120" width="80" height="40" rx="20" fill="var(--interview-bg)" stroke="var(--interview)"/>
+            <text x="160" y="145" text-anchor="middle" fill="currentColor">CDN</text>
+            <rect x="230" y="120" width="60" height="40" rx="3" fill="var(--card)" stroke="currentColor"/>
+            <text x="260" y="145" text-anchor="middle" fill="currentColor">LB</text>
+            <rect x="320" y="110" width="120" height="60" rx="3" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="380" y="135" text-anchor="middle" fill="currentColor" font-weight="bold">Paste API</text>
+            <text x="380" y="153" text-anchor="middle" fill="var(--fg-muted)" font-size="11">stateless, key gen</text>
+            <rect x="500" y="30" width="110" height="40" rx="3" fill="var(--warn-bg)" stroke="var(--warn)" stroke-dasharray="5 3"/>
+            <text x="555" y="55" text-anchor="middle" fill="currentColor">Redis</text>
+            <rect x="500" y="110" width="110" height="60" rx="3" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="555" y="135" text-anchor="middle" fill="currentColor">Metadata DB</text>
+            <text x="555" y="153" text-anchor="middle" fill="var(--fg-muted)" font-size="11">PK = key</text>
+            <rect x="500" y="200" width="110" height="40" rx="20" fill="var(--card)" stroke="currentColor"/>
+            <text x="555" y="225" text-anchor="middle" fill="currentColor">S3 (вміст)</text>
+            <rect x="630" y="110" width="90" height="60" rx="3" fill="var(--fun-bg)" stroke="var(--fun)"/>
+            <text x="675" y="135" text-anchor="middle" fill="currentColor">Cleanup</text>
+            <text x="675" y="153" text-anchor="middle" fill="var(--fg-muted)" font-size="11">cron</text>
+
+            <line x1="90" y1="140" x2="118" y2="140" stroke="currentColor" marker-end="url(#sd01-a8)"/>
+            <line x1="200" y1="140" x2="228" y2="140" stroke="currentColor" marker-end="url(#sd01-a8)"/>
+            <line x1="290" y1="140" x2="318" y2="140" stroke="currentColor" marker-end="url(#sd01-a8)"/>
+            <line x1="440" y1="125" x2="498" y2="55" stroke="currentColor" marker-end="url(#sd01-a8)"/>
+            <line x1="440" y1="140" x2="498" y2="140" stroke="currentColor" marker-end="url(#sd01-a8)"/>
+            <line x1="440" y1="155" x2="498" y2="215" stroke="currentColor" marker-end="url(#sd01-a8)"/>
+            <line x1="630" y1="140" x2="612" y2="140" stroke="currentColor" stroke-dasharray="5 4" marker-end="url(#sd01-a8)"/>
+            <line x1="650" y1="170" x2="612" y2="212" stroke="currentColor" stroke-dasharray="5 4" marker-end="url(#sd01-a8)"/>
+            <path d="M50,162 L50,270 L555,270 L555,244" fill="none" stroke="var(--accent)" stroke-dasharray="6 4" marker-end="url(#sd01-a8)"/>
+            <text x="300" y="288" text-anchor="middle" fill="var(--accent)" font-size="11">великі paste: upload напряму в S3 за pre-signed URL</text>
+          </g>
+        </svg>
+        <figcaption>Ключова ідея — розділити <b>метадані</b> (маленькі, потрібні транзакції й індекс по key) і <b>вміст</b> (великий, незмінний — ідеальний для blob storage і CDN). Це патерн, який повториться в Instagram, Dropbox, YouTube.</figcaption>
+      </figure>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 410" role="img" aria-label="Діаграма послідовності Pastebin. Створення: 1 клієнт надсилає POST pastes до API; 2 API генерує випадковий ключ base62 з 8 символів; 3 API кладе вміст у S3 і отримує OK; 4 API вставляє метадані в БД з умовою якщо ключ вільний; БД повертає OK або конфлікт, тоді генеруємо новий ключ; 5 API повертає 201 з посиланням. Читання: 6 клієнт робить GET за ключем; при промаху кешу 7 API читає метадані з БД і перевіряє expires_at; 8 API читає вміст з S3; 9 API повертає 200 з текстом">
+          <defs><marker id="sd01-a9" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="11">
+            <rect x="15" y="10" width="110" height="30" rx="6" fill="var(--card)" stroke="currentColor"/>
+            <text x="70" y="30" text-anchor="middle" fill="currentColor" font-size="12">Клієнт</text>
+            <rect x="195" y="10" width="110" height="30" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="250" y="30" text-anchor="middle" fill="currentColor" font-size="12">Paste API</text>
+            <rect x="375" y="10" width="110" height="30" rx="6" fill="var(--card)" stroke="currentColor"/>
+            <text x="430" y="30" text-anchor="middle" fill="currentColor" font-size="12">S3</text>
+            <rect x="545" y="10" width="110" height="30" rx="6" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="600" y="30" text-anchor="middle" fill="currentColor" font-size="12">Metadata DB</text>
+            <line x1="70" y1="40" x2="70" y2="400" stroke="var(--fg-muted)" stroke-dasharray="4 4"/>
+            <line x1="250" y1="40" x2="250" y2="400" stroke="var(--fg-muted)" stroke-dasharray="4 4"/>
+            <line x1="430" y1="40" x2="430" y2="400" stroke="var(--fg-muted)" stroke-dasharray="4 4"/>
+            <line x1="600" y1="40" x2="600" y2="400" stroke="var(--fg-muted)" stroke-dasharray="4 4"/>
+
+            <text x="160" y="64" text-anchor="middle" fill="currentColor">1. POST /pastes</text>
+            <line x1="70" y1="70" x2="248" y2="70" stroke="currentColor" marker-end="url(#sd01-a9)"/>
+            <path d="M250,92 L290,92 L290,112 L254,112" fill="none" stroke="currentColor" marker-end="url(#sd01-a9)"/>
+            <text x="296" y="106" fill="currentColor">2. ключ base62(8)</text>
+            <text x="340" y="134" text-anchor="middle" fill="currentColor">3. PUT blob</text>
+            <line x1="250" y1="140" x2="428" y2="140" stroke="currentColor" marker-end="url(#sd01-a9)"/>
+            <line x1="430" y1="165" x2="252" y2="165" stroke="currentColor" stroke-dasharray="5 4" marker-end="url(#sd01-a9)"/>
+            <text x="340" y="160" text-anchor="middle" fill="var(--fg-muted)">200 OK</text>
+            <text x="425" y="194" text-anchor="middle" fill="currentColor">4. INSERT … IF NOT EXISTS</text>
+            <line x1="250" y1="200" x2="598" y2="200" stroke="currentColor" marker-end="url(#sd01-a9)"/>
+            <line x1="600" y1="228" x2="252" y2="228" stroke="currentColor" stroke-dasharray="5 4" marker-end="url(#sd01-a9)"/>
+            <text x="520" y="223" text-anchor="middle" fill="var(--fg-muted)">OK | конфлікт → крок 2</text>
+            <line x1="250" y1="256" x2="72" y2="256" stroke="currentColor" stroke-dasharray="5 4" marker-end="url(#sd01-a9)"/>
+            <text x="160" y="250" text-anchor="middle" fill="currentColor">5. 201 {url}</text>
+
+            <line x1="15" y1="275" x2="715" y2="275" stroke="var(--border)"/>
+            <text x="340" y="290" text-anchor="middle" fill="var(--fg-muted)">читання (промах кешу)</text>
+            <text x="160" y="299" text-anchor="middle" fill="currentColor">6. GET /p/{key}</text>
+            <line x1="70" y1="305" x2="248" y2="305" stroke="currentColor" marker-end="url(#sd01-a9)"/>
+            <text x="520" y="324" text-anchor="middle" fill="currentColor">7. meta + expires_at</text>
+            <line x1="250" y1="330" x2="598" y2="330" stroke="currentColor" marker-end="url(#sd01-a9)"/>
+            <text x="340" y="354" text-anchor="middle" fill="currentColor">8. GET blob</text>
+            <line x1="250" y1="360" x2="428" y2="360" stroke="currentColor" marker-end="url(#sd01-a9)"/>
+            <line x1="250" y1="388" x2="72" y2="388" stroke="currentColor" stroke-dasharray="5 4" marker-end="url(#sd01-a9)"/>
+            <text x="160" y="382" text-anchor="middle" fill="currentColor">9. 200 text</text>
+          </g>
+        </svg>
+        <figcaption>Порядок «спершу blob, потім метадані» — свідомий: якщо API впаде між кроками 3 і 4, лишиться «сирітський» об'єкт у S3 (його прибере cleanup), але ніколи не буде метаданих, що вказують на неіснуючий вміст. Це типовий прийом проти проблеми dual write.</figcaption>
+      </figure>
+
+      <h3>Крок 5. Deep dives (≈15 хв)</h3>
+      <ol class="steps">
+        <li><b>Генерація ключа.</b> Варіанти: (a) випадковий base62 + <code>INSERT … IF NOT EXISTS</code> (простий, колізії рідкісні); (b) лічильник + base62 (передбачувані ключі — погано для приватності; треба розподілений лічильник); (c) хеш вмісту (дедуп, але однаковий текст двох людей → один ключ, і TTL конфліктують). Обираємо (a). Деталі ID-генераторів — <a href="09-classic-url-id-kv.html">туторіал 9</a>.</li>
+        <li><b>Шлях читання.</b> Paste незмінні → ідеально кешуються: <code>Cache-Control: public, max-age</code> до <code>expires_at</code>, CDN на краю, Redis для метаданих. Віральний paste обслуговується майже повністю CDN.</li>
+        <li><b>Expiration.</b> Лінива перевірка при читанні (<code>expires_at &lt; now → 404</code>) гарантує коректність; фоновий cleanup (або S3 lifecycle rules і TTL-індекс у БД) прибирає місце. Розділяємо «коректність» і «прибирання».</li>
+        <li><b>Масштаб метаданих.</b> ~365 GB/рік поміщаються в одну БД; при рості — шардинг за <code>hash(key)</code>, бо доступ завжди за точним ключем (<a href="05-replication-sharding.html">туторіал 5</a>).</li>
+      </ol>
+
+      <h3>Крок 6. Підсумок (≈2 хв)</h3>
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>Як звучить сильне завершення:</b> «Записів мало, читань більше, вміст незмінний — тому основне навантаження бере CDN і кеш. Вміст у S3, метадані в БД з PK по ключу. Свідомо спростили: немає акаунтів і редагування. Наступні кроки: rate limiting на створення (захист від спаму), моніторинг hit ratio CDN, абьюз-фільтр. Bottleneck при рості — метадані: шардинг за hash(key)».</div></div>
+
+      <div class="remember">Пастебін — модель для всіх «blob + метадані» задач: вміст в object storage + CDN, метадані в БД, спершу пишемо blob, потім метадані, TTL перевіряємо ліниво і прибираємо фоном.</div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина IV · Закріплення</div><div class="line"></div></div>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Трікі питання</h2>
+      <p class="section-desc">Питання «про сам процес», які часто ставлять або які виникають у голові під час підготовки. Відповіді — так, як їх варто озвучити.</p>
+
+      <details class="qa"><summary><span class="difficulty trick">TRICKY</span>Інтерв'юер каже «масштаб не важливий, придумайте самі». Що робити?</summary><div class="a">
+        <p>Це перевірка, чи ви вмієте ставити припущення. Назвіть конкретні числа і зафіксуйте: «Припустимо 10M DAU, читання/запис 10:1 — це дає ~1K QPS читань, вистачить одного регіону. Якщо масштаб буде в 100 разів більшим, змінимо X і Y». Не обирайте ні мізерний масштаб (нема що обговорювати), ні «весь світ» без причини (over-engineering).</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty core">CORE</span>Чи обов'язково робити back-of-the-envelope на початку?</summary><div class="a">
+        <p>Ні. Класичний шаблон (Alex Xu) ставить оцінки одразу після вимог; сучасніші гайди (Hello Interview) радять рахувати «по місцю», коли число змінює рішення. Компроміс: на початку — 30 секунд на порядок («~100M DAU, read-heavy»), а детальні розрахунки — у deep dive («чи влізе індекс у пам'ять?»). Якщо інтерв'юер явно просить оцінки — робіть.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty trick">TRICKY</span>Інтерв'юер не погоджується з вашим вибором БД. Відступити чи захищати?</summary><div class="a">
+        <p>Ні те, ні інше «за замовчуванням». Спершу з'ясуйте причину: «Яку проблему ви бачите з Postgres тут — масштаб запису, схему?» Якщо аргумент слушний — визнайте і перебудуйте: це сильний сигнал (coachability). Якщо ви впевнені — наведіть аргумент через вимоги і числа, спокійно, і запропонуйте компроміс («якщо запис виросте понад ~50K QPS, перейдемо на шардинг або Cassandra-подібне сховище»). Часто інтерв'юер перевіряє, чи ви розумієте trade-off, а не хоче іншої відповіді.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty core">CORE</span>Мікросервіси чи моноліт на співбесіді?</summary><div class="a">
+        <p>Малюйте <b>логічні сервіси</b> (Tweet Service, Feed Service), бо вони мають різні профілі навантаження і масштабуються окремо — це допомагає говорити про масштабування. Але не обов'язково стверджувати, що це окремі deployable-мікросервіси. Сильна відповідь: «Логічно це окремі компоненти; на старті їх можна деплоїти разом як модульний моноліт, розділити — коли команди або навантаження розійдуться». Це показує зрілість, а не догму.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty trick">TRICKY</span>Чому p99, а не середня латентність?</summary><div class="a">
+        <p>Середнє ховає хвости: 99 запитів по 10 мс і один на 2 с дають середнє ~30 мс, що «гарно», але кожен сотий користувач страждає. А якщо сторінка робить 100 паралельних запитів до бекендів (fan-out), то ймовірність, що всі вони швидші за p99, лише 0.99¹⁰⁰ ≈ 37% — тобто p99 бекенда стає «типовою» латентністю сторінки. Про це класична стаття Dean &amp; Barroso «The Tail at Scale» (2013).</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty adv">ADV</span>Чим відрізняються SLA, SLO і SLI, і що з них казати на співбесіді?</summary><div class="a">
+        <p><b>SLI</b> — метрика (частка успішних запитів, p99 латентність). <b>SLO</b> — внутрішня ціль для SLI («99.9% запитів успішні за 30 днів»). <b>SLA</b> — юридичний контракт з клієнтом із компенсаціями, зазвичай м'якший за SLO. На співбесіді в NFR ви формулюєте SLO. Різниця між 100% і SLO — <b>error budget</b>, який можна «витратити» на ризиковані релізи (Google SRE Book). Детально — <a href="08-reliability-scale.html">туторіал 8</a>.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty trick">TRICKY</span>Ви не знаєте технологію, про яку питають (наприклад, «а як би ви зробили це на Cassandra?»). Що казати?</summary><div class="a">
+        <p>Чесно і через принципи: «Я не працював з Cassandra в проді, але наскільки знаю, це wide-column сховище з leaderless реплікацією і LSM-деревами; отже, записи дешеві, запити мають іти за partition key, і модель даних будується під запити. Тоді таблицю я б спроектував так…». Блеф помітний одразу; міркування від принципів — сильний сигнал.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty adv">ADV</span>Що робити, якщо залишилось 5 хвилин, а deep dive не завершено?</summary><div class="a">
+        <p>Зупиніться і стисло закрийте: «Часу мало, тому підсумую: тут я б зробив X; ризики, які ще не розібрали, — Y і Z; підхід до них був би такий». Незавершений, але усвідомлений deep dive краще, ніж обірвана фраза. Залиште 1–2 хвилини на питання до інтерв'юера — це теж частина враження.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty core">CORE</span>Чи варто називати конкретні продукти (Kafka, DynamoDB, Redis) чи краще абстракції («черга», «KV-сховище»)?</summary><div class="a">
+        <p>Обидва: абстракція + конкретний приклад + чому. «Тут потрібен durable лог з партиціями і replay — наприклад, Kafka». Називати продукт без розуміння його властивостей — ризик: інтерв'юер спитає «як Kafka гарантує порядок?». Якщо ви знаєте внутрішню будову (партиції, ISR, offsets) — відмінна нагода показати глибину.</p>
+      </div></details>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Задачі</h2>
+      <p class="section-desc">Оцінки, тайм-менеджмент і пошук проблем у дизайні. Спочатку розв'яжіть на папері, потім відкривайте відповідь.</p>
+
+      <div class="task" id="task1">
+        <div class="task-head"><span class="tasknum">Задача 1</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Мільярд запитів на добу</span></div>
+        <p>Сервіс отримує 1 млрд запитів на добу, пік — утричі вищий за середнє. Оцініть середній і піковий QPS. Скільки інстансів потрібно, якщо один тримає ~2K RPS і ми хочемо 30% запасу?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Середнє: 10⁹ / 10⁵ = 10⁴ ≈ <b>10K QPS</b> (точно 11.6K). Пік: ×3 ≈ <b>30–35K QPS</b>. Інстанси: 35K / 2K ≈ 18, із запасом 30% → ~<b>23–25</b> інстансів (плюс хоча б по кілька в кожній AZ, щоб пережити втрату зони).</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task2">
+        <div class="task-head"><span class="tasknum">Задача 2</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Скільки це хвилин?</span></div>
+        <p>SLA обіцяє 99.95% на місяць (30 днів). Скільки хвилин простою дозволено? А для 99.99%?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>30 × 24 × 60 = 43 200 хв. 0.05% від цього = <b>21.6 хв</b>. Для 99.99%: 0.01% = <b>4.32 хв</b>. Висновок: при 99.99% одна ручна реакція on-call інженера (прокинутись, відкрити ноутбук) вже з'їдає весь бюджет — потрібен автоматичний failover.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task3">
+        <div class="task-head"><span class="tasknum">Задача 3</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Сховище для месенджера</span></div>
+        <p>50M DAU, кожен надсилає 40 повідомлень на добу, повідомлення з метаданими ~100 B, історію зберігаємо назавжди, реплікація ×3. Оцініть write QPS і приріст сховища на рік. Який висновок для вибору БД?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <ol>
+            <li>Повідомлень: 50M × 40 = 2 млрд/добу → 2×10⁹ / 10⁵ = <b>~20K write QPS</b> (точно 23K), пік ~50K+.</li>
+            <li>Сховище: 2×10⁹ × 100 B = 200 GB/добу → ×365 ≈ <b>73 TB/рік</b> → ×3 ≈ <b>~220 TB/рік</b>.</li>
+            <li>Висновок: write-heavy, append-only, доступ «повідомлення каналу за часом» → підходить wide-column / LSM-сховище з partition key = (channel_id, часовий бакет). Саме так Discord зберігав повідомлення спершу в Cassandra, потім мігрував на ScyllaDB (за їхнім блогом «How Discord Stores Trillions of Messages»). Деталі — <a href="10-classic-feed-chat.html">туторіал 10</a>.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task" id="task4">
+        <div class="task-head"><span class="tasknum">Задача 4</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Чи влізе в Redis?</span></div>
+        <p>URL shortener має 1 млрд коротких посилань. Запис «short → long URL» у середньому 100 B корисних даних. Чи можна тримати всі посилання в одному Redis-вузлі з 64 GB RAM? Що робити?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Корисних даних: 10⁹ × 100 B = 100 GB. Плюс накладні витрати Redis на ключ (структури, вказівники — порядку десятків байтів на ключ) → реально ~150 GB. В один вузол на 64 GB <b>не влізе</b>.</p>
+          <p>Варіанти: (1) кешувати лише гарячу частину — розподіл кліків дуже нерівномірний (Pareto), 20% посилань дають основну частину трафіку, тож кеш на 20–30 GB з LRU дасть високий hit ratio; (2) Redis Cluster на 3–4 шарди, якщо потрібен увесь набір у пам'яті; (3) джерело правди — KV-сховище на диску (DynamoDB/Cassandra), а Redis — тільки кеш. Сильна відповідь — (1)+(3).</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task5">
+        <div class="task-head"><span class="tasknum">Задача 5</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Ланцюжок залежностей</span></div>
+        <p>Запит проходить синхронно: API Gateway (99.99%) → Auth (99.9%) → Order Service (99.95%) → БД (99.95%). Яка доступність запиту і скільки це хвилин простою на місяць? Що покращити першим?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Добуток: 0.9999 × 0.999 × 0.9995 × 0.9995 ≈ <b>0.9979 (99.79%)</b> → ~0.21% × 43 200 ≈ <b>~91 хв/місяць</b>.</p>
+          <p>Найслабша ланка — Auth (99.9%). Варіанти: зробити перевірку токена локальною (JWT з підписом, перевірка в gateway без мережевого виклику) — тоді Auth взагалі виходить із критичного шляху; або дублювати Auth у кількох AZ (дві незалежні копії: 1 − 0.001² ≈ 99.9999%). Потім — БД: failover на синхронну репліку. Принцип: прибрати залежність із синхронного шляху краще, ніж зробити її надійнішою.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task6">
+        <div class="task-head"><span class="tasknum">Задача 6</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Перепишіть вимоги</span></div>
+        <p>Кандидат записав NFR для сервісу бронювання квитків: «система має бути швидкою, надійною, масштабованою і безпечною». Перепишіть так, щоб це допомагало дизайну.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <ul>
+            <li><b>Консистентність:</b> одне місце не можна продати двічі — strong consistency для бронювання; перегляд каталогу подій може бути eventual.</li>
+            <li><b>Масштаб і піки:</b> ~10M переглядів на день, але старт продажів популярного концерту — до ~1M користувачів за хвилини (потрібна черга/waiting room).</li>
+            <li><b>Латентність:</b> пошук подій &lt; 300 мс p99; бронювання може тривати довше, але з чітким статусом.</li>
+            <li><b>Резервація:</b> місце тримається ~10 хв на оплату, потім звільняється.</li>
+          </ul>
+          <p>Кожен пункт тепер має наслідок для архітектури — у цьому весь сенс.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task7">
+        <div class="task-head"><span class="tasknum">Задача 7</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Бюджет латентності</span></div>
+        <p>Сторінка профілю має відкриватися за 200 мс p99. Зараз API послідовно викликає 4 сервіси (по ~30 мс p99 кожен) і в кінці читає з БД в іншому регіоні (~80 мс RTT). Що не так і як виправити?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Сума в найгіршому разі: 4 × 30 + 80 = 200 мс <i>лише на очікування</i>, без власної роботи і без хвостів (p99 кількох викликів поспіль гірший за p99 кожного). Виправлення: (1) незалежні виклики паралельно → ~30 мс замість 120; (2) читати з локальної репліки в своєму регіоні (асинхронна реплікація; профіль може бути трохи застарілим) → ~1–5 мс; (3) кеш готового профілю з коротким TTL; (4) таймаути і degradation для необов'язкових блоків (рекомендації не повинні блокувати профіль).</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task8">
+        <div class="task-head"><span class="tasknum">Задача 8</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Відео-ingest на YouTube-масштабі</span></div>
+        <p>Припустимо, на платформу завантажують ~500 годин відео щохвилини (порядок публічно згадуваної цифри YouTube). Середній бітрейт оригіналу — 5 Мбіт/с. Оцініть вхідний bandwidth і сирий об'єм сховища на добу. Які висновки для архітектури?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <ol>
+            <li>Секунд відео на хвилину: 500 × 3 600 = 1.8×10⁶ с. Біт на хвилину: 1.8×10⁶ × 5×10⁶ = 9×10¹² біт.</li>
+            <li>Вхідний bandwidth: 9×10¹² / 60 ≈ <b>150 Гбіт/с</b> у середньому.</li>
+            <li>За добу: 9×10¹² × 1 440 ≈ 1.3×10¹⁶ біт ≈ <b>~1.6 PB/добу</b> лише оригіналів. Транскодовані варіанти (кілька роздільностей × кодеки) додають ще порівнянний об'єм.</li>
+            <li>Висновки: upload — напряму в object storage по регіонах, resumable (частинами); транскодинг — асинхронний конвеєр через черги з тисячами воркерів; холодні оригінали — в дешевий клас зберігання; віддача — тільки через CDN. Детально — <a href="11-classic-storage-video-crawler.html">туторіал 11</a>.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task" id="task9">
+        <div class="task-head"><span class="tasknum">Задача 9</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Знайдіть проблеми в дизайні</span></div>
+        <p>Кандидат запропонував для сервісу коментарів (100K QPS читань, 2K QPS записів) таку схему. Знайдіть щонайменше п'ять проблем.</p>
+        <figure class="diagram">
+          <svg viewBox="0 0 730 200" role="img" aria-label="Проблемний дизайн. Клієнти йдуть напряму на один API-сервер без load balancer. API-сервер синхронно пише в базу даних, синхронно викликає сервіс сповіщень і синхронно перераховує лічильник коментарів у тій самій базі. Сесії користувачів зберігаються в пам'яті API-сервера. Одна база даних без реплік">
+            <defs><marker id="sd01-a10" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+            <g font-size="12">
+              <rect x="20" y="75" width="100" height="44" rx="10" fill="var(--card)" stroke="currentColor"/>
+              <text x="70" y="102" text-anchor="middle" fill="currentColor">Клієнти</text>
+              <rect x="200" y="60" width="170" height="74" rx="3" fill="var(--bad-bg)" stroke="var(--bad)"/>
+              <text x="285" y="84" text-anchor="middle" fill="currentColor">API-сервер (1 шт.)</text>
+              <text x="285" y="104" text-anchor="middle" fill="var(--fg-muted)" font-size="11">сесії в пам'яті</text>
+              <text x="285" y="120" text-anchor="middle" fill="var(--fg-muted)" font-size="11">COUNT(*) на кожен запит</text>
+              <rect x="470" y="20" width="160" height="44" rx="3" fill="var(--card)" stroke="currentColor"/>
+              <text x="550" y="47" text-anchor="middle" fill="currentColor">Notification Svc</text>
+              <rect x="470" y="130" width="160" height="44" rx="3" fill="var(--bad-bg)" stroke="var(--bad)"/>
+              <text x="550" y="157" text-anchor="middle" fill="currentColor">БД (1 вузол)</text>
+              <line x1="120" y1="97" x2="198" y2="97" stroke="currentColor" marker-end="url(#sd01-a10)"/>
+              <line x1="370" y1="80" x2="468" y2="45" stroke="currentColor" marker-end="url(#sd01-a10)"/>
+              <line x1="370" y1="115" x2="468" y2="150" stroke="currentColor" marker-end="url(#sd01-a10)"/>
+              <text x="420" y="54" text-anchor="middle" fill="var(--bad)" font-size="11">sync</text>
+              <text x="420" y="152" text-anchor="middle" fill="var(--bad)" font-size="11">sync</text>
+            </g>
+          </svg>
+          <figcaption>Схема, яку треба «полагодити».</figcaption>
+        </figure>
+        <details class="answer"><summary></summary><div class="a-body">
+          <ol>
+            <li><b>SPOF і масштаб API:</b> один сервер без LB. → LB + N stateless інстансів у кількох AZ.</li>
+            <li><b>Stateful сервер:</b> сесії в пам'яті ламають горизонтальне масштабування і губляться при рестарті. → JWT або сесії в Redis.</li>
+            <li><b>Синхронні сповіщення:</b> повільний/впалий Notification Service блокує або валить створення коментаря. → подія в чергу, асинхронна обробка з ретраями.</li>
+            <li><b>Одна БД на 100K QPS читань:</b> → кеш популярних тредів + read replicas.</li>
+            <li><b>COUNT(*) на кожен запит:</b> дорогий агрегат на гарячому шляху. → денормалізований лічильник (інкремент при записі, або асинхронно), допускаючи невелику неточність.</li>
+            <li><b>Немає ідемпотентності запису:</b> ретрай клієнта після таймауту створить дубль коментаря. → Idempotency-Key.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task" id="task10">
+        <div class="task-head"><span class="tasknum">Задача 10</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Скільки потрібно кешу і реплік</span></div>
+        <p>Стрічка Twitter-подібного сервісу: 1.4M QPS читань у піку (з розділу 7). Кеш стрічок у Redis має hit ratio 95%; один Redis-вузол тримає ~100K ops/с, одна репліка БД — ~5K запитів стрічки/с. Оцініть кількість вузлів Redis і реплік БД. Що станеться, якщо hit ratio впаде до 90%?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <ol>
+            <li>Redis: 1.4M / 100K = <b>14 вузлів</b> (шардів) мінімум, плюс репліки для відмовостійкості → ~28 і запас.</li>
+            <li>Промахи: 5% × 1.4M = <b>70K QPS</b> до БД → 70K / 5K = <b>14 реплік</b>.</li>
+            <li>При 90% hit ratio: промахів 140K QPS → <b>28 реплік</b>. Падіння hit ratio на 5 п.п. подвоює навантаження на БД! Тому hit ratio — критична метрика з алертом, а «холодний» кеш після рестарту (cold start) може покласти БД — потрібен прогрів кешу або обмеження потоку (див. stampede у <a href="03-caching.html">туторіалі 3</a>).</li>
+          </ol>
+        </div></details>
+      </div>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Шпаргалка і що читати далі</h2>
+      <p class="section-desc">Одна таблиця, яку варто перечитати за годину до співбесіди, картки для запам'ятовування і конкретні розділи книжок.</p>
+
+      <div class="cheat"><table>
+        <tr><th>Етап</th><th>Час (45 / 60)</th><th>Що має з'явитись на дошці</th><th>Ключова фраза</th></tr>
+        <tr><td>Вимоги</td><td>~6 / 8 хв</td><td>3–4 FR, 3–5 NFR з числами, out of scope</td><td>«Припускаю X — підходить?»</td></tr>
+        <tr><td>Оцінки</td><td>за потреби</td><td>QPS, сховище, bandwidth + висновок</td><td>«~1 PB — отже, шардинг»</td></tr>
+        <tr><td>Сутності + API</td><td>~6 / 7 хв</td><td>Список сутностей, ендпоінт на кожну FR</td><td>«userId беремо з токена»</td></tr>
+        <tr><td>High-level</td><td>~12 / 15 хв</td><td>Робоча схема, пронумеровані потоки</td><td>«Спершу коректно, потім масштабуємо»</td></tr>
+        <tr><td>Deep dives</td><td>~12 / 18 хв</td><td>2–3 теми з NFR, альтернативи</td><td>«Найбільший ризик — …, тому…»</td></tr>
+        <tr><td>Підсумок</td><td>~2–5 хв</td><td>Bottlenecks, що спростили, next steps</td><td>«Свідомо не робили X, бо…»</td></tr>
+        <tr><td>Числа</td><td colspan="3">Доба ≈ 10⁵ с · 1 млрд/добу ≈ 10⁴ QPS · RAM 100 ns · ДЦ RTT 0.5 ms · континент 150 ms · 99.9% ≈ 9 год/рік · 99.99% ≈ 1 год/рік</td></tr>
+      </table></div>
+
+      <div class="flashgrid">
+        <div class="flashcard"><div class="fc-num">01</div><div class="term">FR vs NFR</div><div class="def">Функціональні — що система робить («користувач може…»). Нефункціональні — наскільки добре: масштаб, латентність, доступність, консистентність, durability.</div><div class="mnemo">ЩО vs ЯК ДОБРЕ</div></div>
+        <div class="flashcard"><div class="fc-num">02</div><div class="term">p99</div><div class="def">Значення, швидше за яке 99% запитів. Хвости важливіші за середнє, особливо при fan-out запитів.</div><div class="mnemo">кожен сотий — теж клієнт</div></div>
+        <div class="flashcard"><div class="fc-num">03</div><div class="term">QPS</div><div class="def">Запитів на секунду. Середній = за добу / 86 400 (≈10⁵); пік = ×2–3, для подій — ×10.</div><div class="mnemo">мільярд/добу ≈ 10K QPS</div></div>
+        <div class="flashcard"><div class="fc-num">04</div><div class="term">Peak factor</div><div class="def">Відношення пікового навантаження до середнього. Проектуємо на пік, а не на середнє.</div><div class="mnemo">середнє не падає — падає пік</div></div>
+        <div class="flashcard"><div class="fc-num">05</div><div class="term">Availability</div><div class="def">Частка часу, коли сервіс відповідає коректно. Послідовні залежності множать доступності.</div><div class="mnemo">3 дев'ятки ≈ 9 год/рік</div></div>
+        <div class="flashcard"><div class="fc-num">06</div><div class="term">Durability</div><div class="def">Ймовірність не втратити збережені дані. S3 — «11 дев'яток» durability при 99.99% availability.</div><div class="mnemo">недоступне ≠ втрачене</div></div>
+        <div class="flashcard"><div class="fc-num">07</div><div class="term">SPOF</div><div class="def">Single point of failure — компонент, відмова якого кладе всю систему. Лікується резервуванням і failover.</div><div class="mnemo">один — значить жодного</div></div>
+        <div class="flashcard"><div class="fc-num">08</div><div class="term">Trade-off</div><div class="def">Свідомий вибір між альтернативами з названою ціною, обґрунтований вимогою.</div><div class="mnemo">A vs B + ціна + NFR</div></div>
+        <div class="flashcard"><div class="fc-num">09</div><div class="term">Read-heavy</div><div class="def">Читань на порядки більше, ніж записів. Наслідки: кеш, репліки, CDN, препросчет.</div><div class="mnemo">читають ≫ пишуть</div></div>
+        <div class="flashcard"><div class="fc-num">10</div><div class="term">Out of scope</div><div class="def">Явно названі фічі, яких ми НЕ проектуємо. Захищає час і фокус.</div><div class="mnemo">Non-goals з design doc</div></div>
+      </div>
+
+      <h3>Глибше</h3>
+      <div class="res"><div class="res-head"><span class="res-title">Alex Xu — System Design Interview, Vol. 1</span><span class="lvl l1">база</span><span class="lvl type">книга</span></div><div class="res-meta">Розділи «Scale From Zero To Millions Of Users», «Back-of-the-envelope Estimation», «A Framework For System Design Interviews»</div><p>Класичний 4-кроковий фреймворк і таблиці чисел, звідки виросла більшість шаблонів. Решта розділів — задачі, які ми розбираємо в туторіалах 9–12.</p></div>
+      <div class="res"><div class="res-head"><span class="res-title">Hello Interview — System Design in a Hurry</span><span class="lvl l1">база</span><span class="lvl type">курс</span></div><div class="res-meta">hellointerview.com: «Delivery Framework», «Core Concepts», «Key Technologies», розбори задач (Ticketmaster, Uber, WhatsApp…)</div><p>Найближче до того, як оцінюють у Meta/FAANG зараз: фреймворк Requirements → Core Entities → API → High-Level → Deep Dives і чіткі очікування за рівнями.</p></div>
+      <div class="res"><div class="res-head"><span class="res-title">donnemartin/system-design-primer</span><span class="lvl l1">база</span><span class="lvl type">стаття</span></div><div class="res-meta">GitHub: «How to approach a system design interview question», «Appendix: Powers of two table», «Latency numbers every programmer should know»</div><p>Безкоштовний конспект з таблицями чисел і посиланнями на першоджерела.</p></div>
+      <div class="res"><div class="res-head"><span class="res-title">Designing Data-Intensive Applications (Kleppmann; 2-ге вид. з Riccomini)</span><span class="lvl l2">поглиблено</span><span class="lvl type">книга</span></div><div class="res-meta">Перший розділ про надійність, масштабованість і підтримуваність (зокрема, описання навантаження на прикладі Twitter-стрічки і перцентилі латентності). Номери розділів у 2-му виданні можуть відрізнятися — перевірте актуальне видання.</div><p>Фундамент для всієї серії: звідки беруться NFR і як про них думати.</p></div>
+      <div class="res"><div class="res-head"><span class="res-title">Google SRE Book</span><span class="lvl l2">поглиблено</span><span class="lvl type">книга</span></div><div class="res-meta">sre.google/books: розділи «Embracing Risk», «Service Level Objectives»</div><p>Звідки «дев'ятки», error budget і чому 100% — неправильна ціль.</p></div>
+      <div class="res"><div class="res-head"><span class="res-title">Dean &amp; Barroso — «The Tail at Scale»</span><span class="lvl l3">експерт</span><span class="lvl type">paper</span></div><div class="res-meta">Communications of the ACM, 2013</div><p>Чому p99 важливіший за середнє при fan-out і як з цим боротися (hedged requests тощо).</p></div>
+      <div class="res"><div class="res-head"><span class="res-title">Latency Numbers Every Programmer Should Know</span><span class="lvl l1">база</span><span class="lvl type">стаття</span></div><div class="res-meta">Оригінальний список Jeff Dean / Peter Norvig; інтерактивна версія по роках — Colin Scott (перевірте актуальну адресу)</div><p>Повісьте над столом. Порівнюйте порядки, а не точні значення.</p></div>
+      <div class="res"><div class="res-head"><span class="res-title">ByteByteGo</span><span class="lvl l1">база</span><span class="lvl type">курс</span></div><div class="res-meta">bytebytego.com — візуальні пояснення і розділи з книжок Alex Xu</div><p>Добре для повторення через діаграми; доповнює книжки.</p></div>
+
+      <div class="callout info"><div class="ic">🔗</div><div class="body">Пов'язані сторінки: оглядовий <a href="../python-tutorials/25-system-design.html">System Design у Python-туторіалах</a>, мережевий шар — <a href="02-networking-entry.html">туторіал 2</a>, кешування — <a href="03-caching.html">туторіал 3</a>, план підготовки й mock-інтерв'ю — <a href="13-tricky-topics-qa.html">туторіал 13</a>.</div></div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  System Design · частина серії туторіалів AI Delivery Planner. Розрахунки з розділу 7 і задач перевірено запуском estimate.py; числа латентності — класичні орієнтири (Dean/Norvig), а не вимірювання конкретного заліза.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*|\/\/[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b|\bthis\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case|const|let|var|function|interface|type|export|extends|implements|new|void|enum|typeof|instanceof|static|public|private|readonly|null|undefined)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+<script>
+(function(){
+  var root = document.documentElement, btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function current(){
+    var t = root.getAttribute('data-theme');
+    return t === 'light' || t === 'dark' ? t : (mq && mq.matches ? 'dark' : 'light');
+  }
+  function render(){
+    var dark = current() === 'dark';
+    btn.textContent = dark ? '☀️ Світла тема' : '🌙 Темна тема';
+    btn.setAttribute('aria-label', dark ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('docs-theme', next); }catch(e){}
+    render();
+  });
+  if(mq && mq.addEventListener) mq.addEventListener('change', render);
+  render();
+})();
+</script>
+</body>
+</html>

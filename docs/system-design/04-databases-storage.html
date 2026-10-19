@@ -1,0 +1,2044 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>БД I: моделі, індекси, ACID — System Design</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><rect x=%2710%27 y=%2740%27 width=%2735%27 height=%2750%27 fill=%27white%27/><rect x=%2755%27 y=%2710%27 width=%2735%27 height=%2780%27 fill=%27white%27/></svg>">
+<script>
+(function(){
+  try{ var t = localStorage.getItem('docs-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+    --fg:#e7eaf2; --fg-muted:#9aa2b4;
+    --accent:#6d9bff; --accent-soft:#1c2740;
+    --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+    --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+    --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+    --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+    --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+    --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"],
+  #tab-sysdesign:checked ~ .nav-tabbar label[for="tab-sysdesign"],
+  #tab-quantum:checked ~ .nav-tabbar label[for="tab-quantum"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  #tab-quantum:checked ~ .nav-links.quantum{display:flex;}
+  #tab-sysdesign:checked ~ .nav-links.sysdesign{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+
+  /* --- python-doc extras --- */
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider:first-child{margin-top:8px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+  .qa summary .qnum{color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700; margin-right:8px;}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  /* --- quantum-doc extras --- */
+  .res{border:1px solid var(--border); border-radius:var(--radius); background:var(--card); padding:14px 16px; margin:12px 0;}
+  .res .res-head{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:4px;}
+  .res .res-title{font-weight:700; font-size:15px;}
+  .res .res-meta{font-size:12.5px; color:var(--fg-muted);}
+  .res p{margin:6px 0 0; font-size:14.3px;}
+  .lvl{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap;}
+  .lvl.l1{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .lvl.l2{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .lvl.l3{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .lvl.type{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .timeline{border-left:2px solid var(--accent); margin:20px 0 20px 8px; padding-left:20px;}
+  .timeline .ev{position:relative; margin:0 0 18px;}
+  .timeline .ev::before{content:""; position:absolute; left:-27px; top:6px; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid var(--bg);}
+  .timeline .yr{font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; font-size:14px;}
+  .timeline .ev-t{font-weight:700;}
+  .timeline .ev p{margin:4px 0 0; font-size:14.3px; color:var(--fg-muted);}
+  .math{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:1.05em; white-space:nowrap;}
+  .math-block{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:18px; text-align:center; padding:14px; margin:14px 0; border:1px dashed var(--border); border-radius:var(--radius); background:var(--bg-soft); overflow-x:auto;}
+
+
+  /* --- system-design extras --- */
+  .say{color:var(--fg-muted); font-size:.9em; font-weight:400; font-style:normal;}
+  .steps{counter-reset:st; list-style:none; padding-left:0;}
+  .steps > li{counter-increment:st; position:relative; padding-left:38px; margin:12px 0;}
+  .steps > li::before{content:counter(st); position:absolute; left:0; top:0; width:26px; height:26px; border-radius:50%;
+    background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:13px; text-align:center; line-height:26px;}
+  .vs{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:16px 0;}
+  @media (max-width:700px){.vs{grid-template-columns:1fr;}}
+  .vs > div{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--card);}
+  .vs h4{margin:0 0 6px; font-size:15px;}
+  .vs ul{margin:6px 0 0; padding-left:18px; font-size:14.3px;}
+  /* --- theme switch --- */
+  :root{color-scheme:light;}
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .theme-toggle{
+    cursor:pointer; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+    background:var(--bg-soft); color:var(--fg); font:inherit; font-size:12.5px; font-weight:600;
+    transition:background .15s, border-color .15s;
+  }
+  .theme-toggle:hover{background:var(--card); border-color:var(--accent);}
+  .theme-toggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="top-row">
+      <div class="brand">🏗️ Системний дизайн <span>· AI Delivery Planner</span></div>
+      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Темна тема</button>
+    </div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">System Design · Туторіал 4</div>
+  <h1>Бази даних і сховища: моделі даних, індекси, B-tree vs LSM, ACID та ізоляція</h1>
+  <p class="lead">Вибір БД — найдорожче рішення в дизайні: його найважче змінити. Розбираємо типи БД і коли яку брати, моделювання під access patterns, як влаштовані індекси й движки зберігання, що насправді гарантують ACID і рівні ізоляції, OLTP vs OLAP, object storage — і як обґрунтувати вибір на співбесіді.</p>
+  <div class="pills">
+    <span class="pill">SQL · document · wide-column · KV · graph · TSDB · search · vector</span>
+    <span class="pill">B-tree vs LSM-tree</span>
+    <span class="pill">індекси й leftmost prefix</span>
+    <span class="pill">ACID, MVCC, ізоляція</span>
+    <span class="pill">OLTP vs OLAP, columnar, S3</span>
+    <span class="pill">дерево вибору БД</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-sysdesign" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-quantum" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-sysdesign" class="nav-tabbtn">🏗️ System Design</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+      <label for="tab-quantum" class="nav-tabbtn">⚛️ Квантове</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links sysdesign">
+        <a href="01-interview-framework.html">1. Фреймворк співбесіди</a>
+        <a href="02-networking-entry.html">2. Мережа: DNS, CDN, LB, API</a>
+        <a href="03-caching.html">3. Кешування углиб</a>
+        <a href="04-databases-storage.html" class="active">4. БД I: моделі, індекси, ACID</a>
+        <a href="05-replication-sharding.html">5. БД II: реплікація, шардинг</a>
+        <a href="06-distributed-systems.html">6. Розподілені системи</a>
+        <a href="07-async-messaging.html">7. Черги, Kafka, саги</a>
+        <a href="08-reliability-scale.html">8. Надійність і rate limiting</a>
+        <a href="09-classic-url-id-kv.html">9. Задачі I: URL, ID, KV</a>
+        <a href="10-classic-feed-chat.html">10. Задачі II: стрічка, чат</a>
+        <a href="11-classic-storage-video-crawler.html">11. Задачі III: файли, відео</a>
+        <a href="12-classic-geo-booking-topk.html">12. Задачі IV: гео, бронювання</a>
+        <a href="13-tricky-topics-qa.html">13. Трікі теми й Q&amp;A</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="../node-doc/01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="../node-doc/02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="../node-doc/03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="../node-doc/04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="../node-doc/05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="../node-doc/06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="../node-doc/07-fs-process-os.html">7. fs, process, os</a>
+        <a href="../node-doc/08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="../node-doc/09-http-networking.html">9. HTTP і мережа</a>
+        <a href="../node-doc/10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="../node-doc/11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="../node-doc/12-databases-orm.html">12. БД і ORM</a>
+        <a href="../node-doc/13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="../node-doc/14-security.html">14. Безпека Node</a>
+        <a href="../node-doc/15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="../node-doc/16-testing.html">16. Тестування</a>
+        <a href="../node-doc/17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="../node-doc/18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="../node-doc/19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="../node-doc/20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+      <nav class="nav-links quantum">
+        <a href="../quantum-doc/01-quanta-and-quantum-computing.html">1. Кванти й обчислення</a>
+        <a href="../quantum-doc/02-quantum-engineering-history.html">2. Квантова інженерія</a>
+        <a href="../quantum-doc/03-quantum-backend-python-ibm.html">3. Бекенд + IBM Quantum</a>
+        <a href="../quantum-doc/04-pet-project-quantum-routing.html">4. Пет-проєкт: маршрути</a>
+        <a href="../quantum-doc/05-quantum-engineer-roadmap.html">5. Шлях інженера: ресурси</a>
+        <a href="../quantum-doc/06-linear-algebra-vectors-matrices.html">6. Лін. алгебра I: вектори, матриці</a>
+        <a href="../quantum-doc/07-linear-algebra-eigen-tensor.html">7. Лін. алгебра II: власні, тензори</a>
+        <a href="../quantum-doc/08-complex-numbers-phase.html">8. Комплексні числа й фаза</a>
+        <a href="../quantum-doc/09-probability-shots.html">9. Ймовірності й shots</a>
+        <a href="../quantum-doc/10-numpy-statevector-simulator.html">10. NumPy: свій симулятор</a>
+        <a href="../quantum-doc/11-qiskit-circuits-aer.html">11. Qiskit I: схеми й Aer</a>
+        <a href="../quantum-doc/12-qiskit-runtime-real-qpu.html">12. Qiskit II: реальний QPU</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — Ландшафт і моделювання</div>
+    <ol>
+      <li><a href="#s1">1. Навіщо це на співбесіді: ментальна модель</a></li>
+      <li><a href="#s2">2. Вісім типів БД і коли яку брати</a></li>
+      <li><a href="#s3">3. Моделювання під access patterns, нормалізація vs денормалізація</a></li>
+    </ol>
+    <div class="toc-group">Частина II — Як БД зберігає й шукає</div>
+    <ol>
+      <li><a href="#s4">4. Індекси: B-tree, hash, composite, covering, secondary</a></li>
+      <li><a href="#s5">5. Движки: B-tree vs LSM-tree, ампліфікації, Bloom filters</a></li>
+    </ol>
+    <div class="toc-group">Частина III — Транзакції</div>
+    <ol>
+      <li><a href="#s6">6. ACID і WAL</a></li>
+      <li><a href="#s7">7. Рівні ізоляції та аномалії</a></li>
+      <li><a href="#s8">8. MVCC, песимістичне й оптимістичне блокування</a></li>
+    </ol>
+    <div class="toc-group">Частина IV — Аналітика, файли, вибір</div>
+    <ol>
+      <li><a href="#s9">9. OLTP vs OLAP, колонкове й об'єктне сховище</a></li>
+      <li><a href="#s10">10. Як обрати БД на співбесіді</a></li>
+    </ol>
+    <div class="toc-group">Частина V — Практика</div>
+    <ol>
+      <li><a href="#s11">11. Трікі питання</a></li>
+      <li><a href="#s12">12. Задачі</a></li>
+      <li><a href="#s13">13. Шпаргалка й флеш-картки</a></li>
+      <li><a href="#s14">14. Глибше: книги, статті, papers</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Ландшафт і моделювання</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Навіщо це на співбесіді: ментальна модель</h2>
+      <p class="section-desc">Інтерв'юера цікавить не назва БД, а ланцюжок міркувань: від запитів до схеми, від схеми до движка.</p>
+
+      <p>На співбесіді є дві типові помилки. Перша — «візьмемо MongoDB, бо вона масштабується» (назва замість аргументу). Друга — годину обговорювати схему, не сказавши, які запити вона має обслуговувати. Сильна відповідь іде в одному напрямку: <b>access patterns → модель даних → тип БД → індекси та движок → транзакції й ізоляція → масштабування</b>. Кожен крок обґрунтовується попереднім.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 210" role="img" aria-label="Ланцюжок рішень про зберігання даних: спершу access patterns, тобто які запити й з якою частотою; потім модель даних; потім тип бази даних; потім індекси та движок зберігання; потім транзакції та рівень ізоляції; і нарешті реплікація та шардинг, які розглядаються в туторіалі 5. Питання інтерв'юера йдуть зліва направо.">
+          <defs><marker id="sd04-a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="30" width="100" height="70" rx="8" fill="var(--interview-bg)" stroke="var(--interview)"/>
+            <text x="60" y="58" text-anchor="middle" fill="currentColor" font-weight="700">Access</text>
+            <text x="60" y="76" text-anchor="middle" fill="currentColor" font-weight="700">patterns</text>
+            <rect x="132" y="30" width="100" height="70" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="182" y="58" text-anchor="middle" fill="currentColor" font-weight="700">Модель</text>
+            <text x="182" y="76" text-anchor="middle" fill="currentColor" font-weight="700">даних</text>
+            <rect x="254" y="30" width="100" height="70" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="304" y="68" text-anchor="middle" fill="currentColor" font-weight="700">Тип БД</text>
+            <rect x="376" y="30" width="100" height="70" rx="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="426" y="58" text-anchor="middle" fill="currentColor" font-weight="700">Індекси,</text>
+            <text x="426" y="76" text-anchor="middle" fill="currentColor" font-weight="700">движок</text>
+            <rect x="498" y="30" width="100" height="70" rx="8" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="548" y="58" text-anchor="middle" fill="currentColor" font-weight="700">ACID,</text>
+            <text x="548" y="76" text-anchor="middle" fill="currentColor" font-weight="700">ізоляція</text>
+            <rect x="620" y="30" width="100" height="70" rx="8" fill="var(--fun-bg)" stroke="var(--fun)"/>
+            <text x="670" y="58" text-anchor="middle" fill="currentColor" font-weight="700">Репліки,</text>
+            <text x="670" y="76" text-anchor="middle" fill="currentColor" font-weight="700">шарди</text>
+            <line x1="111" y1="65" x2="130" y2="65" stroke="currentColor" marker-end="url(#sd04-a1)"/>
+            <line x1="233" y1="65" x2="252" y2="65" stroke="currentColor" marker-end="url(#sd04-a1)"/>
+            <line x1="355" y1="65" x2="374" y2="65" stroke="currentColor" marker-end="url(#sd04-a1)"/>
+            <line x1="477" y1="65" x2="496" y2="65" stroke="currentColor" marker-end="url(#sd04-a1)"/>
+            <line x1="599" y1="65" x2="618" y2="65" stroke="currentColor" marker-end="url(#sd04-a1)"/>
+            <text x="60" y="122" text-anchor="middle" fill="var(--fg-muted)" font-size="11">розділ 3</text>
+            <text x="182" y="122" text-anchor="middle" fill="var(--fg-muted)" font-size="11">розділ 3</text>
+            <text x="304" y="122" text-anchor="middle" fill="var(--fg-muted)" font-size="11">розділи 2, 10</text>
+            <text x="426" y="122" text-anchor="middle" fill="var(--fg-muted)" font-size="11">розділи 4–5</text>
+            <text x="548" y="122" text-anchor="middle" fill="var(--fg-muted)" font-size="11">розділи 6–8</text>
+            <text x="670" y="122" text-anchor="middle" fill="var(--fg-muted)" font-size="11">туторіал 5</text>
+            <text x="60" y="160" text-anchor="middle" fill="currentColor" font-size="11">«які запити?»</text>
+            <text x="182" y="160" text-anchor="middle" fill="currentColor" font-size="11">«яка схема?»</text>
+            <text x="304" y="160" text-anchor="middle" fill="currentColor" font-size="11">«чому ця БД?»</text>
+            <text x="426" y="160" text-anchor="middle" fill="currentColor" font-size="11">«який індекс?»</text>
+            <text x="548" y="160" text-anchor="middle" fill="currentColor" font-size="11">«а конкурентно?»</text>
+            <text x="670" y="160" text-anchor="middle" fill="currentColor" font-size="11">«а в 100× більше?»</text>
+            <line x1="20" y1="190" x2="710" y2="190" stroke="var(--interview)" stroke-width="2" marker-end="url(#sd04-a1)"/>
+          </g>
+        </svg>
+        <figcaption>Порядок важливий: тип БД — наслідок access patterns, а не стартова точка. Нижній рядок — питання, які інтерв'юер поставить на кожному кроці.</figcaption>
+      </figure>
+
+      <p>Для кожного сховища тримайте в голові чотири осі: <b>модель даних</b> (таблиці, документи, ключі, граф), <b>запити</b> (за ключем, діапазон, JOIN, повний текст, агрегати), <b>гарантії</b> (транзакції, ізоляція, durability) і <b>масштабування</b> (вертикальне, read-репліки, шардинг). Більшість «холіварів» SQL vs NoSQL зникає, коли ви явно проговорюєте ці осі.</p>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        <p>Це як вибір state-менеджменту: спершу ви з'ясовуєте, як компоненти читають і змінюють стан (access patterns), потім форму стану (нормалізований store у Redux Toolkit <code>createEntityAdapter</code> чи вкладене дерево), і лише потім — бібліотеку. «Візьмемо Redux, бо всі беруть» — той самий червоний прапорець, що «візьмемо MongoDB».</p>
+      </div>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> перед вибором БД вголос перелічіть 2–4 головні запити з частотами: «читання стрічки — 50k rps, за user_id, сортування за часом; запис поста — 500 rps; пошук по тексту — рідко». Потім: «Під ці запити підходить …, бо …». Якщо немає явних причин інакше — <b>реляційна БД (Postgres) за замовчуванням</b>, це нормальна й поважна відповідь.</div></div>
+
+      <div class="remember">Access patterns → модель → тип БД → індекси → ізоляція → масштаб. Назва БД без аргументу — red flag.</div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Вісім типів БД і коли яку брати</h2>
+      <p class="section-desc">Relational, document, wide-column, key-value, graph, time-series, search, vector — форма даних і сильні сторони кожного.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 345" role="img" aria-label="Чотири форми даних. Relational: таблиця users з колонками id і name та таблиця orders з колонками id, user_id і total; user_id посилається на users.id. Document: один JSON-документ користувача з вкладеним масивом orders. Wide-column: розділ з ключем channel_id 9 і bucket, усередині рядки повідомлень відсортовані за message_id за спаданням. Graph: вузли Olena, Taras і Post 7 з ребрами FOLLOWS і LIKES.">
+          <defs><marker id="sd04-a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="2" y="2" width="358" height="165" rx="10" fill="none" stroke="var(--border)"/>
+            <text x="12" y="22" fill="currentColor" font-weight="700">Relational (рядки + зв'язки)</text>
+            <rect x="12" y="36" width="130" height="24" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="20" y="53" fill="currentColor" font-size="11">users: id | name</text>
+            <rect x="12" y="60" width="130" height="22" fill="var(--card)" stroke="var(--border)"/><text x="20" y="75" fill="currentColor" font-size="11">42 | Olena</text>
+            <rect x="12" y="82" width="130" height="22" fill="var(--card)" stroke="var(--border)"/><text x="20" y="97" fill="currentColor" font-size="11">43 | Taras</text>
+            <rect x="180" y="36" width="170" height="24" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="188" y="53" fill="currentColor" font-size="11">orders: id|user_id|total</text>
+            <rect x="180" y="60" width="170" height="22" fill="var(--card)" stroke="var(--border)"/><text x="188" y="75" fill="currentColor" font-size="11">7 | 42 | 30</text>
+            <rect x="180" y="82" width="170" height="22" fill="var(--card)" stroke="var(--border)"/><text x="188" y="97" fill="currentColor" font-size="11">8 | 42 | 15</text>
+            <line x1="178" y1="71" x2="144" y2="71" stroke="var(--accent)" marker-end="url(#sd04-a2)"/>
+            <text x="12" y="130" fill="var(--fg-muted)" font-size="11">JOIN, транзакції, ad-hoc запити, схема</text>
+            <text x="12" y="148" fill="var(--fg-muted)" font-size="11">Postgres, MySQL, SQL Server, Oracle</text>
+
+            <rect x="370" y="2" width="358" height="165" rx="10" fill="none" stroke="var(--border)"/>
+            <text x="380" y="22" fill="currentColor" font-weight="700">Document (агрегат цілком)</text>
+            <rect x="380" y="34" width="250" height="82" rx="6" fill="var(--card)" stroke="var(--border)"/>
+            <text x="390" y="52" fill="currentColor" font-size="11" font-family="monospace">{ "_id": 42, "name": "Olena",</text>
+            <text x="404" y="68" fill="currentColor" font-size="11" font-family="monospace">"orders": [</text>
+            <text x="418" y="84" fill="currentColor" font-size="11" font-family="monospace">{ "id": 7, "total": 30 },</text>
+            <text x="418" y="100" fill="currentColor" font-size="11" font-family="monospace">{ "id": 8, "total": 15 } ] }</text>
+            <text x="380" y="130" fill="var(--fg-muted)" font-size="11">гнучка схема, локальність, без JOIN</text>
+            <text x="380" y="148" fill="var(--fg-muted)" font-size="11">MongoDB, Couchbase, Firestore</text>
+
+            <rect x="2" y="177" width="358" height="165" rx="10" fill="none" stroke="var(--border)"/>
+            <text x="12" y="197" fill="currentColor" font-weight="700">Wide-column (partition + sort)</text>
+            <rect x="12" y="208" width="330" height="24" fill="var(--fun-bg)" stroke="var(--fun)"/>
+            <text x="20" y="225" fill="currentColor" font-size="11">partition: (channel_id=9, bucket=2026-10)</text>
+            <rect x="12" y="232" width="330" height="20" fill="var(--card)" stroke="var(--border)"/><text x="20" y="246" fill="currentColor" font-size="11">msg_id 1093 ↓ | author | text</text>
+            <rect x="12" y="252" width="330" height="20" fill="var(--card)" stroke="var(--border)"/><text x="20" y="266" fill="currentColor" font-size="11">msg_id 1092   | author | text</text>
+            <rect x="12" y="272" width="330" height="20" fill="var(--card)" stroke="var(--border)"/><text x="20" y="286" fill="currentColor" font-size="11">msg_id 1091   | author | text</text>
+            <text x="12" y="312" fill="var(--fg-muted)" font-size="11">величезні записи, запит = ключ розділу</text>
+            <text x="12" y="330" fill="var(--fg-muted)" font-size="11">Cassandra, ScyllaDB, HBase, Bigtable</text>
+
+            <rect x="370" y="177" width="358" height="165" rx="10" fill="none" stroke="var(--border)"/>
+            <text x="380" y="197" fill="currentColor" font-weight="700">Graph (вузли + ребра)</text>
+            <circle cx="420" cy="250" r="26" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="420" y="254" text-anchor="middle" fill="currentColor" font-size="11">Olena</text>
+            <circle cx="560" cy="225" r="26" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="560" y="229" text-anchor="middle" fill="currentColor" font-size="11">Taras</text>
+            <circle cx="660" cy="275" r="26" fill="var(--good-bg)" stroke="var(--good)"/><text x="660" y="279" text-anchor="middle" fill="currentColor" font-size="11">Post 7</text>
+            <line x1="446" y1="245" x2="532" y2="230" stroke="currentColor" marker-end="url(#sd04-a2)"/>
+            <text x="488" y="228" text-anchor="middle" fill="var(--fg-muted)" font-size="10">FOLLOWS</text>
+            <line x1="584" y1="236" x2="635" y2="262" stroke="currentColor" marker-end="url(#sd04-a2)"/>
+            <text x="622" y="240" fill="var(--fg-muted)" font-size="10">LIKES</text>
+            <line x1="446" y1="257" x2="632" y2="275" stroke="currentColor" marker-end="url(#sd04-a2)"/>
+            <text x="530" y="283" text-anchor="middle" fill="var(--fg-muted)" font-size="10">LIKES</text>
+            <text x="380" y="316" fill="var(--fg-muted)" font-size="11">обхід зв'язків на багато хопів</text>
+            <text x="380" y="334" fill="var(--fg-muted)" font-size="11">Neo4j, Amazon Neptune</text>
+          </g>
+        </svg>
+        <figcaption>Одні й ті самі дані в чотирьох формах. Модель визначає, які запити дешеві: JOIN у relational, «весь агрегат одним читанням» у document, «діапазон у межах розділу» у wide-column, «друзі друзів» у graph.</figcaption>
+      </figure>
+
+      <h3>Матриця «коли що брати»</h3>
+      <table>
+        <thead><tr><th>Тип</th><th>Сильне</th><th>Слабке</th><th>Брати, коли…</th><th>Реальні приклади</th></tr></thead>
+        <tbody>
+          <tr><td><b>Relational</b> (Postgres, MySQL)</td><td>ACID-транзакції, JOIN, обмеження цілісності, гнучкі запити, зріла екосистема</td><td>горизонтальний шардинг — вручну або через Vitess/Citus; схема-міграції на великих таблицях</td><td>за замовчуванням: гроші, замовлення, користувачі, будь-які зв'язані сутності</td><td>Instagram (шардований Postgres), Shopify і Slack (MySQL, Slack — через Vitess), GitHub (MySQL)</td></tr>
+          <tr><td><b>Document</b> (MongoDB, Firestore)</td><td>агрегат читається одним запитом; гнучка схема; вбудований шардинг</td><td>JOIN-и й many-to-many незручні; дублювання даних</td><td>самодостатні агрегати: профіль з налаштуваннями, каталог з різними атрибутами, CMS</td><td>каталоги товарів, контент-платформи; Firebase/Firestore для мобільних застосунків</td></tr>
+          <tr><td><b>Wide-column</b> (Cassandra, ScyllaDB, HBase, Bigtable)</td><td>дуже високий write throughput, лінійне масштабування, multi-DC</td><td>запити тільки за ключем розділу; немає JOIN; обмежені транзакції; модель під кожен запит</td><td>append-heavy дані з відомими запитами: повідомлення, події, IoT, історія</td><td>Discord (повідомлення: Cassandra → ScyllaDB), Netflix (історія переглядів на Cassandra), Google Bigtable (Search, Maps, за статтею Bigtable)</td></tr>
+          <tr><td><b>Key-value</b> (DynamoDB, Redis, etcd)</td><td>O(1) доступ за ключем, передбачувана латентність, простота</td><td>запити лише за ключем (DynamoDB: + sort key і вторинні індекси)</td><td>сесії, кошики, профілі за id, feature flags, конфіг</td><td>Amazon (кошик — мотивація статті Dynamo 2007), Lyft/Duolingo на DynamoDB (за їхніми доповідями)</td></tr>
+          <tr><td><b>Graph</b> (Neo4j, Neptune)</td><td>багатохопові обходи, пошук шляхів</td><td>шардинг графа складний; нішова екосистема</td><td>рекомендації «друзі друзів», fraud-кільця, графи знань</td><td>антифрод у банках; Facebook натомість тримає соцграф у TAO поверх MySQL</td></tr>
+          <tr><td><b>Time-series</b> (TimescaleDB, InfluxDB, Prometheus)</td><td>стиснення послідовних точок, downsampling, retention, агрегати за вікнами</td><td>оновлення старих точок і довільні запити — не їхнє</td><td>метрики, IoT-телеметрія, біржові котирування</td><td>Prometheus для моніторингу; стиснення Gorilla (Facebook, VLDB 2015)</td></tr>
+          <tr><td><b>Search</b> (Elasticsearch, OpenSearch)</td><td>інвертований індекс: повний текст, релевантність, фасети, агрегації</td><td>не primary-сховище: near-real-time (refresh ~1 с), слабші гарантії, дорогі оновлення</td><td>пошук по товарах/логах/документах; синхронізувати з primary через CDC</td><td>пошук у e-commerce, ELK-стек для логів, GitHub code search (історично на ES)</td></tr>
+          <tr><td><b>Vector</b> (pgvector, Pinecone, Milvus, Weaviate)</td><td>наближений пошук найближчих сусідів (ANN: HNSW, IVF) серед embeddings</td><td>наближені результати; пам'ять для індексу; фільтрація + ANN — складно</td><td>семантичний пошук, RAG для LLM, рекомендації за схожістю</td><td>RAG-системи; часто вистачає pgvector у вже наявному Postgres</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout info"><div class="ic">ℹ️</div><div class="body"><b>«SQL vs NoSQL» — хибна дихотомія.</b> Postgres має JSONB з індексами (document-модель), DynamoDB має транзакції (з 2018), MongoDB має multi-document ACID-транзакції (з 4.0), Spanner/CockroachDB — SQL з горизонтальним шардингом (NewSQL). Сучасне питання — не «SQL чи NoSQL», а «яка модель і які гарантії потрібні цим access patterns».</div></div>
+
+      <h3>Як це роблять у реальних системах: Discord</h3>
+      <p>Discord за їхнім блогом почав з MongoDB, у 2017 переніс повідомлення в Cassandra (ключ розділу — <code>(channel_id, bucket)</code>, де bucket — часове вікно, кластеризація — за Snowflake <code>message_id</code>), а у 2022–2023 мігрував на ScyllaDB (сумісна з Cassandra, на C++ без JVM GC-пауз). У статті «How Discord Stores Trillions of Messages» вони наводять скорочення кластера приблизно зі 177 вузлів Cassandra до 72 ScyllaDB і падіння p99-латентності читання з десятків–сотні мс до ~15 мс. Важлива деталь: перед БД вони поставили власні data services на Rust з <b>request coalescing</b> — та сама ідея single-flight з <a href="03-caching.html">туторіалу 3</a>, щоб гарячий канал не перевантажував один розділ.</p>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> називайте тип + конкретну БД + причину + ціну. «Повідомлення чату: wide-column (Cassandra/ScyllaDB), бо потрібен високий write throughput і всі читання — "останні N повідомлень каналу" (ключ розділу + сортування). Ціна — немає JOIN і довільних запитів, тож пошук повідомлень робимо окремо в Elasticsearch через CDC».</div></div>
+
+      <div class="callout bad"><div class="ic">🚩</div><div class="body"><b>Red flags:</b> «NoSQL, бо масштабується» (Postgres на одному великому вузлі тримає десятки тисяч TPS і терабайти даних — для більшості задач досить); graph DB для звичайного «список друзів» (це one-hop — вистачить таблиці зв'язків); Elasticsearch як primary-сховище; окрема vector DB «бо модно», коли 1 млн векторів поміщається в pgvector.</div></div>
+
+      <div class="remember">Default — Postgres. Спеціалізоване сховище — коли конкретний access pattern йому не під силу; часто як доповнення через CDC.</div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Моделювання під access patterns, нормалізація vs денормалізація</h2>
+      <p class="section-desc">Реляційна модель оптимізує запис і гнучкість запитів; NoSQL-моделювання — конкретні читання.</p>
+
+      <h3>Нормалізація vs денормалізація</h3>
+      <p><b>Нормалізація</b> (3NF) — кожен факт зберігається в одному місці; зв'язки — через зовнішні ключі; читання збирає дані JOIN-ами. <b>Денормалізація</b> — свідоме дублювання даних, щоб читання було одним зверненням без JOIN.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 250" role="img" aria-label="Порівняння. Нормалізовано: таблиці users, posts і comments, пов'язані зовнішніми ключами. Змінити ім'я автора — один UPDATE, прочитати пост з коментарями — JOIN трьох таблиць. Денормалізовано: документ поста містить копію імені автора і вкладені коментарі з іменами. Прочитати пост — одне звернення, змінити ім'я автора — оновити N копій у всіх постах і коментарях.">
+          <defs><marker id="sd04-a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="4" y="4" width="356" height="242" rx="10" fill="none" stroke="var(--border)"/>
+            <rect x="370" y="4" width="356" height="242" rx="10" fill="none" stroke="var(--border)"/>
+            <text x="182" y="26" text-anchor="middle" fill="currentColor" font-weight="700">Нормалізовано</text>
+            <text x="548" y="26" text-anchor="middle" fill="currentColor" font-weight="700">Денормалізовано</text>
+            <rect x="20" y="44" width="90" height="40" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="65" y="69" text-anchor="middle" fill="currentColor">users</text>
+            <rect x="137" y="44" width="90" height="40" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="182" y="69" text-anchor="middle" fill="currentColor">posts</text>
+            <rect x="254" y="44" width="90" height="40" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="299" y="69" text-anchor="middle" fill="currentColor">comments</text>
+            <line x1="135" y1="64" x2="112" y2="64" stroke="currentColor" marker-end="url(#sd04-a3)"/>
+            <line x1="252" y1="64" x2="229" y2="64" stroke="currentColor" marker-end="url(#sd04-a3)"/>
+            <path d="M299,85 Q182,125 65,86" fill="none" stroke="currentColor" stroke-dasharray="4,3" marker-end="url(#sd04-a3)"/>
+            <text x="182" y="124" text-anchor="middle" fill="var(--fg-muted)" font-size="11">comments.author_id → users</text>
+            <text x="20" y="160" fill="var(--good)">✓ змінити ім'я: 1 UPDATE</text>
+            <text x="20" y="184" fill="var(--bad)">✗ пост з коментарями: JOIN 3 таблиць</text>
+            <text x="20" y="208" fill="var(--fg-muted)" font-size="11">оптимізовано під запис і цілісність</text>
+            <text x="20" y="226" fill="var(--fg-muted)" font-size="11">будь-які нові запити — без зміни схеми</text>
+
+            <rect x="390" y="44" width="316" height="84" rx="6" fill="var(--card)" stroke="var(--border)"/>
+            <text x="400" y="62" fill="currentColor" font-size="11" font-family="monospace">post 7: { title, author: "Olena",</text>
+            <text x="414" y="80" fill="currentColor" font-size="11" font-family="monospace">comments: [ { by: "Taras", … },</text>
+            <text x="492" y="98" fill="currentColor" font-size="11" font-family="monospace">{ by: "Olena", … } ],</text>
+            <text x="414" y="116" fill="currentColor" font-size="11" font-family="monospace">comment_count: 2 }</text>
+            <text x="386" y="160" fill="var(--good)">✓ прочитати пост: 1 звернення</text>
+            <text x="386" y="184" fill="var(--bad)">✗ змінити ім'я: N копій скрізь</text>
+            <text x="386" y="208" fill="var(--fg-muted)" font-size="11">оптимізовано під конкретне читання</text>
+            <text x="386" y="226" fill="var(--fg-muted)" font-size="11">новий запит → нова денормалізована копія</text>
+          </g>
+        </svg>
+        <figcaption>Денормалізація переносить роботу з читання на запис. Вона виправдана, коли читань на порядки більше за записи і продукт терпить тимчасове розходження копій.</figcaption>
+      </figure>
+
+      <h3>Моделювання «від запитів» (query-first)</h3>
+      <p>У Cassandra/DynamoDB схема проектується від запитів: <b>одна таблиця на запит</b> (або single-table design у DynamoDB), ключ розділу = те, за чим фільтрують, ключ сортування = те, за чим сортують і роблять діапазони. Алгоритм:</p>
+      <ol class="steps">
+        <li>Випишіть усі запити: «останні 50 повідомлень каналу», «повідомлення користувача за місяць», «непрочитані для user».</li>
+        <li>Для кожного: що в WHERE на рівність → <b>partition key</b>; що в ORDER BY / діапазоні → <b>clustering/sort key</b>.</li>
+        <li>Перевірте розмір розділу: він не має рости необмежено (Discord додав <code>bucket</code> — часове вікно — саме тому, що розділ «канал за весь час» ріс би нескінченно). Орієнтир для Cassandra — розділи до сотень МБ, краще десятки.</li>
+        <li>Перевірте рівномірність: популярний канал = гарячий розділ (туторіал 5).</li>
+        <li>Запити, які не вкладаються в модель, — окреме сховище (пошук → ES) або окрема денормалізована таблиця, яку оновлюємо на запис.</li>
+      </ol>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 220" role="img" aria-label="Модель повідомлень у стилі Discord. Запит: останні 50 повідомлень каналу. Ключ розділу — пара channel_id і bucket, де bucket — часове вікно, наприклад 10 днів. Розділи для channel 9: bucket 41, bucket 42, bucket 43, кожен на своєму вузлі кластера. Усередині розділу рядки відсортовані за message_id за спаданням, тож останні повідомлення читаються послідовно з початку розділу.">
+          <defs><marker id="sd04-a4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="10" y="22" fill="currentColor" font-weight="700" font-size="11">PRIMARY KEY ((channel_id, bucket), message_id) WITH CLUSTERING ORDER BY (message_id DESC)</text>
+            <rect x="10" y="42" width="220" height="130" rx="8" fill="var(--card)" stroke="var(--border)"/>
+            <rect x="255" y="42" width="220" height="130" rx="8" fill="var(--card)" stroke="var(--border)"/>
+            <rect x="500" y="42" width="220" height="130" rx="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="120" y="62" text-anchor="middle" fill="currentColor" font-weight="700">(9, bucket 41)</text>
+            <text x="365" y="62" text-anchor="middle" fill="currentColor" font-weight="700">(9, bucket 42)</text>
+            <text x="610" y="62" text-anchor="middle" fill="currentColor" font-weight="700">(9, bucket 43) — зараз</text>
+            <text x="120" y="80" text-anchor="middle" fill="var(--fg-muted)" font-size="11">вузол A</text>
+            <text x="365" y="80" text-anchor="middle" fill="var(--fg-muted)" font-size="11">вузол C</text>
+            <text x="610" y="80" text-anchor="middle" fill="var(--fg-muted)" font-size="11">вузол B</text>
+            <text x="25" y="104" fill="currentColor" font-size="11">msg 0899 … 0700</text>
+            <text x="270" y="104" fill="currentColor" font-size="11">msg 1049 … 0900</text>
+            <text x="515" y="104" fill="currentColor" font-size="11">msg 1093</text>
+            <text x="515" y="122" fill="currentColor" font-size="11">msg 1092</text>
+            <text x="515" y="140" fill="currentColor" font-size="11">msg 1091 …</text>
+            <line x1="680" y1="96" x2="680" y2="160" stroke="var(--good)" stroke-width="2" marker-end="url(#sd04-a4)"/>
+            <text x="672" y="156" text-anchor="end" fill="var(--good)" font-size="11">LIMIT 50</text>
+            <text x="10" y="198" fill="currentColor">«Останні 50 повідомлень» = один розділ, послідовне читання. Старіші — наступний bucket.</text>
+          </g>
+        </svg>
+        <figcaption>Bucket обмежує ріст розділу і розносить історію одного каналу по вузлах. Ціна — запит «за весь час» має обійти кілька розділів.</figcaption>
+      </figure>
+
+      <h3>Типові прийоми денормалізації в SQL</h3>
+      <ul>
+        <li><b>Лічильники</b>: <code>posts.comment_count</code> замість <code>COUNT(*)</code> на кожен показ (оновлюється в тій самій транзакції або асинхронно).</li>
+        <li><b>Materialized views</b>: попередньо обчислений результат важкого запиту, оновлюється періодично (<code>REFRESH MATERIALIZED VIEW CONCURRENTLY</code> у Postgres).</li>
+        <li><b>JSONB-колонка</b> для рідко запитуваних атрибутів зі змінною структурою (атрибути товару різних категорій).</li>
+        <li><b>Read-моделі (CQRS)</b>: окрема таблиця/сховище, оптимізоване під читання, оновлюється подіями — <a href="07-async-messaging.html">туторіал 7</a>.</li>
+      </ul>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        <p>Нормалізований Redux-store (<code>entities.users[id]</code>, <code>entities.posts[id]</code> з <code>authorId</code>) vs вкладена відповідь API, яку ви кладете «як є». Нормалізований store легко оновлювати (ім'я в одному місці), але для рендеру потрібні селектори-«JOIN-и». Вкладений — рендериться одразу, але при зміні імені треба оновити його в кожному пості. Це той самий trade-off, тільки в БД ціна помножена на мільйони рядків і паралельні записи.</p>
+      </div>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> «Починаю з нормалізованої схеми; денормалізую цілеспрямовано там, де гарячий запит інакше потребує дорогого JOIN/агрегату, — і кажу, як підтримую копії в актуальному стані (та сама транзакція, тригер, CDC/події) і яка допустима розбіжність». Покажіть схему таблиць з ключами та індексами — інтерв'юери це люблять.</div></div>
+
+      <div class="remember">Нормалізація — дешевий запис і гнучкі запити; денормалізація — дешеве читання й дорогий запис. NoSQL-моделювання — від запитів: partition key = WHERE, sort key = ORDER BY.</div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · Як БД зберігає й шукає</div><div class="line"></div></div>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Індекси: B-tree, hash, composite, covering, secondary</h2>
+      <p class="section-desc">Індекс — це додаткова відсортована структура, яка прискорює читання і сповільнює кожен запис.</p>
+
+      <h3>B-tree (точніше, B+tree)</h3>
+      <p>Майже всі індекси в реляційних БД — B+tree: дерево сторінок фіксованого розміру (8 КБ у Postgres, 16 КБ в InnoDB). Внутрішні сторінки містять ключі-розділювачі й посилання на дочірні сторінки, листки — ключі та посилання на рядки (або самі рядки), і листки зв'язані між собою для діапазонних сканів. Через великий <b>fanout</b> <span class="say">(fanout — «коефіцієнт розгалуження»: скільки дочірніх сторінок має одна сторінка, зазвичай сотні)</span> дерево неглибоке: при fanout 500 три рівні адресують 500³ ≈ 1.25·10⁸ ключів, чотири — ≈ 6·10¹⁰ <span class="say">(10⁸ — «десять у восьмому», сто мільйонів)</span>. Тобто пошук за ключем — 3–4 читання сторінок, і верхні рівні майже завжди в buffer pool.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 260" role="img" aria-label="B+tree. Коренева сторінка з ключами 100 і 500. Три внутрішні сторінки: ключ 50, ключ 300, ключ 800. Шість листків з діапазонами 1–49, 50–99, 100–299, 300–499, 500–799, 800 і більше; листки з'єднані стрілками в список для діапазонних сканів. Пошук id 42 проходить корінь, ліву внутрішню сторінку і перший листок — три читання сторінок.">
+          <defs><marker id="sd04-a5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="290" y="14" width="150" height="34" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="365" y="36" text-anchor="middle" fill="currentColor" font-weight="700">100 | 500</text>
+            <text x="450" y="36" fill="var(--fg-muted)" font-size="11">root</text>
+            <rect x="70" y="90" width="120" height="34" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="130" y="112" text-anchor="middle" fill="currentColor">50</text>
+            <rect x="305" y="90" width="120" height="34" rx="6" fill="var(--card)" stroke="currentColor"/>
+            <text x="365" y="112" text-anchor="middle" fill="currentColor">300</text>
+            <rect x="540" y="90" width="120" height="34" rx="6" fill="var(--card)" stroke="currentColor"/>
+            <text x="600" y="112" text-anchor="middle" fill="currentColor">800</text>
+            <line x1="310" y1="49" x2="140" y2="88" stroke="var(--accent)" stroke-width="2" marker-end="url(#sd04-a5)"/>
+            <line x1="365" y1="49" x2="365" y2="88" stroke="currentColor" marker-end="url(#sd04-a5)"/>
+            <line x1="420" y1="49" x2="590" y2="88" stroke="currentColor" marker-end="url(#sd04-a5)"/>
+            <rect x="10" y="170" width="100" height="36" rx="6" fill="var(--good-bg)" stroke="var(--good)"/><text x="60" y="193" text-anchor="middle" fill="currentColor">1–49</text>
+            <rect x="130" y="170" width="100" height="36" rx="6" fill="var(--card)" stroke="currentColor"/><text x="180" y="193" text-anchor="middle" fill="currentColor">50–99</text>
+            <rect x="250" y="170" width="100" height="36" rx="6" fill="var(--card)" stroke="currentColor"/><text x="300" y="193" text-anchor="middle" fill="currentColor">100–299</text>
+            <rect x="370" y="170" width="100" height="36" rx="6" fill="var(--card)" stroke="currentColor"/><text x="420" y="193" text-anchor="middle" fill="currentColor">300–499</text>
+            <rect x="490" y="170" width="100" height="36" rx="6" fill="var(--card)" stroke="currentColor"/><text x="540" y="193" text-anchor="middle" fill="currentColor">500–799</text>
+            <rect x="610" y="170" width="100" height="36" rx="6" fill="var(--card)" stroke="currentColor"/><text x="660" y="193" text-anchor="middle" fill="currentColor">800+</text>
+            <line x1="100" y1="125" x2="64" y2="168" stroke="var(--accent)" stroke-width="2" marker-end="url(#sd04-a5)"/>
+            <line x1="160" y1="125" x2="178" y2="168" stroke="currentColor" marker-end="url(#sd04-a5)"/>
+            <line x1="335" y1="125" x2="304" y2="168" stroke="currentColor" marker-end="url(#sd04-a5)"/>
+            <line x1="395" y1="125" x2="418" y2="168" stroke="currentColor" marker-end="url(#sd04-a5)"/>
+            <line x1="570" y1="125" x2="542" y2="168" stroke="currentColor" marker-end="url(#sd04-a5)"/>
+            <line x1="630" y1="125" x2="658" y2="168" stroke="currentColor" marker-end="url(#sd04-a5)"/>
+            <line x1="111" y1="188" x2="128" y2="188" stroke="var(--fg-muted)" marker-end="url(#sd04-a5)"/>
+            <line x1="231" y1="188" x2="248" y2="188" stroke="var(--fg-muted)" marker-end="url(#sd04-a5)"/>
+            <line x1="351" y1="188" x2="368" y2="188" stroke="var(--fg-muted)" marker-end="url(#sd04-a5)"/>
+            <line x1="471" y1="188" x2="488" y2="188" stroke="var(--fg-muted)" marker-end="url(#sd04-a5)"/>
+            <line x1="591" y1="188" x2="608" y2="188" stroke="var(--fg-muted)" marker-end="url(#sd04-a5)"/>
+            <text x="10" y="236" fill="var(--accent)">WHERE id = 42: root → «50» → листок 1–49 = 3 читання сторінок</text>
+            <text x="10" y="254" fill="var(--fg-muted)" font-size="11">листки зв'язані → BETWEEN / ORDER BY / пагінація по індексу — послідовне читання</text>
+          </g>
+        </svg>
+        <figcaption>Висота дерева росте логарифмічно: O(log n) з основою fanout. Тому індексний пошук по мільярду рядків ненабагато повільніший, ніж по мільйону.</figcaption>
+      </figure>
+
+      <h3>Види індексів</h3>
+      <table>
+        <thead><tr><th>Індекс</th><th>Що вміє</th><th>Нюанси</th></tr></thead>
+        <tbody>
+          <tr><td><b>B-tree</b></td><td>=, &lt;, &gt;, BETWEEN, ORDER BY, префіксний LIKE 'abc%'</td><td>дефолт; не допомагає для <code>LIKE '%abc'</code> чи функцій від колонки (потрібен expression index)</td></tr>
+          <tr><td><b>Hash</b></td><td>тільки рівність, O(1)</td><td>немає діапазонів і сортування; у Postgres існує, але B-tree зазвичай не гірший; в InnoDB — лише adaptive hash index всередині движка</td></tr>
+          <tr><td><b>Composite</b> (a, b, c)</td><td>фільтр по префіксу колонок + сортування</td><td>правило <b>leftmost prefix</b>; порядок колонок — головне рішення</td></tr>
+          <tr><td><b>Covering</b></td><td>запит обслуговується тільки з індексу (index-only scan)</td><td><code>INCLUDE (cols)</code> у Postgres; більший індекс → дорожчий запис</td></tr>
+          <tr><td><b>Partial</b></td><td>індексує лише рядки з умовою: <code>WHERE status = 'active'</code></td><td>маленький і швидкий для «гарячої» підмножини</td></tr>
+          <tr><td><b>GIN / inverted</b></td><td>JSONB, масиви, повнотекстовий пошук (tsvector)</td><td>повільніші оновлення</td></tr>
+          <tr><td><b>GiST / SP-GiST / R-tree</b></td><td>гео (PostGIS), діапазони, найближчі сусіди</td><td>для proximity-задач — <a href="12-classic-geo-booking-topk.html">туторіал 12</a></td></tr>
+        </tbody>
+      </table>
+
+      <h3>Composite-індекс і правило leftmost prefix</h3>
+      <p>Composite-індекс <code>(user_id, status, created_at)</code> — це записи, відсортовані спершу за <code>user_id</code>, у межах нього за <code>status</code>, у межах — за <code>created_at</code>. Як телефонний довідник «прізвище, ім'я»: знайти всіх Коваленків легко, всіх Олен — тільки перебором.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 270" role="img" aria-label="Індекс по user_id, status, created_at — відсортовані записи: 7 new 01-03; 7 paid 01-02; 7 paid 01-05; 7 paid 01-21; 8 new 01-01; 8 paid 01-04. Запит WHERE user_id = 7 бере суцільний діапазон перших чотирьох записів. Запит user_id = 7 AND status = paid — суцільний діапазон записів 2–4. Запит лише status = paid — записи розкидані (2, 3, 4, 6), індекс не допомагає, повний скан. Запит user_id = 7 AND created_at більше 01-04 — діапазон по user_id, а created_at фільтрується всередині, бо пропущено status.">
+          <g font-size="12">
+            <text x="20" y="26" fill="currentColor" font-weight="700">INDEX (user_id, status, created_at)</text>
+            <rect x="20" y="40" width="200" height="24" fill="var(--card)" stroke="var(--border)"/><text x="30" y="57" fill="currentColor" font-family="monospace" font-size="11">7 | new  | 01-03</text>
+            <rect x="20" y="66" width="200" height="24" fill="var(--card)" stroke="var(--border)"/><text x="30" y="83" fill="currentColor" font-family="monospace" font-size="11">7 | paid | 01-02</text>
+            <rect x="20" y="92" width="200" height="24" fill="var(--card)" stroke="var(--border)"/><text x="30" y="109" fill="currentColor" font-family="monospace" font-size="11">7 | paid | 01-05</text>
+            <rect x="20" y="118" width="200" height="24" fill="var(--card)" stroke="var(--border)"/><text x="30" y="135" fill="currentColor" font-family="monospace" font-size="11">7 | paid | 01-21</text>
+            <rect x="20" y="144" width="200" height="24" fill="var(--card)" stroke="var(--border)"/><text x="30" y="161" fill="currentColor" font-family="monospace" font-size="11">8 | new  | 01-01</text>
+            <rect x="20" y="170" width="200" height="24" fill="var(--card)" stroke="var(--border)"/><text x="30" y="187" fill="currentColor" font-family="monospace" font-size="11">8 | paid | 01-04</text>
+            <line x1="234" y1="42" x2="234" y2="140" stroke="var(--good)" stroke-width="4"/>
+            <line x1="248" y1="68" x2="248" y2="140" stroke="var(--good)" stroke-width="4"/>
+            <circle cx="262" cy="78" r="4" fill="var(--bad)"/><circle cx="262" cy="104" r="4" fill="var(--bad)"/><circle cx="262" cy="130" r="4" fill="var(--bad)"/><circle cx="262" cy="182" r="4" fill="var(--bad)"/>
+            <line x1="276" y1="42" x2="276" y2="140" stroke="var(--warn)" stroke-width="4" stroke-dasharray="6,3"/>
+            <text x="300" y="56" fill="var(--good)">█ user_id = 7 → суцільний діапазон ✓</text>
+            <text x="300" y="84" fill="var(--good)">█ user_id = 7 AND status = 'paid' ✓</text>
+            <text x="300" y="112" fill="var(--bad)">● status = 'paid' → розкидано, SCAN ✗</text>
+            <text x="300" y="140" fill="var(--warn)">┆ user_id = 7 AND created_at &gt; '01-04'</text>
+            <text x="316" y="158" fill="var(--warn)" font-size="11">діапазон по user_id, created_at — фільтр</text>
+            <text x="20" y="226" fill="currentColor">Порядок колонок: спершу рівність (=), потім діапазон / ORDER BY.</text>
+            <text x="20" y="248" fill="var(--fg-muted)" font-size="11">Postgres/MySQL 8 вміють skip scan у деяких випадках, але проектуйте так, ніби не вміють.</text>
+          </g>
+        </svg>
+        <figcaption>Індекс корисний, коли умова запиту відповідає <i>префіксу</i> колонок індексу: (a), (a, b), (a, b, c). Без першої колонки записи «розкидані» по всьому індексу.</figcaption>
+      </figure>
+
+      <div class="codecard"><div class="bar"><span class="path">leftmost.py</span></div><pre><code>import sqlite3
+
+db = sqlite3.connect(":memory:")
+db.execute("CREATE TABLE orders (id INTEGER PRIMARY KEY, user_id INT, status TEXT, created_at TEXT, total INT)")
+db.execute("CREATE INDEX idx_user_status_created ON orders (user_id, status, created_at)")
+db.executemany("INSERT INTO orders (user_id, status, created_at, total) VALUES (?, ?, ?, ?)",
+               [(i % 1000, "paid" if i % 3 else "new", f"2026-01-{i % 28 + 1:02d}", i) for i in range(20_000)])
+db.execute("ANALYZE")
+
+queries = {
+    "user_id":                 "SELECT * FROM orders WHERE user_id = 7",
+    "user_id + status":        "SELECT * FROM orders WHERE user_id = 7 AND status = 'paid'",
+    "status only":             "SELECT * FROM orders WHERE status = 'paid'",
+    "user_id + created (gap)": "SELECT * FROM orders WHERE user_id = 7 AND created_at &gt; '2026-01-20'",
+    "covering":                "SELECT status, created_at FROM orders WHERE user_id = 7",
+}
+for name, q in queries.items():
+    plan = db.execute("EXPLAIN QUERY PLAN " + q).fetchall()
+    print(f"{name:24} -&gt; {plan[0][3]}")
+
+# Вивід:
+# user_id                  -&gt; SEARCH orders USING INDEX idx_user_status_created (user_id=?)
+# user_id + status         -&gt; SEARCH orders USING INDEX idx_user_status_created (user_id=? AND status=?)
+# status only              -&gt; SCAN orders
+# user_id + created (gap)  -&gt; SEARCH orders USING INDEX idx_user_status_created (user_id=?)
+# covering                 -&gt; SEARCH orders USING COVERING INDEX idx_user_status_created (user_id=?)</code></pre></div>
+      <p>Зверніть увагу на останній рядок: запит читає лише колонки, що є в індексі, тож таблицю не відкривають зовсім — <b>covering index</b>. У Postgres план покаже <code>Index Only Scan</code> (якщо visibility map свіжа після VACUUM).</p>
+
+      <h3>Clustered vs secondary: InnoDB проти Postgres</h3>
+      <div class="vs">
+        <div><h4>InnoDB (MySQL)</h4><ul>
+          <li>Таблиця <b>і є</b> B+tree за primary key (clustered index): рядки лежать у листках, відсортовані за PK.</li>
+          <li>Secondary index зберігає значення PK → пошук = прохід secondary + прохід clustered («подвійний lookup»).</li>
+          <li>Випадковий PK (UUIDv4) → вставки в довільні сторінки, page splits, фрагментація. Краще монотонний (auto-increment, UUIDv7, Snowflake).</li>
+        </ul></div>
+        <div><h4>Postgres</h4><ul>
+          <li>Таблиця — <b>heap</b> (рядки без порядку); усі індекси, включно з PK, — окремі й вказують на фізичне розташування (ctid).</li>
+          <li>Нова версія рядка (MVCC) отримує нове розташування → оновлювати треба всі індекси, якщо не спрацював HOT update (змінені колонки не в індексах і є місце на сторінці).</li>
+          <li>Саме write amplification індексів була однією з причин, які Uber навів у статті 2016 «Why Uber Engineering Switched from Postgres to MySQL».</li>
+        </ul></div>
+      </div>
+
+      <h3>Ціна індексів</h3>
+      <ul>
+        <li>Кожен INSERT/UPDATE/DELETE оновлює <b>кожен</b> індекс таблиці: 8 індексів = ~9 записів у B-tree на одну вставку рядка.</li>
+        <li>Індекси займають пам'ять і витісняють з buffer pool корисні сторінки.</li>
+        <li>Низька селективність (індекс по <code>is_deleted</code>, де 99% false) — оптимізатор все одно обере seq scan. Тут допомагає partial index.</li>
+        <li>Створення індексу на великій таблиці блокує записи — у Postgres <code>CREATE INDEX CONCURRENTLY</code>.</li>
+      </ul>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        <p>Індекс — це <code>Map</code>, який ви будуєте поверх масиву, щоб не робити <code>array.find()</code> на кожен рендер: <code>const byId = new Map(users.map(u =&gt; [u.id, u]))</code>. Пошук швидкий, але при кожній зміні масиву Map треба оновити — і якщо у вас п'ять таких Map-ів за різними полями, кожен <code>push</code> стає вп'ятеро дорожчим. Composite index — це Map з ключем <code>`${userId}:${status}`</code>: шукати лише за status через нього не вийде.</p>
+      </div>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> на кожен гарячий запит у схемі назвіть індекс: «для "замовлення користувача за датою" — <code>(user_id, created_at DESC)</code>; пагінація курсором по ньому». На питання «чому б не проіндексувати все?» — відповідь про write amplification, пам'ять і селективність. Знання leftmost prefix і covering index — обов'язковий мінімум middle+.</div></div>
+
+      <div class="remember">B+tree: 3–4 рівні на мільярди рядків. Composite — leftmost prefix, спершу «=», потім діапазон. Кожен індекс — податок на запис.</div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Движки: B-tree vs LSM-tree, ампліфікації, Bloom filters</h2>
+      <p class="section-desc">Дві великі родини storage engines: оновлення на місці (B-tree) і лише дописування з подальшим злиттям (LSM).</p>
+
+      <p><b>B-tree-движки</b> (InnoDB, Postgres heap + B-tree, SQL Server, Oracle) змінюють сторінки «на місці»: знайшли сторінку, змінили, колись записали на диск. <b>LSM-движки</b> (Log-Structured Merge-tree: RocksDB, LevelDB, Cassandra, ScyllaDB, HBase, Bigtable, а також MyRocks, CockroachDB через Pebble) ніколи не змінюють записане: усе дописується, а старе прибирається фоновим злиттям.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 315" role="img" aria-label="LSM-tree. Запис спершу дописується у WAL на диску для довговічності і вставляється в memtable — відсортовану структуру в пам'яті. Коли memtable заповнюється, вона скидається на диск як незмінний відсортований файл SSTable на рівень L0. Фонова compaction зливає SSTables у наступні рівні L1 і L2, кожен приблизно вдесятеро більший, викидаючи старі версії і tombstones. Читання: спершу memtable, потім SSTables від новіших до старіших; Bloom filter кожного SSTable дозволяє пропустити файли, де ключа точно немає.">
+          <defs><marker id="sd04-a6" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="56" width="80" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="50" y="81" text-anchor="middle" fill="currentColor" font-weight="700">write</text>
+            <rect x="140" y="14" width="200" height="36" rx="6" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="240" y="37" text-anchor="middle" fill="currentColor">WAL: append + fsync (диск)</text>
+            <rect x="140" y="84" width="200" height="40" rx="6" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="240" y="102" text-anchor="middle" fill="currentColor">memtable (RAM)</text>
+            <text x="240" y="118" text-anchor="middle" fill="var(--fg-muted)" font-size="11">skiplist, відсортовано</text>
+            <line x1="91" y1="70" x2="138" y2="36" stroke="currentColor" marker-end="url(#sd04-a6)"/>
+            <line x1="91" y1="82" x2="138" y2="100" stroke="currentColor" marker-end="url(#sd04-a6)"/>
+            <line x1="240" y1="125" x2="240" y2="160" stroke="currentColor" marker-end="url(#sd04-a6)"/>
+            <text x="250" y="148" fill="var(--fg-muted)" font-size="11">flush, коли повна</text>
+            <text x="100" y="185" text-anchor="end" fill="currentColor" font-weight="700">L0</text>
+            <rect x="140" y="164" width="48" height="30" rx="4" fill="var(--card)" stroke="currentColor"/>
+            <rect x="194" y="164" width="48" height="30" rx="4" fill="var(--card)" stroke="currentColor"/>
+            <rect x="248" y="164" width="48" height="30" rx="4" fill="var(--card)" stroke="currentColor"/>
+            <text x="164" y="184" text-anchor="middle" fill="currentColor" font-size="10">SST</text>
+            <text x="218" y="184" text-anchor="middle" fill="currentColor" font-size="10">SST</text>
+            <text x="272" y="184" text-anchor="middle" fill="currentColor" font-size="10">SST</text>
+            <text x="100" y="235" text-anchor="end" fill="currentColor" font-weight="700">L1</text>
+            <rect x="140" y="214" width="48" height="30" rx="4" fill="var(--card)" stroke="currentColor"/>
+            <rect x="194" y="214" width="48" height="30" rx="4" fill="var(--card)" stroke="currentColor"/>
+            <rect x="248" y="214" width="48" height="30" rx="4" fill="var(--card)" stroke="currentColor"/>
+            <rect x="302" y="214" width="48" height="30" rx="4" fill="var(--card)" stroke="currentColor"/>
+            <text x="100" y="285" text-anchor="end" fill="currentColor" font-weight="700">L2 (×10)</text>
+            <rect x="140" y="264" width="48" height="30" rx="4" fill="var(--card)" stroke="currentColor"/>
+            <rect x="194" y="264" width="48" height="30" rx="4" fill="var(--card)" stroke="currentColor"/>
+            <rect x="248" y="264" width="48" height="30" rx="4" fill="var(--card)" stroke="currentColor"/>
+            <rect x="302" y="264" width="48" height="30" rx="4" fill="var(--card)" stroke="currentColor"/>
+            <rect x="356" y="264" width="48" height="30" rx="4" fill="var(--card)" stroke="currentColor"/>
+            <rect x="410" y="264" width="48" height="30" rx="4" fill="var(--card)" stroke="currentColor"/>
+            <rect x="464" y="264" width="48" height="30" rx="4" fill="var(--card)" stroke="currentColor"/>
+            <rect x="518" y="264" width="48" height="30" rx="4" fill="var(--card)" stroke="currentColor"/>
+            <path d="M300,180 Q380,190 360,228" fill="none" stroke="var(--fun)" marker-end="url(#sd04-a6)"/>
+            <path d="M354,232 Q440,240 430,262" fill="none" stroke="var(--fun)" marker-end="url(#sd04-a6)"/>
+            <text x="380" y="200" fill="var(--fun)" font-size="11">compaction:</text>
+            <text x="380" y="214" fill="var(--fun)" font-size="11">merge-sort, викинути</text>
+            <text x="380" y="228" fill="var(--fun)" font-size="11">старі версії, tombstones</text>
+            <rect x="590" y="14" width="132" height="230" rx="8" fill="none" stroke="var(--accent)" stroke-dasharray="4,3"/>
+            <text x="600" y="34" fill="var(--accent)" font-weight="700">Read path</text>
+            <text x="600" y="58" fill="currentColor" font-size="11">1 memtable</text>
+            <text x="600" y="78" fill="currentColor" font-size="11">2 L0 → L1 → L2</text>
+            <text x="600" y="98" fill="currentColor" font-size="11">  (новіші — першими)</text>
+            <text x="600" y="126" fill="currentColor" font-size="11">Bloom filter SST:</text>
+            <text x="600" y="146" fill="var(--good)" font-size="11">«точно ні» →</text>
+            <text x="600" y="164" fill="var(--good)" font-size="11">пропустити файл</text>
+            <text x="600" y="192" fill="currentColor" font-size="11">3 sparse index →</text>
+            <text x="600" y="210" fill="currentColor" font-size="11">один блок даних</text>
+          </g>
+        </svg>
+        <figcaption>Запис у LSM — це завжди послідовне дописування (WAL + memtable), тому він дешевий. Читання може зачепити кілька рівнів — Bloom filters і кеш блоків роблять його прийнятним.</figcaption>
+      </figure>
+
+      <div class="codecard"><div class="bar"><span class="path">lsm.py</span></div><pre><code>import bisect
+
+
+class TinyLSM:
+    """Іграшковий LSM-tree: memtable → незмінні відсортовані SSTables → compaction."""
+
+    def __init__(self, memtable_limit=3):
+        self.memtable = {}
+        self.sstables = []                       # новіші — в кінці списку
+        self.limit = memtable_limit
+
+    def put(self, key, value):                   # value=None — tombstone (видалення)
+        self.memtable[key] = value               # (у справжній БД спершу запис у WAL)
+        if len(self.memtable) &gt;= self.limit:
+            self.flush()
+
+    def flush(self):
+        table = sorted(self.memtable.items())    # SSTable = Sorted String Table
+        self.sstables.append(table)
+        self.memtable = {}
+
+    def get(self, key):
+        if key in self.memtable:
+            return self.memtable[key]
+        for table in reversed(self.sstables):    # від найновішої до найстарішої
+            keys = [k for k, _ in table]
+            i = bisect.bisect_left(keys, key)    # бінарний пошук у відсортованій таблиці
+            if i &lt; len(keys) and keys[i] == key:
+                return table[i][1]
+        return None
+
+    def compact(self):
+        merged = {}
+        for table in self.sstables:              # старі → нові: новіше перезаписує
+            merged.update(table)
+        self.sstables = [sorted((k, v) for k, v in merged.items() if v is not None)]
+
+
+db = TinyLSM()
+for k, v in [("b", 1), ("a", 1), ("c", 1), ("a", 2), ("d", 1), ("b", None)]:
+    db.put(k, v)
+print("SSTables:", db.sstables)
+print("get a =", db.get("a"), "| get b =", db.get("b"))
+db.compact()
+print("after compaction:", db.sstables)
+
+# Вивід:
+# SSTables: [[('a', 1), ('b', 1), ('c', 1)], [('a', 2), ('b', None), ('d', 1)]]
+# get a = 2 | get b = None
+# after compaction: [[('a', 2), ('c', 1), ('d', 1)]]</code></pre></div>
+      <p>Видалення в LSM — це запис <b>tombstone</b> (надгробка), а не стирання: старе значення <code>b=1</code> фізично лежить у першому SSTable, поки compaction не зіллє файли. Звідси відома проблема Cassandra: багато видалень → багато tombstones → повільні читання, поки не мине <code>gc_grace_seconds</code> і compaction їх не прибере.</p>
+
+      <h3>Три ампліфікації</h3>
+      <p>Будь-який движок балансує три величини (RUM-conjecture: Read, Update, Memory — оптимізувати можна дві з трьох):</p>
+      <ul>
+        <li><b>Write amplification</b> — скільки байтів реально пишеться на диск на 1 байт даних користувача. B-tree: переписується ціла сторінка 8–16 КБ заради рядка в 100 байт (+ WAL + full-page writes). LSM: кожен байт переписується при compaction на кожному рівні (leveled — порядку 10+ разів).</li>
+        <li><b>Read amplification</b> — скільки сторінок/файлів читається на один запит. B-tree: висота дерева (3–4). LSM: memtable + кілька SSTables (зменшується Bloom filters).</li>
+        <li><b>Space amplification</b> — скільки місця займає на диску відносно «живих» даних. B-tree: напівпорожні сторінки після splits, bloat у Postgres. LSM: старі версії й tombstones до compaction (size-tiered може тимчасово потребувати ×2 місця).</li>
+      </ul>
+
+      <table>
+        <thead><tr><th></th><th>B-tree</th><th>LSM-tree</th></tr></thead>
+        <tbody>
+          <tr><td>Запис</td><td>випадковий I/O, оновлення на місці</td><td>послідовний I/O, дуже швидкий; добре для SSD-ресурсу</td></tr>
+          <tr><td>Точкове читання</td><td>передбачуване: 3–4 сторінки</td><td>memtable + Bloom + 1–кілька SSTables</td></tr>
+          <tr><td>Діапазони</td><td>відмінно (зв'язані листки)</td><td>добре, але злиття з кількох рівнів</td></tr>
+          <tr><td>Стиснення</td><td>помірне</td><td>відмінне (незмінні відсортовані блоки)</td></tr>
+          <tr><td>Хвости латентності</td><td>стабільні</td><td>сплески під час compaction, write stalls при відставанні compaction</td></tr>
+          <tr><td>Транзакції / локи</td><td>природно: ключ живе в одному місці</td><td>можливі (RocksDB, CockroachDB), але складніше</td></tr>
+          <tr><td>Приклади</td><td>Postgres, MySQL InnoDB, SQL Server, Oracle</td><td>RocksDB, Cassandra, ScyllaDB, HBase, Bigtable, MyRocks</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Compaction-стратегії</h3>
+      <div class="vs">
+        <div><h4>Size-tiered (STCS)</h4><ul>
+          <li>Зливає кілька SSTables схожого розміру в один більший.</li>
+          <li>Менше write amplification → добре для write-heavy.</li>
+          <li>Більше read і space amplification (ключ може бути в багатьох файлах; тимчасово ×2 місця).</li>
+          <li>Історично дефолт у Cassandra (у новіших версіях з'явилась Unified Compaction Strategy).</li>
+        </ul></div>
+        <div><h4>Leveled (LCS)</h4><ul>
+          <li>Рівні L1, L2, … кожен ~10× більший; у межах рівня SSTables не перетинаються за ключами.</li>
+          <li>Ключ — максимум в одному файлі на рівень → краще читання й місце.</li>
+          <li>Більше write amplification (постійне переписування між рівнями).</li>
+          <li>Дефолт у LevelDB/RocksDB; для read-heavy.</li>
+        </ul></div>
+      </div>
+
+      <h3>Як це роблять у реальних системах</h3>
+      <ul>
+        <li><b>Facebook MyRocks</b>: MySQL з RocksDB замість InnoDB; за їхніми публікаціями — помітна економія місця (порядку половини) і менший знос SSD для UDB (соцграф).</li>
+        <li><b>Cassandra/ScyllaDB у Discord</b>: write-heavy потік повідомлень ідеально лягає на LSM; проблеми, які вони описують, — саме хвости латентності при compaction і GC-паузи JVM.</li>
+        <li><b>CockroachDB</b> використовує Pebble (LSM, натхненний RocksDB) під SQL-шаром — LSM не означає «без SQL».</li>
+      </ul>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> «Write-heavy, append-only дані з точковими читаннями за ключем — LSM (Cassandra/ScyllaDB/RocksDB): послідовні записи, гарне стиснення, Bloom filters для читань. Read-heavy з діапазонами й транзакціями — B-tree (Postgres/MySQL)». Термін «write amplification» і розуміння, що видалення в LSM — це tombstone, — гарні сигнали.</div></div>
+
+      <div class="remember">B-tree: оновлення на місці, стабільні читання. LSM: WAL + memtable → SSTables → compaction, дешевий запис, Bloom для читань, tombstones для видалень.</div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина III · Транзакції</div><div class="line"></div></div>
+
+    <section id="s6">
+      <h2><span class="num">06</span> ACID і WAL</h2>
+      <p class="section-desc">Що насправді означає кожна літера — і чому «C» тут найменш технічна.</p>
+
+      <table>
+        <thead><tr><th>Літера</th><th>Що гарантує</th><th>Чим забезпечується</th><th>Типова плутанина</th></tr></thead>
+        <tbody>
+          <tr><td><b>A</b>tomicity</td><td>транзакція виконується повністю або не виконується зовсім; при помилці — відкат</td><td>WAL / undo log</td><td>це не про конкурентність! «Атомарність» тут = «все або нічого», а не «ізоляція від інших»</td></tr>
+          <tr><td><b>C</b>onsistency</td><td>транзакція переводить БД з одного валідного стану в інший (інваріанти, constraints)</td><td>переважно — <b>застосунок</b>; БД допомагає: FK, CHECK, UNIQUE</td><td>не те саме, що «consistency» у CAP (там — лінеаризованість реплік)</td></tr>
+          <tr><td><b>I</b>solation</td><td>паралельні транзакції не заважають одна одній (в ідеалі — як послідовні)</td><td>локи, MVCC, SSI</td><td>на практиці майже ніхто не працює на Serializable; дефолти слабші (розділ 7)</td></tr>
+          <tr><td><b>D</b>urability</td><td>після COMMIT дані не зникнуть при падінні процесу/сервера</td><td>WAL + fsync, реплікація</td><td>«durable» на одному диску ≠ переживе втрату диска/AZ; <code>synchronous_commit=off</code> міняє durability на швидкість</td></tr>
+        </tbody>
+      </table>
+
+      <h3>WAL — Write-Ahead Log</h3>
+      <p>Головне правило: <b>спершу запиши в журнал, що збираєшся змінити, потім змінюй сторінки</b>. Журнал — послідовний append-only файл, і дописати в нього кілька сотень байт + <code>fsync</code> значно дешевше, ніж записати всі змінені 8-КБ сторінки по випадкових місцях диска. Сторінки в buffer pool залишаються «брудними» й скидаються на диск пізніше, на checkpoint.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 240" role="img" aria-label="Шлях COMMIT з WAL. Крок 1: транзакція змінює сторінку в buffer pool у пам'яті, сторінка стає брудною. Крок 2: запис змін у WAL — послідовне дописування — і fsync. Крок 3: клієнт отримує COMMIT OK. Пізніше, крок 4: checkpoint скидає брудні сторінки у файли даних випадковими записами. При падінні: recovery читає WAL від останнього checkpoint і повторює зміни, які ще не потрапили у файли даних.">
+          <defs><marker id="sd04-a7" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="30" width="160" height="56" rx="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="90" y="53" text-anchor="middle" fill="currentColor">1. змінити сторінку</text>
+            <text x="90" y="72" text-anchor="middle" fill="var(--fg-muted)" font-size="11">buffer pool (RAM)</text>
+            <rect x="200" y="30" width="170" height="56" rx="8" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="285" y="53" text-anchor="middle" fill="currentColor">2. WAL append + fsync</text>
+            <text x="285" y="72" text-anchor="middle" fill="var(--fg-muted)" font-size="11">послідовний запис</text>
+            <rect x="400" y="30" width="150" height="56" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="475" y="53" text-anchor="middle" fill="currentColor" font-weight="700">3. COMMIT OK</text>
+            <text x="475" y="72" text-anchor="middle" fill="var(--fg-muted)" font-size="11">клієнту</text>
+            <line x1="171" y1="58" x2="198" y2="58" stroke="currentColor" marker-end="url(#sd04-a7)"/>
+            <line x1="371" y1="58" x2="398" y2="58" stroke="currentColor" marker-end="url(#sd04-a7)"/>
+            <rect x="10" y="130" width="250" height="56" rx="8" fill="var(--card)" stroke="currentColor" stroke-dasharray="4,3"/>
+            <text x="135" y="153" text-anchor="middle" fill="currentColor">4. пізніше: checkpoint</text>
+            <text x="135" y="172" text-anchor="middle" fill="var(--fg-muted)" font-size="11">брудні сторінки → файли даних</text>
+            <line x1="90" y1="87" x2="90" y2="128" stroke="currentColor" stroke-dasharray="4,3" marker-end="url(#sd04-a7)"/>
+            <rect x="320" y="130" width="400" height="56" rx="8" fill="var(--bad-bg)" stroke="var(--bad)"/>
+            <text x="520" y="153" text-anchor="middle" fill="currentColor">💥 crash → recovery: replay WAL від checkpoint</text>
+            <text x="520" y="172" text-anchor="middle" fill="var(--fg-muted)" font-size="11">закомічене відновлюється, незакомічене відкочується</text>
+            <path d="M285,87 Q300,120 420,128" fill="none" stroke="var(--bad)" stroke-dasharray="4,3" marker-end="url(#sd04-a7)"/>
+            <text x="10" y="220" fill="currentColor">Той самий WAL — основа реплікації (physical/logical) і CDC (Debezium читає WAL/binlog).</text>
+          </g>
+        </svg>
+        <figcaption>COMMIT чекає лише на fsync послідовного журналу, а не на запис усіх змінених сторінок. Group commit об'єднує fsync кількох паралельних транзакцій в один.</figcaption>
+      </figure>
+
+      <p>WAL має й інші життя: Postgres реплікує фізичний WAL на standby, logical decoding з WAL живить CDC; MySQL реплікує через binlog (окремий від InnoDB redo log журнал). Ідея «журнал — джерело правди, таблиці — кеш журналу» — фундамент Kafka і event sourcing (<a href="07-async-messaging.html">туторіал 7</a>).</p>
+
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body"><b>Durability — це спектр.</b> fsync на локальний диск захищає від падіння процесу і ОС, але не від смерті диска чи інстансу. Для «не втратити підтверджений запис» потрібна <b>синхронна реплікація</b> хоча б на одну репліку (Postgres <code>synchronous_commit = on</code> + <code>synchronous_standby_names</code>, Aurora — запис кворумом 4 з 6 копій у 3 AZ). Асинхронна реплікація + failover = можлива втрата останніх транзакцій (RPO &gt; 0). Детально — <a href="05-replication-sharding.html">туторіал 5</a> і <a href="08-reliability-scale.html">туторіал 8</a>.</div></div>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        <p>Атомарність — як <code>setState</code> з одним об'єктом проти кількох послідовних: або весь новий стан, або старий, без «напівоновленого» UI. WAL — як офлайн-черга мутацій у PWA, яку ви спершу пишете в IndexedDB, а потім застосовуєте: якщо вкладку закрили, при наступному відкритті черга «відтворюється» (replay).</p>
+      </div>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> якщо питають «що таке ACID?» — поясніть кожну літеру одним реченням і обов'язково розведіть «C в ACID» і «C в CAP». Бонус: «durability на одному вузлі — це WAL + fsync, а в розподіленій системі — синхронна реплікація/кворум».</div></div>
+
+      <div class="remember">A = все або нічого (WAL/undo). C = інваріанти (переважно застосунок). I = як послідовно (рівні!). D = WAL + fsync + реплікація.</div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">07</span> Рівні ізоляції та аномалії</h2>
+      <p class="section-desc">Найпідступніша тема для співбесід: дефолтні рівні слабші, ніж думає більшість розробників.</p>
+
+      <h3>Аномалії читання</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 300" role="img" aria-label="Три аномалії на часових шкалах двох транзакцій. Dirty read: T2 оновлює баланс до 0, T1 читає 0, T2 робить ROLLBACK — T1 прочитала значення, якого ніколи не існувало. Non-repeatable read: T1 читає 100, T2 оновлює до 50 і комітить, T1 знову читає і отримує 50 — різні відповіді в одній транзакції. Phantom: T1 рахує рядки за умовою і отримує 2, T2 вставляє новий рядок і комітить, T1 рахує знову і отримує 3 — з'явився рядок-фантом.">
+          <g font-size="12">
+            <text x="10" y="18" fill="currentColor" font-weight="700">Dirty read</text>
+            <text x="60" y="44" text-anchor="end" fill="var(--accent)">T1</text>
+            <text x="60" y="74" text-anchor="end" fill="var(--fun)">T2</text>
+            <line x1="70" y1="40" x2="720" y2="40" stroke="var(--border)"/><line x1="70" y1="70" x2="720" y2="70" stroke="var(--border)"/>
+            <rect x="90" y="59" width="140" height="22" rx="5" fill="var(--fun-bg)" stroke="var(--fun)"/><text x="160" y="74" text-anchor="middle" fill="currentColor" font-size="11">UPDATE bal = 0</text>
+            <rect x="250" y="29" width="140" height="22" rx="5" fill="var(--bad-bg)" stroke="var(--bad)"/><text x="320" y="44" text-anchor="middle" fill="currentColor" font-size="11">SELECT → 0 ✗</text>
+            <rect x="410" y="59" width="140" height="22" rx="5" fill="var(--fun-bg)" stroke="var(--fun)"/><text x="480" y="74" text-anchor="middle" fill="currentColor" font-size="11">ROLLBACK</text>
+            <text x="570" y="44" fill="var(--bad)" font-size="11">прочитала неіснуюче</text>
+
+            <text x="10" y="118" fill="currentColor" font-weight="700">Non-repeatable read</text>
+            <text x="60" y="144" text-anchor="end" fill="var(--accent)">T1</text>
+            <text x="60" y="174" text-anchor="end" fill="var(--fun)">T2</text>
+            <line x1="70" y1="140" x2="720" y2="140" stroke="var(--border)"/><line x1="70" y1="170" x2="720" y2="170" stroke="var(--border)"/>
+            <rect x="90" y="129" width="140" height="22" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="160" y="144" text-anchor="middle" fill="currentColor" font-size="11">SELECT → 100</text>
+            <rect x="250" y="159" width="140" height="22" rx="5" fill="var(--fun-bg)" stroke="var(--fun)"/><text x="320" y="174" text-anchor="middle" fill="currentColor" font-size="11">UPDATE 50; COMMIT</text>
+            <rect x="410" y="129" width="140" height="22" rx="5" fill="var(--bad-bg)" stroke="var(--bad)"/><text x="480" y="144" text-anchor="middle" fill="currentColor" font-size="11">SELECT → 50 ✗</text>
+            <text x="570" y="144" fill="var(--bad)" font-size="11">той самий рядок —</text>
+            <text x="570" y="158" fill="var(--bad)" font-size="11">інше значення</text>
+
+            <text x="10" y="218" fill="currentColor" font-weight="700">Phantom</text>
+            <text x="60" y="244" text-anchor="end" fill="var(--accent)">T1</text>
+            <text x="60" y="274" text-anchor="end" fill="var(--fun)">T2</text>
+            <line x1="70" y1="240" x2="720" y2="240" stroke="var(--border)"/><line x1="70" y1="270" x2="720" y2="270" stroke="var(--border)"/>
+            <rect x="90" y="229" width="140" height="22" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="160" y="244" text-anchor="middle" fill="currentColor" font-size="11">COUNT(…) → 2</text>
+            <rect x="250" y="259" width="140" height="22" rx="5" fill="var(--fun-bg)" stroke="var(--fun)"/><text x="320" y="274" text-anchor="middle" fill="currentColor" font-size="11">INSERT; COMMIT</text>
+            <rect x="410" y="229" width="140" height="22" rx="5" fill="var(--bad-bg)" stroke="var(--bad)"/><text x="480" y="244" text-anchor="middle" fill="currentColor" font-size="11">COUNT(…) → 3 ✗</text>
+            <text x="570" y="244" fill="var(--bad)" font-size="11">новий рядок</text>
+            <text x="570" y="258" fill="var(--bad)" font-size="11">під умовою WHERE</text>
+            <text x="365" y="296" text-anchor="middle" fill="var(--fg-muted)" font-size="11">час →</text>
+          </g>
+        </svg>
+        <figcaption>Dirty read — читання незакоміченого. Non-repeatable read — зміна вже прочитаного рядка. Phantom — зміна <i>множини</i> рядків, що відповідають умові.</figcaption>
+      </figure>
+
+      <h3>Аномалії запису: lost update і write skew</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 300" role="img" aria-label="Lost update: T1 і T2 обидві читають лічильник 10, T1 записує 11 і комітить, T2 записує 11 і комітить; результат 11 замість 12 — оновлення T1 втрачено. Write skew: правило — на чергуванні має бути хоча б один лікар. T1 бачить двох лікарів на чергуванні, T2 теж бачить двох. T1 знімає Alice, T2 знімає Bob — різні рядки, конфлікту запису немає. Обидві комітять — на чергуванні нуль лікарів, інваріант порушено.">
+          <g font-size="12">
+            <text x="10" y="18" fill="currentColor" font-weight="700">Lost update (read-modify-write)</text>
+            <text x="60" y="44" text-anchor="end" fill="var(--accent)">T1</text>
+            <text x="60" y="74" text-anchor="end" fill="var(--fun)">T2</text>
+            <line x1="70" y1="40" x2="720" y2="40" stroke="var(--border)"/><line x1="70" y1="70" x2="720" y2="70" stroke="var(--border)"/>
+            <rect x="90" y="29" width="130" height="22" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="155" y="44" text-anchor="middle" fill="currentColor" font-size="11">read cnt = 10</text>
+            <rect x="230" y="59" width="130" height="22" rx="5" fill="var(--fun-bg)" stroke="var(--fun)"/><text x="295" y="74" text-anchor="middle" fill="currentColor" font-size="11">read cnt = 10</text>
+            <rect x="370" y="29" width="130" height="22" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="435" y="44" text-anchor="middle" fill="currentColor" font-size="11">write 11; COMMIT</text>
+            <rect x="510" y="59" width="130" height="22" rx="5" fill="var(--bad-bg)" stroke="var(--bad)"/><text x="575" y="74" text-anchor="middle" fill="currentColor" font-size="11">write 11; COMMIT</text>
+            <text x="650" y="44" fill="var(--bad)" font-size="11">11, а не 12</text>
+            <text x="90" y="104" fill="var(--good)" font-size="11">фікс: UPDATE cnt = cnt + 1 · SELECT … FOR UPDATE · version CAS · Postgres RR виявляє й відкочує</text>
+
+            <text x="10" y="150" fill="currentColor" font-weight="700">Write skew (інваріант «≥ 1 лікар на чергуванні»)</text>
+            <text x="60" y="176" text-anchor="end" fill="var(--accent)">T1</text>
+            <text x="60" y="206" text-anchor="end" fill="var(--fun)">T2</text>
+            <line x1="70" y1="172" x2="720" y2="172" stroke="var(--border)"/><line x1="70" y1="202" x2="720" y2="202" stroke="var(--border)"/>
+            <rect x="90" y="161" width="130" height="22" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="155" y="176" text-anchor="middle" fill="currentColor" font-size="11">on_call → 2</text>
+            <rect x="230" y="191" width="130" height="22" rx="5" fill="var(--fun-bg)" stroke="var(--fun)"/><text x="295" y="206" text-anchor="middle" fill="currentColor" font-size="11">on_call → 2</text>
+            <rect x="370" y="161" width="130" height="22" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="435" y="176" text-anchor="middle" fill="currentColor" font-size="11">Alice off; COMMIT</text>
+            <rect x="510" y="191" width="130" height="22" rx="5" fill="var(--bad-bg)" stroke="var(--bad)"/><text x="575" y="206" text-anchor="middle" fill="currentColor" font-size="11">Bob off; COMMIT</text>
+            <text x="650" y="176" fill="var(--bad)" font-size="11">0 лікарів</text>
+            <text x="90" y="236" fill="currentColor" font-size="11">Різні рядки → конфлікту запису немає → snapshot isolation це пропускає.</text>
+            <text x="90" y="256" fill="var(--good)" font-size="11">фікс: SERIALIZABLE (SSI у Postgres) · SELECT … FOR UPDATE на прочитаних рядках</text>
+            <text x="90" y="274" fill="var(--good)" font-size="11">· матеріалізувати конфлікт (рядок-«слот», UNIQUE, constraint)</text>
+          </g>
+        </svg>
+        <figcaption>Lost update — дві транзакції пишуть <i>той самий</i> рядок на основі застарілого читання. Write skew — пишуть <i>різні</i> рядки, але на основі спільної передумови, яку обидві порушують.</figcaption>
+      </figure>
+
+      <p>Приклади write skew з реального життя: два бронювання однієї переговорки на перетинні інтервали (перевірили «вільно» — вставили обидва), вибір унікального username без UNIQUE-обмеження, подвійне списання при перевірці «баланс &gt;= сума» по сумі транзакцій. Класичний приклад з лікарями — з книги Клеппмана (DDIA, розділ про транзакції).</p>
+
+      <h3>Рівні ізоляції: стандарт і реальність</h3>
+      <table>
+        <thead><tr><th>Рівень</th><th>Dirty read</th><th>Non-repeatable</th><th>Phantom</th><th>Lost update</th><th>Write skew</th></tr></thead>
+        <tbody>
+          <tr><td>Read Uncommitted</td><td><span class="badge bad">можливо</span></td><td><span class="badge bad">можливо</span></td><td><span class="badge bad">можливо</span></td><td><span class="badge bad">можливо</span></td><td><span class="badge bad">можливо</span></td></tr>
+          <tr><td>Read Committed</td><td><span class="badge good">ні</span></td><td><span class="badge bad">можливо</span></td><td><span class="badge bad">можливо</span></td><td><span class="badge bad">можливо</span></td><td><span class="badge bad">можливо</span></td></tr>
+          <tr><td>Repeatable Read / Snapshot Isolation</td><td><span class="badge good">ні</span></td><td><span class="badge good">ні</span></td><td>SI: ні для читань*</td><td>PG: виявляє; MySQL: <span class="badge bad">можливо</span></td><td><span class="badge bad">можливо</span></td></tr>
+          <tr><td>Serializable</td><td><span class="badge good">ні</span></td><td><span class="badge good">ні</span></td><td><span class="badge good">ні</span></td><td><span class="badge good">ні</span></td><td><span class="badge good">ні</span></td></tr>
+        </tbody>
+      </table>
+      <p><span class="say">* Стандарт SQL дозволяє фантоми на Repeatable Read, але snapshot isolation (Postgres RR) їх для звичайних читань не показує, бо вся транзакція бачить один знімок. Write skew через фантоми (перевірка «немає рядків» → вставка) SI не ловить.</span></p>
+
+      <table>
+        <thead><tr><th>БД</th><th>Дефолт</th><th>Що означає на практиці</th></tr></thead>
+        <tbody>
+          <tr><td><b>PostgreSQL</b></td><td>Read Committed</td><td>кожен оператор бачить свіжий знімок; RR = snapshot isolation (кидає <code>could not serialize access due to concurrent update</code> на lost update); Serializable = SSI (з 9.1), відкочує транзакції з небезпечними залежностями — потрібен retry</td></tr>
+          <tr><td><b>MySQL InnoDB</b></td><td>Repeatable Read</td><td>звичайні SELECT читають знімок; <code>SELECT … FOR UPDATE</code> / UPDATE бачать <i>найсвіжіші</i> дані й ставлять next-key locks (захист від фантомів для locking reads); lost update при read-modify-write не виявляє</td></tr>
+          <tr><td><b>Oracle</b></td><td>Read Committed</td><td>«SERIALIZABLE» в Oracle насправді snapshot isolation (write skew можливий)</td></tr>
+          <tr><td><b>SQL Server</b></td><td>Read Committed (з локами)</td><td>опційно READ_COMMITTED_SNAPSHOT і SNAPSHOT (MVCC)</td></tr>
+          <tr><td><b>CockroachDB / Spanner</b></td><td>Serializable</td><td>серіалізованість за замовчуванням; ціна — retry при конфліктах і латентність</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout bad"><div class="ic">🚩</div><div class="body"><b>Класичний баг у продакшні:</b> <code>balance = SELECT balance; if balance &gt;= amount: UPDATE … SET balance = :new</code> на дефолтному Read Committed. Дві паралельні покупки обидві бачать 100, обидві списують — lost update і від'ємний баланс. Фікс: атомарний <code>UPDATE accounts SET balance = balance - :amt WHERE id = :id AND balance &gt;= :amt</code> і перевірка кількості змінених рядків.</div></div>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> назвіть дефолти (Postgres — Read Committed, MySQL — Repeatable Read), поясніть lost update і write skew на прикладі з вашої задачі (бронювання, баланс, інвентар) і запропонуйте конкретний захист: атомарний UPDATE з умовою, <code>SELECT FOR UPDATE</code>, оптимістична версія, UNIQUE/EXCLUDE constraint або Serializable з retry. Це один із найсильніших сигналів senior-рівня.</div></div>
+
+      <div class="remember">Дефолти слабкі: PG = Read Committed, MySQL = RR. Lost update — один рядок; write skew — різні рядки зі спільною передумовою. Ліки: атомарний UPDATE, FOR UPDATE, версія, constraint, Serializable + retry.</div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> MVCC, песимістичне й оптимістичне блокування</h2>
+      <p class="section-desc">Як БД дозволяє читачам не блокувати письменників — і як застосунку захиститись від конфліктних записів.</p>
+
+      <h3>MVCC — Multi-Version Concurrency Control</h3>
+      <p>Замість того, щоб блокувати рядок на час читання, БД зберігає <b>кілька версій</b> рядка. Кожна транзакція бачить знімок (snapshot): версії, закомічені до її початку (або до початку оператора — у Read Committed). <b>Читачі не блокують письменників, письменники не блокують читачів.</b> Два письменники одного рядка все ще конфліктують — другий чекає на лок рядка.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 230" role="img" aria-label="MVCC у стилі Postgres. Рядок рахунку має дві версії: версія 1 з balance 100, створена транзакцією 100 і позначена як видалена транзакцією 205; версія 2 з balance 70, створена транзакцією 205, актуальна. Транзакція зі знімком, взятим до коміту 205, бачить версію 1. Транзакція, що почалася після коміту 205, бачить версію 2. VACUUM видалить версію 1, коли жоден знімок її більше не потребує.">
+          <defs><marker id="sd04-a8" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="200" y="20" width="200" height="66" rx="8" fill="var(--card)" stroke="var(--fg-muted)" stroke-dasharray="4,3"/>
+            <text x="300" y="42" text-anchor="middle" fill="currentColor" font-weight="700">v1: balance = 100</text>
+            <text x="300" y="62" text-anchor="middle" fill="var(--fg-muted)" font-size="11">xmin = 100, xmax = 205</text>
+            <text x="300" y="78" text-anchor="middle" fill="var(--fg-muted)" font-size="11">«мертва» для нових</text>
+            <rect x="470" y="20" width="200" height="66" rx="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="570" y="42" text-anchor="middle" fill="currentColor" font-weight="700">v2: balance = 70</text>
+            <text x="570" y="62" text-anchor="middle" fill="var(--fg-muted)" font-size="11">xmin = 205, xmax = ∞</text>
+            <text x="570" y="78" text-anchor="middle" fill="var(--fg-muted)" font-size="11">актуальна</text>
+            <line x1="401" y1="53" x2="468" y2="53" stroke="currentColor" marker-end="url(#sd04-a8)"/>
+            <text x="434" y="45" text-anchor="middle" fill="var(--fg-muted)" font-size="10">UPDATE</text>
+            <rect x="20" y="130" width="230" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="135" y="149" text-anchor="middle" fill="currentColor">знімок до коміту 205</text>
+            <text x="135" y="166" text-anchor="middle" fill="var(--fg-muted)" font-size="11">довгий звіт, бекап</text>
+            <rect x="470" y="130" width="230" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="585" y="149" text-anchor="middle" fill="currentColor">знімок після коміту 205</text>
+            <text x="585" y="166" text-anchor="middle" fill="var(--fg-muted)" font-size="11">новий запит</text>
+            <line x1="160" y1="129" x2="270" y2="88" stroke="var(--accent)" marker-end="url(#sd04-a8)"/>
+            <text x="95" y="110" fill="var(--accent)" font-size="11">бачить v1</text>
+            <line x1="585" y1="129" x2="575" y2="88" stroke="var(--accent)" marker-end="url(#sd04-a8)"/>
+            <text x="595" y="112" fill="var(--accent)" font-size="11">бачить v2</text>
+            <text x="20" y="210" fill="currentColor">VACUUM прибирає v1, коли не лишилось знімків, старших за 205. Довга транзакція → bloat.</text>
+          </g>
+        </svg>
+        <figcaption>xmin — хто створив версію, xmax — хто її «видалив». Видимість версії визначається тим, які транзакції були закомічені на момент знімка.</figcaption>
+      </figure>
+
+      <div class="vs">
+        <div><h4>Postgres</h4><ul>
+          <li>Старі версії лежать у самій таблиці (heap); UPDATE = INSERT нової версії + позначка xmax на старій.</li>
+          <li>Прибирання — <b>VACUUM</b> (autovacuum). Довга відкрита транзакція (навіть «idle in transaction») блокує прибирання → bloat, деградація.</li>
+          <li>Ризик transaction ID wraparound на дуже навантажених базах без вчасного VACUUM.</li>
+        </ul></div>
+        <div><h4>MySQL InnoDB, Oracle</h4><ul>
+          <li>У таблиці лише остання версія; старі відновлюються з <b>undo log</b>.</li>
+          <li>Прибирання — purge-потік; довгі транзакції роздувають undo (history list length).</li>
+          <li>UPDATE на місці → secondary-індекси оновлюються лише для змінених колонок.</li>
+        </ul></div>
+      </div>
+
+      <h3>Песимістичне блокування — SELECT … FOR UPDATE</h3>
+      <p>«Конфлікт ймовірний — заблокую заздалегідь». Рядок блокується до кінця транзакції; інші <code>FOR UPDATE</code>/UPDATE на нього чекають.</p>
+      <div class="codecard"><div class="bar"><span class="path">pessimistic.sql</span></div><pre><code>BEGIN;
+SELECT balance FROM accounts WHERE id = 1 FOR UPDATE;   -- інші чекають тут
+-- перевірка в застосунку: balance &gt;= 30
+UPDATE accounts SET balance = balance - 30 WHERE id = 1;
+COMMIT;                                                  -- лок знято
+
+-- Черга задач без конкуренції воркерів:
+SELECT id FROM jobs WHERE status = 'pending'
+ORDER BY id LIMIT 10
+FOR UPDATE SKIP LOCKED;                                  -- взяти незаблоковані</code></pre></div>
+      <p>Ризики: <b>deadlock</b> (T1 лочить A потім B, T2 — B потім A; БД виявить і відкотить одну — лочте в сталому порядку), довгі локи під час зовнішніх викликів (ніколи не викликайте платіжний API, тримаючи <code>FOR UPDATE</code>), черги очікування на гарячому рядку.</p>
+
+      <h3>Оптимістичне блокування — version column</h3>
+      <p>«Конфлікт рідкісний — перевірю при записі». Читаємо рядок з <code>version</code>, пишемо з умовою <code>WHERE version = :seen</code>. 0 змінених рядків → хтось встиг раніше → перечитати й повторити (або показати користувачу конфлікт).</p>
+      <div class="codecard"><div class="bar"><span class="path">optimistic.py</span></div><pre><code>import sqlite3
+
+db = sqlite3.connect(":memory:", isolation_level=None)
+db.execute("CREATE TABLE accounts (id INT PRIMARY KEY, balance INT, version INT)")
+db.execute("INSERT INTO accounts VALUES (1, 100, 1)")
+
+
+def withdraw(amount, seen_balance, seen_version):
+    """Оптимістичне блокування: UPDATE спрацює, лише якщо version не змінилась."""
+    cur = db.execute(
+        "UPDATE accounts SET balance = ?, version = version + 1 "
+        "WHERE id = 1 AND version = ?",
+        (seen_balance - amount, seen_version),
+    )
+    return cur.rowcount == 1          # 0 рядків → хтось встиг раніше
+
+
+# Два «клієнти» прочитали один і той самий стан
+bal, ver = db.execute("SELECT balance, version FROM accounts WHERE id = 1").fetchone()
+print("A:", withdraw(30, bal, ver))   # True  — перший виграв
+print("B:", withdraw(50, bal, ver))   # False — конфлікт, треба перечитати й повторити
+print(db.execute("SELECT balance, version FROM accounts").fetchone())
+
+# Вивід:
+# A: True
+# B: False
+# (70, 2)</code></pre></div>
+
+      <table>
+        <thead><tr><th></th><th>Песимістичне (FOR UPDATE)</th><th>Оптимістичне (version / CAS)</th></tr></thead>
+        <tbody>
+          <tr><td>Коли</td><td>високий контеншн на рядок (залишок товару, місце в залі)</td><td>конфлікти рідкісні (редагування профілю, документа, налаштувань)</td></tr>
+          <tr><td>Ціна</td><td>очікування, deadlocks, тримає з'єднання</td><td>retry; при високому контеншні — «шторм» повторів</td></tr>
+          <tr><td>Працює між запитами HTTP?</td><td>ні (лок живе в межах транзакції)</td><td>так: версія їде в клієнт і назад (<code>ETag</code> / <code>If-Match</code> → 412)</td></tr>
+          <tr><td>Приклади</td><td>черги на <code>SKIP LOCKED</code>, банківські перекази</td><td>JPA <code>@Version</code>, DynamoDB condition expressions, ETag в REST, Kubernetes <code>resourceVersion</code></td></tr>
+        </tbody>
+      </table>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        <p>MVCC — це іммутабельний стан у React: кожен «коміт» створює новий об'єкт, а компонент, що рендериться зі старого snapshot-а, бачить старий об'єкт цілим і консистентним (concurrent rendering у React 18 спирається на ту ж ідею). Оптимістичне блокування — це <code>If-Match: "etag"</code> при PUT з форми редагування: якщо хтось змінив документ, поки ви редагували, сервер поверне 412 і ви покажете «документ змінено, оновіть». Песимістичне — як «документ відкрито користувачем X, тільки для читання» в Google Docs-подібних системах старого типу.</p>
+      </div>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> у задачах з контеншном (бронювання, квитки, інвентар, гаманець) обов'язково скажіть, як захищаєтесь від конкурентних записів: «для місця в залі — атомарний UPDATE з умовою <code>status='free'</code> або <code>SELECT FOR UPDATE</code>; для редагування профілю — оптимістична версія з ETag». І згадайте, що з MVCC довгі транзакції шкодять (bloat), тому транзакції мають бути короткими.</div></div>
+
+      <div class="remember">MVCC: версії рядків, читачі не блокують письменників. Песимістично — FOR UPDATE (високий контеншн); оптимістично — version/CAS + retry (рідкісні конфлікти, працює через HTTP).</div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина IV · Аналітика, файли, вибір</div><div class="line"></div></div>
+
+    <section id="s9">
+      <h2><span class="num">09</span> OLTP vs OLAP, колонкове й об'єктне сховище</h2>
+      <p class="section-desc">Транзакції користувачів і аналітика мають протилежні патерни доступу — і різні сховища. Файли — третій світ.</p>
+
+      <div class="vs">
+        <div><h4>OLTP (online transaction processing)</h4><ul>
+          <li>Багато дрібних запитів: прочитати/змінити кілька рядків за ключем.</li>
+          <li>Латентність — мілісекунди; тисячі–десятки тисяч TPS.</li>
+          <li>Рядкове зберігання (row store), B-tree індекси, транзакції.</li>
+          <li>Postgres, MySQL, DynamoDB, Cassandra.</li>
+        </ul></div>
+        <div><h4>OLAP (online analytical processing)</h4><ul>
+          <li>Мало важких запитів: агрегати по мільйонах–мільярдах рядків, кілька колонок.</li>
+          <li>Латентність — секунди; пропускна здатність сканування — ГБ/с.</li>
+          <li>Колонкове зберігання, стиснення, векторизоване виконання.</li>
+          <li>ClickHouse, BigQuery, Snowflake, Redshift, Druid, DuckDB; формати Parquet/ORC.</li>
+        </ul></div>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 235" role="img" aria-label="Рядкове і колонкове зберігання таблиці з колонками id, country, date, amount. У row store значення одного рядка лежать поруч, тому запит SUM amount WHERE country = UA читає всі колонки всіх рядків. У column store кожна колонка лежить окремо, тому той самий запит читає тільки колонки country і amount — половину даних або менше — і колонки добре стискаються, бо містять схожі значення.">
+          <g font-size="11">
+            <text x="20" y="20" fill="currentColor" font-size="12" font-weight="700">Row store: SUM(amount) WHERE country = 'UA' читає все</text>
+            <rect x="20" y="32" width="40" height="24" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="40" y="48" text-anchor="middle" fill="currentColor">1</text>
+            <rect x="60" y="32" width="40" height="24" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="80" y="48" text-anchor="middle" fill="currentColor">UA</text>
+            <rect x="100" y="32" width="40" height="24" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="120" y="48" text-anchor="middle" fill="currentColor">01-02</text>
+            <rect x="140" y="32" width="40" height="24" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="160" y="48" text-anchor="middle" fill="currentColor">30</text>
+            <rect x="180" y="32" width="40" height="24" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="200" y="48" text-anchor="middle" fill="currentColor">2</text>
+            <rect x="220" y="32" width="40" height="24" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="240" y="48" text-anchor="middle" fill="currentColor">PL</text>
+            <rect x="260" y="32" width="40" height="24" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="280" y="48" text-anchor="middle" fill="currentColor">01-02</text>
+            <rect x="300" y="32" width="40" height="24" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="320" y="48" text-anchor="middle" fill="currentColor">15</text>
+            <rect x="340" y="32" width="40" height="24" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="360" y="48" text-anchor="middle" fill="currentColor">3</text>
+            <rect x="380" y="32" width="40" height="24" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="400" y="48" text-anchor="middle" fill="currentColor">UA</text>
+            <rect x="420" y="32" width="40" height="24" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="440" y="48" text-anchor="middle" fill="currentColor">01-03</text>
+            <rect x="460" y="32" width="40" height="24" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="480" y="48" text-anchor="middle" fill="currentColor">50</text>
+            <rect x="500" y="32" width="40" height="24" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="520" y="48" text-anchor="middle" fill="currentColor">4</text>
+            <rect x="540" y="32" width="40" height="24" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="560" y="48" text-anchor="middle" fill="currentColor">UA</text>
+            <rect x="580" y="32" width="40" height="24" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="600" y="48" text-anchor="middle" fill="currentColor">01-03</text>
+            <rect x="620" y="32" width="40" height="24" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="640" y="48" text-anchor="middle" fill="currentColor">20</text>
+            <text x="20" y="76" fill="var(--fg-muted)">рядок 1 | рядок 2 | рядок 3 | рядок 4 — поруч на диску; ідеально для «дай весь рядок за id»</text>
+
+            <text x="20" y="112" fill="currentColor" font-size="12" font-weight="700">Column store: читає лише country і amount</text>
+            <rect x="20" y="124" width="160" height="24" fill="var(--card)" stroke="var(--border)"/><text x="100" y="140" text-anchor="middle" fill="var(--fg-muted)">1 · 2 · 3 · 4</text>
+            <rect x="192" y="124" width="160" height="24" fill="var(--good-bg)" stroke="var(--good)"/><text x="272" y="140" text-anchor="middle" fill="currentColor">UA · PL · UA · UA</text>
+            <rect x="364" y="124" width="160" height="24" fill="var(--card)" stroke="var(--border)"/><text x="444" y="140" text-anchor="middle" fill="var(--fg-muted)">01-02 · … · 01-03</text>
+            <rect x="536" y="124" width="160" height="24" fill="var(--good-bg)" stroke="var(--good)"/><text x="616" y="140" text-anchor="middle" fill="currentColor">30 · 15 · 50 · 20</text>
+            <text x="100" y="166" text-anchor="middle" fill="var(--fg-muted)">id</text>
+            <text x="272" y="166" text-anchor="middle" fill="var(--good)">country ✓</text>
+            <text x="444" y="166" text-anchor="middle" fill="var(--fg-muted)">date</text>
+            <text x="616" y="166" text-anchor="middle" fill="var(--good)">amount ✓</text>
+            <text x="20" y="196" fill="currentColor">Колонка = схожі значення → dictionary / RLE / delta-кодування стискають у рази.</text>
+            <text x="20" y="218" fill="currentColor">100 колонок, запит на 3 → читаємо ~3% даних. Ціна: вставка/оновлення одного рядка дорогі.</text>
+          </g>
+        </svg>
+        <figcaption>Row store оптимізує «весь рядок за ключем», column store — «кілька колонок за всі рядки». Тому аналітика на OLTP-базі повільна і шкодить продакшн-трафіку.</figcaption>
+      </figure>
+
+      <p><b>Як це роблять у реальних системах:</b> OLTP-база → CDC/ETL → сховище даних (data warehouse) або озеро (S3 + Parquet + Iceberg/Delta) → BI. Cloudflare за їхнім блогом використовує ClickHouse для аналітики HTTP-трафіку з мільйонами подій на секунду; BigQuery спирається на ідеї Dremel (Google, 2010). Звичайний «перший крок» для стартапу — read-replica Postgres для звітів, потім колонкове сховище.</p>
+
+      <h3>Object / blob storage (S3)</h3>
+      <p>Файли (фото, відео, PDF, бекапи, логи) зберігаються в <b>object storage</b>: S3, Google Cloud Storage, Azure Blob, Cloudflare R2, MinIO. Плоский простір «bucket + key → байти + метадані», HTTP API, практично необмежений об'єм. S3 заявляє проектну довговічність 99.999999999% («11 дев'яток»), а з грудня 2020 дає строгу read-after-write консистентність. Об'єкт до 5 ТБ; великі файли — multipart upload (частини паралельно, retry окремої частини).</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 270" role="img" aria-label="Завантаження файлу через presigned URL. 1: клієнт просить API дозволу на завантаження; API записує в базу метадані зі статусом pending і 2: повертає presigned PUT URL з коротким терміном дії. 3: клієнт завантажує файл напряму в S3, оминаючи API. 4: S3 генерує подію ObjectCreated, яку обробляє воркер — робить мініатюри, перевіряє файл. 5: воркер оновлює статус у базі на ready. Читання — через CDN перед S3. Байти файлу ніколи не проходять через сервери API.">
+          <defs><marker id="sd04-a9" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="95" width="110" height="50" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="65" y="125" text-anchor="middle" fill="currentColor" font-weight="700">Client</text>
+            <rect x="230" y="20" width="140" height="44" rx="8" fill="var(--card)" stroke="currentColor"/>
+            <text x="300" y="47" text-anchor="middle" fill="currentColor" font-weight="700">API</text>
+            <rect x="230" y="170" width="140" height="50" rx="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="300" y="200" text-anchor="middle" fill="currentColor" font-weight="700">S3 bucket</text>
+            <rect x="480" y="20" width="140" height="44" rx="8" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="550" y="47" text-anchor="middle" fill="currentColor" font-weight="700">Postgres</text>
+            <rect x="480" y="170" width="140" height="50" rx="8" fill="var(--fun-bg)" stroke="var(--fun)"/>
+            <text x="550" y="192" text-anchor="middle" fill="currentColor" font-weight="700">Worker</text>
+            <text x="550" y="210" text-anchor="middle" fill="var(--fg-muted)" font-size="11">thumbnails, scan</text>
+            <line x1="121" y1="103" x2="228" y2="48" stroke="currentColor" marker-start="url(#sd04-a9)" marker-end="url(#sd04-a9)"/>
+            <text x="12" y="40" fill="currentColor" font-size="11">1. POST /uploads</text>
+            <text x="12" y="56" fill="currentColor" font-size="11">2. ← presigned PUT URL</text>
+            <text x="12" y="72" fill="var(--fg-muted)" font-size="11">   (діє ~15 хв)</text>
+            <line x1="121" y1="137" x2="228" y2="190" stroke="var(--good)" stroke-width="2.5" marker-end="url(#sd04-a9)"/>
+            <text x="12" y="172" fill="var(--good)" font-size="11">3. PUT файл напряму</text>
+            <line x1="371" y1="42" x2="478" y2="42" stroke="currentColor" marker-end="url(#sd04-a9)"/>
+            <text x="425" y="34" text-anchor="middle" fill="currentColor" font-size="11">INSERT pending</text>
+            <line x1="371" y1="195" x2="478" y2="195" stroke="var(--fun)" marker-end="url(#sd04-a9)"/>
+            <text x="425" y="187" text-anchor="middle" fill="var(--fun)" font-size="11">4. event</text>
+            <line x1="550" y1="169" x2="550" y2="66" stroke="var(--fun)" marker-end="url(#sd04-a9)"/>
+            <text x="560" y="122" fill="var(--fun)" font-size="11">5. status = ready</text>
+            <text x="10" y="252" fill="currentColor">Читання: CDN → S3 (presigned GET / signed cookies). Байти не проходять через API.</text>
+          </g>
+        </svg>
+        <figcaption>У БД — тільки метадані (key, size, owner, status, checksum); байти — в object storage; роздача — через CDN. API лише видає короткоживучі дозволи.</figcaption>
+      </figure>
+
+      <h3>Чому не зберігати blobs у БД</h3>
+      <ul>
+        <li><b>Buffer pool</b> заповнюється мегабайтами картинок і витісняє гарячі індекси та рядки.</li>
+        <li><b>Бекапи, реплікація, WAL</b> роздуваються: кожне завантаження фото = мегабайти в WAL, що їдуть на кожну репліку.</li>
+        <li><b>Ціна</b>: блочне сховище під БД (SSD з IOPS) у рази дорожче за object storage за ГБ; S3 має дешевші класи (Infrequent Access, Glacier) і lifecycle-правила.</li>
+        <li><b>Роздача</b>: S3 + CDN дають HTTP range requests, кешування на edge, presigned URLs — БД нічого з цього не вміє, і кожен байт пройшов би через ваш API.</li>
+        <li>Виняток: дрібні бінарні дані (аватар-іконка на кілька КБ, підпис) — можна в <code>bytea</code>; Postgres сам винесе великі значення в TOAST.</li>
+      </ul>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        <p>Ви ж не кладете картинки в Redux-store як base64 — store тримає URL, а байти браузер тягне з CDN паралельно й кешує окремо. Presigned URL — як завантаження файлу з <code>&lt;input type="file"&gt;</code> прямо в S3 через <code>fetch(url, {method: 'PUT', body: file})</code>: ваш бекенд лише видав «квиток», а гігабайтне відео пішло повз нього.</p>
+      </div>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> у будь-якій задачі з медіа (Instagram, Dropbox, YouTube) скажіть: «файли — в S3, метадані — в БД, завантаження через presigned URL/multipart напряму в S3, обробка асинхронно за подією, роздача — через CDN». Для аналітики: «не на primary; CDC → колонкове сховище (ClickHouse/BigQuery)».</div></div>
+
+      <div class="remember">OLTP — рядки, ключі, мс; OLAP — колонки, скани, секунди. Байти — в S3, метадані — в БД, роздача — CDN.</div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Як обрати БД на співбесіді</h2>
+      <p class="section-desc">Почніть з Postgres і чесно спитайте: чого саме він не витягне?</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 330" role="img" aria-label="Дерево вибору бази даних. Корінь: за замовчуванням PostgreSQL — що саме він не витягне? Вісім гілок. Зв'язані сутності, транзакції й ad-hoc запити — залишаємося на Postgres або MySQL. Понад сто тисяч записів на секунду з доступом за ключем — Cassandra або DynamoDB. Повнотекстовий пошук і фасети — Elasticsearch. Метрики й події в часі — TimescaleDB або InfluxDB. Аналітика по мільярдах рядків — ClickHouse або BigQuery. Файли й відео — S3 плюс метадані в БД. Семантичний пошук по embeddings — pgvector або Pinecone. Обхід графа на три й більше хопів — Neo4j. Спеціалізоване сховище зазвичай доповнює primary-базу і синхронізується через CDC.">
+          <g font-size="12">
+            <rect x="200" y="10" width="330" height="50" rx="10" fill="var(--interview-bg)" stroke="var(--interview)"/>
+            <text x="365" y="31" text-anchor="middle" fill="currentColor" font-weight="700">За замовчуванням: PostgreSQL</text>
+            <text x="365" y="50" text-anchor="middle" fill="currentColor" font-size="11">Що саме він не витягне?</text>
+            <line x1="365" y1="60" x2="365" y2="88" stroke="currentColor"/>
+            <line x1="95" y1="88" x2="641" y2="88" stroke="currentColor"/>
+            <line x1="95" y1="88" x2="95" y2="100" stroke="currentColor"/>
+            <line x1="277" y1="88" x2="277" y2="100" stroke="currentColor"/>
+            <line x1="459" y1="88" x2="459" y2="100" stroke="currentColor"/>
+            <line x1="641" y1="88" x2="641" y2="100" stroke="currentColor"/>
+            <line x1="368" y1="88" x2="368" y2="196" stroke="currentColor"/>
+            <line x1="95" y1="196" x2="641" y2="196" stroke="currentColor"/>
+            <line x1="95" y1="196" x2="95" y2="208" stroke="currentColor"/>
+            <line x1="277" y1="196" x2="277" y2="208" stroke="currentColor"/>
+            <line x1="459" y1="196" x2="459" y2="208" stroke="currentColor"/>
+            <line x1="641" y1="196" x2="641" y2="208" stroke="currentColor"/>
+
+            <rect x="10" y="100" width="170" height="74" rx="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="95" y="120" text-anchor="middle" fill="var(--fg-muted)" font-size="11">зв'язки, транзакції,</text>
+            <text x="95" y="136" text-anchor="middle" fill="var(--fg-muted)" font-size="11">ad-hoc запити</text>
+            <text x="95" y="160" text-anchor="middle" fill="currentColor" font-weight="700">Postgres / MySQL</text>
+            <rect x="192" y="100" width="170" height="74" rx="8" fill="var(--card)" stroke="currentColor"/>
+            <text x="277" y="120" text-anchor="middle" fill="var(--fg-muted)" font-size="11">&gt;100k записів/с,</text>
+            <text x="277" y="136" text-anchor="middle" fill="var(--fg-muted)" font-size="11">доступ за ключем</text>
+            <text x="277" y="160" text-anchor="middle" fill="currentColor" font-weight="700">Cassandra, DynamoDB</text>
+            <rect x="374" y="100" width="170" height="74" rx="8" fill="var(--card)" stroke="currentColor"/>
+            <text x="459" y="120" text-anchor="middle" fill="var(--fg-muted)" font-size="11">повнотекстовий пошук,</text>
+            <text x="459" y="136" text-anchor="middle" fill="var(--fg-muted)" font-size="11">фасети, релевантність</text>
+            <text x="459" y="160" text-anchor="middle" fill="currentColor" font-weight="700">Elasticsearch</text>
+            <rect x="556" y="100" width="170" height="74" rx="8" fill="var(--card)" stroke="currentColor"/>
+            <text x="641" y="120" text-anchor="middle" fill="var(--fg-muted)" font-size="11">метрики, події</text>
+            <text x="641" y="136" text-anchor="middle" fill="var(--fg-muted)" font-size="11">у часі, retention</text>
+            <text x="641" y="160" text-anchor="middle" fill="currentColor" font-weight="700">TimescaleDB, Influx</text>
+
+            <rect x="10" y="208" width="170" height="74" rx="8" fill="var(--card)" stroke="currentColor"/>
+            <text x="95" y="228" text-anchor="middle" fill="var(--fg-muted)" font-size="11">аналітика, агрегати</text>
+            <text x="95" y="244" text-anchor="middle" fill="var(--fg-muted)" font-size="11">по мільярдах рядків</text>
+            <text x="95" y="268" text-anchor="middle" fill="currentColor" font-weight="700">ClickHouse, BigQuery</text>
+            <rect x="192" y="208" width="170" height="74" rx="8" fill="var(--card)" stroke="currentColor"/>
+            <text x="277" y="228" text-anchor="middle" fill="var(--fg-muted)" font-size="11">файли, відео, фото,</text>
+            <text x="277" y="244" text-anchor="middle" fill="var(--fg-muted)" font-size="11">бекапи</text>
+            <text x="277" y="268" text-anchor="middle" fill="currentColor" font-weight="700">S3 + метадані в БД</text>
+            <rect x="374" y="208" width="170" height="74" rx="8" fill="var(--card)" stroke="currentColor"/>
+            <text x="459" y="228" text-anchor="middle" fill="var(--fg-muted)" font-size="11">семантичний пошук</text>
+            <text x="459" y="244" text-anchor="middle" fill="var(--fg-muted)" font-size="11">по embeddings</text>
+            <text x="459" y="268" text-anchor="middle" fill="currentColor" font-weight="700">pgvector, Pinecone</text>
+            <rect x="556" y="208" width="170" height="74" rx="8" fill="var(--card)" stroke="currentColor"/>
+            <text x="641" y="228" text-anchor="middle" fill="var(--fg-muted)" font-size="11">обхід графа</text>
+            <text x="641" y="244" text-anchor="middle" fill="var(--fg-muted)" font-size="11">на 3+ хопи</text>
+            <text x="641" y="268" text-anchor="middle" fill="currentColor" font-weight="700">Neo4j, Neptune</text>
+            <text x="365" y="314" text-anchor="middle" fill="currentColor">Спеціалізоване сховище зазвичай доповнює primary-БД; синхронізація — через CDC.</text>
+          </g>
+        </svg>
+        <figcaption>Спершу «чому не Postgres?» — і лише конкретна відповідь (обсяг записів, тип запиту, характер даних) веде до спеціалізованого сховища.</figcaption>
+      </figure>
+
+      <h3>Чек-лист обґрунтування</h3>
+      <ol class="steps">
+        <li><b>Форма даних і зв'язки</b>: багато зв'язків і інваріантів між сутностями → relational.</li>
+        <li><b>Запити</b>: лише за ключем? діапазони? повний текст? агрегати? обходи графа?</li>
+        <li><b>Обсяг і швидкість</b>: записів/с, читань/с, ГБ/ТБ/ПБ, ріст на рік (з оцінок <a href="01-interview-framework.html">туторіалу 1</a>).</li>
+        <li><b>Гарантії</b>: потрібні транзакції між кількома об'єктами? яка ізоляція? яка допустима застарілість?</li>
+        <li><b>Масштабування</b>: чи вистачить вертикального + read-реплік? Якщо ні — чи вміє БД шардитись (вбудовано, як Cassandra/DynamoDB/Spanner, чи вручну)?</li>
+        <li><b>Операційне</b>: керований сервіс, команда, що це вміє, вартість.</li>
+      </ol>
+
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><b>На співбесіді:</b> «polyglot persistence» — нормально, але кожне додаткове сховище — це синхронізація (CDC/outbox), операційна вартість і нові режими відмов. Хороший тон — мінімізувати: «Postgres для замовлень і користувачів, S3 для фото, Elasticsearch для пошуку через CDC — і все». Для класичних задач див. <a href="09-classic-url-id-kv.html">туторіал 9</a>–<a href="12-classic-geo-booking-topk.html">12</a>.</div></div>
+
+      <div class="remember">Default — Postgres. Кожне нове сховище — тільки під конкретний access pattern, з планом синхронізації.</div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина V · Практика</div><div class="line"></div></div>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Трікі питання</h2>
+      <p class="section-desc">Що інтерв'юери питають, щоб відрізнити «читав статтю» від «розумію, як працює».</p>
+
+      <details class="qa"><summary><span class="difficulty trick">TRICKY</span>Чому б не ввімкнути Serializable всюди й забути про аномалії?</summary><div class="a">
+        <p>Можна, і для деяких систем це правильний дефолт (CockroachDB, Spanner так і роблять). Ціна: (1) транзакції почнуть відкочуватись з <code>serialization failure</code> — застосунок <b>зобов'язаний</b> мати retry всієї транзакції, а не одного запиту; (2) пропускна здатність падає при високому контеншні (SSI відкочує «підозрілі» транзакції, 2PL — тримає локи довше); (3) зовнішні побічні ефекти всередині транзакції (відправка email) при retry повторяться. На практиці часто комбінують: Read Committed за замовчуванням + точкові захисти (атомарні UPDATE, FOR UPDATE, constraints) або Serializable для кількох критичних транзакцій.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty trick">TRICKY</span>UUID чи auto-increment для первинного ключа?</summary><div class="a">
+        <p>Auto-increment: компактний (8 байт), монотонний (вставки в кінець B-tree — локальність, мало page splits), але розкриває кількість записів і не генерується без БД (складно при шардингу). UUIDv4: генерується будь-де, не вгадується, але 16 байт і <b>випадковий</b> — вставки розкидані по всьому індексу, page splits, гірший кеш (в InnoDB, де таблиця — це clustered index, особливо болісно). Компроміс: <b>UUIDv7</b> (RFC 9562, 2024) або Snowflake-ID — унікальні без координації й упорядковані за часом. Детально про генерацію ID — <a href="09-classic-url-id-kv.html">туторіал 9</a>.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty trick">TRICKY</span>Чому <code>SELECT COUNT(*)</code> по великій таблиці в Postgres повільний, навіть з індексом?</summary><div class="a">
+        <p>Через MVCC: різні транзакції бачать різну кількість рядків, тож «загальної кількості» просто немає — треба перевірити видимість кожної версії. Index-only scan допомагає, лише якщо visibility map свіжа. Рішення: приблизна оцінка (<code>reltuples</code> з <code>pg_class</code>, <code>EXPLAIN</code>), лічильник у окремій таблиці (оновлюється тригером/подіями; гарячий рядок → шардований лічильник), або «10 000+» в UI замість точного числа. MySQL InnoDB має ту саму проблему з тієї ж причини.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty core">CORE</span>Чому пагінація через OFFSET повільна на далеких сторінках?</summary><div class="a">
+        <p><code>OFFSET 1000000 LIMIT 20</code> змушує БД прочитати й викинути мільйон рядків — індекс не вміє «стрибнути» на N-ту позицію. Плюс нестабільність: нові рядки зсувають сторінки (дублікати/пропуски). Рішення — <b>keyset (cursor) pagination</b>: <code>WHERE (created_at, id) &lt; (:last_created, :last_id) ORDER BY created_at DESC, id DESC LIMIT 20</code> з індексом <code>(created_at, id)</code>. Сталий час на будь-якій глибині. Ціна — немає «перейти на сторінку 537». Про API-рівень — <a href="02-networking-entry.html">туторіал 2</a>.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty trick">TRICKY</span>«Перевірити, що username вільний, потім вставити» — в одній транзакції. Це безпечно?</summary><div class="a">
+        <p>Ні, на Read Committed і навіть на snapshot isolation. Дві транзакції одночасно бачать «немає такого username» і обидві вставляють — це write skew через фантом (перевіряли <i>відсутність</i> рядка, а лочити нічого). Правильно — <b>перенести інваріант у БД</b>: <code>UNIQUE (lower(username))</code> і обробити помилку унікальності. Загальне правило: інваріанти «не більше одного», «не перетинаються» — через constraints (UNIQUE, EXCLUDE у Postgres для інтервалів), а не через перевірку в коді.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty core">CORE</span>Коли NoSQL — поганий вибір, навіть якщо «потрібен масштаб»?</summary><div class="a">
+        <p>Коли (1) access patterns невідомі або часто змінюються (аналітика продукту, адмінки) — у Cassandra кожен новий запит = нова таблиця й міграція даних; (2) потрібні транзакції між сутностями (гроші, інвентар) — їх доведеться «будувати» сагами й ідемпотентністю; (3) дані реляційні за природою (many-to-many) — JOIN-и переїдуть у застосунок. І (4) «масштаб» часто переоцінений: один інстанс Postgres на сучасному залізі тримає терабайти й десятки тисяч TPS; Instagram, Notion, Figma публічно розповідали про масштабування саме Postgres (шардинг на рівні застосунку).</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty adv">ADV</span>Як додати індекс або колонку в таблицю на мільярд рядків без даунтайму?</summary><div class="a">
+        <p>Індекс: Postgres <code>CREATE INDEX CONCURRENTLY</code> (довше, не блокує записи; при падінні лишає INVALID-індекс — перевірити й перестворити); MySQL 8 — online DDL (<code>ALGORITHM=INPLACE, LOCK=NONE</code>). Колонка: у Postgres 11+ <code>ADD COLUMN … DEFAULT const</code> — миттєво (метадані), а от зміна типу переписує таблицю. Для складних змін — патерн <b>expand → migrate → contract</b>: додати нову колонку, писати в обидві, backfill батчами з паузами (щоб не вбити реплікаційний лаг), перемкнути читання, прибрати стару. Інструменти для MySQL: gh-ost (GitHub), pt-online-schema-change. Детально — <a href="13-tricky-topics-qa.html">туторіал 13</a>.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty trick">TRICKY</span>Чим небезпечний soft delete (<code>deleted_at</code>)?</summary><div class="a">
+        <p>(1) <code>UNIQUE(email)</code> ламається: видалений користувач блокує повторну реєстрацію → потрібен partial unique index <code>WHERE deleted_at IS NULL</code>. (2) Кожен запит мусить пам'ятати фільтр — один забутий <code>WHERE</code> = «воскреслі» дані (часто через view або ORM-scope). (3) Таблиця й індекси ростуть видаленими рядками → partial indexes, архівація. (4) GDPR «право на забуття» вимагає справжнього видалення персональних даних. Альтернатива — переносити видалене в архівну таблицю.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty adv">ADV</span>Чому Elasticsearch не можна робити основним сховищем?</summary><div class="a">
+        <p>Near-real-time: документ стає видимим для пошуку після refresh (за замовчуванням ~1 с); немає багатодокументних транзакцій; історично були сценарії втрати даних при split brain (до переробки кластерної координації в 7.x); зміна mapping поля часто вимагає reindex; оновлення документа = видалення + нова версія в новому сегменті (сегменти Lucene незмінні й зливаються — та сама ідея, що LSM). Тому джерело правди — OLTP-БД, а ES — похідний індекс, який можна перебудувати з нуля через CDC/reindex.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty core">CORE</span>Читання з репліки повернуло старі дані одразу після запису. Це баг БД?</summary><div class="a">
+        <p>Ні, це replication lag асинхронної реплікації: репліка застосовує WAL/binlog із затримкою (мс — секунди, під навантаженням — хвилини). Користувач зберіг профіль, оновив сторінку — читання пішло на репліку — «зміни зникли». Рішення: read-your-writes (читати з primary N секунд після запису цього користувача або чекати, поки репліка дожене LSN/GTID запису), sticky-сесії на primary для автора. Повний розбір — <a href="05-replication-sharding.html">туторіал 5</a>.</p>
+      </div></details>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Задачі</h2>
+      <p class="section-desc">Оцінки, вибір індексів і БД, баги конкурентності. Спершу розв'яжіть самі.</p>
+
+      <div class="task" id="task1">
+        <div class="task-head"><span class="tasknum">Задача 1</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Висота B-tree на 2 млрд рядків</span></div>
+        <p>Secondary-індекс по BIGINT у таблиці з 2 млрд рядків, сторінка 16 КБ. Припустіть ~600 записів у листку і fanout ~800 у внутрішніх сторінках. Скільки рівнів у дереві, скільки займають листки і скільки читань з диска потрібно на пошук, якщо внутрішні рівні в RAM?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <ol>
+            <li>Листків: 2·10⁹ / 600 ≈ 3.3 млн сторінок × 16 КБ ≈ <b>51 ГБ</b>.</li>
+            <li>Рівень вище: 3.3 млн / 800 ≈ 4 200 сторінок (~65 МБ). Ще вище: 4 200 / 800 ≈ 5–6 сторінок. Потім корінь. Разом <b>4 рівні</b>.</li>
+            <li>Усі внутрішні рівні (~65 МБ) легко живуть у buffer pool → пошук = <b>~1 читання з диска</b> (листок), якщо і він не в кеші. Плюс, для InnoDB, ще один прохід по clustered index за PK, щоб дістати рядок (якщо індекс не covering).</li>
+          </ol>
+          <p>Висновок: «індекс на мільярд рядків» — це не страшно для пошуку; страшно — його розмір у RAM і вартість підтримки на записах.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task2">
+        <div class="task-head"><span class="tasknum">Задача 2</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Який індекс?</span></div>
+        <p>Гарячий запит: <code>SELECT id, total FROM orders WHERE user_id = ? AND status = 'paid' ORDER BY created_at DESC LIMIT 20</code>. Запропонуйте індекс і поясніть порядок колонок.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><code>CREATE INDEX ON orders (user_id, status, created_at DESC) INCLUDE (total);</code></p>
+          <ul>
+            <li>Спершу колонки з рівністю (<code>user_id</code>, <code>status</code>) — вони звужують діапазон до суцільного шматка індексу.</li>
+            <li>Потім <code>created_at DESC</code> — у межах цього шматка записи вже відсортовані, тож <code>ORDER BY … LIMIT 20</code> = прочитати перші 20 записів, без сортування.</li>
+            <li><code>INCLUDE (total)</code> (Postgres 11+) робить індекс covering — index-only scan без звернення до таблиці (<code>id</code> у Postgres треба теж включити; в InnoDB PK і так є в кожному secondary-індексі).</li>
+            <li>Якщо 95% запитів саме з <code>status='paid'</code> — розгляньте partial index <code>(user_id, created_at DESC) WHERE status = 'paid'</code>: менший і швидший.</li>
+          </ul>
+        </div></details>
+      </div>
+
+      <div class="task" id="task3">
+        <div class="task-head"><span class="tasknum">Задача 3</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Підберіть сховище</span></div>
+        <p>Для кожного випадку назвіть тип сховища і причину: (a) баланси гаманців; (b) телеметрія 50 000 датчиків щосекунди; (c) пошук товарів «червоні кросівки 42» з фільтрами; (d) відеофайли курсів; (e) сесії користувачів з TTL; (f) «люди, яких ви можете знати» до 3 хопів; (g) дашборд продажів за роки по регіонах.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <ol type="a">
+            <li>Relational (Postgres) — ACID, constraints, ledger-модель.</li>
+            <li>Time-series (TimescaleDB/InfluxDB) або LSM wide-column — 50k точок/с, retention, downsampling.</li>
+            <li>Search (Elasticsearch/OpenSearch) через CDC з каталогу в Postgres — інвертований індекс, фасети, релевантність.</li>
+            <li>Object storage (S3) + CDN; метадані в Postgres.</li>
+            <li>Key-value (Redis) — TTL з коробки, мс-латентність.</li>
+            <li>Graph DB (Neo4j) — або, частіше на практиці, офлайн-обчислення рекомендацій у batch-пайплайні з кешем результату.</li>
+            <li>Колонкове сховище (ClickHouse/BigQuery/Snowflake), наповнене через CDC/ETL.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task" id="task4">
+        <div class="task-head"><span class="tasknum">Задача 4</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Інвентар іде в мінус</span></div>
+        <p>Код резервування: <code>qty = SELECT qty FROM stock WHERE sku = ?</code>; <code>if qty &gt;= n: UPDATE stock SET qty = :qty_minus_n WHERE sku = ?</code>. Postgres, Read Committed. Під час розпродажу залишок іноді від'ємний або «продано більше, ніж було». Поясніть і дайте три способи виправити.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Lost update: дві транзакції читають qty = 5, обидві проходять перевірку, обидві пишуть «обчислене в застосунку» значення. Read Committed цього не забороняє.</p>
+          <ol>
+            <li><b>Атомарний умовний UPDATE</b> (найкраще): <code>UPDATE stock SET qty = qty - :n WHERE sku = :sku AND qty &gt;= :n</code>; перевірити, що змінено 1 рядок. Плюс <code>CHECK (qty &gt;= 0)</code> як остання лінія захисту.</li>
+            <li><b>Песимістично</b>: <code>SELECT … FOR UPDATE</code>, потім перевірка й UPDATE. Працює, але гарячий SKU стає чергою на лок.</li>
+            <li><b>Оптимістично</b>: колонка <code>version</code> і <code>WHERE version = :seen</code> + retry. На гарячому SKU під час розпродажу — багато повторів, тож тут гірше за варіант 1.</li>
+          </ol>
+          <p>Для екстремального контеншну (flash sale) — розщеплення залишку на бакети в Redis і резервації з TTL (див. задачу 8 у <a href="03-caching.html">туторіалі 3</a>).</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task5">
+        <div class="task-head"><span class="tasknum">Задача 5</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Подвійне бронювання переговорки</span></div>
+        <p>Бронювання: <code>SELECT count(*) FROM bookings WHERE room = ? AND tstzrange(start, end) &amp;&amp; :range</code>; якщо 0 — <code>INSERT</code>. Інколи з'являються дві броні на один час. Чому <code>FOR UPDATE</code> тут не допоможе і як виправити?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Це write skew через фантом: обидві транзакції перевіряють <i>відсутність</i> рядків і вставляють нові. <code>FOR UPDATE</code> лочить існуючі рядки, а конфліктних рядків ще немає — лочити нічого.</p>
+          <ol>
+            <li><b>Constraint у БД</b> (найкраще для Postgres): <code>ALTER TABLE bookings ADD EXCLUDE USING gist (room WITH =, tstzrange(start_at, end_at) WITH &amp;&amp;)</code> (потрібне розширення <code>btree_gist</code>). Друга вставка впаде з помилкою — обробляємо як «зайнято».</li>
+            <li><b>Матеріалізувати конфлікт</b>: таблиця слотів <code>(room, slot_15min)</code> з PK; бронювання = вставка всіх слотів; дублікат PK = конфлікт. Або <code>SELECT … FOR UPDATE</code> на рядок кімнати (<code>rooms</code>) як м'ютекс перед перевіркою.</li>
+            <li><b>Serializable</b> з retry: SSI виявить небезпечну залежність і відкотить одну транзакцію.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task" id="task6">
+        <div class="task-head"><span class="tasknum">Задача 6</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Розмір розділу для повідомлень</span></div>
+        <p>Чат у Cassandra з ключем <code>((channel_id, bucket), message_id)</code>. Середнє повідомлення з метаданими — 1 КБ. Типовий канал — 2 000 повідомлень/день, найбільший — 1 млн/день. Ціль — розділи до ~100 МБ. Яким має бути bucket?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <ul>
+            <li>Типовий канал: 2 000 × 1 КБ = 2 МБ/день → bucket у 30–50 днів дає 60–100 МБ.</li>
+            <li>Найбільший: 1 млн × 1 КБ = 1 ГБ/день → навіть добовий bucket у 10 разів більший за ціль; потрібні ~2.4-годинні бакети.</li>
+            <li>Одного фіксованого розміру не вистачає: або фіксований малий bucket (наприклад, 1 день) і «порожні» читання для тихих каналів (запит «останні 50» мусить пройти кілька порожніх бакетів назад), або <b>розмір бакета залежно від активності каналу</b> (зберігається в метаданих каналу).</li>
+            <li>Discord за їхнім описом використовував фіксовані часові бакети (порядку 10 днів) — і окремо боровся з гарячими розділами великих серверів через request coalescing.</li>
+          </ul>
+        </div></details>
+      </div>
+
+      <div class="task" id="task7">
+        <div class="task-head"><span class="tasknum">Задача 7</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Фото в БД чи в S3?</span></div>
+        <p>Соцмережа: 10 млн нових фото на день, ~2 МБ кожне (з усіма розмірами). Тімлід пропонує <code>bytea</code> в Postgres, «бо простіше бекапити». Порахуйте і аргументуйте.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <ol>
+            <li>Об'єм: 10 млн × 2 МБ = <b>20 ТБ/день</b>, ~<b>7.3 ПБ/рік</b>. Жоден інстанс Postgres цього не тримає; шардинг заради байтів — абсурд.</li>
+            <li>WAL і реплікація: кожне фото проходить через WAL і пересилається на кожну репліку — десятки ТБ мережевого трафіку на день лише на реплікацію.</li>
+            <li>Бекапи стають <i>складнішими</i>, а не простішими: PITR-бекап на петабайти — години/дні відновлення.</li>
+            <li>Ціна: SSD-диски для БД у рази дорожчі за S3 Standard, а старі фото можна перевести в Infrequent Access/Glacier lifecycle-правилом.</li>
+            <li>Рішення: S3 (presigned/multipart upload) + CDN; у Postgres — метадані (~1 КБ на фото → 10 ГБ/день, нормально). Довговічність S3 вища, ніж у самописної схеми бекапів, а версіонування бакета захищає від випадкового видалення.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task" id="task8">
+        <div class="task-head"><span class="tasknum">Задача 8</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Дашборди вбивають продакшн</span></div>
+        <p>Аналітики запускають важкі звіти (GROUP BY за роки) прямо на primary Postgres. У ці моменти API-латентність зростає вдесятеро. Запропонуйте поетапне рішення від «за день» до «за квартал».</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <figure class="diagram">
+            <svg viewBox="0 0 730 200" role="img" aria-label="Архітектура: API пише в Postgres primary. Етап 1: аналітичні запити переводяться на окрему read-репліку. Етап 2: Debezium читає WAL primary і публікує зміни в Kafka, звідки вони завантажуються в колонкове сховище ClickHouse, на якому працюють BI-дашборди. Продакшн-трафік і аналітика розділені.">
+              <defs><marker id="sd04-a10" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+              <g font-size="12">
+                <rect x="10" y="30" width="90" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="55" y="57" text-anchor="middle" fill="currentColor">API</text>
+                <rect x="150" y="30" width="130" height="44" rx="8" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="215" y="57" text-anchor="middle" fill="currentColor">PG primary</text>
+                <rect x="150" y="130" width="130" height="44" rx="8" fill="var(--card)" stroke="currentColor"/><text x="215" y="150" text-anchor="middle" fill="currentColor">PG replica</text><text x="215" y="166" text-anchor="middle" fill="var(--fg-muted)" font-size="11">етап 1: звіти</text>
+                <rect x="330" y="30" width="110" height="44" rx="8" fill="var(--fun-bg)" stroke="var(--fun)"/><text x="385" y="57" text-anchor="middle" fill="currentColor">Debezium</text>
+                <rect x="480" y="30" width="90" height="44" rx="8" fill="var(--fun-bg)" stroke="var(--fun)"/><text x="525" y="57" text-anchor="middle" fill="currentColor">Kafka</text>
+                <rect x="610" y="30" width="110" height="44" rx="8" fill="var(--good-bg)" stroke="var(--good)"/><text x="665" y="57" text-anchor="middle" fill="currentColor">ClickHouse</text>
+                <rect x="610" y="130" width="110" height="44" rx="8" fill="var(--good-bg)" stroke="var(--good)"/><text x="665" y="157" text-anchor="middle" fill="currentColor">BI / дашборди</text>
+                <line x1="101" y1="52" x2="148" y2="52" stroke="currentColor" marker-end="url(#sd04-a10)"/>
+                <line x1="215" y1="75" x2="215" y2="128" stroke="currentColor" stroke-dasharray="4,3" marker-end="url(#sd04-a10)"/>
+                <text x="222" y="106" fill="var(--fg-muted)" font-size="11">WAL-реплікація</text>
+                <line x1="281" y1="52" x2="328" y2="52" stroke="currentColor" marker-end="url(#sd04-a10)"/>
+                <text x="305" y="44" text-anchor="middle" fill="var(--fg-muted)" font-size="10">WAL</text>
+                <line x1="441" y1="52" x2="478" y2="52" stroke="currentColor" marker-end="url(#sd04-a10)"/>
+                <line x1="571" y1="52" x2="608" y2="52" stroke="currentColor" marker-end="url(#sd04-a10)"/>
+                <line x1="665" y1="75" x2="665" y2="128" stroke="currentColor" marker-end="url(#sd04-a10)"/>
+                <text x="480" y="106" fill="var(--good)" font-size="11">етап 2: колонкове</text>
+                <text x="480" y="122" fill="var(--good)" font-size="11">сховище для аналітики</text>
+              </g>
+            </svg>
+            <figcaption>Спершу ізолюємо навантаження (репліка), потім переносимо аналітику на сховище, створене для неї.</figcaption>
+          </figure>
+          <ol>
+            <li><b>За день</b>: окрема read-replica для аналітиків (окремий користувач БД з <code>statement_timeout</code>). Увага: довгі запити на репліці конфліктують із застосуванням WAL (<code>hot_standby_feedback</code> → bloat на primary або скасування запитів) — налаштувати свідомо.</li>
+            <li><b>За тиждень</b>: матеріалізовані денні агрегати (<code>daily_sales</code>), що оновлюються інкрементально; дашборди читають їх, а не сирі таблиці.</li>
+            <li><b>За квартал</b>: CDC (Debezium → Kafka) у ClickHouse/BigQuery/Snowflake; колонкове зберігання дає секундні агрегати по мільярдах рядків, а OLTP повністю ізольований. Альтернатива для меншого масштабу — нічний ETL у Parquet на S3 + DuckDB/Athena.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task" id="task9">
+        <div class="task-head"><span class="tasknum">Задача 9</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Телеметрія 1 млн точок/с</span></div>
+        <p>IoT-платформа: 1 млн точок на секунду (timestamp + device_id + float), зберігати 1 рік сирих даних і 5 років агрегатів. Запити: графік пристрою за період, агрегати по групах пристроїв. Оцініть об'єм і оберіть сховище/движок.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <ol>
+            <li>Точок на добу: 10⁶ × 86 400 ≈ 8.6·10¹⁰. Сиро по ~16 байт → <b>~1.4 ТБ/день</b>, ~500 ТБ/рік.</li>
+            <li>Зі стисненням у стилі Gorilla (delta-of-delta для часу, XOR для float) — у статті Facebook наводять в середньому ~1.37 байта на точку → <b>~120 ГБ/день</b>, ~43 ТБ/рік. Колонкове/TSDB-стиснення — ключовий аргумент.</li>
+            <li>Запис 1 млн/с — для B-tree з випадковими вставками важко; LSM-движки та TSDB (послідовні дописування блоками за часом) — природний вибір.</li>
+            <li>Модель: розділ = (device_id, день), сортування за часом → «графік пристрою» = послідовне читання. Агрегати по групах — у колонковому сховищі або continuous aggregates (TimescaleDB), rollups 1 хв/1 год для 5-річного зберігання.</li>
+            <li>Варіанти: TimescaleDB (якщо команда знає Postgres, з компресією й continuous aggregates), InfluxDB/VictoriaMetrics, або Kafka → ClickHouse для аналітики + S3/Parquet для холодних даних. Retention: сирі — 1 рік (TTL/drop partitions), агрегати — 5 років.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task" id="task10">
+        <div class="task-head"><span class="tasknum">Задача 10</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Дебаг: Postgres повільнішає щотижня</span></div>
+        <p>Таблиця <code>jobs</code> (черга задач, ~5 млн вставок і оновлень статусу на день) з часом розростається до сотень ГБ, хоча «живих» рядків ~100 тис. Запити <code>WHERE status='pending'</code> стають дедалі повільнішими. Після рестарту воркерів ненадовго краще. Що відбувається?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <ol>
+            <li>MVCC-bloat: кожен UPDATE статусу створює нову версію рядка, старі мають прибиратися VACUUM. Якщо щось тримає старий snapshot — <b>довга транзакція</b> (воркер, що відкрив транзакцію й «завис» у <code>idle in transaction</code>, або довгий звіт на репліці з <code>hot_standby_feedback</code>), VACUUM не може прибрати мертві версії. «Рестарт воркерів допомагає» — сильна підказка: рестарт закриває завислу транзакцію.</li>
+            <li>Діагностика: <code>pg_stat_activity</code> (найстаріший <code>xact_start</code>, стан <code>idle in transaction</code>), <code>pg_stat_user_tables.n_dead_tup</code>, час останнього autovacuum.</li>
+            <li>Виправлення: <code>idle_in_transaction_session_timeout</code>, короткі транзакції у воркерах (не тримати транзакцію під час виконання задачі), агресивніші налаштування autovacuum для цієї таблиці, partial index <code>WHERE status = 'pending'</code>, <code>FOR UPDATE SKIP LOCKED</code> для вибору задач, партиціонування за часом з <code>DROP PARTITION</code> для завершених задач. Для дуже великих черг — розглянути спеціалізовану чергу (<a href="07-async-messaging.html">туторіал 7</a>).</li>
+          </ol>
+        </div></details>
+      </div>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Шпаргалка й флеш-картки</h2>
+      <p class="section-desc">Коротко все, що треба пам'ятати на співбесіді.</p>
+      <div class="cheat">
+        <table>
+          <thead><tr><th>Тема</th><th>Запам'ятати</th></tr></thead>
+          <tbody>
+            <tr><td>Порядок рішень</td><td>access patterns → модель → тип БД → індекси/движок → ізоляція → масштаб</td></tr>
+            <tr><td>Default</td><td>Postgres; спеціалізоване — під конкретний pattern, синхронізація через CDC</td></tr>
+            <tr><td>Wide-column</td><td>partition key = WHERE на рівність, clustering key = ORDER BY; обмежити розмір розділу (bucket)</td></tr>
+            <tr><td>Денормалізація</td><td>дешеве читання, дорогий запис, план підтримки копій</td></tr>
+            <tr><td>B+tree</td><td>сторінки 8/16 КБ, fanout сотні, 3–4 рівні; листки зв'язані для діапазонів</td></tr>
+            <tr><td>Composite</td><td>leftmost prefix; спершу «=», потім діапазон/сортування; INCLUDE → covering</td></tr>
+            <tr><td>InnoDB vs PG</td><td>clustered PK + secondary→PK vs heap + індекси→ctid; монотонні PK</td></tr>
+            <tr><td>LSM</td><td>WAL + memtable → SSTable → compaction; Bloom per SST; tombstones</td></tr>
+            <tr><td>Ампліфікації</td><td>write / read / space — оптимізуєш дві з трьох; STCS (запис) vs LCS (читання)</td></tr>
+            <tr><td>ACID</td><td>A — все або нічого; C — інваріанти (≠ CAP); I — рівні; D — WAL + fsync + репліки</td></tr>
+            <tr><td>Дефолти ізоляції</td><td>Postgres — RC; MySQL — RR; Oracle «serializable» = SI; Cockroach/Spanner — Serializable</td></tr>
+            <tr><td>Аномалії</td><td>dirty, non-repeatable, phantom, lost update (один рядок), write skew (різні рядки)</td></tr>
+            <tr><td>Ліки</td><td>атомарний UPDATE … WHERE, FOR UPDATE, version CAS, UNIQUE/EXCLUDE, Serializable + retry</td></tr>
+            <tr><td>MVCC</td><td>версії рядків, snapshot; VACUUM/purge; довгі транзакції → bloat</td></tr>
+            <tr><td>OLTP / OLAP</td><td>рядки, мс / колонки, скани, стиснення; аналітику — не на primary</td></tr>
+            <tr><td>Blobs</td><td>S3 + метадані в БД + presigned upload + CDN; 11 дев'яток, strong read-after-write</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flashgrid">
+        <div class="flashcard"><div class="fc-num">01</div><div class="term">Leftmost prefix</div><div class="def">Composite-індекс (a,b,c) допомагає для (a), (a,b), (a,b,c), але не для (b) чи (c).</div><div class="mnemo">Телефонна книга: прізвище → ім'я</div></div>
+        <div class="flashcard"><div class="fc-num">02</div><div class="term">Covering index</div><div class="def">Індекс містить усі потрібні запиту колонки → таблицю не читаємо.</div><div class="mnemo">Index Only Scan</div></div>
+        <div class="flashcard"><div class="fc-num">03</div><div class="term">LSM-tree</div><div class="def">Записи дописуються (WAL + memtable), скидаються в незмінні SSTables, зливаються compaction.</div><div class="mnemo">Append, потім прибирати</div></div>
+        <div class="flashcard"><div class="fc-num">04</div><div class="term">Write amplification</div><div class="def">Скільки байтів пишеться на диск на 1 байт даних користувача.</div><div class="mnemo">Сторінка 16 КБ заради 100 байт</div></div>
+        <div class="flashcard"><div class="fc-num">05</div><div class="term">Tombstone</div><div class="def">Маркер видалення в LSM; реально видаляється при compaction.</div><div class="mnemo">Видалення = ще один запис</div></div>
+        <div class="flashcard"><div class="fc-num">06</div><div class="term">WAL</div><div class="def">Спершу журнал + fsync, потім сторінки; основа recovery, реплікації й CDC.</div><div class="mnemo">Write-ahead = «спершу в журнал»</div></div>
+        <div class="flashcard"><div class="fc-num">07</div><div class="term">Lost update</div><div class="def">Дві транзакції read-modify-write одного рядка; один запис губиться.</div><div class="mnemo">10 + 1 + 1 = 11</div></div>
+        <div class="flashcard"><div class="fc-num">08</div><div class="term">Write skew</div><div class="def">Дві транзакції читають спільну передумову й пишуть різні рядки, порушуючи інваріант.</div><div class="mnemo">Обидва лікарі пішли додому</div></div>
+        <div class="flashcard"><div class="fc-num">09</div><div class="term">Snapshot isolation</div><div class="def">Транзакція бачить узгоджений знімок на момент старту; write skew можливий.</div><div class="mnemo">Postgres RR, Oracle «serializable»</div></div>
+        <div class="flashcard"><div class="fc-num">10</div><div class="term">MVCC</div><div class="def">Кілька версій рядка; читачі не блокують письменників.</div><div class="mnemo">Іммутабельний стан у React</div></div>
+        <div class="flashcard"><div class="fc-num">11</div><div class="term">Optimistic locking</div><div class="def">UPDATE … WHERE version = :seen; 0 рядків → конфлікт → retry.</div><div class="mnemo">ETag + If-Match → 412</div></div>
+        <div class="flashcard"><div class="fc-num">12</div><div class="term">Columnar storage</div><div class="def">Кожна колонка окремо; читаємо лише потрібні, сильне стиснення.</div><div class="mnemo">OLAP: мало колонок, усі рядки</div></div>
+      </div>
+    </section>
+
+    <section id="s14">
+      <h2><span class="num">14</span> Глибше: книги, статті, papers</h2>
+      <p class="section-desc">Конкретні розділи, з яких варто почати.</p>
+
+      <div class="res"><div class="res-head"><span class="res-title">Designing Data-Intensive Applications — Martin Kleppmann (2-ге вид. з Chris Riccomini)</span><span class="lvl l2">поглиблено</span><span class="lvl type">книга</span></div><div class="res-meta">Розділи «Data Models and Query Languages», «Storage and Retrieval» (B-tree vs LSM, column storage), «Transactions» (ізоляція, write skew, лікарі на чергуванні). У 1-му виданні це гл. 2, 3, 7; у 2-му нумерація може відрізнятися — перевірте зміст</div><p>Головне джерело для цього туторіалу. Розділ про транзакції — must read перед співбесідою на senior.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">Database Internals — Alex Petrov</span><span class="lvl l3">експерт</span><span class="lvl type">книга</span></div><div class="res-meta">Частина I: B-tree variants, LSM-trees, compaction, Bloom filters</div><p>Якщо хочеться зрозуміти движки зберігання до рівня реалізації.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">System Design Interview Vol. 1 &amp; 2 — Alex Xu</span><span class="lvl l1">база</span><span class="lvl type">книга</span></div><div class="res-meta">Vol. 1: «Scale from Zero to Millions of Users» (вибір БД, реплікація), «Design a Key-Value Store»; Vol. 2: «S3-like Object Storage», «Metrics Monitoring and Alerting System» (time-series), «Digital Wallet» (транзакції)</div><p>Як на співбесіді обґрунтовують вибір сховища в конкретних задачах.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">Hello Interview — Key Technologies / Database deep dives</span><span class="lvl l1">база</span><span class="lvl type">курс</span></div><div class="res-meta">hellointerview.com: «System Design in a Hurry», розділи про PostgreSQL, DynamoDB, Cassandra, Elasticsearch — перевірте актуальну адресу</div><p>Прагматичні «що знати про кожну БД для співбесіди» з типовими follow-up питаннями.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">How Discord Stores Trillions of Messages (Discord blog, 2023) + How Discord Stores Billions of Messages (2017)</span><span class="lvl l2">поглиблено</span><span class="lvl type">стаття</span></div><div class="res-meta">discord.com/blog — моделювання (channel_id, bucket), міграція Cassandra → ScyllaDB, data services з request coalescing</div><p>Найкращий реальний приклад query-first моделювання й проблем LSM у продакшні.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">Bigtable: A Distributed Storage System for Structured Data (Google, OSDI 2006)</span><span class="lvl l3">експерт</span><span class="lvl type">paper</span></div><div class="res-meta">Розділи про data model (row/column family/timestamp), SSTable, memtable, compaction, Bloom filters</div><p>Першоджерело wide-column моделі й LSM-движка, від якого пішли HBase і Cassandra (разом із Dynamo).</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">A Critique of ANSI SQL Isolation Levels (Berenson et al., SIGMOD 1995) + PostgreSQL docs «Transaction Isolation»</span><span class="lvl l3">експерт</span><span class="lvl type">paper</span></div><div class="res-meta">Визначення snapshot isolation, lost update і write skew; postgresql.org/docs — розділ «Concurrency Control» (13.2 Transaction Isolation у поточних версіях — перевірте номер)</div><p>Звідки взялися аномалії, яких немає в стандарті SQL, і як їх обробляє Postgres.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">Use The Index, Luke! — Markus Winand</span><span class="lvl l1">база</span><span class="lvl type">книга</span></div><div class="res-meta">use-the-index-luke.com: «Anatomy of an Index», «The Where Clause» (concatenated indexes), «Sorting and Grouping», «Partial Results» (keyset pagination)</div><p>Безкоштовно онлайн; найкраще практичне пояснення composite-індексів і пагінації.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">Why Uber Engineering Switched from Postgres to MySQL (Uber blog, 2016) + Gorilla (Facebook, VLDB 2015)</span><span class="lvl l2">поглиблено</span><span class="lvl type">стаття</span></div><div class="res-meta">Uber: write amplification індексів, реплікація; Gorilla: стиснення time-series (delta-of-delta, XOR)</div><p>Читайте Uber критично (є відповіді спільноти Postgres) — цінність у розумінні trade-offs движків.</p></div>
+
+      <p>Пов'язані туторіали: <a href="../python-tutorials/17-databases-fundamentals.html">основи БД</a>, <a href="../python-tutorials/18-databases-interview-qa.html">Q&amp;A з БД для співбесіди</a>, <a href="../python-tutorials/25-system-design.html">огляд System Design</a>, <a href="03-caching.html">попередній — кешування</a>, <a href="05-replication-sharding.html">наступний — реплікація й шардинг</a>.</p>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  System Design · частина серії туторіалів AI Delivery Planner. Python-приклади (leftmost prefix через EXPLAIN QUERY PLAN у SQLite, оптимістичне блокування, іграшковий LSM) запущено й виводи перевірено; цифри — порядки величин.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*|\/\/[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b|\bthis\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case|const|let|var|function|interface|type|export|extends|implements|new|void|enum|typeof|instanceof|static|public|private|readonly|null|undefined)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+<script>
+(function(){
+  var root = document.documentElement, btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function current(){
+    var t = root.getAttribute('data-theme');
+    return t === 'light' || t === 'dark' ? t : (mq && mq.matches ? 'dark' : 'light');
+  }
+  function render(){
+    var dark = current() === 'dark';
+    btn.textContent = dark ? '☀️ Світла тема' : '🌙 Темна тема';
+    btn.setAttribute('aria-label', dark ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('docs-theme', next); }catch(e){}
+    render();
+  });
+  if(mq && mq.addEventListener) mq.addEventListener('change', render);
+  render();
+})();
+</script>
+</body>
+</html>

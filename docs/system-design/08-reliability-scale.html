@@ -1,0 +1,2203 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Надійність і масштаб: rate limiting, ретраї, SLO, DR — System Design</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><rect x=%2710%27 y=%2740%27 width=%2735%27 height=%2750%27 fill=%27white%27/><rect x=%2755%27 y=%2710%27 width=%2735%27 height=%2780%27 fill=%27white%27/></svg>">
+<script>
+(function(){
+  try{ var t = localStorage.getItem('docs-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+    --fg:#e7eaf2; --fg-muted:#9aa2b4;
+    --accent:#6d9bff; --accent-soft:#1c2740;
+    --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+    --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+    --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+    --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+    --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+    --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"],
+  #tab-sysdesign:checked ~ .nav-tabbar label[for="tab-sysdesign"],
+  #tab-quantum:checked ~ .nav-tabbar label[for="tab-quantum"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  #tab-quantum:checked ~ .nav-links.quantum{display:flex;}
+  #tab-sysdesign:checked ~ .nav-links.sysdesign{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+
+  /* --- python-doc extras --- */
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider:first-child{margin-top:8px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+  .qa summary .qnum{color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700; margin-right:8px;}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  /* --- quantum-doc extras --- */
+  .res{border:1px solid var(--border); border-radius:var(--radius); background:var(--card); padding:14px 16px; margin:12px 0;}
+  .res .res-head{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:4px;}
+  .res .res-title{font-weight:700; font-size:15px;}
+  .res .res-meta{font-size:12.5px; color:var(--fg-muted);}
+  .res p{margin:6px 0 0; font-size:14.3px;}
+  .lvl{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap;}
+  .lvl.l1{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .lvl.l2{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .lvl.l3{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .lvl.type{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .timeline{border-left:2px solid var(--accent); margin:20px 0 20px 8px; padding-left:20px;}
+  .timeline .ev{position:relative; margin:0 0 18px;}
+  .timeline .ev::before{content:""; position:absolute; left:-27px; top:6px; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid var(--bg);}
+  .timeline .yr{font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; font-size:14px;}
+  .timeline .ev-t{font-weight:700;}
+  .timeline .ev p{margin:4px 0 0; font-size:14.3px; color:var(--fg-muted);}
+  .math{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:1.05em; white-space:nowrap;}
+  .math-block{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:18px; text-align:center; padding:14px; margin:14px 0; border:1px dashed var(--border); border-radius:var(--radius); background:var(--bg-soft); overflow-x:auto;}
+
+
+  /* --- system-design extras --- */
+  .say{color:var(--fg-muted); font-size:.9em; font-weight:400; font-style:normal;}
+  .steps{counter-reset:st; list-style:none; padding-left:0;}
+  .steps > li{counter-increment:st; position:relative; padding-left:38px; margin:12px 0;}
+  .steps > li::before{content:counter(st); position:absolute; left:0; top:0; width:26px; height:26px; border-radius:50%;
+    background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:13px; text-align:center; line-height:26px;}
+  .vs{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:16px 0;}
+  @media (max-width:700px){.vs{grid-template-columns:1fr;}}
+  .vs > div{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--card);}
+  .vs h4{margin:0 0 6px; font-size:15px;}
+  .vs ul{margin:6px 0 0; padding-left:18px; font-size:14.3px;}
+  /* --- theme switch --- */
+  :root{color-scheme:light;}
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .theme-toggle{
+    cursor:pointer; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+    background:var(--bg-soft); color:var(--fg); font:inherit; font-size:12.5px; font-weight:600;
+    transition:background .15s, border-color .15s;
+  }
+  .theme-toggle:hover{background:var(--card); border-color:var(--accent);}
+  .theme-toggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="top-row">
+      <div class="brand">🏗️ Системний дизайн <span>· AI Delivery Planner</span></div>
+      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Темна тема</button>
+    </div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">System Design · Туторіал 8</div>
+  <h1>Надійність під навантаженням: rate limiting, таймаути, circuit breaker, SLO, DR, деплої</h1>
+  <p class="lead">Системи падають не тому, що щось зламалось, а тому, що поломка одного компонента розповзається на всі інші. Цей туторіал — про механізми, які зупиняють розповзання (rate limiting, таймаути, backoff з jitter, circuit breaker, bulkhead, load shedding), про те, як вимірювати надійність числами (SLI/SLO/error budget), і як переживати падіння зони, регіону чи невдалого релізу.</p>
+  <div class="pills">
+    <span class="pill">Token / leaky bucket, sliding window</span>
+    <span class="pill">Redis + Lua rate limiter</span>
+    <span class="pill">Backoff + jitter, retry budget</span>
+    <span class="pill">Circuit breaker, bulkhead, load shedding</span>
+    <span class="pill">SLO, error budget, p99</span>
+    <span class="pill">RPO/RTO, canary, chaos</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-sysdesign" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-quantum" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-sysdesign" class="nav-tabbtn">🏗️ System Design</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+      <label for="tab-quantum" class="nav-tabbtn">⚛️ Квантове</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. Redis</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+      </nav>
+      <nav class="nav-links sysdesign">
+        <a href="01-interview-framework.html">1. Фреймворк співбесіди</a>
+        <a href="02-networking-entry.html">2. Мережа: DNS, CDN, LB, API</a>
+        <a href="03-caching.html">3. Кешування углиб</a>
+        <a href="04-databases-storage.html">4. БД I: моделі, індекси, ACID</a>
+        <a href="05-replication-sharding.html">5. БД II: реплікація, шардинг</a>
+        <a href="06-distributed-systems.html">6. Розподілені системи</a>
+        <a href="07-async-messaging.html">7. Черги, Kafka, саги</a>
+        <a href="08-reliability-scale.html" class="active">8. Надійність і rate limiting</a>
+        <a href="09-classic-url-id-kv.html">9. Задачі I: URL, ID, KV</a>
+        <a href="10-classic-feed-chat.html">10. Задачі II: стрічка, чат</a>
+        <a href="11-classic-storage-video-crawler.html">11. Задачі III: файли, відео</a>
+        <a href="12-classic-geo-booking-topk.html">12. Задачі IV: гео, бронювання</a>
+        <a href="13-tricky-topics-qa.html">13. Трікі теми й Q&amp;A</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="../node-doc/01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="../node-doc/02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="../node-doc/03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="../node-doc/04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="../node-doc/05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="../node-doc/06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="../node-doc/07-fs-process-os.html">7. fs, process, os</a>
+        <a href="../node-doc/08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="../node-doc/09-http-networking.html">9. HTTP і мережа</a>
+        <a href="../node-doc/10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="../node-doc/11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="../node-doc/12-databases-orm.html">12. БД і ORM</a>
+        <a href="../node-doc/13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="../node-doc/14-security.html">14. Безпека Node</a>
+        <a href="../node-doc/15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="../node-doc/16-testing.html">16. Тестування</a>
+        <a href="../node-doc/17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="../node-doc/18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="../node-doc/19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="../node-doc/20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+      <nav class="nav-links quantum">
+        <a href="../quantum-doc/01-quanta-and-quantum-computing.html">1. Кванти й обчислення</a>
+        <a href="../quantum-doc/02-quantum-engineering-history.html">2. Квантова інженерія</a>
+        <a href="../quantum-doc/03-quantum-backend-python-ibm.html">3. Бекенд + IBM Quantum</a>
+        <a href="../quantum-doc/04-pet-project-quantum-routing.html">4. Пет-проєкт: маршрути</a>
+        <a href="../quantum-doc/05-quantum-engineer-roadmap.html">5. Шлях інженера: ресурси</a>
+        <a href="../quantum-doc/06-linear-algebra-vectors-matrices.html">6. Лін. алгебра I: вектори, матриці</a>
+        <a href="../quantum-doc/07-linear-algebra-eigen-tensor.html">7. Лін. алгебра II: власні, тензори</a>
+        <a href="../quantum-doc/08-complex-numbers-phase.html">8. Комплексні числа й фаза</a>
+        <a href="../quantum-doc/09-probability-shots.html">9. Ймовірності й shots</a>
+        <a href="../quantum-doc/10-numpy-statevector-simulator.html">10. NumPy: свій симулятор</a>
+        <a href="../quantum-doc/11-qiskit-circuits-aer.html">11. Qiskit I: схеми й Aer</a>
+        <a href="../quantum-doc/12-qiskit-runtime-real-qpu.html">12. Qiskit II: реальний QPU</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — Захист від перевантаження</div>
+    <ol>
+      <li><a href="#s1">1. Ментальна модель: шари захисту</a></li>
+      <li><a href="#s2">2. Алгоритми rate limiting</a></li>
+      <li><a href="#s3">3. Розподілений rate limiter</a></li>
+    </ol>
+    <div class="toc-group">Частина II — Стійкі виклики між сервісами</div>
+    <ol>
+      <li><a href="#s4">4. Таймаути, дедлайни, ретраї, jitter</a></li>
+      <li><a href="#s5">5. Circuit breaker і bulkhead</a></li>
+      <li><a href="#s6">6. Load shedding, деградація, health checks</a></li>
+    </ol>
+    <div class="toc-group">Частина III — Вимірювання і виживання</div>
+    <ol>
+      <li><a href="#s7">7. SLI, SLO, SLA, error budget</a></li>
+      <li><a href="#s8">8. Observability, перцентилі, capacity planning</a></li>
+      <li><a href="#s9">9. High availability і disaster recovery</a></li>
+      <li><a href="#s10">10. Деплої, chaos engineering, реальні інциденти</a></li>
+    </ol>
+    <div class="toc-group">Частина IV — Практика</div>
+    <ol>
+      <li><a href="#s11">11. Трікі питання</a></li>
+      <li><a href="#s12">12. Задачі</a></li>
+      <li><a href="#s13">13. Шпаргалка, флешкартки, ресурси</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Захист від перевантаження</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">01</span> Ментальна модель: надійність — це шари захисту</h2>
+      <p class="section-desc">На співбесіді надійність перевіряють двома способами: окремою задачею («спроектуйте rate limiter») і follow-up питаннями до будь-якого дизайну («а що, якщо БД почне відповідати за 5 секунд?»). В обох випадках потрібно бачити систему як шари, кожен з яких зупиняє свою частину проблем.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 330" role="img" aria-label="П'ять шарів захисту від перевантаження, згори вниз за шляхом запиту. Клієнт: експоненційний backoff з jitter, idempotency key, таймаут. Edge, CDN і WAF: фільтрація DDoS і rate limit за IP. API Gateway: rate limit за користувачем чи API-ключем з відповіддю 429, автентифікація, квоти. Сервіс: дедлайни, retry budget, circuit breaker, bulkhead, load shedding. Залежності — база, кеш, зовнішні API: пули з'єднань, таймаути, graceful degradation.">
+          <defs><marker id="sd08-a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="14" width="200" height="46" rx="8" fill="var(--card)" stroke="currentColor"/>
+            <text x="110" y="42" text-anchor="middle" fill="currentColor" font-weight="bold">Клієнт</text>
+            <text x="230" y="42" fill="currentColor">backoff + jitter · idempotency key · таймаут · кеш</text>
+            <line x1="110" y1="62" x2="110" y2="76" stroke="currentColor" marker-end="url(#sd08-a1)"/>
+            <rect x="10" y="78" width="200" height="46" rx="8" fill="var(--fun-bg)" stroke="var(--fun)"/>
+            <text x="110" y="106" text-anchor="middle" fill="currentColor" font-weight="bold">Edge / CDN / WAF</text>
+            <text x="230" y="106" fill="currentColor">DDoS-фільтр · rate limit за IP · кеш статики</text>
+            <line x1="110" y1="126" x2="110" y2="140" stroke="currentColor" marker-end="url(#sd08-a1)"/>
+            <rect x="10" y="142" width="200" height="46" rx="8" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="110" y="170" text-anchor="middle" fill="currentColor" font-weight="bold">API Gateway</text>
+            <text x="230" y="170" fill="currentColor">rate limit за user / API key → 429 · auth · квоти</text>
+            <line x1="110" y1="190" x2="110" y2="204" stroke="currentColor" marker-end="url(#sd08-a1)"/>
+            <rect x="10" y="206" width="200" height="46" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="110" y="234" text-anchor="middle" fill="currentColor" font-weight="bold">Сервіс</text>
+            <text x="230" y="226" fill="currentColor">дедлайни · retry budget · circuit breaker</text>
+            <text x="230" y="244" fill="currentColor">bulkhead · load shedding · admission control</text>
+            <line x1="110" y1="254" x2="110" y2="268" stroke="currentColor" marker-end="url(#sd08-a1)"/>
+            <rect x="10" y="270" width="200" height="46" rx="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="110" y="292" text-anchor="middle" fill="currentColor" font-weight="bold">Залежності</text>
+            <text x="110" y="308" text-anchor="middle" fill="var(--fg-muted)" font-size="11">БД, кеш, зовнішні API</text>
+            <text x="230" y="298" fill="currentColor">пули з'єднань · таймаути · graceful degradation</text>
+          </g>
+        </svg>
+        <figcaption>Кожен шар відсікає свій клас проблем: чим раніше відкинути зайвий запит, тим дешевше. Але останній рубіж — сам сервіс: він мусить захищатися, навіть якщо всі зовнішні шари помилились.</figcaption>
+      </figure>
+
+      <h3>Чому системи падають «каскадом»</h3>
+      <p>Типовий сценарій: БД сповільнилась з 5 до 500 мс → потоки сервісу чекають довше → пул потоків вичерпано → сервіс перестає відповідати навіть на запити, яким БД не потрібна → клієнти ретраять → навантаження зростає ще більше → БД остаточно лягає. Жоден компонент не «зламався», але система мертва. Усі механізми цього туторіалу розривають цю петлю в різних місцях:</p>
+      <table>
+        <tr><th>Механізм</th><th>Що розриває</th></tr>
+        <tr><td>Rate limiting</td><td>Обмежує вхідний потік від одного клієнта / загалом</td></tr>
+        <tr><td>Таймаути й дедлайни</td><td>Не дають потокам вічно чекати</td></tr>
+        <tr><td>Backoff + jitter + retry budget</td><td>Не дають ретраям помножити навантаження</td></tr>
+        <tr><td>Circuit breaker</td><td>Перестає бити хвору залежність, дає їй відновитися</td></tr>
+        <tr><td>Bulkhead</td><td>Повільна залежність з'їдає лише свій пул ресурсів</td></tr>
+        <tr><td>Load shedding</td><td>Сервіс відкидає надлишок, щоб обслужити решту якісно</td></tr>
+        <tr><td>Graceful degradation</td><td>Віддає «гірший, але робочий» результат замість помилки</td></tr>
+      </table>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        <p>Ви вже користуєтесь більшістю цих ідей у браузері: <code>debounce</code> на пошуку — це rate limiting клієнта; <code>AbortController</code> з таймаутом — дедлайн; React Query з <code>retry: 3</code> і <code>retryDelay</code> — експоненційний backoff; Error Boundary — bulkhead (падіння віджета не валить сторінку); skeleton/заглушка замість рекомендацій — graceful degradation. <b>Де ламається:</b> у браузері збій зачіпає одного користувача, а на сервері — мільйони одночасно, і їхні ретраї синхронізуються в «шторм».</p>
+      </div>
+
+      <div class="callout interview"><div class="ic">🎤</div><div class="body"><b>На співбесіді:</b> після high-level дизайну сам скажіть: «Тепер про відмови: на gateway — rate limiting за API key; між сервісами — таймаути з дедлайном, ретраї лише для ідемпотентних операцій з backoff і jitter, circuit breaker на зовнішній платіжний API; SLO — 99.9% успішних запитів з p99 &lt; 300 мс». Це переводить вас з рівня middle на senior.</div></div>
+
+      <div class="remember">Надійність = шари, кожен з яких зупиняє розповзання збою. Найнебезпечніше — не відмова, а повільність і ретраї.</div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">02</span> Алгоритми rate limiting</h2>
+      <p class="section-desc">П'ять класичних алгоритмів. Треба вміти пояснити кожен, намалювати, назвати плюси/мінуси і написати token bucket за 5 хвилин.</p>
+
+      <h3>Token bucket і leaky bucket</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 300" role="img" aria-label="Ліворуч token bucket: у відро ємністю b з постійною швидкістю r на секунду додаються токени. Кожен запит забирає токен; якщо токен є, запит пропускається, якщо немає — відповідь 429. Дозволяє сплески до b при середній швидкості не більше r. Праворуч leaky bucket: сплеск запитів наливається у відро-чергу обмеженого розміру, з отвору внизу запити витікають до сервісу рівно зі швидкістю r на секунду; при переповненні запити відкидаються з 429. Вихід рівномірний.">
+          <defs><marker id="sd08-a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="180" y="20" text-anchor="middle" fill="currentColor" font-weight="bold">Token bucket</text>
+            <line x1="120" y1="30" x2="120" y2="64" stroke="var(--accent)" stroke-width="2" marker-end="url(#sd08-a2)"/>
+            <text x="132" y="50" fill="var(--accent)" font-size="11">+ r токенів/с</text>
+            <polygon points="60,70 180,70 168,160 72,160" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <g fill="var(--accent)">
+              <circle cx="95" cy="142" r="9"/><circle cx="120" cy="142" r="9"/><circle cx="145" cy="142" r="9"/><circle cx="107" cy="120" r="9"/><circle cx="132" cy="120" r="9"/>
+            </g>
+            <text x="192" y="112" fill="currentColor" font-size="11">ємність b</text>
+            <text x="192" y="128" fill="var(--fg-muted)" font-size="11">(= макс. burst)</text>
+            <rect x="20" y="186" width="90" height="34" rx="6" fill="var(--card)" stroke="currentColor"/>
+            <text x="65" y="208" text-anchor="middle" fill="currentColor">запит</text>
+            <line x1="112" y1="203" x2="138" y2="203" stroke="currentColor" marker-end="url(#sd08-a2)"/>
+            <rect x="140" y="186" width="120" height="34" rx="6" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="200" y="208" text-anchor="middle" fill="currentColor">є токен?</text>
+            <line x1="120" y1="162" x2="185" y2="184" stroke="var(--accent)" stroke-dasharray="3 3"/>
+            <text x="20" y="248" fill="var(--good)" font-size="11">так → пропустити (−1 токен)</text>
+            <text x="20" y="266" fill="var(--bad)" font-size="11">ні → 429 / відкинути</text>
+            <text x="20" y="290" fill="currentColor" font-size="11">сплески до b, середнє ≤ r</text>
+
+            <line x1="362" y1="10" x2="362" y2="292" stroke="var(--border)"/>
+
+            <text x="550" y="20" text-anchor="middle" fill="currentColor" font-weight="bold">Leaky bucket</text>
+            <line x1="470" y1="30" x2="500" y2="64" stroke="currentColor" marker-end="url(#sd08-a2)"/>
+            <line x1="540" y1="28" x2="540" y2="64" stroke="currentColor" marker-end="url(#sd08-a2)"/>
+            <line x1="610" y1="30" x2="580" y2="64" stroke="currentColor" marker-end="url(#sd08-a2)"/>
+            <text x="380" y="44" fill="var(--fg-muted)" font-size="11">сплеск</text>
+            <polygon points="480,70 600,70 588,160 492,160" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <rect x="490" y="96" width="100" height="58" fill="var(--warn)" opacity="0.25"/>
+            <text x="540" y="132" text-anchor="middle" fill="currentColor" font-size="11">черга ≤ b</text>
+            <line x1="602" y1="78" x2="650" y2="96" stroke="var(--bad)" marker-end="url(#sd08-a2)"/>
+            <text x="612" y="116" fill="var(--bad)" font-size="11">переповнення</text>
+            <text x="612" y="132" fill="var(--bad)" font-size="11">→ 429</text>
+            <line x1="540" y1="162" x2="540" y2="200" stroke="var(--good)" stroke-width="2" marker-end="url(#sd08-a2)"/>
+            <text x="550" y="186" fill="var(--good)" font-size="11">рівно r/с</text>
+            <rect x="480" y="204" width="120" height="32" rx="6" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="540" y="225" text-anchor="middle" fill="currentColor">сервіс</text>
+            <text x="380" y="266" fill="currentColor" font-size="11">вихід рівномірний: сплески згладжуються</text>
+            <text x="380" y="284" fill="var(--fg-muted)" font-size="11">(черга додає затримку) або відкидаються</text>
+          </g>
+        </svg>
+        <figcaption>Token bucket обмежує <i>середню</i> швидкість, але дозволяє короткі сплески (добре для API). Leaky bucket робить <i>вихід</i> рівномірним (добре для захисту повільного бекенду, трафік-шейпінгу).</figcaption>
+      </figure>
+
+      <h3>Fixed window, sliding window log, sliding window counter</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 270" role="img" aria-label="Зверху проблема fixed window: ліміт 5 запитів за секунду, вікна від 0 до 1 і від 1 до 2 секунд. П'ять запитів приходять наприкінці першого вікна і п'ять на початку другого: кожне вікно в межах ліміту, але за будь-яку секунду навколо межі пройшло 10 запитів — удвічі більше за ліміт. Знизу sliding window counter: попереднє вікно мало 8 запитів, поточне — 3; ковзне вікно на момент 1.3 секунди перекриває 70 відсотків попереднього, оцінка дорівнює 8 помножити на 0.7 плюс 3, тобто 8.6, що не більше ліміту 10, отже запит пропускається.">
+          <g font-size="12">
+            <text x="10" y="20" fill="currentColor" font-weight="bold">Fixed window, ліміт 5/с: проблема межі</text>
+            <rect x="80" y="34" width="298" height="44" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <rect x="382" y="34" width="298" height="44" rx="4" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="200" y="60" text-anchor="middle" fill="var(--fg-muted)" font-size="11">вікно [0, 1): 5 ✓</text>
+            <text x="560" y="60" text-anchor="middle" fill="var(--fg-muted)" font-size="11">вікно [1, 2): 5 ✓</text>
+            <g stroke="var(--bad)" stroke-width="3">
+              <line x1="352" y1="40" x2="352" y2="72"/><line x1="358" y1="40" x2="358" y2="72"/><line x1="364" y1="40" x2="364" y2="72"/><line x1="370" y1="40" x2="370" y2="72"/><line x1="376" y1="40" x2="376" y2="72"/>
+              <line x1="386" y1="40" x2="386" y2="72"/><line x1="392" y1="40" x2="392" y2="72"/><line x1="398" y1="40" x2="398" y2="72"/><line x1="404" y1="40" x2="404" y2="72"/><line x1="410" y1="40" x2="410" y2="72"/>
+            </g>
+            <rect x="230" y="86" width="300" height="20" rx="4" fill="var(--bad-bg)" stroke="var(--bad)" stroke-dasharray="4 3"/>
+            <text x="380" y="100" text-anchor="middle" fill="var(--bad)" font-size="11">будь-яка 1 с навколо межі: 10 запитів = 2× ліміт</text>
+            <g fill="var(--fg-muted)" font-size="11" text-anchor="middle">
+              <text x="80" y="122">0 с</text><text x="380" y="122">1 с</text><text x="680" y="122">2 с</text>
+            </g>
+
+            <text x="10" y="152" fill="currentColor" font-weight="bold">Sliding window counter, ліміт 10/с, момент t = 1.3 с</text>
+            <rect x="80" y="164" width="298" height="36" rx="4" fill="var(--fun-bg)" stroke="var(--fun)"/>
+            <rect x="382" y="164" width="298" height="36" rx="4" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="229" y="187" text-anchor="middle" fill="currentColor">prev = 8</text>
+            <text x="531" y="187" text-anchor="middle" fill="currentColor">cur = 3</text>
+            <rect x="170" y="208" width="300" height="14" rx="3" fill="var(--accent)" opacity="0.35"/>
+            <text x="320" y="219" text-anchor="middle" fill="currentColor" font-size="10">ковзне вікно [0.3, 1.3]</text>
+            <line x1="470" y1="160" x2="470" y2="226" stroke="var(--accent)" stroke-width="2"/>
+            <text x="476" y="236" fill="var(--accent)" font-size="11">t = 1.3</text>
+            <text x="10" y="258" fill="currentColor">оцінка = prev × 0.7 + cur = 8 × 0.7 + 3 = 8.6 ≤ 10 → пропустити</text>
+          </g>
+        </svg>
+        <figcaption>Fixed window простий, але на межі вікон пропускає до 2× ліміту. Sliding window counter зважує попереднє вікно часткою перекриття — майже точність sliding log за пам'ять двох лічильників.</figcaption>
+      </figure>
+
+      <div class="codecard"><div class="bar"><span class="path">limiters.py — усі п'ять алгоритмів, перевірено python3</span></div><pre><code>from collections import deque
+
+class TokenBucket:
+    """capacity - максимальний burst; rate - токенів за секунду."""
+    def __init__(self, capacity: float, rate: float, now: float = 0.0):
+        self.capacity, self.rate = capacity, rate
+        self.tokens, self.last = capacity, now
+
+    def allow(self, now: float, cost: float = 1.0) -&gt; bool:
+        # ліниве поповнення: рахуємо, скільки "накрапало" з минулого виклику
+        self.tokens = min(self.capacity, self.tokens + (now - self.last) * self.rate)
+        self.last = now
+        if self.tokens &gt;= cost:
+            self.tokens -= cost
+            return True
+        return False
+
+class LeakyBucket:
+    """Як лічильник (meter): відро витікає зі швидкістю rate; переповнення = reject."""
+    def __init__(self, capacity: float, rate: float, now: float = 0.0):
+        self.capacity, self.rate = capacity, rate
+        self.level, self.last = 0.0, now
+
+    def allow(self, now: float) -&gt; bool:
+        self.level = max(0.0, self.level - (now - self.last) * self.rate)
+        self.last = now
+        if self.level + 1 &lt;= self.capacity:
+            self.level += 1
+            return True
+        return False
+
+class FixedWindow:
+    def __init__(self, limit: int, window: float):
+        self.limit, self.window = limit, window
+        self.cur_window, self.count = None, 0
+
+    def allow(self, now: float) -&gt; bool:
+        w = int(now // self.window)
+        if w != self.cur_window:
+            self.cur_window, self.count = w, 0
+        if self.count &lt; self.limit:
+            self.count += 1
+            return True
+        return False
+
+class SlidingWindowLog:
+    def __init__(self, limit: int, window: float):
+        self.limit, self.window = limit, window
+        self.log = deque()                       # таймстемпи прийнятих запитів
+
+    def allow(self, now: float) -&gt; bool:
+        while self.log and self.log[0] &lt;= now - self.window:
+            self.log.popleft()
+        if len(self.log) &lt; self.limit:
+            self.log.append(now)
+            return True
+        return False
+
+class SlidingWindowCounter:
+    """Зважує лічильник попереднього вікна часткою перекриття."""
+    def __init__(self, limit: int, window: float):
+        self.limit, self.window = limit, window
+        self.cur_start, self.cur, self.prev = 0.0, 0, 0
+
+    def allow(self, now: float) -&gt; bool:
+        start = (now // self.window) * self.window
+        if start != self.cur_start:
+            # якщо пропустили більше одного вікна - попереднє порожнє
+            self.prev = self.cur if start - self.cur_start == self.window else 0
+            self.cur_start, self.cur = start, 0
+        overlap = 1 - (now - start) / self.window   # частка попереднього вікна
+        estimated = self.prev * overlap + self.cur
+        if estimated + 1 &lt;= self.limit:
+            self.cur += 1
+            return True
+        return False
+
+if __name__ == "__main__":
+    tb = TokenBucket(capacity=5, rate=2)                 # burst 5, далі 2 req/s
+    burst = [tb.allow(0.0) for _ in range(7)]
+    print("token bucket burst at t=0:", burst.count(True), "of 7")
+    print("t=0.5 allow?", tb.allow(0.5), "| t=0.6 allow?", tb.allow(0.6))
+
+    fw = FixedWindow(limit=5, window=1.0)                # проблема межі
+    a = sum(fw.allow(0.99) for _ in range(5))
+    b = sum(fw.allow(1.01) for _ in range(5))
+    print("fixed window: accepted", a + b, "requests within 20 ms (limit 5/s)")
+
+    sl = SlidingWindowLog(limit=5, window=1.0)           # той самий трафік
+    a = sum(sl.allow(0.99) for _ in range(5))
+    b = sum(sl.allow(1.01) for _ in range(5))
+    print("sliding log: accepted", a + b)
+
+    sc = SlidingWindowCounter(limit=5, window=1.0)       # prev = 5, зараз t = 1.3
+    sum(sc.allow(0.99) for _ in range(5))
+    print("sliding counter at t=1.3:", sum(sc.allow(1.3) for _ in range(5)), "accepted",
+          "(5*0.7=3.5 estimated)")
+
+    lb = LeakyBucket(capacity=3, rate=1)
+    print("leaky t=0:", [lb.allow(0.0) for _ in range(4)], "| t=1.0:", lb.allow(1.0))
+
+# token bucket burst at t=0: 5 of 7
+# t=0.5 allow? True | t=0.6 allow? False
+# fixed window: accepted 10 requests within 20 ms (limit 5/s)
+# sliding log: accepted 5
+# sliding counter at t=1.3: 1 accepted (5*0.7=3.5 estimated)
+# leaky t=0: [True, True, True, False] | t=1.0: True</code></pre></div>
+      <p>Розбір виводу: token bucket віддав 5 токенів сплеском, за 0.5 с накрапав 1 токен (2/с × 0.5) — один запит пройшов, наступний через 0.1 с — ні (лише 0.2 токена). Fixed window пропустив 10 запитів за 20 мс. Sliding counter на t=1.3 оцінює 5 × 0.7 = 3.5 → пропускає ще один (4.5 ≤ 5), а наступний уже ні (5.5 &gt; 5).</p>
+
+      <h3>Порівняння</h3>
+      <table>
+        <tr><th>Алгоритм</th><th>Пам'ять на ключ</th><th>Точність</th><th>Сплески</th><th>Де використовують</th></tr>
+        <tr><td>Token bucket</td><td>2 числа (tokens, ts)</td><td>Точна середня швидкість</td><td>Дозволяє до b</td><td>AWS API Gateway (rate + burst), Stripe, більшість API</td></tr>
+        <tr><td>Leaky bucket</td><td>2 числа або черга</td><td>Рівномірний вихід</td><td>Згладжує/відкидає</td><td>NGINX <code>limit_req</code> (leaky bucket з <code>burst</code>), трафік-шейпінг</td></tr>
+        <tr><td>Fixed window</td><td>1 лічильник</td><td>До 2× на межі</td><td>Неконтрольовані на межі</td><td>Прості квоти «1000 на день», <code>INCR</code> + <code>EXPIRE</code></td></tr>
+        <tr><td>Sliding window log</td><td>O(ліміт) таймстемпів</td><td>Точна</td><td>Ні</td><td>Малі ліміти (логін: 5 спроб / 15 хв); Redis sorted set</td></tr>
+        <tr><td>Sliding window counter</td><td>2 лічильники</td><td>Наближена (припускає рівномірність у попередньому вікні)</td><td>Ні</td><td>Cloudflare описував його для rate limiting на своєму масштабі</td></tr>
+      </table>
+      <p><span class="say">(O(ліміт) — «пам'ять пропорційна ліміту»: при ліміті 10 000 запитів/год треба зберігати до 10 000 таймстемпів на кожного клієнта.)</span></p>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        <p><code>throttle(fn, 1000)</code> — це майже leaky bucket з ємністю 1: виклики рівномірно, не частіше разу на секунду. <code>debounce</code> — інша ідея (чекати тиші), у rate limiting її аналога немає. Token bucket — як «можна поставити 5 лайків підряд, а далі — один на 2 секунди». <b>Де ламається:</b> throttle у браузері стоїть у одному процесі з одним годинником; серверний ліміт мусить бути спільним для сотень інстансів (розділ 3).</p>
+      </div>
+
+      <div class="callout interview"><div class="ic">🎤</div><div class="body"><b>На співбесіді:</b> дефолтний вибір — <b>token bucket</b>: O(1) пам'яті, дозволяє природні сплески, два параметри зрозумілі продукту (rate і burst). Якщо потрібна строгість без сплесків — sliding window counter. Назвіть проблему межі у fixed window — це класичне питання «а що не так з простим лічильником?».</div></div>
+
+      <div class="remember">Token bucket = rate + burst. Leaky bucket = рівний вихід. Fixed window = 2× на межі. Sliding log = точно, але дорого. Sliding counter = майже точно і дешево.</div>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">03</span> Розподілений rate limiter: Redis + Lua, де ставити, які заголовки</h2>
+      <p class="section-desc">Ліміт «100 запитів/хв на користувача» має працювати, коли запити користувача розкидані балансувальником по 50 інстансах. Значить, стан лічильника — спільний, а оновлення — атомарне.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 290" role="img" aria-label="Ліворуч архітектура: клієнти через балансувальник потрапляють на кілька інстансів API gateway; кожен інстанс перевіряє ліміт у спільному Redis за ключем rl:user_id і або пропускає запит до сервісу, або відповідає 429. Праворуч race condition без атомарності: інстанси A і B одночасно читають лічильник 9 при ліміті 10, обидва вирішують, що можна, і обидва записують 10 — пройшло 11 запитів. Рішення: атомарний INCR або Lua-скрипт, що виконує читання, перевірку і запис як одну операцію.">
+          <defs><marker id="sd08-a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="110" width="80" height="44" rx="8" fill="var(--card)" stroke="currentColor"/>
+            <text x="50" y="137" text-anchor="middle" fill="currentColor">Clients</text>
+            <line x1="92" y1="132" x2="118" y2="132" stroke="currentColor" marker-end="url(#sd08-a3)"/>
+            <rect x="120" y="110" width="50" height="44" rx="8" fill="var(--card)" stroke="currentColor"/>
+            <text x="145" y="137" text-anchor="middle" fill="currentColor">LB</text>
+            <line x1="172" y1="124" x2="198" y2="66" stroke="currentColor" marker-end="url(#sd08-a3)"/>
+            <line x1="172" y1="132" x2="198" y2="132" stroke="currentColor" marker-end="url(#sd08-a3)"/>
+            <line x1="172" y1="140" x2="198" y2="198" stroke="currentColor" marker-end="url(#sd08-a3)"/>
+            <rect x="200" y="44" width="110" height="40" rx="8" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="255" y="69" text-anchor="middle" fill="currentColor">Gateway 1</text>
+            <rect x="200" y="112" width="110" height="40" rx="8" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="255" y="137" text-anchor="middle" fill="currentColor">Gateway 2</text>
+            <rect x="200" y="180" width="110" height="40" rx="8" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="255" y="205" text-anchor="middle" fill="currentColor">Gateway N</text>
+            <rect x="200" y="238" width="140" height="40" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+            <text x="270" y="256" text-anchor="middle" fill="currentColor">Redis</text>
+            <text x="270" y="272" text-anchor="middle" fill="var(--fg-muted)" font-size="10">rl:{user_id} → bucket</text>
+            <line x1="315" y1="70" x2="330" y2="236" stroke="var(--accent)" stroke-dasharray="4 3" marker-start="url(#sd08-a3)" marker-end="url(#sd08-a3)"/>
+            <line x1="300" y1="154" x2="300" y2="236" stroke="var(--accent)" stroke-dasharray="4 3" marker-start="url(#sd08-a3)" marker-end="url(#sd08-a3)"/>
+            <line x1="255" y1="222" x2="255" y2="236" stroke="var(--accent)" stroke-dasharray="4 3" marker-start="url(#sd08-a3)" marker-end="url(#sd08-a3)"/>
+            <text x="15" y="200" fill="var(--bad)" font-size="11">429 + Retry-After</text>
+
+            <line x1="372" y1="10" x2="372" y2="282" stroke="var(--border)"/>
+
+            <text x="550" y="22" text-anchor="middle" fill="currentColor" font-weight="bold">Race без атомарності (ліміт 10)</text>
+            <rect x="395" y="34" width="100" height="30" rx="6" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="445" y="54" text-anchor="middle" fill="currentColor">Gateway A</text>
+            <rect x="500" y="34" width="100" height="30" rx="6" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="550" y="54" text-anchor="middle" fill="currentColor">Redis</text>
+            <rect x="605" y="34" width="100" height="30" rx="6" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="655" y="54" text-anchor="middle" fill="currentColor">Gateway B</text>
+            <g stroke="var(--fg-muted)" stroke-dasharray="4 4"><line x1="445" y1="64" x2="445" y2="182"/><line x1="550" y1="64" x2="550" y2="182"/><line x1="655" y1="64" x2="655" y2="182"/></g>
+            <line x1="445" y1="88" x2="547" y2="88" stroke="currentColor" marker-end="url(#sd08-a3)"/><text x="497" y="82" text-anchor="middle" fill="currentColor" font-size="10">GET → 9</text>
+            <line x1="655" y1="104" x2="553" y2="104" stroke="currentColor" marker-end="url(#sd08-a3)"/><text x="603" y="98" text-anchor="middle" fill="currentColor" font-size="10">GET → 9</text>
+            <text x="440" y="132" text-anchor="end" fill="var(--fg-muted)" font-size="10">9 &lt; 10 ✓</text>
+            <text x="660" y="132" fill="var(--fg-muted)" font-size="10">9 &lt; 10 ✓</text>
+            <line x1="445" y1="152" x2="547" y2="152" stroke="currentColor" marker-end="url(#sd08-a3)"/><text x="497" y="146" text-anchor="middle" fill="currentColor" font-size="10">SET 10</text>
+            <line x1="655" y1="170" x2="553" y2="170" stroke="currentColor" marker-end="url(#sd08-a3)"/><text x="603" y="164" text-anchor="middle" fill="currentColor" font-size="10">SET 10</text>
+            <text x="550" y="200" text-anchor="middle" fill="var(--bad)" font-size="11">пройшло 11 запитів</text>
+            <rect x="390" y="222" width="330" height="56" rx="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="555" y="244" text-anchor="middle" fill="currentColor">Рішення: INCR або Lua-скрипт</text>
+            <text x="555" y="264" text-anchor="middle" fill="var(--fg-muted)" font-size="11">read-check-write як одна атомарна операція</text>
+          </g>
+        </svg>
+        <figcaption>Redis однопотоковий щодо виконання команд: Lua-скрипт виконується атомарно, жодна інша команда не вклиниться між читанням і записом. Так race «read-modify-write» зникає без розподілених блокувань.</figcaption>
+      </figure>
+
+      <h3>Token bucket у Redis одним Lua-скриптом</h3>
+      <div class="codecard"><div class="bar"><span class="path">token_bucket.lua</span></div><pre><code>-- KEYS[1] = ключ бакета, напр. "rl:{user:42}"
+-- ARGV: capacity, rate (токенів/с), now_ms, cost
+local capacity = tonumber(ARGV[1])
+local rate     = tonumber(ARGV[2])
+local now      = tonumber(ARGV[3])
+local cost     = tonumber(ARGV[4])
+
+local b      = redis.call('HMGET', KEYS[1], 'tokens', 'ts')
+local tokens = tonumber(b[1]) or capacity        -- новий ключ = повний бакет
+local ts     = tonumber(b[2]) or now
+
+tokens = math.min(capacity, tokens + math.max(0, now - ts) / 1000 * rate)
+local allowed = 0
+if tokens &gt;= cost then
+  tokens = tokens - cost
+  allowed = 1
+end
+redis.call('HSET', KEYS[1], 'tokens', tokens, 'ts', now)
+-- ключ сам зникне, коли бакет точно повний (економія пам'яті)
+redis.call('PEXPIRE', KEYS[1], math.ceil(capacity / rate * 1000) + 1000)
+return {allowed, tostring(tokens)}   -- tostring: Redis обрізає дробові числа Lua до цілих</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">rate_limit.py — виклик з Python (redis-py)</span></div><pre><code>import time, redis
+
+r = redis.Redis()
+bucket = r.register_script(open("token_bucket.lua").read())   # EVALSHA під капотом
+
+def allow(user_id: str, capacity=20, rate=5.0, cost=1) -&gt; tuple[bool, float]:
+    allowed, tokens = bucket(keys=["rl:{user:" + user_id + "}"],
+                             args=[capacity, rate, int(time.time() * 1000), cost])
+    return bool(allowed), float(tokens)</code></pre></div>
+      <p>Логіка скрипта дослівно повторює перевірений вище <code>TokenBucket.allow</code>; сам Lua-скрипт у цьому середовищі не запускався (немає Redis) — перевірте в себе на <code>redis-server</code>. Нюанси: <b>час</b> передається з клієнта — розбіжність годинників gateway-інстансів дає невелику похибку (альтернатива — <code>redis.call('TIME')</code> всередині скрипта); <b>фігурні дужки</b> в ключі — hash tag для Redis Cluster, щоб усі ключі одного користувача були в одному слоті; <b>sliding log</b> робиться так само через sorted set: <code>ZREMRANGEBYSCORE</code> старих → <code>ZCARD</code> → <code>ZADD</code>.</p>
+
+      <h3>Де ставити rate limiter</h3>
+      <table>
+        <tr><th>Місце</th><th>Плюси</th><th>Мінуси</th></tr>
+        <tr><td>Клієнт (SDK, фронтенд)</td><td>Знімає навантаження ще до мережі</td><td>Не захист: клієнта можна підробити</td></tr>
+        <tr><td>Edge / CDN / WAF</td><td>Відсікає DDoS і ботів до вашої інфраструктури</td><td>Знає лише IP/заголовки, не бізнес-ідентичність</td></tr>
+        <tr><td>API Gateway / reverse proxy</td><td>Єдине місце для всіх сервісів, знає API key/user після auth</td><td>Не знає «вартості» запиту всередині сервісу</td></tr>
+        <tr><td>Middleware в сервісі / sidecar (Envoy + global rate limit service)</td><td>Ліміти за бізнес-ресурсами (наприклад, «5 переказів/хв»), за вартістю</td><td>Кожна команда реалізує сама, якщо немає платформи</td></tr>
+      </table>
+      <p>На практиці — кілька рівнів: грубий за IP на edge, точний за API key на gateway, специфічні бізнес-ліміти в сервісі.</p>
+
+      <h3>Відповідь клієнту</h3>
+      <div class="codecard"><div class="bar"><span class="path">HTTP</span></div><pre><code>HTTP/1.1 429 Too Many Requests
+Retry-After: 12
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1760870400
+Content-Type: application/json
+
+{"error": "rate_limited", "message": "100 requests per minute", "retry_after": 12}</code></pre></div>
+      <ul>
+        <li><code>429</code> — «ти перевищив свій ліміт»; <code>503</code> — «сервер перевантажений загалом» (load shedding). Клієнт поводиться з ними однаково: backoff і повтор після <code>Retry-After</code>.</li>
+        <li><code>X-RateLimit-*</code> — де-факто стандарт (GitHub, Twitter/X); є IETF-драфт стандартних заголовків <code>RateLimit</code>/<code>RateLimit-Policy</code> (перевірте актуальний статус).</li>
+        <li>Що робити з відхиленим: відкинути (API), поставити в чергу (вебхуки, email), деградувати (віддати кеш).</li>
+      </ul>
+
+      <h3>Тонкі питання дизайну</h3>
+      <ul>
+        <li><b>Redis недоступний: fail open чи fail closed?</b> Зазвичай <i>fail open</i> (пропускати) з локальним запасним лімітом у пам'яті кожного інстансу — краще тимчасово неточний ліміт, ніж повна відмова API через лімітер. Для захисту від зловживань (логін, SMS) — fail closed.</li>
+        <li><b>Латентність</b>: +1 мережевий виклик (~0.5–1 мс в одному AZ) на кожен запит. Оптимізація: локальний бакет із «позиченими» в Redis партіями токенів (напр., по 10) — менше викликів, трохи менша точність.</li>
+        <li><b>Мульти-регіон</b>: глобальний лічильник через океан — +100 мс. Зазвичай ліміт ділять між регіонами або синхронізують асинхронно, приймаючи похибку.</li>
+        <li><b>Ключ</b>: user id / API key / IP / (user, endpoint) / tenant. За IP — обережно з NAT (тисячі користувачів офісу за однією адресою) і IPv6 (атакувальник має мільйони адрес — лімітують за /64).</li>
+        <li><b>Вартість запиту</b>: не всі запити рівні. GitHub GraphQL рахує «очки» за складністю запиту; у token bucket це параметр <code>cost</code>.</li>
+      </ul>
+
+      <div class="callout good"><div class="ic">🏭</div><div class="body"><b>Як це роблять у реальних системах.</b> Stripe у статті «Scaling your API with rate limiters» описували чотири лімітери: request rate limiter (token bucket на користувача), concurrent requests limiter (скільки запитів одночасно в обробці), fleet usage load shedder (резерв ресурсів для критичних запитів) і worker utilization load shedder (поступово відкидати менш важливий трафік). Реалізація — token bucket у Redis. GitHub REST API — 5 000 запитів/год для автентифікованого користувача, з заголовками <code>x-ratelimit-*</code>.</div></div>
+
+      <div class="callout interview"><div class="ic">🎤</div><div class="body"><b>На співбесіді</b> (детальна задача — у <a href="09-classic-url-id-kv.html">туторіалі 9</a>): «Token bucket у Redis через Lua для атомарності; ключ — API key з hash tag; ліміти в конфігу, що кешується локально; при недоступності Redis — fail open з локальним лімітом; відповідь 429 з Retry-After і X-RateLimit-заголовками; метрики відхилених запитів за ключами».</div></div>
+
+      <div class="callout bad"><div class="ic">🚩</div><div class="body"><b>Red flags:</b> <code>GET</code> + <code>SET</code> з коду без атомарності; лічильник у пам'яті кожного інстансу (ліміт множиться на кількість інстансів і змінюється при автоскейлінгу); блокувальні розподілені локи на кожен запит; ліміт лише на фронтенді.</div></div>
+
+      <div class="remember">Спільний стан + атомарність (INCR / Lua). Кілька рівнів: edge за IP, gateway за ключем, сервіс за бізнес-ресурсом. 429 + Retry-After.</div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · Стійкі виклики між сервісами</div><div class="line"></div></div>
+
+    <section id="s4">
+      <h2><span class="num">04</span> Таймаути, дедлайни, ретраї, backoff і jitter</h2>
+      <p class="section-desc">Найпростіші механізми, які найчастіше роблять неправильно. Ретраї без меж — головна причина того, що маленький збій перетворюється на повну відмову.</p>
+
+      <h3>Таймаути: завжди і з розумом</h3>
+      <ul>
+        <li><b>Кожен мережевий виклик має таймаут.</b> Багато бібліотек за замовчуванням чекають вічно — наприклад, Python <code>requests</code> без параметра <code>timeout</code>. Один «завислий» виклик тримає потік/з'єднання, сотня таких — і пул вичерпано.</li>
+        <li><b>Окремо connect timeout і read/request timeout.</b> Connect — короткий (сотні мс; якщо хост не відповідає на TCP SYN, далі чекати марно), request — за латентністю залежності.</li>
+        <li><b>Як обрати значення:</b> AWS Builders' Library радить відштовхуватись від перцентиля латентності залежності, з яким ви згодні мати хибні таймаути (наприклад, p99.9): таймаут нижче → забагато хибних відмов, вище → потоки довго «висять».</li>
+      </ul>
+
+      <h3>Дедлайни та їх поширення</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 200" role="img" aria-label="Поширення дедлайну по ланцюжку викликів. Клієнт задає дедлайн 1000 мілісекунд. API витрачає 120 мілісекунд і передає далі залишок 880. Сервіс Orders витрачає ще 350 і передає 530. База даних використовує таймаут, що дорівнює мінімуму з власного таймауту 2 секунди і залишку 530 мілісекунд. Якщо залишок менший або дорівнює нулю, запит не робиться взагалі, бо результат уже нікому не потрібен.">
+          <defs><marker id="sd08-a4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="30" width="130" height="44" rx="8" fill="var(--card)" stroke="currentColor"/><text x="75" y="57" text-anchor="middle" fill="currentColor">Client</text>
+            <line x1="142" y1="52" x2="188" y2="52" stroke="currentColor" marker-end="url(#sd08-a4)"/>
+            <rect x="190" y="30" width="150" height="44" rx="8" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="265" y="57" text-anchor="middle" fill="currentColor">API</text>
+            <line x1="342" y1="52" x2="388" y2="52" stroke="currentColor" marker-end="url(#sd08-a4)"/>
+            <rect x="390" y="30" width="150" height="44" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="465" y="57" text-anchor="middle" fill="currentColor">Orders</text>
+            <line x1="542" y1="52" x2="588" y2="52" stroke="currentColor" marker-end="url(#sd08-a4)"/>
+            <rect x="590" y="30" width="130" height="44" rx="8" fill="var(--good-bg)" stroke="var(--good)"/><text x="655" y="57" text-anchor="middle" fill="currentColor">DB</text>
+            <text x="75" y="96" text-anchor="middle" fill="currentColor" font-size="11">дедлайн 1000 мс</text>
+            <text x="265" y="96" text-anchor="middle" fill="currentColor" font-size="11">витратив 120</text>
+            <text x="265" y="112" text-anchor="middle" fill="var(--accent)" font-size="11">→ передає 880</text>
+            <text x="465" y="96" text-anchor="middle" fill="currentColor" font-size="11">витратив 350</text>
+            <text x="465" y="112" text-anchor="middle" fill="var(--accent)" font-size="11">→ передає 530</text>
+            <text x="655" y="96" text-anchor="middle" fill="currentColor" font-size="11">timeout =</text>
+            <text x="655" y="112" text-anchor="middle" fill="currentColor" font-size="11">min(2 с, 530 мс)</text>
+            <rect x="10" y="134" width="710" height="52" rx="8" fill="var(--bad-bg)" stroke="var(--bad)"/>
+            <text x="365" y="156" text-anchor="middle" fill="currentColor">Залишок ≤ 0 → не робити виклик взагалі: клієнт уже пішов, результат нікому не потрібен.</text>
+            <text x="365" y="175" text-anchor="middle" fill="var(--fg-muted)" font-size="11">gRPC передає дедлайн автоматично (заголовок grpc-timeout); у HTTP — власний заголовок або контекст</text>
+          </g>
+        </svg>
+        <figcaption>Без поширення дедлайну глибокі сервіси продовжують працювати над запитами, від яких клієнт уже відмовився, — це «марна робота», що з'їдає ресурси саме тоді, коли їх найбільше бракує.</figcaption>
+      </figure>
+
+      <h3>Ретраї: коли можна</h3>
+      <ol class="steps">
+        <li><b>Лише ідемпотентні операції</b> (GET, PUT, DELETE) або неідемпотентні з <b>idempotency key</b> (POST з ключем, як у Stripe). Повтор POST без ключа = подвійне списання.</li>
+        <li><b>Лише тимчасові помилки</b>: таймаут, 503, 429 (з урахуванням Retry-After), connection reset. Не ретраїти 400/401/403/404/422.</li>
+        <li><b>Обмежена кількість</b> (2–3 спроби) і <b>в межах дедлайну</b>.</li>
+        <li><b>Ретраїти на одному рівні стеку</b>, а не на кожному (див. нижче — множення).</li>
+        <li><b>Exponential backoff + jitter</b>, щоб клієнти не синхронізувались.</li>
+      </ol>
+
+      <h3>Чому jitter обов'язковий</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 250" role="img" aria-label="Гістограми моментів ретраїв для тисячі клієнтів, які впали одночасно. Зверху — експоненційний backoff без jitter: усі тисяча клієнтів повторюють одночасно в моменти 0.1, 0.3, 0.7 і 1.5 секунди, утворюючи чотири високі піки. Знизу — full jitter, змодельований для тих самих тисячі клієнтів: ретраї розмазані по часу, найвищий стовпчик близько 700 замість 1000, і далі навантаження швидко спадає.">
+          <g font-size="12">
+            <text x="10" y="22" fill="currentColor" font-weight="bold">Без jitter</text>
+            <g fill="var(--bad)">
+              <rect x="118.8" y="30" width="17" height="70"/><rect x="196.2" y="30" width="17" height="70"/><rect x="351.2" y="30" width="17" height="70"/><rect x="661.2" y="30" width="17" height="70"/>
+            </g>
+            <text x="222" y="44" fill="var(--bad)" font-size="11">1000 одночасно</text>
+            <line x1="80" y1="100" x2="710" y2="100" stroke="currentColor"/>
+            <text x="10" y="132" fill="currentColor" font-weight="bold">Full jitter</text>
+            <g fill="var(--good)">
+              <rect x="80.0" y="170" width="17" height="40"/><rect x="99.4" y="161" width="17" height="49"/><rect x="118.8" y="189" width="17" height="21"/><rect x="138.1" y="187" width="17" height="23"/><rect x="157.5" y="189" width="17" height="21"/><rect x="176.9" y="195" width="17" height="15"/><rect x="196.2" y="200" width="17" height="10"/><rect x="215.6" y="200" width="17" height="10"/><rect x="235.0" y="198" width="17" height="12"/><rect x="254.4" y="200" width="17" height="10"/><rect x="273.8" y="201" width="17" height="9"/><rect x="293.1" y="200" width="17" height="10"/><rect x="312.5" y="203" width="17" height="7"/><rect x="331.9" y="205" width="17" height="5"/><rect x="351.2" y="206" width="17" height="4"/><rect x="370.6" y="206" width="17" height="4"/><rect x="390.0" y="206" width="17" height="4"/><rect x="409.4" y="207" width="17" height="3"/><rect x="428.8" y="205" width="17" height="5"/><rect x="448.1" y="206" width="17" height="4"/><rect x="467.5" y="206" width="17" height="4"/><rect x="486.9" y="208" width="17" height="2"/><rect x="506.3" y="207" width="17" height="3"/><rect x="525.6" y="208" width="17" height="2"/><rect x="545.0" y="208" width="17" height="2"/><rect x="564.4" y="209" width="17" height="1"/>
+            </g>
+            <line x1="80" y1="210" x2="710" y2="210" stroke="currentColor"/>
+            <g fill="var(--fg-muted)" font-size="11" text-anchor="middle">
+              <text x="80" y="228">0</text><text x="273.8" y="228">0.5 с</text><text x="467.5" y="228">1.0 с</text><text x="661.2" y="228">1.5 с</text>
+            </g>
+            <text x="380" y="160" fill="var(--fg-muted)" font-size="11">та сама тисяча клієнтів, ті самі 4 ретраї,</text>
+            <text x="380" y="176" fill="var(--fg-muted)" font-size="11">кошики по 50 мс (симуляція, seed=1)</text>
+            <text x="10" y="246" fill="currentColor" font-size="11">Висота стовпчика = кількість ретраїв у 50-мс кошику (в однаковому масштабі).</text>
+          </g>
+        </svg>
+        <figcaption>Без jitter клієнти, що впали одночасно (наприклад, після блимання мережі), ретраять синхронно — і кожен ретрай б'є хвору систему піком того ж розміру. Jitter розмазує навантаження в часі.</figcaption>
+      </figure>
+
+      <div class="codecard"><div class="bar"><span class="path">backoff.py — формули з AWS Architecture Blog «Exponential Backoff And Jitter», перевірено python3</span></div><pre><code>import random
+
+def full_jitter(attempt: int, base=0.1, cap=10.0) -&gt; float:
+    """AWS 'Full Jitter': sleep = random(0, min(cap, base * 2**attempt))."""
+    return random.uniform(0, min(cap, base * 2 ** attempt))
+
+def decorrelated_jitter(prev: float, base=0.1, cap=10.0) -&gt; float:
+    """AWS 'Decorrelated Jitter': sleep = min(cap, random(base, prev * 3))."""
+    return min(cap, random.uniform(base, prev * 3))
+
+def retry(fn, max_attempts=4, retryable=(TimeoutError, ConnectionError), sleep=None):
+    import time
+    sleep = sleep or time.sleep
+    for attempt in range(max_attempts):
+        try:
+            return fn()
+        except retryable:
+            if attempt == max_attempts - 1:
+                raise                     # бюджет спроб вичерпано
+            sleep(full_jitter(attempt))
+
+if __name__ == "__main__":
+    random.seed(7)
+    print("caps:", [min(10.0, 0.1 * 2 ** a) for a in range(8)])
+    print("full jitter:", [round(full_jitter(a), 3) for a in range(8)])
+    calls = {"n": 0}
+    def flaky():
+        calls["n"] += 1
+        if calls["n"] &lt; 3:
+            raise ConnectionError("reset")
+        return "200 OK"
+    slept = []
+    print(retry(flaky, sleep=slept.append), "after", calls["n"], "calls; slept",
+          [round(s, 3) for s in slept])
+
+# caps: [0.1, 0.2, 0.4, 0.8, 1.6, 3.2, 6.4, 10.0]
+# full jitter: [0.032, 0.03, 0.26, 0.058, 0.857, 1.17, 0.371, 5.074]
+# 200 OK after 3 calls; slept [0.004, 0.087]</code></pre></div>
+      <p>У статті AWS порівнюються «No jitter», «Full Jitter», «Equal Jitter» і «Decorrelated Jitter»: варіанти з jitter роблять помітно менше сумарних викликів і завершують роботу швидше, а Full Jitter — простий і хороший дефолт. У продакшені також: поважати <code>Retry-After</code>, не перевищувати дедлайн, логувати номер спроби.</p>
+
+      <h3>Retry storm: множення ретраїв по рівнях</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 190" role="img" aria-label="Множення ретраїв у ланцюжку з чотирьох рівнів. Користувач робить один запит. Якщо кожен з трьох рівнів — API, сервіс і клієнт бази — робить до трьох спроб, то API робить 3 виклики сервісу, сервіс — 9 викликів бази, а база отримує 27 запитів. З одним запитом плюс трьома ретраями на кожному рівні множник дорівнює 4 у кубі, тобто 64.">
+          <defs><marker id="sd08-a5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="30" width="130" height="60" rx="8" fill="var(--card)" stroke="currentColor"/>
+            <text x="75" y="56" text-anchor="middle" fill="currentColor">User</text>
+            <text x="75" y="78" text-anchor="middle" fill="currentColor" font-weight="bold">1 запит</text>
+            <line x1="142" y1="60" x2="188" y2="60" stroke="currentColor" marker-end="url(#sd08-a5)"/>
+            <text x="165" y="52" text-anchor="middle" fill="var(--fg-muted)" font-size="11">×3</text>
+            <rect x="190" y="30" width="150" height="60" rx="8" fill="var(--warn-bg)" stroke="var(--warn)"/>
+            <text x="265" y="56" text-anchor="middle" fill="currentColor">API</text>
+            <text x="265" y="78" text-anchor="middle" fill="currentColor" font-weight="bold">3 спроби</text>
+            <line x1="342" y1="60" x2="388" y2="60" stroke="currentColor" marker-end="url(#sd08-a5)"/>
+            <text x="365" y="52" text-anchor="middle" fill="var(--fg-muted)" font-size="11">×3</text>
+            <rect x="390" y="30" width="150" height="60" rx="8" fill="var(--bad-bg)" stroke="var(--bad)"/>
+            <text x="465" y="56" text-anchor="middle" fill="currentColor">Service</text>
+            <text x="465" y="78" text-anchor="middle" fill="currentColor" font-weight="bold">9 викликів</text>
+            <line x1="542" y1="60" x2="588" y2="60" stroke="currentColor" marker-end="url(#sd08-a5)"/>
+            <text x="565" y="52" text-anchor="middle" fill="var(--fg-muted)" font-size="11">×3</text>
+            <rect x="590" y="30" width="130" height="60" rx="8" fill="var(--bad-bg)" stroke="var(--bad)" stroke-width="2.5"/>
+            <text x="655" y="56" text-anchor="middle" fill="currentColor">DB</text>
+            <text x="655" y="78" text-anchor="middle" fill="var(--bad)" font-weight="bold">27 запитів</text>
+            <text x="10" y="126" fill="currentColor">3 спроби на кожному з 3 рівнів → 3³ = 27×; «1 + 3 ретраї» на рівень → 4³ = 64×.</text>
+            <text x="10" y="150" fill="var(--good)" font-size="11">Ліки: ретраї лише на одному рівні (найближчому до клієнта або до збою), retry budget,</text>
+            <text x="10" y="168" fill="var(--good)" font-size="11">сигнал «не ретраїти» в помилці (наприклад, перевантажений сервіс повертає ознаку overloaded).</text>
+          </g>
+        </svg>
+        <figcaption>Ретраї множаться по глибині стеку. Саме тоді, коли БД перевантажена, вона отримує в десятки разів більше запитів, і відновитись їй уже не вдасться.</figcaption>
+      </figure>
+      <p><span class="say">(3³ — «три в кубі» = 3 × 3 × 3 = 27.)</span></p>
+
+      <h3>Retry budget</h3>
+      <p>Замість (або на додачу до) «максимум N спроб на запит» — <b>бюджет на рівні клієнта</b>: ретраї не можуть перевищувати, наприклад, 10% від успішних запитів за останню хвилину. Google SRE Book (розділ «Handling Overload») описує саме таку комбінацію: ліміт спроб на запит (3) і співвідношення ретраїв до запитів на клієнта (10%). Envoy має retry budgets як налаштування. AWS SDK у «standard» режимі ретраїв використовує token bucket для ретраїв: коли помилок багато, токени закінчуються і ретраї припиняються. Ефект: при короткому збої ретраї допомагають, при масовому — автоматично вимикаються і не добивають систему.</p>
+
+      <h3>Hedged requests — ретраї навпаки</h3>
+      <p>Для зменшення хвостової латентності (а не для помилок): якщо відповідь не прийшла за час p95, надіслати <b>дублюючий</b> запит іншій репліці і взяти першу відповідь. Описано в «The Tail at Scale» (Dean, Barroso, 2013). Працює лише для ідемпотентних читань і коштує кількох відсотків додаткового навантаження.</p>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        <p>React Query за замовчуванням ретраїть невдалий запит 3 рази з експоненційною затримкою (<code>retryDelay</code>), а <code>AbortSignal.timeout(ms)</code> — це дедлайн. Тепер уявіть, що бекенд упав на 10 секунд, а відкрито 2 млн вкладок: якщо всі ретраять із тим самим кроком, бекенд після підйому отримує ідеально синхронізований удар — thundering herd. Тому jitter. <b>Де ламається:</b> у браузері ретраїть лише один рівень; у мікросервісах ретраї множаться по глибині стеку.</p>
+      </div>
+
+      <div class="callout interview"><div class="ic">🎤</div><div class="body"><b>На співбесіді:</b> «Кожен виклик з таймаутом, дедлайн поширюється в контексті. Ретраї — лише для ідемпотентних операцій або з idempotency key, на одному рівні, максимум 3, exponential backoff із full jitter, плюс retry budget ~10%, щоб при масовому збої ретраї не множили навантаження».</div></div>
+
+      <div class="remember">Таймаут на кожен виклик; дедлайн — наскрізь; ретраї — ідемпотентно, на одному рівні, з jitter і бюджетом.</div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">05</span> Circuit breaker і bulkhead</h2>
+      <p class="section-desc">Таймаут обмежує один виклик. Circuit breaker обмежує <i>серію</i> викликів до хворої залежності. Bulkhead обмежує, скільки ресурсів може з'їсти одна залежність.</p>
+
+      <h3>Circuit breaker: машина станів</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 290" role="img" aria-label="Машина станів circuit breaker. CLOSED: запити йдуть до залежності, лічильник помилок скидається при успіху. Коли помилок за вікно стає не менше порогу, перехід в OPEN: запити одразу відхиляються без мережевого виклику, fail fast. Після закінчення cooldown перехід у HALF-OPEN: пропускається один або кілька пробних запитів. Якщо пробний запит успішний — назад у CLOSED, якщо впав — знову в OPEN із новим cooldown.">
+          <defs><marker id="sd08-a6" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="120" y="62" text-anchor="middle" fill="var(--fg-muted)" font-size="11">успіх → лічильник = 0</text>
+            <ellipse cx="120" cy="110" rx="78" ry="36" fill="var(--good-bg)" stroke="var(--good)" stroke-width="2"/>
+            <text x="120" y="106" text-anchor="middle" fill="currentColor" font-weight="bold">CLOSED</text>
+            <text x="120" y="124" text-anchor="middle" fill="var(--fg-muted)" font-size="11">запити йдуть</text>
+            <ellipse cx="610" cy="110" rx="78" ry="36" fill="var(--bad-bg)" stroke="var(--bad)" stroke-width="2"/>
+            <text x="610" y="106" text-anchor="middle" fill="currentColor" font-weight="bold">OPEN</text>
+            <text x="610" y="124" text-anchor="middle" fill="var(--fg-muted)" font-size="11">fail fast, без мережі</text>
+            <ellipse cx="365" cy="235" rx="78" ry="36" fill="var(--warn-bg)" stroke="var(--warn)" stroke-width="2"/>
+            <text x="365" y="231" text-anchor="middle" fill="currentColor" font-weight="bold">HALF-OPEN</text>
+            <text x="365" y="249" text-anchor="middle" fill="var(--fg-muted)" font-size="11">1 пробний запит</text>
+            <line x1="200" y1="104" x2="528" y2="104" stroke="currentColor" marker-end="url(#sd08-a6)"/>
+            <text x="365" y="94" text-anchor="middle" fill="currentColor" font-size="11">помилок ≥ поріг (за вікно)</text>
+            <line x1="585" y1="144" x2="425" y2="208" stroke="currentColor" marker-end="url(#sd08-a6)"/>
+            <text x="625" y="192" fill="currentColor" font-size="11">минув cooldown</text>
+            <line x1="443" y1="235" x2="636" y2="148" stroke="var(--bad)" marker-end="url(#sd08-a6)"/>
+            <text x="560" y="232" fill="var(--bad)" font-size="11">пробний впав</text>
+            <line x1="290" y1="226" x2="150" y2="146" stroke="var(--good)" marker-end="url(#sd08-a6)"/>
+            <text x="40" y="200" fill="var(--good)" font-size="11">пробний успішний</text>
+          </g>
+        </svg>
+        <figcaption>Три стани: CLOSED (звичайна робота), OPEN (швидка відмова, залежність відпочиває), HALF-OPEN (обережна перевірка). Головна цінність — не «захистити себе», а перестати добивати залежність, що відновлюється.</figcaption>
+      </figure>
+
+      <div class="codecard"><div class="bar"><span class="path">circuit_breaker.py — перевірено python3 (фейковий годинник)</span></div><pre><code>import time
+
+class CircuitOpenError(Exception):
+    pass
+
+class CircuitBreaker:
+    """CLOSED -&gt; (N помилок поспіль) -&gt; OPEN -&gt; (cooldown) -&gt; HALF_OPEN -&gt; пробний запит."""
+    def __init__(self, failure_threshold=3, reset_timeout=5.0, clock=time.monotonic):
+        self.failure_threshold = failure_threshold
+        self.reset_timeout = reset_timeout
+        self.clock = clock
+        self.state = "CLOSED"
+        self.failures = 0
+        self.opened_at = 0.0
+
+    def call(self, fn, *args, **kwargs):
+        if self.state == "OPEN":
+            if self.clock() - self.opened_at &gt;= self.reset_timeout:
+                self.state = "HALF_OPEN"          # пускаємо один пробний запит
+            else:
+                raise CircuitOpenError("fail fast")  # навіть не ходимо в мережу
+        try:
+            result = fn(*args, **kwargs)
+        except Exception:
+            self._on_failure()
+            raise
+        self._on_success()
+        return result
+
+    def _on_success(self):
+        self.failures = 0
+        self.state = "CLOSED"
+
+    def _on_failure(self):
+        self.failures += 1
+        if self.state == "HALF_OPEN" or self.failures &gt;= self.failure_threshold:
+            self.state = "OPEN"
+            self.opened_at = self.clock()
+
+if __name__ == "__main__":
+    now = [0.0]
+    cb = CircuitBreaker(failure_threshold=3, reset_timeout=5.0, clock=lambda: now[0])
+    healthy = [False]
+    def remote():
+        if not healthy[0]:
+            raise TimeoutError("upstream timeout")
+        return "ok"
+
+    log = []
+    for t in [0, 1, 2, 3, 4, 8.5, 9, 15, 16]:
+        now[0] = t
+        if t == 15:
+            healthy[0] = True
+        try:
+            r = cb.call(remote)
+        except CircuitOpenError:
+            r = "rejected"
+        except TimeoutError:
+            r = "error"
+        log.append(f"t={t}: {r:&lt;8} -&gt; {cb.state}")
+    print("\n".join(log))
+
+# t=0: error    -&gt; CLOSED
+# t=1: error    -&gt; CLOSED
+# t=2: error    -&gt; OPEN
+# t=3: rejected -&gt; OPEN
+# t=4: rejected -&gt; OPEN
+# t=8.5: error    -&gt; OPEN      &lt;- HALF_OPEN, пробний впав, новий cooldown
+# t=9: rejected -&gt; OPEN
+# t=15: ok       -&gt; CLOSED    &lt;- пробний успішний
+# t=16: ok       -&gt; CLOSED</code></pre></div>
+      <p>Спрощення навчальної версії: вона не потокобезпечна і в HALF_OPEN пропускає всі конкурентні запити, а не один. Продакшн-бібліотеки (resilience4j для JVM, Polly для .NET, <code>pybreaker</code>, Envoy outlier detection) рахують <b>частку</b> помилок у ковзному вікні з мінімальною кількістю запитів, окремо враховують «повільні» виклики і обмежують кількість пробних запитів.</p>
+
+      <h3>Що повертати, коли breaker відкритий</h3>
+      <ul>
+        <li><b>Fallback</b>: кеш (stale-but-ok), дефолтне значення, спрощена відповідь (неперсоналізовані рекомендації).</li>
+        <li><b>Швидка помилка</b> з чітким кодом (503) — краще, ніж 30-секундний таймаут.</li>
+        <li><b>Відкласти</b>: покласти в чергу і виконати пізніше (email, вебхуки).</li>
+      </ul>
+
+      <h3>Bulkhead: перегородки між відсіками</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 230" role="img" aria-label="Bulkhead у сервісі замовлень. Вхідні запити розподіляються по трьох ізольованих пулах: payments на 20 потоків, завантажений на 30 відсотків; search на 30 потоків, завантажений на 40 відсотків; recommendations на 10 потоків, повністю зайнятий, бо Recs API відповідає 5 секунд. Вичерпано лише пул рекомендацій, і для них повертається fallback, а платежі та пошук працюють нормально.">
+          <defs><marker id="sd08-a7" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <rect x="10" y="92" width="90" height="46" rx="8" fill="var(--card)" stroke="currentColor"/>
+            <text x="55" y="119" text-anchor="middle" fill="currentColor">запити</text>
+            <line x1="102" y1="115" x2="128" y2="115" stroke="currentColor" marker-end="url(#sd08-a7)"/>
+            <rect x="130" y="14" width="330" height="204" rx="10" fill="none" stroke="currentColor" stroke-dasharray="6 4"/>
+            <text x="295" y="32" text-anchor="middle" fill="currentColor" font-weight="bold">Order service</text>
+            <rect x="145" y="44" width="300" height="50" rx="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="157" y="63" fill="currentColor" font-size="11">payments · 20 потоків</text>
+            <rect x="157" y="72" width="200" height="12" rx="3" fill="none" stroke="var(--good)"/><rect x="157" y="72" width="60" height="12" rx="3" fill="var(--good)"/>
+            <text x="366" y="83" fill="var(--fg-muted)" font-size="11">30%</text>
+            <rect x="145" y="102" width="300" height="50" rx="8" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="157" y="121" fill="currentColor" font-size="11">search · 30 потоків</text>
+            <rect x="157" y="130" width="200" height="12" rx="3" fill="none" stroke="var(--good)"/><rect x="157" y="130" width="80" height="12" rx="3" fill="var(--good)"/>
+            <text x="366" y="141" fill="var(--fg-muted)" font-size="11">40%</text>
+            <rect x="145" y="160" width="300" height="50" rx="8" fill="var(--bad-bg)" stroke="var(--bad)"/>
+            <text x="157" y="179" fill="currentColor" font-size="11">recs · 10 потоків — вичерпано → fallback</text>
+            <rect x="157" y="188" width="200" height="12" rx="3" fill="var(--bad)"/>
+            <text x="366" y="199" fill="var(--bad)" font-size="11">100%</text>
+            <line x1="447" y1="69" x2="498" y2="69" stroke="currentColor" marker-end="url(#sd08-a7)"/>
+            <line x1="447" y1="127" x2="498" y2="127" stroke="currentColor" marker-end="url(#sd08-a7)"/>
+            <line x1="447" y1="185" x2="498" y2="185" stroke="var(--bad)" marker-end="url(#sd08-a7)"/>
+            <rect x="500" y="50" width="220" height="38" rx="8" fill="var(--card)" stroke="currentColor"/><text x="610" y="74" text-anchor="middle" fill="currentColor">Payment API · 80 мс</text>
+            <rect x="500" y="108" width="220" height="38" rx="8" fill="var(--card)" stroke="currentColor"/><text x="610" y="132" text-anchor="middle" fill="currentColor">Search · 40 мс</text>
+            <rect x="500" y="166" width="220" height="38" rx="8" fill="var(--bad-bg)" stroke="var(--bad)"/><text x="610" y="190" text-anchor="middle" fill="currentColor">Recs API · 5 с (!)</text>
+          </g>
+        </svg>
+        <figcaption>Без перегородок повільний Recs API за хвилину з'їв би спільний пул на 60 потоків — і впали б платежі. З bulkhead вичерпується лише пул рекомендацій, а сторінка показує fallback.</figcaption>
+      </figure>
+      <p>Варіанти bulkhead: окремі пули потоків/з'єднань на залежність; семафори (ліміт конкурентних викликів); окремі інстанси/кластери для різних класів клієнтів (наприклад, окремий пул серверів для внутрішніх batch-задач, щоб вони не заважали користувачам); <b>cell-based architecture</b> — розбиття всієї системи на незалежні «клітини» з підмножиною клієнтів (AWS описує цей підхід для обмеження blast radius).</p>
+
+      <div class="callout good"><div class="ic">🏭</div><div class="body"><b>Як це роблять у реальних системах.</b> Netflix популяризував обидва патерни бібліотекою Hystrix (з 2018 — у режимі підтримки; спільнота перейшла на resilience4j і на рівень service mesh). Сьогодні circuit breaking і outlier detection часто живуть в Envoy/Istio: sidecar викидає з балансування інстанс, що повертає 5xx, без змін у коді.</div></div>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        <p>Error Boundary — це bulkhead: помилка у віджеті рекомендацій не валить усю сторінку. А circuit breaker — як логіка «якщо API чату тричі поспіль не відповів, перестати опитувати його на 30 с і показати банер "чат тимчасово недоступний"», замість того щоб кожні 2 с бомбити мертвий бекенд. <b>Де ламається:</b> Error Boundary ізолює помилки рендеру, а не ресурси; bulkhead на сервері ізолює саме ресурси (потоки, з'єднання, пам'ять).</p>
+      </div>
+
+      <div class="callout interview"><div class="ic">🎤</div><div class="body"><b>На співбесіді:</b> на зовнішні та некритичні залежності — circuit breaker із fallback (кеш/дефолт); окремі пули з'єднань (bulkhead) для критичних і некритичних шляхів. Скажіть, що breaker рахує частку помилок і повільних викликів у вікні, а HALF-OPEN пропускає обмежену кількість пробних запитів.</div></div>
+
+      <div class="remember">Breaker — перестати бити хворого (CLOSED → OPEN → HALF-OPEN). Bulkhead — одна повільна залежність не з'їдає всі ресурси.</div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">06</span> Load shedding, admission control, graceful degradation, health checks</h2>
+      <p class="section-desc">Що робить сам сервіс, коли запитів більше, ніж він здатен обробити: відмовляє частині, щоб якісно обслужити решту, і чесно повідомляє балансувальнику про свій стан.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 270" role="img" aria-label="Ліворуч: корисна пропускна здатність (goodput) залежно від вхідного навантаження. До рівня ємності обидві криві ростуть разом. З load shedding goodput лишається на рівні ємності при перевантаженні. Без load shedding goodput після ємності обвалюється майже до нуля, бо сервіс витрачає ресурси на запити, які все одно не встигне обробити. Праворуч: час очікування в черзі як функція утилізації ро, за моделлю M/M/1 пропорційний ро поділити на один мінус ро: при утилізації 0.5 множник 1, при 0.8 — 4, при 0.9 — 9, при 0.95 — 19.">
+          <defs><marker id="sd08-a8" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="190" y="20" text-anchor="middle" fill="currentColor" font-weight="bold">Goodput під перевантаженням</text>
+            <line x1="50" y1="230" x2="345" y2="230" stroke="currentColor" marker-end="url(#sd08-a8)"/>
+            <line x1="50" y1="230" x2="50" y2="34" stroke="currentColor" marker-end="url(#sd08-a8)"/>
+            <line x1="190" y1="60" x2="190" y2="230" stroke="var(--fg-muted)" stroke-dasharray="4 4"/>
+            <text x="190" y="248" text-anchor="middle" fill="var(--fg-muted)" font-size="11">ємність</text>
+            <text x="340" y="248" text-anchor="end" fill="var(--fg-muted)" font-size="11">навантаження</text>
+            <text x="56" y="44" fill="var(--fg-muted)" font-size="11">goodput</text>
+            <polyline points="50,230 190,80 330,80" fill="none" stroke="var(--good)" stroke-width="2.5"/>
+            <polyline points="190,80 230,95 260,140 290,195 330,220" fill="none" stroke="var(--bad)" stroke-width="2.5" stroke-dasharray="6 3"/>
+            <text x="236" y="72" fill="var(--good)" font-size="11">з load shedding</text>
+            <text x="255" y="150" text-anchor="end" fill="var(--bad)" font-size="11">без нього:</text>
+            <text x="255" y="164" text-anchor="end" fill="var(--bad)" font-size="11">колапс</text>
+
+            <line x1="372" y1="10" x2="372" y2="262" stroke="var(--border)"/>
+
+            <text x="560" y="20" text-anchor="middle" fill="currentColor" font-weight="bold">Черга росте нелінійно</text>
+            <line x1="420" y1="230" x2="715" y2="230" stroke="currentColor" marker-end="url(#sd08-a8)"/>
+            <line x1="420" y1="230" x2="420" y2="34" stroke="currentColor" marker-end="url(#sd08-a8)"/>
+            <polyline points="420,230 476,227.8 532,224 560,221 588,216.5 616,209 644,194 658,179 672,149 680.4,110.4 686,59" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
+            <g fill="var(--accent)"><circle cx="560" cy="221" r="4"/><circle cx="644" cy="194" r="4"/><circle cx="672" cy="149" r="4"/><circle cx="686" cy="59" r="4"/></g>
+            <g fill="currentColor" font-size="11">
+              <text x="552" y="208" text-anchor="end">ρ=0.5 → 1×</text>
+              <text x="636" y="186" text-anchor="end">0.8 → 4×</text>
+              <text x="664" y="146" text-anchor="end">0.9 → 9×</text>
+              <text x="678" y="62" text-anchor="end">0.95 → 19×</text>
+            </g>
+            <text x="426" y="44" fill="var(--fg-muted)" font-size="11">очікування ∝ ρ/(1−ρ)</text>
+            <text x="710" y="248" text-anchor="end" fill="var(--fg-muted)" font-size="11">утилізація ρ → 1</text>
+          </g>
+        </svg>
+        <figcaption>Ліворуч: без відкидання надлишку сервіс витрачає ресурси на запити, які не встигне віддати до таймауту клієнта, — корисна робота падає до нуля. Праворуч: тому ніхто не планує роботу на 95% утилізації — черги вибухають.</figcaption>
+      </figure>
+      <p><span class="say">(ρ — «ро», утилізація: частка часу, коли сервер зайнятий; ∝ — «пропорційно». Формула ρ/(1−ρ) — середня кількість «часів обслуговування», які запит чекає в черзі, для найпростішої моделі черги M/M/1.)</span></p>
+
+      <h3>Load shedding: як відмовляти правильно</h3>
+      <ol class="steps">
+        <li><b>Відмовляти рано і дешево</b>: перевірка на вході (кількість in-flight запитів, довжина черги, CPU) → одразу 503/429, не витрачаючи ресурсів на парсинг і БД.</li>
+        <li><b>Пріоритети</b>: критичний трафік (оплата, логін) обслуговується, «sheddable» (аналітика, префетч, batch) відкидається першим. Google SRE Book описує критичність запитів, що поширюється по ланцюжку викликів.</li>
+        <li><b>Не обробляти протухле</b>: якщо запит пролежав у черзі довше за дедлайн клієнта — викинути без обробки. AWS Builders' Library («Using load shedding to avoid overload») наголошує саме на цьому.</li>
+        <li><b>LIFO під перевантаженням</b>: свіжі запити ще мають шанс бути корисними, старі — вже ні (клієнт пішов).</li>
+        <li><b>Admission control / adaptive concurrency</b>: ліміт одночасних запитів не задається вручну, а підлаштовується за латентністю (ідея як у TCP congestion control). Приклад — бібліотека Netflix <code>concurrency-limits</code>. За законом Літтла: concurrency = throughput × latency.</li>
+      </ol>
+
+      <h3>Graceful degradation</h3>
+      <p>Заздалегідь визначте, що можна «вимкнути», щоб зберегти головне. Типові рівні:</p>
+      <table>
+        <tr><th>Рівень</th><th>Приклад</th></tr>
+        <tr><td>Stale дані замість свіжих</td><td>Віддати кешований каталог (stale-while-revalidate), хоча БД недоступна</td></tr>
+        <tr><td>Спрощений результат</td><td>Неперсоналізовані «популярні» рекомендації замість персональних (Netflix)</td></tr>
+        <tr><td>Вимкнути необов'язкові фічі</td><td>Сховати лічильники лайків, «хто переглядав», live-оновлення</td></tr>
+        <tr><td>Read-only режим</td><td>Можна дивитися, не можна змінювати (під час міграції/збою primary)</td></tr>
+        <tr><td>Черга замість синхронності</td><td>«Ваше замовлення прийнято, підтвердження прийде на email»</td></tr>
+      </table>
+      <p>Механізм — <b>kill switches</b> (feature flags, які оператор може вимкнути за секунди) і fallback-гілки в коді, які <i>регулярно тестуються</i>: fallback, що ніколи не виконувався, у момент аварії теж зламаний.</p>
+
+      <h3>Idempotency — щоб ретраї були безпечними</h3>
+      <p>Клієнт генерує <code>Idempotency-Key</code> (UUID) на одну бізнес-операцію і надсилає його з кожним повтором. Сервер: (1) атомарно резервує ключ (<code>INSERT … ON CONFLICT DO NOTHING</code>); (2) якщо ключ уже завершено — повертає <b>збережену відповідь</b>; (3) якщо ключ «в процесі» (паралельний повтор) — <code>409 Conflict</code>; (4) зберігає відповідь разом із результатом операції в одній транзакції. Stripe описує це в статті «Designing robust and predictable APIs with idempotency» і зберігає ключі щонайменше 24 години. Детальніше про ідемпотентних консьюмерів — у <a href="07-async-messaging.html">туторіалі 7</a>.</p>
+
+      <h3>Health checks: liveness vs readiness</h3>
+      <table>
+        <tr><th></th><th>Liveness</th><th>Readiness</th><th>Startup</th></tr>
+        <tr><td>Питання</td><td>«Процес живий чи завис?»</td><td>«Чи готовий приймати трафік зараз?»</td><td>«Чи закінчився старт?»</td></tr>
+        <tr><td>Дія при провалі (Kubernetes)</td><td>Перезапустити контейнер</td><td>Прибрати з балансування (не перезапускати)</td><td>Не запускати інші перевірки, поки не пройде</td></tr>
+        <tr><td>Що перевіряти</td><td>Лише сам процес (event loop живий, не deadlock)</td><td>Прогрів кешу, пул з'єднань, власне перевантаження</td><td>Міграції, завантаження моделі</td></tr>
+        <tr><td>Пастка</td><td>Перевіряти БД у liveness → БД блимнула → K8s перезапустив <b>усі</b> поди → каскад</td><td>Readiness залежить від спільної залежності → усі поди «not ready» одночасно → нуль серверів</td><td>Без неї повільний старт вбивається liveness-перевіркою</td></tr>
+      </table>
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body"><b>Глибокі health checks</b> («перевір БД, кеш і три API») здаються надійнішими, але перетворюють збій однієї залежності на «всі інстанси нездорові». Балансувальники (наприклад, AWS ALB/NLB) мають режим fail open: якщо нездорові всі цілі — трафік іде на всіх. Правило: liveness — поверхнева, readiness — про <i>власну</i> здатність обслуговувати, залежності — через circuit breaker і деградацію.</div></div>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        <p>Graceful degradation — це progressive enhancement навпаки: сторінка працює без JS-рекомендацій, без WebSocket (fallback на polling), зі stale даними з service worker cache. Load shedding — як <code>requestIdleCallback</code>: неважливу роботу (аналітика, префетч) робимо лише тоді, коли головний потік вільний. <b>Де ламається:</b> на фронті «відкинута» робота стосується одного користувача; на сервері ви свідомо відмовляєте реальним людям, тому потрібні пріоритети і метрики відкинутого.</p>
+      </div>
+
+      <div class="callout interview"><div class="ic">🎤</div><div class="body"><b>На співбесіді:</b> «Сервіс захищає себе сам: ліміт конкурентних запитів, швидкий 503 при перевантаженні, пріоритет платежів над аналітикою, відкидання запитів з простроченим дедлайном. Для некритичних блоків — деградація до кешу або дефолту через kill switch. Liveness — поверхнева, readiness не залежить від спільних залежностей».</div></div>
+
+      <div class="remember">Краще швидко відмовити 20%, ніж повільно провалити 100%. Fallback має бути протестований. Liveness ≠ readiness.</div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина III · Вимірювання і виживання</div><div class="line"></div></div>
+
+    <section id="s7">
+      <h2><span class="num">07</span> SLI, SLO, SLA і error budget — надійність у числах</h2>
+      <p class="section-desc">«Система має бути надійною» — не вимога. «99.9% запитів до checkout успішні і швидші за 300 мс протягом 30 днів» — вимога. На співбесіді в non-functional requirements варто називати саме такі числа.</p>
+
+      <div class="grid2">
+        <div class="card"><h4>SLI — індикатор</h4><p>Що вимірюємо: частка «хороших» подій серед усіх. <code>SLI = good / valid</code>. Наприклад, частка запитів зі статусом не 5xx і латентністю &lt; 300 мс.</p></div>
+        <div class="card"><h4>SLO — ціль</h4><p>Внутрішня ціль для SLI за вікно: «99.9% за 30 днів». Обирається за потребами користувачів, а не «скільки зможемо».</p></div>
+        <div class="card"><h4>SLA — контракт</h4><p>Зовнішнє зобов'язання з фінансовими наслідками (кредити клієнтам). Завжди м'якше за SLO, щоб мати запас: SLO 99.95% → SLA 99.9%.</p></div>
+        <div class="card"><h4>Error budget</h4><p><code>1 − SLO</code>: скільки «поганого» дозволено. При 99.9% — 0.1% запитів або ~43 хв на 30 днів. Бюджет витрачається на релізи, експерименти, інциденти.</p></div>
+      </div>
+
+      <h3>Таблиця «дев'яток» (перевірено обчисленням)</h3>
+      <div class="cheat"><table>
+        <tr><th>Доступність</th><th>Простій на рік</th><th>На 30 днів</th><th>На добу</th></tr>
+        <tr><td>99% («дві дев'ятки»)</td><td>≈ 3.65 дня (87.6 год)</td><td>7.2 год</td><td>14.4 хв</td></tr>
+        <tr><td>99.9%</td><td>≈ 8.76 год</td><td>43.2 хв</td><td>1.44 хв (86 с)</td></tr>
+        <tr><td>99.95%</td><td>≈ 4.38 год</td><td>21.6 хв</td><td>43 с</td></tr>
+        <tr><td>99.99%</td><td>≈ 52.6 хв</td><td>4.32 хв</td><td>8.6 с</td></tr>
+        <tr><td>99.999%</td><td>≈ 5.26 хв</td><td>26 с</td><td>0.86 с</td></tr>
+      </table></div>
+      <p>Як рахувати: простій = (1 − A) × період. 0.001 × 30 × 24 × 60 = 43.2 хв. Кожна додаткова «дев'ятка» — у 10 разів менше простою і, за досвідом індустрії, суттєво дорожча (резервування, автоматизація, процеси). 99.999% неможливо досягти, якщо людина має реагувати на алерт: лише на те, щоб прочитати пейдж, піде більше за 26 секунд на місяць.</p>
+
+      <h3>Композиція доступності</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 210" role="img" aria-label="Зверху послідовне з'єднання: три залежності A, B, C, кожна доступна 99.9 відсотка; якщо потрібні всі, загальна доступність — добуток, приблизно 99.7 відсотка. Знизу паралельне резервування: дві незалежні репліки по 99 відсотків; система недоступна лише коли обидві недоступні, тож доступність один мінус 0.01 у квадраті, тобто 99.99 відсотка — але лише якщо відмови незалежні.">
+          <defs><marker id="sd08-a9" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="10" y="22" fill="currentColor" font-weight="bold">Послідовно (потрібні всі)</text>
+            <rect x="10" y="34" width="110" height="40" rx="8" fill="var(--card)" stroke="currentColor"/><text x="65" y="59" text-anchor="middle" fill="currentColor">A 99.9%</text>
+            <line x1="122" y1="54" x2="148" y2="54" stroke="currentColor" marker-end="url(#sd08-a9)"/>
+            <rect x="150" y="34" width="110" height="40" rx="8" fill="var(--card)" stroke="currentColor"/><text x="205" y="59" text-anchor="middle" fill="currentColor">B 99.9%</text>
+            <line x1="262" y1="54" x2="288" y2="54" stroke="currentColor" marker-end="url(#sd08-a9)"/>
+            <rect x="290" y="34" width="110" height="40" rx="8" fill="var(--card)" stroke="currentColor"/><text x="345" y="59" text-anchor="middle" fill="currentColor">C 99.9%</text>
+            <text x="420" y="50" fill="var(--bad)">A = 0.999³ ≈ 0.997 → 99.7%</text>
+            <text x="420" y="68" fill="var(--fg-muted)" font-size="11">кожна залежність знижує доступність</text>
+            <line x1="10" y1="96" x2="720" y2="96" stroke="var(--border)" stroke-dasharray="4 4"/>
+            <text x="10" y="120" fill="currentColor" font-weight="bold">Паралельно (досить однієї)</text>
+            <rect x="10" y="146" width="70" height="40" rx="8" fill="var(--card)" stroke="currentColor"/><text x="45" y="171" text-anchor="middle" fill="currentColor">LB</text>
+            <line x1="82" y1="160" x2="148" y2="142" stroke="currentColor" marker-end="url(#sd08-a9)"/>
+            <line x1="82" y1="172" x2="148" y2="190" stroke="currentColor" marker-end="url(#sd08-a9)"/>
+            <rect x="150" y="124" width="120" height="34" rx="8" fill="var(--good-bg)" stroke="var(--good)"/><text x="210" y="146" text-anchor="middle" fill="currentColor">replica 1: 99%</text>
+            <rect x="150" y="170" width="120" height="34" rx="8" fill="var(--good-bg)" stroke="var(--good)"/><text x="210" y="192" text-anchor="middle" fill="currentColor">replica 2: 99%</text>
+            <text x="300" y="160" fill="var(--good)">A = 1 − (1 − 0.99)² = 0.9999 → 99.99%</text>
+            <text x="300" y="180" fill="var(--warn)" font-size="11">…лише якщо відмови незалежні (інша AZ, інший деплой)</text>
+          </g>
+        </svg>
+        <figcaption>Послідовні залежності перемножують доступності (гірше за найслабшу ланку), паралельні резерви перемножують <i>недоступності</i>. Корельовані відмови (той самий баг, та сама AZ, той самий конфіг) руйнують другу формулу.</figcaption>
+      </figure>
+
+      <h3>Error budget і burn rate</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 260" role="img" aria-label="Графік залишку error budget протягом 30-денного вікна. Пунктирна діагональ — рівномірне витрачання від 100 до 0 відсотків. Фактична лінія: за перші 12 днів витрачено 15 відсотків, потім інцидент забрав 40 відсотків бюджету за дві години, далі до 30-го дня залишок знизився до 15 відсотків. Поки бюджет є — релізимо, якщо вичерпано — freeze фіч і фокус на надійності.">
+          <defs><marker id="sd08-a10" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <line x1="60" y1="220" x2="705" y2="220" stroke="currentColor" marker-end="url(#sd08-a10)"/>
+            <line x1="60" y1="220" x2="60" y2="28" stroke="currentColor" marker-end="url(#sd08-a10)"/>
+            <text x="54" y="44" text-anchor="end" fill="var(--fg-muted)" font-size="11">100%</text>
+            <text x="54" y="134" text-anchor="end" fill="var(--fg-muted)" font-size="11">50%</text>
+            <text x="54" y="224" text-anchor="end" fill="var(--fg-muted)" font-size="11">0</text>
+            <g fill="var(--fg-muted)" font-size="11" text-anchor="middle"><text x="60" y="238">день 0</text><text x="375" y="238">15</text><text x="690" y="238">30</text></g>
+            <line x1="60" y1="40" x2="690" y2="220" stroke="var(--fg-muted)" stroke-dasharray="5 4"/>
+            <text x="470" y="140" fill="var(--fg-muted)" font-size="11">рівномірне витрачання (burn rate = 1)</text>
+            <polyline points="60,40 312,67 318,139 690,193" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
+            <circle cx="315" cy="103" r="5" fill="var(--bad)"/>
+            <text x="326" y="98" fill="var(--bad)" font-size="11">інцидент: −40% бюджету за 2 год</text>
+            <text x="326" y="112" fill="var(--bad)" font-size="11">(burn rate ≈ 144 → пейдж)</text>
+            <text x="690" y="174" text-anchor="end" fill="var(--accent)" font-size="11">залишок 15%</text>
+            <text x="70" y="254" fill="currentColor" font-size="11">Бюджет є → релізимо й експериментуємо. Бюджет вичерпано → freeze фіч, фокус на надійності.</text>
+          </g>
+        </svg>
+        <figcaption>Error budget перетворює суперечку «швидкість vs стабільність» на число, з яким згодні і продукт, і SRE.</figcaption>
+      </figure>
+      <p><b>Burn rate</b> — у скільки разів швидше за рівномірне ми витрачаємо бюджет. Burn rate 1 вичерпає бюджет рівно за вікно (30 днів). SRE Workbook (розділ «Alerting on SLOs») рекомендує multi-window алерти: пейдж, якщо за 1 год згоріло 2% місячного бюджету (burn rate = 0.02 × 720 год = <b>14.4</b>) або за 6 год — 5% (burn rate <b>6</b>); тікет — за повільнішого горіння. Інцидент на графіку: 40% за 2 год = 0.4 × 720 / 2 = <b>144</b>.</p>
+      <p><span class="say">(720 — кількість годин у 30-денному вікні: 30 × 24.)</span></p>
+
+      <h3>Як обрати SLI</h3>
+      <ul>
+        <li><b>Availability</b>: частка успішних запитів (не 5xx), виміряна якомога ближче до користувача (на LB або клієнтськими метриками, а не «процес живий»).</li>
+        <li><b>Latency</b>: частка запитів, швидших за поріг (p99 &lt; 300 мс трансформується в «99% запитів &lt; 300 мс»).</li>
+        <li><b>Freshness / correctness</b> для пайплайнів: частка даних, оновлених за останні N хвилин.</li>
+        <li>Не більше 3–5 SLO на сервіс, і лише ті, що відображають біль користувача.</li>
+      </ul>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        <p>Core Web Vitals — це SLO фронтенду: LCP ≤ 2.5 с для 75-го перцентиля відвідувань — це SLI («частка відвідувань з хорошим LCP») і ціль. Performance budget у Lighthouse CI («бандл ≤ 200 KB») — аналог error budget: перевищили — мердж блокується, поки не оптимізуєте. <b>Де ламається:</b> Web Vitals рахуються за p75, а бекенд SLO зазвичай на p99/p99.9, бо один запит сторінки тягне десятки бекенд-викликів.</p>
+      </div>
+
+      <div class="callout interview"><div class="ic">🎤</div><div class="body"><b>На співбесіді</b> в non-functional requirements: «Доступність 99.9% для читання стрічки і 99.99% для платежів; p99 латентності читання &lt; 200 мс. 99.99% — це ~4.3 хв на місяць, тому потрібні multi-AZ, автоматичний failover і канарковий деплой, без ручних кроків у відновленні». Пов'язування числа з архітектурними наслідками — те, що відрізняє сильну відповідь.</div></div>
+
+      <div class="callout bad"><div class="ic">🚩</div><div class="body"><b>Red flags:</b> «нам потрібно 100%» (нескінченно дорого і неможливо — навіть мережа клієнта дає менше); SLO, вищий за SLO залежностей, без резервування; SLI «CPU &lt; 80%» (це не біль користувача).</div></div>
+
+      <div class="remember">SLO = ціль, error budget = 1 − SLO, burn rate = швидкість витрачання. 99.9% ≈ 43 хв/міс, 99.99% ≈ 4.3 хв/міс.</div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">08</span> Observability, перцентилі, хвостова латентність, capacity planning</h2>
+      <p class="section-desc">Не можна покращити те, що не виміряно. На співбесіді достатньо показати: що міряємо (RED/USE, golden signals), чому p99, а не середнє, і як рахувати потрібну потужність.</p>
+
+      <h3>Три стовпи observability</h3>
+      <table>
+        <tr><th></th><th>Metrics</th><th>Logs</th><th>Traces</th></tr>
+        <tr><td>Що це</td><td>Числові часові ряди (лічильники, гістограми)</td><td>Події з контекстом (структурований JSON)</td><td>Дерево спанів одного запиту через усі сервіси</td></tr>
+        <tr><td>Відповідає на</td><td>«Чи є проблема і наскільки велика?»</td><td>«Що саме сталося з цим запитом?»</td><td>«Де саме в ланцюжку час/помилка?»</td></tr>
+        <tr><td>Ціна</td><td>Дешево, але обмежена кардинальність міток</td><td>Дорого на обсязі → семплінг, рівні</td><td>Дорого → head/tail sampling</td></tr>
+        <tr><td>Інструменти</td><td>Prometheus, CloudWatch, Datadog</td><td>ELK/OpenSearch, Loki</td><td>OpenTelemetry, Jaeger, Tempo; заголовок W3C <code>traceparent</code></td></tr>
+      </table>
+      <ul>
+        <li><b>RED</b> (для сервісів): Rate, Errors, Duration. <b>USE</b> (для ресурсів, Brendan Gregg): Utilization, Saturation, Errors. <b>Four golden signals</b> (Google SRE Book, «Monitoring Distributed Systems»): latency, traffic, errors, saturation.</li>
+        <li><b>Кардинальність</b>: мітка <code>user_id</code> у метриці = мільйони часових рядів = мертвий Prometheus. Високо-кардинальні дані — у логи/трейси.</li>
+        <li><b>Алерти на симптоми</b> (SLO burn rate, помилки для користувача), а не на причини (CPU 85%) — інакше втома від алертів.</li>
+        <li><b>Correlation id / trace id</b> у кожному лозі — щоб з'єднати логи різних сервісів одного запиту.</li>
+      </ul>
+
+      <h3>Перцентилі й хвостова латентність</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 268" role="img" aria-label="Ліворуч гістограма латентності з довгим правим хвостом: медіана p50 зліва, середнє трохи правіше через хвіст, p95 і p99 далеко праворуч. Праворуч fan-out: один запит користувача розходиться на 100 бекендів, у кожного 1 відсоток запитів повільні. Ймовірність, що хоча б один зі ста відповість повільно, дорівнює 1 мінус 0.99 у сотому степені, приблизно 63 відсотки.">
+          <g font-size="12">
+            <text x="10" y="20" fill="currentColor" font-weight="bold">Розподіл латентності</text>
+            <g fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="0.8">
+              <rect x="30" y="186" width="12" height="14"/><rect x="43" y="144" width="12" height="56"/><rect x="56" y="88" width="12" height="112"/><rect x="69" y="67" width="12" height="133"/><rect x="82" y="81" width="12" height="119"/><rect x="95" y="109" width="12" height="91"/><rect x="108" y="133" width="12" height="67"/><rect x="121" y="152" width="12" height="48"/><rect x="134" y="165" width="12" height="35"/><rect x="147" y="175" width="12" height="25"/><rect x="160" y="182" width="12" height="18"/><rect x="173" y="186" width="12" height="14"/><rect x="186" y="189" width="12" height="11"/><rect x="199" y="192" width="12" height="8"/><rect x="212" y="193" width="12" height="7"/><rect x="225" y="194" width="12" height="6"/><rect x="238" y="196" width="12" height="4"/><rect x="251" y="196" width="12" height="4"/><rect x="264" y="197" width="12" height="3"/><rect x="277" y="197" width="12" height="3"/><rect x="290" y="197" width="12" height="3"/><rect x="303" y="199" width="12" height="1"/><rect x="316" y="199" width="12" height="1"/><rect x="329" y="199" width="12" height="1"/>
+            </g>
+            <line x1="30" y1="200" x2="350" y2="200" stroke="currentColor"/>
+            <line x1="88" y1="44" x2="88" y2="200" stroke="var(--good)" stroke-dasharray="4 3"/>
+            <text x="84" y="44" text-anchor="end" fill="var(--good)" font-size="11">p50</text>
+            <line x1="103" y1="56" x2="103" y2="200" stroke="var(--fg-muted)" stroke-dasharray="2 3"/>
+            <text x="108" y="60" fill="var(--fg-muted)" font-size="11">mean</text>
+            <line x1="205" y1="110" x2="205" y2="200" stroke="var(--warn)" stroke-dasharray="4 3"/>
+            <text x="205" y="104" text-anchor="middle" fill="var(--warn)" font-size="11">p95</text>
+            <line x1="296" y1="140" x2="296" y2="200" stroke="var(--bad)" stroke-dasharray="4 3"/>
+            <text x="296" y="134" text-anchor="middle" fill="var(--bad)" font-size="11">p99</text>
+            <text x="340" y="218" text-anchor="end" fill="var(--fg-muted)" font-size="11">латентність →</text>
+            <text x="10" y="242" fill="currentColor" font-size="11">середнє ховає хвіст; p99 = «1 зі 100 запитів</text>
+            <text x="10" y="258" fill="currentColor" font-size="11">повільніший за це»</text>
+
+            <line x1="372" y1="10" x2="372" y2="262" stroke="var(--border)"/>
+
+            <text x="390" y="20" fill="currentColor" font-weight="bold">Fan-out підсилює хвіст</text>
+            <rect x="390" y="100" width="110" height="40" rx="8" fill="var(--card)" stroke="currentColor"/>
+            <text x="445" y="125" text-anchor="middle" fill="currentColor">user request</text>
+            <g stroke="var(--fg-muted)">
+              <line x1="502" y1="120" x2="634" y2="36"/><line x1="502" y1="120" x2="634" y2="56"/><line x1="502" y1="120" x2="634" y2="76"/><line x1="502" y1="120" x2="634" y2="96"/><line x1="502" y1="120" x2="634" y2="116"/><line x1="502" y1="120" x2="634" y2="136"/><line x1="502" y1="120" x2="634" y2="156"/><line x1="502" y1="120" x2="634" y2="176"/><line x1="502" y1="120" x2="634" y2="196"/>
+            </g>
+            <line x1="502" y1="120" x2="634" y2="156" stroke="var(--bad)" stroke-width="2"/>
+            <g fill="var(--good)">
+              <circle cx="640" cy="36" r="6"/><circle cx="640" cy="56" r="6"/><circle cx="640" cy="76" r="6"/><circle cx="640" cy="96" r="6"/><circle cx="640" cy="116" r="6"/><circle cx="640" cy="136" r="6"/><circle cx="640" cy="176" r="6"/><circle cx="640" cy="196" r="6"/>
+            </g>
+            <circle cx="640" cy="156" r="7" fill="var(--bad)"/>
+            <text x="654" y="120" fill="currentColor" font-size="11">×100</text>
+            <text x="654" y="136" fill="var(--fg-muted)" font-size="11">листів</text>
+            <text x="654" y="160" fill="var(--bad)" font-size="11">1 с</text>
+            <text x="390" y="230" fill="currentColor" font-size="11">кожен лист повільний у 1% випадків (p99 = 1 с)</text>
+            <text x="390" y="250" fill="var(--bad)" font-size="11">P(хоч один повільний) = 1 − 0.99¹⁰⁰ ≈ 63%</text>
+          </g>
+        </svg>
+        <figcaption>Ліворуч: розподіл латентності майже завжди асиметричний із довгим хвостом. Праворуч: якщо запит чекає на всіх 100 бекендів, p99 окремого бекенда стає типовою латентністю для користувача («The Tail at Scale», Dean &amp; Barroso, 2013).</figcaption>
+      </figure>
+      <p><span class="say">(p50 — медіана: половина запитів швидша; p99 — «99-й перцентиль»: 99% запитів швидші за це значення, 1% — повільніші. 0.99¹⁰⁰ — «нуль дев'яносто дев'ять у сотому степені» ≈ 0.366.)</span></p>
+      <ul>
+        <li><b>Не усереднюйте перцентилі</b> між інстансами чи хвилинами: «середнє p99 за годину» математично безглузде. Агрегуйте гістограми (Prometheus histogram buckets, HDR Histogram), а з них рахуйте перцентиль.</li>
+        <li><b>Чому важливий p99</b>: найповільніші запити часто належать найцінніших користувачам (найбільші кошики, найбільше даних), і один користувач за сесію робить сотні запитів — хтось обов'язково потрапить у хвіст.</li>
+        <li><b>Як скорочувати хвіст</b>: hedged requests, менший fan-out, часткові результати по дедлайну («показати 95 зі 100 шардів»), прибрати GC-паузи і шумних сусідів, прогрів кешів.</li>
+      </ul>
+
+      <h3>Capacity planning: як рахувати</h3>
+      <ol class="steps">
+        <li><b>Пікове навантаження</b>: середній QPS × пік-фактор (добовий пік зазвичай 2–3× від середнього; події — Black Friday, фінал чемпіонату — 10× і більше).</li>
+        <li><b>Ємність інстансу</b> — з навантажувального тесту при цільовій латентності (не «скільки витримає до падіння»).</li>
+        <li><b>Цільова утилізація</b> 50–70% (див. криву черги вище), а не 90%.</li>
+        <li><b>Резерв на відмову</b>: з 3 AZ при втраті однієї решта дві мусять тримати 100% → кожна AZ розрахована на 50% піку → разом 150% (N+1 по зонах). Плюс запас на деплой (rolling забирає частину інстансів).</li>
+        <li><b>Час реакції автоскейлінгу</b>: нові інстанси стартують хвилини — на різкий пік потрібен pre-warming або запас.</li>
+      </ol>
+      <div class="callout info"><div class="ic">🧮</div><div class="body"><b>Приклад.</b> Середнє 20 000 QPS, пік-фактор 3 → 60 000 QPS. Тест: інстанс тримає 1 000 QPS при p99 &lt; 200 мс. Цільова утилізація 60% → 600 QPS на інстанс → 100 інстансів. Переживаємо втрату 1 з 3 AZ: 100 / 2 × 3 = 150 інстансів (по 50 у кожній AZ). Детальніше про такі оцінки — у <a href="01-interview-framework.html">туторіалі 1</a>.</div></div>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        <p>Метрики — це RUM-дашборд Web Vitals, логи — Sentry breadcrumbs, трейси — вкладка Performance у DevTools (waterfall спанів одного запиту). Fan-out у хвості — як сторінка, що чекає на 30 паралельних fetch перед першим рендером: достатньо одного повільного, щоб LCP став поганим. Звідси Suspense і стрімінг часткового результату. <b>Де ламається:</b> у браузері waterfall видно одразу; у бекенді трейс треба явно прокинути через усі сервіси (traceparent) і семплювати.</p>
+      </div>
+
+      <div class="callout interview"><div class="ic">🎤</div><div class="body"><b>На співбесіді:</b> «Метрики RED на кожен сервіс, USE на БД і черги; алерти на SLO burn rate; OpenTelemetry-трейси з tail sampling (зберігаємо всі помилкові й повільні). Говорю про p99, а не середнє, і пам'ятаю про хвіст при fan-out — тому таймаути з частковими результатами». Для capacity — рахуйте вголос із запасом на AZ.</div></div>
+
+      <div class="remember">RED для сервісів, USE для ресурсів. p99, а не середнє; гістограми, а не середні перцентилі. Fan-out = хвіст стає нормою. Утилізація 50–70% + запас на втрату AZ.</div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">09</span> High availability і disaster recovery</h2>
+      <p class="section-desc">HA — пережити відмову компонента без помітного простою (інстанс, диск, AZ). DR — відновитися після катастрофи (регіон, видалені дані, ransomware, помилковий скрипт). Різні цілі, різні механізми.</p>
+
+      <h3>Резервування і рівні ізоляції</h3>
+      <ul>
+        <li><b>Прибрати single points of failure</b>: щонайменше 2 інстанси кожного компонента, БД з репліками і автоматичним failover, LB у кількох AZ.</li>
+        <li><b>Multi-AZ</b> (зони в одному регіоні — окремі датацентри з окремим живленням, на відстані, що дає мілісекунди затримки): можна реплікувати <i>синхронно</i>. Дефолт для будь-якого продакшену.</li>
+        <li><b>Multi-region</b>: десятки–сотні мс між регіонами → реплікація зазвичай <i>асинхронна</i> → при failover можлива втрата останніх записів (RPO &gt; 0). Потрібно для 99.99%+ або вимог DR/регуляторів.</li>
+        <li><b>Static stability</b> (термін AWS): система продовжує працювати при відмові AZ <i>без</i> дій control plane — ємність уже розгорнута заздалегідь, а не «автоскейлер підніме».</li>
+      </ul>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 280" role="img" aria-label="Ліворуч active-passive: користувачі через DNS або балансувальник ідуть лише в регіон A, де працює застосунок і primary-база. Регіон B — standby з асинхронною реплікою бази; трафік переключається туди лише після failover. Плюси: простіше, немає конфліктів. Мінуси: RTO хвилини, RPO більше нуля, резерв простоює. Праворуч active-active: GeoDNS розподіляє користувачів між регіонами A і B, обидва обслуговують трафік, бази реплікуються в обидва боки. Плюси: миттєвий failover, ресурси працюють. Мінуси: конфлікти записів, складність, кожен регіон має витримати весь трафік.">
+          <defs><marker id="sd08-a11" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="177" y="16" text-anchor="middle" fill="currentColor" font-weight="bold">Active-passive</text>
+            <rect x="122" y="26" width="110" height="28" rx="6" fill="var(--card)" stroke="currentColor"/><text x="177" y="45" text-anchor="middle" fill="currentColor">Users</text>
+            <line x1="177" y1="56" x2="177" y2="70" stroke="currentColor" marker-end="url(#sd08-a11)"/>
+            <rect x="122" y="72" width="110" height="28" rx="6" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="177" y="91" text-anchor="middle" fill="currentColor">DNS / LB</text>
+            <line x1="150" y1="102" x2="100" y2="124" stroke="currentColor" marker-end="url(#sd08-a11)"/>
+            <line x1="205" y1="102" x2="255" y2="124" stroke="var(--fg-muted)" stroke-dasharray="4 3" marker-end="url(#sd08-a11)"/>
+            <text x="250" y="112" fill="var(--fg-muted)" font-size="10">після failover</text>
+            <rect x="15" y="126" width="150" height="98" rx="10" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="90" y="143" text-anchor="middle" fill="currentColor" font-weight="bold">Region A (active)</text>
+            <rect x="25" y="152" width="130" height="26" rx="5" fill="var(--card)" stroke="currentColor"/><text x="90" y="170" text-anchor="middle" fill="currentColor">App</text>
+            <rect x="25" y="186" width="130" height="26" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="90" y="204" text-anchor="middle" fill="currentColor">DB primary</text>
+            <rect x="190" y="126" width="150" height="98" rx="10" fill="none" stroke="var(--fg-muted)" stroke-dasharray="5 4"/>
+            <text x="265" y="143" text-anchor="middle" fill="var(--fg-muted)" font-weight="bold">Region B (standby)</text>
+            <rect x="200" y="152" width="130" height="26" rx="5" fill="none" stroke="var(--fg-muted)" stroke-dasharray="4 3"/><text x="265" y="170" text-anchor="middle" fill="var(--fg-muted)">App (мін. / 0)</text>
+            <rect x="200" y="186" width="130" height="26" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="265" y="204" text-anchor="middle" fill="currentColor">DB replica</text>
+            <line x1="157" y1="199" x2="197" y2="199" stroke="var(--accent)" marker-end="url(#sd08-a11)"/>
+            <text x="177" y="238" text-anchor="middle" fill="var(--accent)" font-size="10">async реплікація</text>
+            <text x="15" y="256" fill="var(--good)" font-size="11">+ простіше, немає конфліктів записів</text>
+            <text x="15" y="273" fill="var(--bad)" font-size="11">− RTO хвилини, RPO &gt; 0, резерв простоює</text>
+
+            <line x1="362" y1="10" x2="362" y2="276" stroke="var(--border)"/>
+
+            <text x="552" y="16" text-anchor="middle" fill="currentColor" font-weight="bold">Active-active</text>
+            <rect x="497" y="26" width="110" height="28" rx="6" fill="var(--card)" stroke="currentColor"/><text x="552" y="45" text-anchor="middle" fill="currentColor">Users</text>
+            <line x1="552" y1="56" x2="552" y2="70" stroke="currentColor" marker-end="url(#sd08-a11)"/>
+            <rect x="497" y="72" width="110" height="28" rx="6" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="552" y="91" text-anchor="middle" fill="currentColor">GeoDNS</text>
+            <line x1="525" y1="102" x2="475" y2="124" stroke="currentColor" marker-end="url(#sd08-a11)"/>
+            <line x1="580" y1="102" x2="630" y2="124" stroke="currentColor" marker-end="url(#sd08-a11)"/>
+            <rect x="385" y="126" width="150" height="98" rx="10" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="460" y="143" text-anchor="middle" fill="currentColor" font-weight="bold">Region A</text>
+            <rect x="395" y="152" width="130" height="26" rx="5" fill="var(--card)" stroke="currentColor"/><text x="460" y="170" text-anchor="middle" fill="currentColor">App</text>
+            <rect x="395" y="186" width="130" height="26" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="460" y="204" text-anchor="middle" fill="currentColor">DB (leader)</text>
+            <rect x="565" y="126" width="150" height="98" rx="10" fill="var(--good-bg)" stroke="var(--good)"/>
+            <text x="640" y="143" text-anchor="middle" fill="currentColor" font-weight="bold">Region B</text>
+            <rect x="575" y="152" width="130" height="26" rx="5" fill="var(--card)" stroke="currentColor"/><text x="640" y="170" text-anchor="middle" fill="currentColor">App</text>
+            <rect x="575" y="186" width="130" height="26" rx="5" fill="var(--accent-soft)" stroke="var(--accent)"/><text x="640" y="204" text-anchor="middle" fill="currentColor">DB (leader)</text>
+            <line x1="528" y1="199" x2="572" y2="199" stroke="var(--accent)" marker-start="url(#sd08-a11)" marker-end="url(#sd08-a11)"/>
+            <text x="550" y="238" text-anchor="middle" fill="var(--accent)" font-size="10">реплікація в обидва боки</text>
+            <text x="385" y="256" fill="var(--good)" font-size="11">+ миттєвий failover, усі ресурси працюють</text>
+            <text x="385" y="273" fill="var(--bad)" font-size="11">− конфлікти записів; кожен регіон тримає 100%</text>
+          </g>
+        </svg>
+        <figcaption>Active-passive — дешевше і простіше, але failover повільний і рідко тренований. Active-active — дорожче і складніше (конфлікти), зате «відмова регіону» — це просто перерозподіл трафіку.</figcaption>
+      </figure>
+
+      <h3>Як уникнути конфліктів в active-active</h3>
+      <ul>
+        <li><b>Home region</b>: кожен користувач/тенант «живе» в одному регіоні, його записи йдуть туди; інший регіон читає репліку. Конфліктів немає, failover — переназначення home region.</li>
+        <li><b>Last-write-wins</b> за таймстемпом — так працюють DynamoDB global tables; просто, але можливі тихі втрати конкурентних записів.</li>
+        <li><b>CRDT</b> або комутативні операції (лічильники, множини) — злиття без конфліктів.</li>
+        <li><b>Глобально узгоджена БД</b> (Spanner, CockroachDB) — консенсус через регіони, платимо латентністю запису (див. <a href="06-distributed-systems.html">туторіал 6</a>).</li>
+      </ul>
+
+      <h3>RPO і RTO</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 190" role="img" aria-label="Шкала часу. Остання точка відновлення — бекап або репліковані дані. Потім катастрофа. Потім сервіс відновлено. Проміжок від останньої точки відновлення до катастрофи — RPO, recovery point objective, скільки даних ми готові втратити. Проміжок від катастрофи до відновлення — RTO, recovery time objective, скільки часу сервіс лежить.">
+          <g font-size="12">
+            <line x1="30" y1="100" x2="710" y2="100" stroke="currentColor" stroke-width="2"/>
+            <circle cx="180" cy="100" r="7" fill="var(--good)"/>
+            <circle cx="400" cy="100" r="7" fill="var(--bad)"/>
+            <circle cx="620" cy="100" r="7" fill="var(--accent)"/>
+            <text x="180" y="130" text-anchor="middle" fill="currentColor" font-size="11">остання точка</text>
+            <text x="180" y="145" text-anchor="middle" fill="currentColor" font-size="11">відновлення</text>
+            <text x="400" y="130" text-anchor="middle" fill="var(--bad)" font-size="11">катастрофа</text>
+            <text x="620" y="130" text-anchor="middle" fill="currentColor" font-size="11">сервіс відновлено</text>
+            <line x1="180" y1="62" x2="400" y2="62" stroke="var(--warn)" stroke-width="2"/>
+            <line x1="180" y1="54" x2="180" y2="70" stroke="var(--warn)" stroke-width="2"/><line x1="400" y1="54" x2="400" y2="70" stroke="var(--warn)" stroke-width="2"/>
+            <text x="290" y="34" text-anchor="middle" fill="var(--warn)" font-weight="bold">RPO</text>
+            <text x="290" y="52" text-anchor="middle" fill="currentColor" font-size="11">скільки даних втратимо</text>
+            <line x1="400" y1="62" x2="620" y2="62" stroke="var(--accent)" stroke-width="2"/>
+            <line x1="620" y1="54" x2="620" y2="70" stroke="var(--accent)" stroke-width="2"/>
+            <text x="510" y="34" text-anchor="middle" fill="var(--accent)" font-weight="bold">RTO</text>
+            <text x="510" y="52" text-anchor="middle" fill="currentColor" font-size="11">скільки часу лежимо</text>
+            <text x="30" y="178" fill="var(--fg-muted)" font-size="11">Щоденний бекап → RPO до 24 год. Синхронна репліка → RPO ≈ 0. Ручне відновлення з бекапу → RTO години.</text>
+          </g>
+        </svg>
+        <figcaption>RPO (Recovery Point Objective) — дивимося назад від катастрофи; RTO (Recovery Time Objective) — вперед. Обидва — бізнес-рішення: чим ближче до нуля, тим дорожче.</figcaption>
+      </figure>
+
+      <table>
+        <tr><th>Стратегія DR (за класифікацією AWS)</th><th>Що є в резервному регіоні</th><th>RPO</th><th>RTO</th><th>Вартість</th></tr>
+        <tr><td>Backup &amp; restore</td><td>Лише бекапи</td><td>Години</td><td>Години–доба</td><td>$</td></tr>
+        <tr><td>Pilot light</td><td>Репліка БД, інфраструктура «вимкнена»</td><td>Хвилини</td><td>Десятки хвилин</td><td>$$</td></tr>
+        <tr><td>Warm standby</td><td>Зменшена працююча копія</td><td>Секунди–хвилини</td><td>Хвилини</td><td>$$$</td></tr>
+        <tr><td>Multi-site active-active</td><td>Повна копія, обслуговує трафік</td><td>≈ 0 – секунди</td><td>≈ 0 – секунди</td><td>$$$$</td></tr>
+      </table>
+
+      <h3>Бекапи — те, що ламається тихо</h3>
+      <ul>
+        <li><b>Реплікація ≠ бекап.</b> <code>DELETE FROM users</code> або шифрувальник реплікуються на всі репліки за мілісекунди. Потрібні знімки в часі.</li>
+        <li><b>PITR</b> (point-in-time recovery): базовий бекап + архів WAL → відновлення на будь-яку секунду (Postgres, RDS).</li>
+        <li><b>Правило 3-2-1</b>: 3 копії, 2 різні носії, 1 поза основним сайтом; плюс immutable/air-gapped копія проти ransomware і скомпрометованих облікових записів.</li>
+        <li><b>Тестуйте відновлення.</b> Інцидент GitLab (січень 2017): після випадкового видалення даних з'ясувалося, що кілька механізмів бекапу не працювали; втратили кілька годин даних. Бекап, з якого не відновлювались, — не бекап.</li>
+      </ul>
+
+      <div class="callout good"><div class="ic">🏭</div><div class="body"><b>Як це роблять у реальних системах.</b> Netflix працює active-active у кількох регіонах AWS і регулярно тренує «евакуацію» регіону (Chaos Kong) — переводить увесь трафік з одного регіону в інші. AWS для власних сервісів описує cell-based architecture і static stability як основні прийоми обмеження зони ураження.</div></div>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        <p>Multi-CDN з fallback-доменом для статики — це active-active: якщо один CDN лежить, браузер вантажить із другого. Service worker з offline-кешем — DR для UI: RPO = вік кешу (скільки свіжих даних втратимо), RTO ≈ 0 (сторінка відкривається одразу). <b>Де ламається:</b> статика read-only — конфліктів записів немає; у БД active-active головна складність саме в одночасних записах.</p>
+      </div>
+
+      <div class="callout interview"><div class="ic">🎤</div><div class="body"><b>На співбесіді</b> уточніть: «Які RPO/RTO для бізнесу?» Типова відповідь: «Multi-AZ із синхронною реплікою — RPO ≈ 0 при втраті AZ, автоматичний failover за ~хвилину. Для регіону — warm standby з асинхронною реплікацією, RPO — секунди, RTO — хвилини; щоквартальні DR-навчання. Бекапи з PITR, окремий акаунт, регулярне тестове відновлення».</div></div>
+
+      <div class="remember">HA — переживаємо відмову компонента/AZ; DR — катастрофу. RPO — скільки даних, RTO — скільки часу. Реплікація ≠ бекап; невідтестований бекап ≠ бекап.</div>
+    </section>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Деплої, feature flags, chaos engineering і реальні інциденти</h2>
+      <p class="section-desc">За даними багатьох постмортемів, значна частина інцидентів починається зі зміни: деплой коду, конфігу, правила, міграції. Тому надійність — це ще й те, як ви випускаєте зміни.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 730 280" role="img" aria-label="Три стратегії деплою. Rolling: інстанси оновлюються по кілька за раз, три вже на v2, три ще на v1, обидві версії працюють одночасно. Blue-green: роутер спрямовує весь трафік на зелене середовище з v2, синє з v1 стоїть у резерві; перемикання і відкат миттєві, але потрібно вдвічі більше ресурсів, а база спільна. Canary: трафік на нову версію збільшується поетапно — 1, 10, 50, 100 відсотків — з перевіркою SLO на кожному кроці; якщо помилки зростають, автоматичний відкат.">
+          <defs><marker id="sd08-a12" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <text x="10" y="52" fill="currentColor" font-weight="bold">Rolling</text>
+            <rect x="140" y="34" width="44" height="30" rx="5" fill="var(--good-bg)" stroke="var(--good)"/><text x="162" y="54" text-anchor="middle" fill="currentColor">v2</text>
+            <rect x="190" y="34" width="44" height="30" rx="5" fill="var(--good-bg)" stroke="var(--good)"/><text x="212" y="54" text-anchor="middle" fill="currentColor">v2</text>
+            <rect x="240" y="34" width="44" height="30" rx="5" fill="var(--good-bg)" stroke="var(--good)"/><text x="262" y="54" text-anchor="middle" fill="currentColor">v2</text>
+            <rect x="290" y="34" width="44" height="30" rx="5" fill="var(--card)" stroke="currentColor"/><text x="312" y="54" text-anchor="middle" fill="currentColor">v1</text>
+            <rect x="340" y="34" width="44" height="30" rx="5" fill="var(--card)" stroke="currentColor"/><text x="362" y="54" text-anchor="middle" fill="currentColor">v1</text>
+            <rect x="390" y="34" width="44" height="30" rx="5" fill="var(--card)" stroke="currentColor"/><text x="412" y="54" text-anchor="middle" fill="currentColor">v1</text>
+            <text x="452" y="46" fill="currentColor" font-size="11">по кілька інстансів за раз</text>
+            <text x="452" y="62" fill="var(--warn)" font-size="11">v1 і v2 працюють одночасно</text>
+            <line x1="10" y1="84" x2="720" y2="84" stroke="var(--border)" stroke-dasharray="4 4"/>
+
+            <text x="10" y="142" fill="currentColor" font-weight="bold">Blue-green</text>
+            <rect x="140" y="120" width="90" height="36" rx="6" fill="var(--warn-bg)" stroke="var(--warn)"/><text x="185" y="143" text-anchor="middle" fill="currentColor">Router</text>
+            <line x1="232" y1="130" x2="278" y2="114" stroke="var(--fg-muted)" stroke-dasharray="4 3" marker-end="url(#sd08-a12)"/>
+            <line x1="232" y1="146" x2="278" y2="160" stroke="currentColor" stroke-width="2" marker-end="url(#sd08-a12)"/>
+            <rect x="280" y="98" width="150" height="30" rx="6" fill="none" stroke="var(--fg-muted)" stroke-dasharray="4 3"/><text x="355" y="118" text-anchor="middle" fill="var(--fg-muted)">Blue · v1 (резерв)</text>
+            <rect x="280" y="146" width="150" height="30" rx="6" fill="var(--good-bg)" stroke="var(--good)"/><text x="355" y="166" text-anchor="middle" fill="currentColor">Green · v2 (live)</text>
+            <text x="452" y="128" fill="currentColor" font-size="11">миттєве перемикання і відкат</text>
+            <text x="452" y="144" fill="var(--warn)" font-size="11">2× ресурсів; БД спільна →</text>
+            <text x="452" y="160" fill="var(--warn)" font-size="11">схема сумісна з v1 і v2</text>
+            <line x1="10" y1="192" x2="720" y2="192" stroke="var(--border)" stroke-dasharray="4 4"/>
+
+            <text x="10" y="236" fill="currentColor" font-weight="bold">Canary</text>
+            <rect x="140" y="216" width="60" height="32" rx="6" fill="var(--good-bg)" stroke="var(--good)"/><text x="170" y="237" text-anchor="middle" fill="currentColor">1%</text>
+            <line x1="202" y1="232" x2="238" y2="232" stroke="currentColor" marker-end="url(#sd08-a12)"/>
+            <rect x="240" y="216" width="60" height="32" rx="6" fill="var(--good-bg)" stroke="var(--good)"/><text x="270" y="237" text-anchor="middle" fill="currentColor">10%</text>
+            <line x1="302" y1="232" x2="338" y2="232" stroke="currentColor" marker-end="url(#sd08-a12)"/>
+            <rect x="340" y="216" width="60" height="32" rx="6" fill="var(--good-bg)" stroke="var(--good)"/><text x="370" y="237" text-anchor="middle" fill="currentColor">50%</text>
+            <line x1="402" y1="232" x2="438" y2="232" stroke="currentColor" marker-end="url(#sd08-a12)"/>
+            <rect x="440" y="216" width="60" height="32" rx="6" fill="var(--good-bg)" stroke="var(--good)"/><text x="470" y="237" text-anchor="middle" fill="currentColor">100%</text>
+            <text x="320" y="210" text-anchor="middle" fill="var(--fg-muted)" font-size="10">на кожному кроці: SLO ок? bake time</text>
+            <text x="520" y="228" fill="var(--bad)" font-size="11">помилки ↑ або p99 ↑</text>
+            <text x="520" y="244" fill="var(--bad)" font-size="11">→ автоматичний відкат</text>
+            <text x="140" y="270" fill="var(--fg-muted)" font-size="11">зона ураження поганого релізу = частка трафіку на поточному кроці</text>
+          </g>
+        </svg>
+        <figcaption>Rolling — дефолт Kubernetes. Blue-green — коли потрібен миттєвий відкат. Canary — коли важливо обмежити зону ураження і порівняти метрики нової версії зі старою на реальному трафіку.</figcaption>
+      </figure>
+
+      <h3>Що ще потрібно для безпечних змін</h3>
+      <ul>
+        <li><b>Feature flags</b>: розділяють <i>deploy</i> (код на серверах) і <i>release</i> (фіча ввімкнена для користувачів). Поступове ввімкнення (1% → 100%), таргетинг (лише співробітники), kill switch. Пастка — «флаговий борг»: старі флаги треба прибирати.</li>
+        <li><b>Dark launch</b>: нова система отримує реальний трафік (дзеркалений або з прихованого UI), але користувач не бачить результату. Facebook у 2008 році описували запуск чату саме так: клієнти навантажували новий бекенд задовго до появи UI. Варіант — <b>shadow traffic</b>: копія запитів іде на нову версію, відповіді порівнюються.</li>
+        <li><b>Міграції БД expand/contract</b>: (1) додати нову колонку, (2) писати в обидві, (3) backfill, (4) читати з нової, (5) прибрати стару. Кожен крок сумісний і з попередньою, і з наступною версією коду — тоді rolling і відкат безпечні.</li>
+        <li><b>Автоматичний canary-аналіз</b>: статистичне порівняння метрик canary з baseline (наприклад, Kayenta від Netflix і Google).</li>
+        <li><b>Конфіг — це теж деплой</b>: зміни конфігурації і правил мають проходити той самий поетапний rollout.</li>
+      </ul>
+
+      <h3>Chaos engineering</h3>
+      <p>Netflix створив Chaos Monkey (приблизно 2011 рік, під час переїзду в AWS): у робочий час він випадково вимикає продакшн-інстанси, змушуючи команди будувати сервіси, що це переживають. Далі з'явились Simian Army, Chaos Kong (евакуація регіону) і платформи для контрольованих експериментів. Принципи (principlesofchaos.org):</p>
+      <ol class="steps">
+        <li>Визначте <b>steady state</b> через бізнес-метрику (наприклад, кількість стартів відтворення за секунду).</li>
+        <li>Сформулюйте гіпотезу: «steady state не зміниться, якщо впаде одна AZ».</li>
+        <li>Вносьте реальні збої: падіння інстансу, затримки мережі, недоступність залежності, переповнений диск.</li>
+        <li>Експериментуйте в продакшені, але <b>мінімізуйте зону ураження</b> (малий відсоток трафіку, кнопка «стоп»).</li>
+        <li>Автоматизуйте і повторюйте регулярно. Ручний варіант — GameDay.</li>
+      </ol>
+
+      <h3>Анатомія реальних аварій</h3>
+      <figure class="diagram">
+        <svg viewBox="0 0 730 272" role="img" aria-label="Метастабільна відмова на графіку в часі. Користувацьке навантаження стабільне нижче ємності, потім короткий тригер — сплеск — і знову стабільне. Повне навантаження з урахуванням ретраїв під час тригера перевищує ємність і лишається вище ємності навіть після того, як тригер минув. Корисна пропускна здатність падає і лишається низькою. Лише після втручання — скидання ретраїв або load shedding — повне навантаження падає нижче ємності, і goodput відновлюється.">
+          <defs><marker id="sd08-a13" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+          <g font-size="12">
+            <line x1="60" y1="220" x2="710" y2="220" stroke="currentColor" marker-end="url(#sd08-a13)"/>
+            <line x1="60" y1="220" x2="60" y2="28" stroke="currentColor" marker-end="url(#sd08-a13)"/>
+            <text x="705" y="238" text-anchor="end" fill="var(--fg-muted)" font-size="11">час</text>
+            <line x1="60" y1="110" x2="700" y2="110" stroke="var(--fg-muted)" stroke-dasharray="5 4"/>
+            <text x="66" y="104" fill="var(--fg-muted)" font-size="11">ємність</text>
+            <rect x="240" y="30" width="80" height="190" fill="var(--warn-bg)"/>
+            <text x="280" y="44" text-anchor="middle" fill="var(--warn)" font-size="11">тригер</text>
+            <polyline points="60,150 240,150 255,90 305,90 320,150 700,150" fill="none" stroke="currentColor" stroke-width="2"/>
+            <polyline points="60,148 240,148 260,85 300,66 330,72 520,70 545,146 700,146" fill="none" stroke="var(--bad)" stroke-width="2.5"/>
+            <polyline points="60,152 245,152 270,200 520,200 548,152 700,152" fill="none" stroke="var(--good)" stroke-width="2.5" stroke-dasharray="6 3"/>
+            <text x="340" y="88" fill="var(--bad)" font-size="11">тригер минув, але ретраї</text><text x="340" y="102" fill="var(--bad)" font-size="11">тримають перевантаження</text>
+            <text x="340" y="194" fill="var(--good)" font-size="11">goodput лишається низьким</text>
+            <line x1="530" y1="30" x2="530" y2="220" stroke="var(--accent)" stroke-width="2"/>
+            <text x="536" y="44" fill="var(--accent)" font-size="11">втручання:</text>
+            <text x="536" y="58" fill="var(--accent)" font-size="11">скинути навантаження</text>
+            <text x="60" y="258" fill="currentColor" font-size="11">— навантаження користувачів</text>
+            <text x="250" y="258" fill="var(--bad)" font-size="11">— повне навантаження (з ретраями)</text>
+            <text x="480" y="258" fill="var(--good)" font-size="11">- - корисна робота (goodput)</text>
+          </g>
+        </svg>
+        <figcaption>Метастабільна відмова (Bronson et al., «Metastable Failures in Distributed Systems», HotOS 2021): система переходить у «поганий» стабільний стан, який підтримує сам себе (ретраї, холодний кеш, черги), навіть коли початкова причина зникла. Вихід — розірвати петлю: скинути навантаження, вимкнути ретраї, прогріти кеш.</figcaption>
+      </figure>
+
+      <table>
+        <tr><th>Інцидент (публічні постмортеми)</th><th>Що сталося</th><th>Урок</th></tr>
+        <tr><td>AWS S3, us-east-1, лютий 2017</td><td>Помилка в команді під час планового обслуговування видалила більше серверів, ніж планувалось; перезапуск підсистем зайняв години</td><td>Інструменти мають обмежувати зону дії; відновлення великих систем після повного рестарту довге</td></tr>
+        <tr><td>Cloudflare, липень 2019</td><td>Нове WAF-правило з регулярним виразом, схильним до катастрофічного backtracking, завантажило CPU по всьому світу</td><td>Поетапний rollout і для правил/конфігів; ліміти на виконання</td></tr>
+        <tr><td>Facebook, жовтень 2021</td><td>Помилкова зміна в backbone-мережі → BGP-маршрути до DNS відкликано → недоступні всі сервіси і внутрішні інструменти</td><td>Залежність інструментів відновлення від того самого стеку; out-of-band доступ</td></tr>
+        <tr><td>CrowdStrike, липень 2024</td><td>Дефектне контент-оновлення агента одночасно розійшлося на мільйони Windows-машин → масові збої завантаження</td><td>Canary/staged rollout для будь-яких оновлень, включно з «даними»</td></tr>
+      </table>
+      <p><b>Каскадна відмова</b> (Google SRE Book, «Addressing Cascading Failures») — загальний патерн: перевантаження одного компонента збільшує навантаження на інші (ретраї, перерозподіл трафіку з упалих інстансів на живі, холодний кеш), і відмова поширюється. Ліки — усе з цього туторіалу: ліміти, таймаути, бюджети ретраїв, shedding, деградація.</p>
+
+      <div class="fe-analogy"><div class="tag">Аналогія для фронтендера</div>
+        <p>Feature flags і поетапний rollout ви знаєте з A/B-тестів (LaunchDarkly, GrowthBook). Canary — як випуск нової версії застосунку в App Store на 1% користувачів (phased release) з моніторингом крешів у Sentry перед розширенням. Метастабільна відмова — як нескінченний цикл ре-рендерів: <code>useEffect</code> змінює стан, що знову запускає ефект, і система не повертається в норму сама, навіть якщо початкова зміна була одноразовою. <b>Де ламається:</b> у браузері цикл зупиняє закриття вкладки; у продакшені «закрити вкладку» означає скинути навантаження з тисяч клієнтів.</p>
+      </div>
+
+      <div class="callout interview"><div class="ic">🎤</div><div class="body"><b>На співбесіді:</b> «Деплой — canary з автоматичним відкатом за SLO-метриками; міграції — expand/contract; ризиковані фічі — за feature flag з kill switch; конфіги проходять той самий rollout. Регулярні GameDay й chaos-експерименти, щоб перевірити failover і fallback». І назвіть метастабільні відмови, якщо питають, «чому система не відновилась сама».</div></div>
+
+      <div class="remember">Більшість аварій — від змін. Обмежуйте зону ураження: canary, feature flags, expand/contract, staged rollout конфігів. Тренуйте відмови до того, як вони стануться.</div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина IV · Практика</div><div class="line"></div></div>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Трікі питання</h2>
+      <p class="section-desc">Відповідайте вголос, потім відкривайте.</p>
+
+      <details class="qa"><summary><span class="difficulty trick">TRICKY</span>Чому ретраї можуть зробити систему менш надійною?</summary><div class="a">
+        <p>Ретраї множать навантаження саме тоді, коли система перевантажена: 3 рівні × 3 спроби = 27× на нижній рівень; синхронні ретраї без jitter створюють піки; ретраї неідемпотентних операцій дають дублі; ретраї довші за дедлайн клієнта — марна робота. Плюс вони можуть утримувати систему в метастабільному стані. Ретраї корисні лише при рідкісних випадкових збоях — тому їх обмежують бюджетом (≈10%), роблять на одному рівні і з jitter.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty trick">TRICKY</span>Таймаут клієнта 2 с, gateway — 5 с, сервісу — 10 с. Що не так?</summary><div class="a">
+        <p>Таймаути «перевернуті»: клієнт здається через 2 с і, можливо, ретраїть, а gateway і сервіс ще 3–8 с виконують уже непотрібну роботу; ретрай клієнта додає другу копію. Таймаути мають <b>зменшуватись</b> углиб стеку, а краще — поширювати дедлайн: кожен рівень отримує «скільки лишилось» мінус свій запас.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty core">CORE</span>Token bucket vs leaky bucket — у чому реальна різниця?</summary><div class="a">
+        <p>Обидва обмежують середню швидкість r. Token bucket дозволяє сплеск до b одразу (накопичені токени), тобто вихід нерівномірний — зручно для API, де клієнт робить кілька запитів підряд. Leaky bucket (як черга) віддає назовні рівно r/с, згладжуючи сплески ціною затримки або відкидання — зручно для захисту бекенду, що не витримує піків. У варіанті «leaky bucket as a meter» (як у коді вище) він математично еквівалентний token bucket і відрізняється лише інтерпретацією.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty trick">TRICKY</span>Redis із лічильниками rate limiter упав. Що робить API?</summary><div class="a">
+        <p>Свідомий вибір: <b>fail open</b> (пропускати) з локальним in-memory лімітом на інстанс (грубий ліміт = глобальний / кількість інстансів) — API продовжує працювати, ліміт тимчасово неточний. <b>Fail closed</b> (відмовляти) — лише для операцій, де зловживання дорожче за простій: логін, відправка SMS, платіжні спроби. Обов'язково circuit breaker на виклик Redis, щоб не чекати таймаут на кожен запит.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty adv">ADV</span>Чи можна мати SLO 99.99%, якщо БД має SLA 99.95%?</summary><div class="a">
+        <p>Ні, якщо кожен запит синхронно залежить від цієї БД: доступність ланцюжка ≤ доступності найслабшої ланки. Варіанти: резервування (дві незалежні БД/регіони — з урахуванням кореляції відмов), кеш і деградація (читання з кешу при недоступності БД), асинхронність (записи в чергу і підтвердження пізніше), або чесно знизити SLO для операцій, що вимагають БД. Також SLA провайдера — це про компенсацію, а не гарантія; реальна доступність часто вища, але закладатися на це не можна.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty trick">TRICKY</span>Чому середня латентність 50 мс — погана метрика?</summary><div class="a">
+        <p>Середнє ховає хвіст: 98% запитів по 20 мс і 2% по 1.5 с дають середнє ≈ 50 мс, а кожен 50-й користувач чекає півтори секунди. При fan-out на 100 бекендів хвіст стає нормою. Дивіться на p50/p99/p99.9, будуйте їх з гістограм, і ніколи не усереднюйте перцентилі між хостами.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty adv">ADV</span>Liveness probe перевіряє з'єднання з БД. Що може статися?</summary><div class="a">
+        <p>БД блимнула на 20 с → liveness провалюється на всіх подах → Kubernetes перезапускає всі поди одночасно → холодний старт, порожні кеші, шторм нових з'єднань до БД, яка щойно піднялась → вона знову лягає. Ми перетворили 20-секундний збій на годинний. Liveness має перевіряти лише сам процес; залежності — через readiness (обережно) і circuit breaker.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty trick">TRICKY</span>Ми робимо blue-green. Як відкотитись, якщо нова версія вже змінила схему БД?</summary><div class="a">
+        <p>Ніяк швидко — тому так і не роблять. Схема має бути сумісна з обома версіями (expand/contract): спершу «expand»-міграція, сумісна зі старим кодом; потім перемикання; «contract» (видалення старих колонок) — лише коли відкат на стару версію більше не потрібен. Те саме для формату подій у черзі і кешу: нова версія має вміти читати старий формат і навпаки.</p>
+      </div></details>
+
+      <details class="qa"><summary><span class="difficulty core">CORE</span>Active-active у двох регіонах дає 2× ємності?</summary><div class="a">
+        <p>Ні. Щоб пережити відмову регіону, кожен регіон мусить витримати 100% трафіку, тож при нормальній роботі кожен завантажений ≤ 50%. Active-active дає швидкий failover і близькість до користувачів, а не «подвійну потужність». Те саме з AZ: при 3 зонах — кожна на 50% піку.</p>
+      </div></details>
+    </section>
+
+    <section id="s12">
+      <h2><span class="num">12</span> Задачі</h2>
+      <p class="section-desc">Обчислення, вибір механізмів, дебаг. Спершу самі.</p>
+
+      <div class="task" id="task1">
+        <div class="task-head"><span class="tasknum">Задача 1</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Дев'ятки в хвилинах</span></div>
+        <p>SLO 99.95% за 30 днів. Скільки хвилин простою дозволено? А якщо SLO рахується за запитами і сервіс отримує 50 млн запитів на місяць?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>(1 − 0.9995) × 30 × 24 × 60 = 0.0005 × 43 200 = <b>21.6 хв</b>. За запитами: 0.0005 × 50 000 000 = <b>25 000</b> невдалих запитів на місяць.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task2">
+        <div class="task-head"><span class="tasknum">Задача 2</span><span class="taskdiff easy">Легко</span><span class="tasktitle">Який алгоритм?</span></div>
+        <p>(a) Публічний API: 100 запитів/хв, клієнти часто роблять 10–20 запитів підряд; (b) логін: не більше 5 спроб за 15 хв на акаунт, строго; (c) безкоштовний тариф: 10 000 запитів на календарну добу; (d) черга відправки в повільний SMS-шлюз, що витримує 50 повідомлень/с.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>(a) Token bucket (rate 100/хв, burst ~20). (b) Sliding window log (малий ліміт, потрібна точність; sorted set у Redis). (c) Fixed window (<code>INCR</code> з ключем на дату, <code>EXPIRE</code>) — межа вікна тут і є бізнес-правилом. (d) Leaky bucket / черга з постійною швидкістю виходу 50/с.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task3">
+        <div class="task-head"><span class="tasknum">Задача 3</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Ланцюжок залежностей</span></div>
+        <p>Checkout синхронно викликає 5 сервісів, кожен з доступністю 99.95%. Продукт хоче 99.9% для checkout. Чи реально? Що змінити?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <ol>
+            <li>0.9995⁵ ≈ 0.9975 → <b>99.75%</b> — нижче цілі навіть без власних збоїв checkout.</li>
+            <li>Прибрати залежності з критичного шляху: рекомендації, аналітику, лояльність — асинхронно або з fallback (відсутність бонусів не має блокувати оплату).</li>
+            <li>Для обов'язкових залежностей — підвищити їхні SLO (multi-AZ) або резервувати (кеш цін і каталогу).</li>
+            <li>Якщо лишилось 2 жорсткі залежності по 99.95%: 0.9995² ≈ 0.999 — на межі; потрібен запас для самого checkout → ціль досяжна лише з деградацією.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task" id="task4">
+        <div class="task-head"><span class="tasknum">Задача 4</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Скільки інстансів?</span></div>
+        <p>Пік — 30 000 QPS. Навантажувальний тест: інстанс тримає 500 QPS при p99 &lt; 150 мс. Цільова утилізація 60%. Сервіс у 3 AZ і має пережити втрату однієї. Скільки інстансів?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Робоча ємність інстансу: 500 × 0.6 = 300 QPS. На пік: 30 000 / 300 = 100 інстансів. Після втрати 1 з 3 AZ мають лишитися 100 → по 50 у кожній з 2 зон → у 3 зонах <b>150 інстансів</b> (по 50). Додайте запас на rolling deploy (наприклад, maxSurge) і на зростання.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task5">
+        <div class="task-head"><span class="tasknum">Задача 5</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Множення ретраїв</span></div>
+        <p>4 рівні (mobile → BFF → service → DB client), кожен робить до 3 спроб. БД почала таймаутити. У скільки разів зросте навантаження на БД? Як виправити, не вимикаючи ретраї повністю?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>До 3⁴ = <b>81×</b> на один запит користувача. Виправлення: ретраї лише на одному рівні (наприклад, у service, найближчому до БД) — інші рівні не ретраять або ретраять лише помилки з'єднання до відправки запиту; retry budget 10% на клієнт; дедлайн, що поширюється (немає сенсу ретраїти після його спливу); circuit breaker на БД-клієнті; сигнал «overloaded — не ретраїти» у відповіді.</p>
+        </div></details>
+      </div>
+
+      <div class="task" id="task6">
+        <div class="task-head"><span class="tasknum">Задача 6</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Burn rate</span></div>
+        <p>SLO 99.9% за 30 днів, 10 млн запитів на добу рівномірно. Інцидент: 3 години з 2% помилок. Яку частку бюджету спалено? Який burn rate? Чи мав спрацювати пейдж за правилом «2% бюджету за годину»?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <ol>
+            <li>Бюджет: 0.001 × 300 млн = 300 000 невдалих запитів.</li>
+            <li>Інцидент: 10 млн / 24 ≈ 417 000 запитів/год × 3 год × 0.02 ≈ 25 000 помилок ≈ <b>8.3%</b> бюджету.</li>
+            <li>Burn rate = частка помилок / (1 − SLO) = 0.02 / 0.001 = <b>20</b>.</li>
+            <li>Поріг пейджа за 1 год — burn rate 14.4; 20 &gt; 14.4 → пейдж мав спрацювати приблизно в першу годину (за годину згоряє 20/720 ≈ 2.8% бюджету).</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task" id="task7">
+        <div class="task-head"><span class="tasknum">Задача 7</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Rate limiter для 10 млн користувачів</span></div>
+        <p>API з 10 млн активних користувачів, пік 1 млн QPS через 200 gateway-інстансів. Ліміт: 100 запитів/хв на користувача + 10 000/хв на тенант. Спроектуйте: алгоритм, сховище, оцінка пам'яті й навантаження, поведінка при відмовах.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <figure class="diagram">
+            <svg viewBox="0 0 730 200" role="img" aria-label="Архітектура розподіленого rate limiter. Клієнти проходять edge з лімітом за IP, далі 200 інстансів gateway. Кожен gateway має локальний кеш правил і викликає Lua-скрипт у Redis Cluster з шардуванням за hash slot ключа користувача. Правила лімітів надходять із сервісу конфігурації. Якщо Redis недоступний, gateway переходить на локальний ліміт fail open, захищений circuit breaker.">
+              <defs><marker id="sd08-a14" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+              <g font-size="12">
+                <rect x="10" y="70" width="90" height="44" rx="8" fill="var(--card)" stroke="currentColor"/><text x="55" y="97" text-anchor="middle" fill="currentColor">Clients</text>
+                <line x1="102" y1="92" x2="128" y2="92" stroke="currentColor" marker-end="url(#sd08-a14)"/>
+                <rect x="130" y="70" width="110" height="44" rx="8" fill="var(--fun-bg)" stroke="var(--fun)"/><text x="185" y="90" text-anchor="middle" fill="currentColor">Edge</text><text x="185" y="106" text-anchor="middle" fill="var(--fg-muted)" font-size="10">ліміт за IP</text>
+                <line x1="242" y1="92" x2="268" y2="92" stroke="currentColor" marker-end="url(#sd08-a14)"/>
+                <rect x="270" y="56" width="170" height="72" rx="8" fill="var(--warn-bg)" stroke="var(--warn)"/>
+                <text x="355" y="78" text-anchor="middle" fill="currentColor">Gateway ×200</text>
+                <text x="355" y="96" text-anchor="middle" fill="var(--fg-muted)" font-size="10">кеш правил · breaker</text>
+                <text x="355" y="112" text-anchor="middle" fill="var(--fg-muted)" font-size="10">fallback: локальний ліміт</text>
+                <line x1="442" y1="92" x2="498" y2="92" stroke="var(--accent)" marker-start="url(#sd08-a14)" marker-end="url(#sd08-a14)"/>
+                <text x="470" y="84" text-anchor="middle" fill="var(--accent)" font-size="10">EVALSHA</text>
+                <rect x="500" y="40" width="220" height="104" rx="10" fill="var(--accent-soft)" stroke="var(--accent)"/>
+                <text x="610" y="60" text-anchor="middle" fill="currentColor">Redis Cluster</text>
+                <rect x="512" y="72" width="60" height="28" rx="4" fill="var(--card)" stroke="var(--accent)"/><text x="542" y="91" text-anchor="middle" fill="currentColor" font-size="11">shard 1</text>
+                <rect x="580" y="72" width="60" height="28" rx="4" fill="var(--card)" stroke="var(--accent)"/><text x="610" y="91" text-anchor="middle" fill="currentColor" font-size="11">shard 2</text>
+                <rect x="648" y="72" width="60" height="28" rx="4" fill="var(--card)" stroke="var(--accent)"/><text x="678" y="91" text-anchor="middle" fill="currentColor" font-size="11">… N</text>
+                <text x="610" y="124" text-anchor="middle" fill="var(--fg-muted)" font-size="10">ключ rl:{user} → hash slot; репліки</text>
+                <rect x="270" y="150" width="170" height="36" rx="8" fill="var(--card)" stroke="currentColor"/><text x="355" y="173" text-anchor="middle" fill="currentColor">Config service</text>
+                <line x1="355" y1="148" x2="355" y2="130" stroke="currentColor" marker-end="url(#sd08-a14)"/>
+              </g>
+            </svg>
+            <figcaption>Ліміти з конфігу кешуються в gateway; стан бакетів — у шардованому Redis; при недоступності Redis — локальний грубий ліміт.</figcaption>
+          </figure>
+          <ol>
+            <li><b>Алгоритм</b>: token bucket (capacity 100, rate 100/60 токена/с) для користувача і окремий для тенанта; обидва в одному Lua-скрипті, якщо ключі в одному слоті, або дві перевірки (спершу дешевша/строгіша).</li>
+            <li><b>Пам'ять</b>: ключ-хеш із двома полями — порядку 100–200 байт з накладними витратами Redis → 10 млн × ~150 B ≈ <b>1.5 GB</b> (+ тенанти — дрібниця). TTL прибирає неактивних.</li>
+            <li><b>Навантаження</b>: 1 млн EVALSHA/с (×2, якщо дві перевірки). Один Redis-шард обробляє порядку 100 тис. простих операцій/с (залежить від заліза й скрипта — міряти) → <b>~10–20 шардів</b> з репліками.</li>
+            <li><b>Оптимізація</b>: «позичати» токени партіями в локальний бакет gateway для гарячих клієнтів; для тенант-ліміту — локальні лічильники з синхронізацією раз на секунду (наближено).</li>
+            <li><b>Відмови</b>: circuit breaker на Redis, fail open з локальним лімітом (1 млн / 200 → грубий ліміт на інстанс); для логіну/SMS — fail closed. Відповідь 429 + Retry-After; метрики відхилень за тенантами.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task" id="task8">
+        <div class="task-head"><span class="tasknum">Задача 8</span><span class="taskdiff hard">Складно</span><span class="tasktitle">Дебаг: 30 секунд збою → 2 години простою</span></div>
+        <p>Primary БД перезапустився за 30 с. Після цього API лежав 2 години, хоча БД була здорова. Відомо: клієнти ретраять кожну секунду без jitter до 10 разів; кеш Redis має TTL 5 хв і при промаху йде в БД; liveness-проба перевіряє БД; автоскейлер додає інстанси при CPU &gt; 70%. Поясніть і виправте.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <ol>
+            <li><b>Liveness → БД</b>: усі поди перезапустились одночасно → холодні процеси, шторм нових з'єднань до БД.</li>
+            <li><b>Ретраї без jitter</b>: синхронні хвилі, ×10 навантаження, без бюджету.</li>
+            <li><b>Кеш</b>: за 30 с значення не протухли масово, але рестарт подів скинув локальні кеші, і за кілька хвилин після відновлення синхронно спливли TTL → stampede на БД.</li>
+            <li><b>Автоскейлер</b>: більше інстансів → більше з'єднань і ретраїв до вже перевантаженої БД (позитивний зворотний зв'язок).</li>
+            <li>Разом — <b>метастабільний стан</b>: навантаження з ретраїв і промахів кешу тримає БД перевантаженою без початкової причини.</li>
+            <li><b>Виправлення</b>: liveness без залежностей; backoff + jitter + retry budget; request coalescing / stale-while-revalidate для кешу і jitter у TTL; пул з'єднань з лімітом; load shedding у API (швидкий 503); автоскейлінг з урахуванням ємності БД; runbook «скинути навантаження» (тимчасово відкидати частину трафіку, щоб вийти з метастабільного стану).</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task" id="task9">
+        <div class="task-head"><span class="tasknum">Задача 9</span><span class="taskdiff mid">Середньо</span><span class="tasktitle">Безпечний POST /payments</span></div>
+        <p>Мобільний клієнт відправляє платіж, отримує таймаут через 10 с і ретраїть. Іноді гроші списуються двічі. Спроектуйте виправлення на клієнті і сервері.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <ol>
+            <li>Клієнт генерує <code>Idempotency-Key</code> (UUID) при натисканні «Оплатити» і відправляє з усіма повторами (backoff + jitter, ≤ 3 спроби).</li>
+            <li>Сервер: <code>INSERT INTO idempotency_keys(key, user_id, request_hash, status='in_progress')</code> з унікальним ключем; конфлікт + статус «done» → повернути збережену відповідь; «in_progress» → 409, клієнт спробує пізніше; інший <code>request_hash</code> з тим самим ключем → 422.</li>
+            <li>Виклик платіжного провайдера — з тим самим ключем (провайдери на кшталт Stripe приймають idempotency key).</li>
+            <li>Збереження відповіді й зміна статусу — в одній транзакції з записом платежу. TTL ключів ≥ 24 год.</li>
+            <li>Таймаут клієнта ≥ серверний дедлайн + запас, щоб не ретраїти запити, які ще виконуються.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task" id="task10">
+        <div class="task-head"><span class="tasknum">Задача 10</span><span class="taskdiff hard">Складно</span><span class="tasktitle">DR-план для сервісу платежів</span></div>
+        <p>Бізнес: «втрата підтверджених платежів неприпустима; простій до 15 хв при втраті регіону прийнятний; при втраті AZ — до 1 хв». Запропонуйте архітектуру даних і процеси.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <ol>
+            <li><b>AZ</b>: БД з синхронною реплікою в іншій AZ (RPO = 0) і автоматичним failover (~30–60 с); застосунок у 3 AZ зі static stability (ємність на втрату однієї зони).</li>
+            <li><b>Регіон, RPO = 0</b>: асинхронна реплікація дає RPO &gt; 0, тому або синхронний коміт у другий регіон (кворум через регіони: +латентність на кожен запис, Spanner/CockroachDB-стиль), або підтверджувати платіж користувачу лише після реплікації журналу в другий регіон.</li>
+            <li><b>RTO 15 хв</b>: warm standby у другому регіоні (зменшена працююча копія + автоскейлінг), автоматизований runbook перемикання DNS/трафіку; DNS TTL короткий.</li>
+            <li><b>Бекапи</b>: PITR, копії в окремому акаунті/регіоні, immutable; щомісячне тестове відновлення.</li>
+            <li><b>Процеси</b>: DR-навчання щокварталу (переключення регіону в робочий час), звірка (reconciliation) з платіжним провайдером після failover — він є другим джерелом правди про платежі.</li>
+          </ol>
+        </div></details>
+      </div>
+    </section>
+
+    <section id="s13">
+      <h2><span class="num">13</span> Шпаргалка, флешкартки і що читати далі</h2>
+      <p class="section-desc">Перечитайте перед співбесідою.</p>
+      <div class="cheat"><table>
+        <tr><th>Тема</th><th>Коротко</th></tr>
+        <tr><td>Rate limiting</td><td>Token bucket (rate + burst) за замовчуванням; fixed window — 2× на межі; sliding counter — дешево і майже точно</td></tr>
+        <tr><td>Розподілений ліміт</td><td>Redis + Lua (атомарно), hash tag у ключі, fail open + локальний ліміт, 429 + Retry-After</td></tr>
+        <tr><td>Таймаути</td><td>На кожен виклик; дедлайн поширюється; таймаути зменшуються вглиб</td></tr>
+        <tr><td>Ретраї</td><td>Лише ідемпотентне/з ключем; ≤ 3; exp backoff + full jitter; на одному рівні; retry budget ~10%</td></tr>
+        <tr><td>Circuit breaker</td><td>CLOSED → OPEN (fail fast) → HALF-OPEN (пробні) ; частка помилок у вікні; fallback</td></tr>
+        <tr><td>Bulkhead</td><td>Окремі пули/семафори на залежність; cells</td></tr>
+        <tr><td>Load shedding</td><td>Швидкий 503, пріоритети, відкидати прострочене, adaptive concurrency</td></tr>
+        <tr><td>Health checks</td><td>Liveness — лише процес; readiness — власна готовність; не залежності</td></tr>
+        <tr><td>SLO</td><td>99.9% ≈ 43 хв/30 днів; 99.99% ≈ 4.3 хв; error budget = 1 − SLO; burn rate 14.4 → пейдж</td></tr>
+        <tr><td>Композиція</td><td>Послідовно — добуток доступностей; паралельно — 1 − добуток недоступностей (незалежні!)</td></tr>
+        <tr><td>Латентність</td><td>p99, гістограми; fan-out 100 × 1% → 63% повільних</td></tr>
+        <tr><td>Capacity</td><td>Пік × запас; утилізація 50–70%; N+1 по AZ (3 AZ → 150%)</td></tr>
+        <tr><td>HA / DR</td><td>Multi-AZ sync, multi-region async; RPO — дані, RTO — час; реплікація ≠ бекап</td></tr>
+        <tr><td>Деплой</td><td>Canary + auto rollback; feature flags; expand/contract; конфіги теж поетапно</td></tr>
+        <tr><td>Аварії</td><td>Каскадні (перевантаження розповзається), метастабільні (ретраї тримають поганий стан)</td></tr>
+      </table></div>
+
+      <div class="flashgrid">
+        <div class="flashcard"><div class="fc-num">01</div><div class="term">Token bucket</div><div class="def">Токени додаються зі швидкістю r до ємності b; запит забирає токен.</div><div class="mnemo">Середнє r, сплеск b.</div></div>
+        <div class="flashcard"><div class="fc-num">02</div><div class="term">Sliding window counter</div><div class="def">prev × частка перекриття + cur ≤ ліміт.</div><div class="mnemo">Два лічильники — майже точно.</div></div>
+        <div class="flashcard"><div class="fc-num">03</div><div class="term">Full jitter</div><div class="def">sleep = random(0, min(cap, base·2ⁿ)).</div><div class="mnemo">Розсипати ретраї в часі.</div></div>
+        <div class="flashcard"><div class="fc-num">04</div><div class="term">Retry budget</div><div class="def">Ретраї ≤ ~10% від запитів клієнта за вікно.</div><div class="mnemo">Ретраї — привілей, а не право.</div></div>
+        <div class="flashcard"><div class="fc-num">05</div><div class="term">Deadline propagation</div><div class="def">Кожен рівень передає далі залишок часу; ≤ 0 → не викликати.</div><div class="mnemo">Не працювати на мертвого клієнта.</div></div>
+        <div class="flashcard"><div class="fc-num">06</div><div class="term">Circuit breaker</div><div class="def">Після серії помилок швидко відмовляє, періодично пробує знову.</div><div class="mnemo">Запобіжник у щитку.</div></div>
+        <div class="flashcard"><div class="fc-num">07</div><div class="term">Bulkhead</div><div class="def">Ізольовані пули ресурсів на залежність/клас трафіку.</div><div class="mnemo">Відсіки корабля.</div></div>
+        <div class="flashcard"><div class="fc-num">08</div><div class="term">Load shedding</div><div class="def">Свідоме відкидання надлишку, щоб обслужити решту.</div><div class="mnemo">Краще 80% швидко, ніж 0% повільно.</div></div>
+        <div class="flashcard"><div class="fc-num">09</div><div class="term">SLI / SLO / SLA</div><div class="def">Метрика / внутрішня ціль / контракт з наслідками.</div><div class="mnemo">Міряємо → цілимось → обіцяємо.</div></div>
+        <div class="flashcard"><div class="fc-num">10</div><div class="term">Error budget</div><div class="def">1 − SLO: дозволена кількість «поганого» за вікно.</div><div class="mnemo">Гроші на ризик.</div></div>
+        <div class="flashcard"><div class="fc-num">11</div><div class="term">Burn rate</div><div class="def">Швидкість витрати бюджету відносно рівномірної.</div><div class="mnemo">14.4 за годину → будимо людей.</div></div>
+        <div class="flashcard"><div class="fc-num">12</div><div class="term">Tail latency</div><div class="def">Повільний хвіст розподілу (p99+), підсилюється fan-out.</div><div class="mnemo">1 − 0.99¹⁰⁰ ≈ 63%.</div></div>
+        <div class="flashcard"><div class="fc-num">13</div><div class="term">RPO / RTO</div><div class="def">Скільки даних можна втратити / скільки часу лежати.</div><div class="mnemo">Point — назад, Time — вперед.</div></div>
+        <div class="flashcard"><div class="fc-num">14</div><div class="term">Static stability</div><div class="def">Пережити відмову без дій control plane: ємність уже є.</div><div class="mnemo">Запаска вже на колесі.</div></div>
+        <div class="flashcard"><div class="fc-num">15</div><div class="term">Canary</div><div class="def">Нова версія на малу частку трафіку з автоматичним відкатом за метриками.</div><div class="mnemo">Канарка в шахті.</div></div>
+        <div class="flashcard"><div class="fc-num">16</div><div class="term">Metastable failure</div><div class="def">Самопідтримуваний поганий стан після зникнення тригера.</div><div class="mnemo">Затор, що не розсмоктується сам.</div></div>
+      </div>
+
+      <h3 id="s13-res">Глибше: книги, статті, papers</h3>
+      <p>Пов'язані туторіали: <a href="07-async-messaging.html">7 — черги, ідемпотентність</a>, <a href="09-classic-url-id-kv.html">9 — rate limiter як задача</a>, <a href="13-tricky-topics-qa.html">13 — трікі теми</a>; на сайті: <a href="../python-tutorials/27-kubernetes.html">Kubernetes (probes, rollout)</a>, <a href="../python-tutorials/20-redis.html">Redis</a>, <a href="../js-doc/07-http-anatomy.html">анатомія HTTP</a>, <a href="../python-tutorials/25-system-design.html">огляд System Design</a>.</p>
+
+      <div class="res"><div class="res-head"><span class="res-title">Google SRE Book (sre.google/books)</span><span class="lvl l2">поглиблено</span><span class="lvl type">книга</span></div><div class="res-meta">Розділи: «Embracing Risk», «Service Level Objectives», «Monitoring Distributed Systems» (golden signals), «Handling Overload» (retry budget, критичність), «Addressing Cascading Failures».</div><p>Першоджерело більшості термінів цього туторіалу; безкоштовно онлайн.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">The Site Reliability Workbook</span><span class="lvl l2">поглиблено</span><span class="lvl type">книга</span></div><div class="res-meta">Розділи «Implementing SLOs», «Alerting on SLOs» (burn rate, multi-window), «Canarying Releases».</div><p>Практика: як рахувати і алертити на error budget.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">AWS Builders' Library</span><span class="lvl l2">поглиблено</span><span class="lvl type">стаття</span></div><div class="res-meta">«Timeouts, retries, and backoff with jitter» (Marc Brooker), «Using load shedding to avoid overload», «Avoiding insurmountable queue backlogs», «Static stability using Availability Zones», «Implementing health checks».</div><p>Короткі, дуже практичні статті від інженерів AWS — ідеальні перед співбесідою.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">AWS Architecture Blog — «Exponential Backoff And Jitter»</span><span class="lvl l1">база</span><span class="lvl type">стаття</span></div><div class="res-meta">2015; порівняння No/Full/Equal/Decorrelated jitter із симуляцією.</div><p>Звідки взялися формули з цього туторіалу.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">Alex Xu — System Design Interview, Vol. 1</span><span class="lvl l1">база</span><span class="lvl type">книга</span></div><div class="res-meta">Розділ «Design a Rate Limiter» (усі п'ять алгоритмів, Redis, заголовки).</div><p>Стандартний інтерв'ю-розбір rate limiter.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">Stripe Engineering — «Scaling your API with rate limiters» і «Designing robust and predictable APIs with idempotency»</span><span class="lvl l2">поглиблено</span><span class="lvl type">стаття</span></div><div class="res-meta">stripe.com/blog (перевірте актуальну адресу).</div><p>Чотири типи лімітерів у продакшені і ідемпотентні ретраї платежів.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">Dean &amp; Barroso — «The Tail at Scale»</span><span class="lvl l3">експерт</span><span class="lvl type">paper</span></div><div class="res-meta">Communications of the ACM, 2013.</div><p>Чому p99 важливий при fan-out і як працюють hedged/tied requests.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">Bronson et al. — «Metastable Failures in Distributed Systems»</span><span class="lvl l3">експерт</span><span class="lvl type">paper</span></div><div class="res-meta">HotOS 2021; продовження — Huang et al., «Metastable Failures in the Wild», OSDI 2022.</div><p>Мова для опису аварій, що не відновлюються самі.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">Designing Data-Intensive Applications — Kleppmann</span><span class="lvl l2">поглиблено</span><span class="lvl type">книга</span></div><div class="res-meta">Гл. 1 «Reliable, Scalable, and Maintainable Applications» (перцентилі, хвостова латентність, fan-out); гл. 8 «The Trouble with Distributed Systems» (таймаути, ненадійні мережі). У 2-му виданні нумерація може відрізнятись.</div><p>Фундамент: чому таймаут — єдиний спосіб виявити відмову і чому середнє бреше.</p></div>
+
+      <div class="res"><div class="res-head"><span class="res-title">Principles of Chaos Engineering і Netflix Tech Blog</span><span class="lvl l1">база</span><span class="lvl type">стаття</span></div><div class="res-meta">principlesofchaos.org; Netflix Tech Blog — Chaos Monkey, Chaos Kong, Kayenta (automated canary analysis).</div><p>Як перевіряти надійність до того, як її перевірить аварія.</p></div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  System Design · частина серії туторіалів AI Delivery Planner. Туторіал 8 серії System Design. Python-реалізації лімітерів, backoff і circuit breaker перевірено запуском python3; таблицю «дев'яток» і приклади обчислень перераховано; Lua-скрипт не запускався (немає Redis у середовищі).
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*|\/\/[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b|\bthis\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case|const|let|var|function|interface|type|export|extends|implements|new|void|enum|typeof|instanceof|static|public|private|readonly|null|undefined)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+<script>
+(function(){
+  var root = document.documentElement, btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function current(){
+    var t = root.getAttribute('data-theme');
+    return t === 'light' || t === 'dark' ? t : (mq && mq.matches ? 'dark' : 'light');
+  }
+  function render(){
+    var dark = current() === 'dark';
+    btn.textContent = dark ? '☀️ Світла тема' : '🌙 Темна тема';
+    btn.setAttribute('aria-label', dark ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('docs-theme', next); }catch(e){}
+    render();
+  });
+  if(mq && mq.addEventListener) mq.addEventListener('change', render);
+  render();
+})();
+</script>
+</body>
+</html>
