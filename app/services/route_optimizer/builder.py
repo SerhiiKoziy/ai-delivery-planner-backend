@@ -26,6 +26,7 @@ def build_routing_problem(
     drivers_by_id: dict[str, Driver],
     depot: Depot,
     return_to_depot: bool,
+    zone_vehicle_by_delivery: dict[str, str] | None = None,
 ) -> RoutingProblem:
     """Translate persisted domain entities into a solver-ready RoutingProblem."""
     if not vehicles:
@@ -82,6 +83,11 @@ def build_routing_problem(
                 time_window=time_window,
                 late_penalty=LATE_PENALTY_BY_PRIORITY[priority_key],
                 drop_penalty=DROP_PENALTY_BY_PRIORITY[priority_key],
+                allowed_vehicle_ids=(
+                    [zone_vehicle_by_delivery[str(delivery.id)]]
+                    if zone_vehicle_by_delivery and str(delivery.id) in zone_vehicle_by_delivery
+                    else None
+                ),
             )
         )
 

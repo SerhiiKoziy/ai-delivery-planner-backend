@@ -27,6 +27,7 @@ from app.db.models.delivery import DeliveryPriority
 from app.db.models.organization import Organization
 from app.db.models.user import User
 from app.main import app
+from app.quantum_ledger import LedgerBase
 from app.repositories.delivery_repository import DeliveryRepository
 from app.repositories.depot_repository import DepotRepository
 from app.repositories.organization_repository import OrganizationRepository
@@ -57,11 +58,13 @@ async def db_session():
     """Create all tables, yield a session, then drop all tables."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(LedgerBase.metadata.create_all)
 
     async with TestSessionLocal() as session:
         yield session
 
     async with engine.begin() as conn:
+        await conn.run_sync(LedgerBase.metadata.drop_all)
         await conn.run_sync(Base.metadata.drop_all)
 
 

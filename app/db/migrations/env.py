@@ -17,6 +17,7 @@ from alembic import context
 
 from app.core.config import get_settings
 from app.db.models import Base
+from app.quantum_ledger import LedgerBase
 
 # Alembic Config object, providing access to values within alembic.ini.
 config = context.config
@@ -30,7 +31,7 @@ if config.config_file_name is not None:
 
 # Model metadata used for autogeneration support. app.db.models imports
 # every model so this metadata is complete.
-target_metadata = Base.metadata
+target_metadata = [Base.metadata, LedgerBase.metadata]
 
 
 def run_migrations_offline() -> None:

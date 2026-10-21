@@ -12,6 +12,9 @@ class OptimizeRequest(BaseModel):
     vehicle_ids: list[uuid.UUID]
     depot_id: uuid.UUID
     return_to_depot: bool = True
+    # Optional: restrict each delivery to the vehicle owning its zone in this
+    # territory plan (deliveries outside the plan stay unrestricted).
+    territory_plan_id: uuid.UUID | None = None
 
 
 class RouteStopRead(BaseModel):

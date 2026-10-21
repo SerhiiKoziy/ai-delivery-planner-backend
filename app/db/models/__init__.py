@@ -9,8 +9,10 @@ from app.db.models.delivery_note import DeliveryNote
 from app.db.models.depot import Depot
 from app.db.models.driver import Driver
 from app.db.models.organization import Organization
+from app.db.models.quantum_run import QuantumRun
 from app.db.models.route import Route
 from app.db.models.route_stop import RouteStop
+from app.db.models.territory_plan import TerritoryPlan
 from app.db.models.user import User
 from app.db.models.vehicle import Vehicle
 
@@ -22,8 +24,10 @@ __all__ = [
     "Depot",
     "Driver",
     "Organization",
+    "QuantumRun",
     "Route",
     "RouteStop",
+    "TerritoryPlan",
     "User",
     "Vehicle",
 ]

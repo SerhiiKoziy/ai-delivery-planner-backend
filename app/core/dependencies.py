@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.plans import PLAN_AI_CALL_LIMITS, PLAN_API_REQUEST_LIMITS, PLAN_ROUTE_LIMITS
 from app.core.security import InvalidTokenError, decode_token
+from app.quantum_ledger import QuantumLedger
 from app.db.models.organization import Organization
 from app.db.models.user import User
 from app.db.session import get_session
@@ -19,8 +20,10 @@ from app.repositories.delivery_repository import DeliveryRepository
 from app.repositories.depot_repository import DepotRepository
 from app.repositories.driver_repository import DriverRepository
 from app.repositories.organization_repository import OrganizationRepository
+from app.repositories.quantum_run_repository import QuantumRunRepository
 from app.repositories.route_repository import RouteRepository
 from app.repositories.route_stop_repository import RouteStopRepository
+from app.repositories.territory_plan_repository import TerritoryPlanRepository
 from app.repositories.user_repository import UserRepository
 from app.repositories.vehicle_repository import VehicleRepository
 from app.schemas.ai import DeliveryAnalysisResult
@@ -34,6 +37,7 @@ from app.services.dashboard.service import DashboardService
 from app.services.deliveries.service import DeliveryService
 from app.services.geocoding.client import GoogleGeocodingClient
 from app.services.route_optimizer.service import RouteOptimizerService
+from app.services.territory.service import TerritoryService
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -242,10 +246,77 @@ def get_route_optimizer_service(
     route_repo: RouteRepository = Depends(get_route_repository),
     route_stop_repo: RouteStopRepository = Depends(get_route_stop_repository),
     db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> RouteOptimizerService:
     """Provide a request-scoped RouteOptimizerService with all its collaborators wired in."""
     return RouteOptimizerService(
-        delivery_repo, vehicle_repo, driver_repo, depot_repo, route_repo, route_stop_repo, db
+        delivery_repo,
+        vehicle_repo,
+        driver_repo,
+        depot_repo,
+        route_repo,
+        route_stop_repo,
+        db,
+        territory_plan_repository=TerritoryPlanRepository(db, current_user.organization_id),
+    )
+
+
+def get_territory_plan_repository(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> TerritoryPlanRepository:
+    """Provide a request-scoped TerritoryPlanRepository, scoped to the caller's organization."""
+    return TerritoryPlanRepository(db, current_user.organization_id)
+
+
+def get_quantum_run_repository(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> QuantumRunRepository:
+    """Provide a request-scoped QuantumRunRepository, scoped to the caller's organization."""
+    return QuantumRunRepository(db, current_user.organization_id)
+
+
+def get_quantum_ledger(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> QuantumLedger:
+    """Provide the IBM job ledger, scoped to the caller's organization."""
+    return QuantumLedger(db, tenant_id=current_user.organization_id)
+
+
+def get_ibm_runtime_service_factory():
+    """Zero-arg factory for a QiskitRuntimeService, or None when IBM isn't
+    configured (no token / quantum extra not installed). A factory, not an
+    instance, so the network handshake only happens when a sync needs it."""
+    settings = get_settings()
+    if not settings.IBM_QUANTUM_TOKEN:
+        return None
+    try:
+        from qiskit_ibm_runtime import QiskitRuntimeService
+    except ImportError:
+        return None
+
+    def factory():
+        return QiskitRuntimeService(
+            channel=settings.IBM_QUANTUM_CHANNEL,
+            token=settings.IBM_QUANTUM_TOKEN,
+            instance=settings.IBM_QUANTUM_INSTANCE or None,
+        )
+
+    return factory
+
+
+def get_territory_service(
+    plan_repo: TerritoryPlanRepository = Depends(get_territory_plan_repository),
+    run_repo: QuantumRunRepository = Depends(get_quantum_run_repository),
+    delivery_repo: DeliveryRepository = Depends(get_delivery_repository),
+    vehicle_repo: VehicleRepository = Depends(get_vehicle_repository),
+    ledger: QuantumLedger = Depends(get_quantum_ledger),
+) -> TerritoryService:
+    """Provide a request-scoped TerritoryService with all its collaborators wired in."""
+    return TerritoryService(
+        plan_repo, run_repo, delivery_repo, vehicle_repo, get_settings(), ledger=ledger
     )
 
 

@@ -90,3 +90,22 @@ def apply_break_constraints(routing, manager, time_dimension, problem: RoutingPr
             f"Break_{vehicle_id}",
         )
         time_dimension.SetBreakIntervalsOfVehicle([break_interval], vehicle_id, node_visit_transit)
+
+
+def apply_zone_constraints(routing, manager, problem: RoutingProblem) -> None:
+    """Territory zones: a stop may only be served by its zone's vehicle.
+
+    A zone vehicle that isn't part of this optimization (e.g. no driver
+    today) leaves the stop unrestricted rather than unservable.
+    """
+    vehicle_index_by_id = {v.id: i for i, v in enumerate(problem.vehicles)}
+    for stop_index, stop in enumerate(problem.stops, start=1):
+        if not stop.allowed_vehicle_ids:
+            continue
+        allowed = [vehicle_index_by_id[v] for v in stop.allowed_vehicle_ids if v in vehicle_index_by_id]
+        if allowed:
+            # VehicleVar == -1 means "not performed", which the drop
+            # disjunction still needs. (SetAllowedVehiclesForIndex would be
+            # the obvious call, but its SWIG binding rejects Python lists in
+            # current OR-Tools releases.)
+            routing.VehicleVar(manager.NodeToIndex(stop_index)).SetValues([-1, *allowed])
