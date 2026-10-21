@@ -18,6 +18,7 @@ from app.repositories.depot_repository import DepotRepository
 from app.repositories.driver_repository import DriverRepository
 from app.repositories.route_repository import RouteRepository
 from app.repositories.route_stop_repository import RouteStopRepository
+from app.repositories.territory_plan_repository import TerritoryPlanRepository
 from app.repositories.vehicle_repository import VehicleRepository
 from app.schemas.route import (
     DeliveryRef,
@@ -74,6 +75,7 @@ class RouteOptimizerService:
         route_repository: RouteRepository,
         route_stop_repository: RouteStopRepository,
         session: AsyncSession,
+        territory_plan_repository: TerritoryPlanRepository | None = None,
     ) -> None:
         self.delivery_repository = delivery_repository
         self.vehicle_repository = vehicle_repository
@@ -82,6 +84,7 @@ class RouteOptimizerService:
         self.route_repository = route_repository
         self.route_stop_repository = route_stop_repository
         self.session = session
+        self.territory_plan_repository = territory_plan_repository
 
     async def optimize(self, payload: OptimizeRequest) -> OptimizeResult:
         deliveries = await self.delivery_repository.get_many(payload.delivery_ids)
@@ -118,8 +121,28 @@ class RouteOptimizerService:
                 vehicles_without_driver=vehicles_without_driver,
             )
 
+        zone_vehicle_by_delivery = None
+        if payload.territory_plan_id is not None:
+            plan = (
+                await self.territory_plan_repository.get(payload.territory_plan_id)
+                if self.territory_plan_repository is not None
+                else None
+            )
+            if plan is None or plan.status != "completed":
+                raise ValueError("Territory plan not found or not completed")
+            zone_vehicle_by_delivery = {
+                delivery_id: zone["vehicle_id"]
+                for zone in plan.zones
+                for delivery_id in zone["delivery_ids"]
+            }
+
         problem = build_routing_problem(
-            geocoded, usable_vehicles, drivers_by_id, depot, payload.return_to_depot
+            geocoded,
+            usable_vehicles,
+            drivers_by_id,
+            depot,
+            payload.return_to_depot,
+            zone_vehicle_by_delivery=zone_vehicle_by_delivery,
         )
 
         solver = RouteSolver(problem)

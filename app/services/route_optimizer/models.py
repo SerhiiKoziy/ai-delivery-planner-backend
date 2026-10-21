@@ -29,6 +29,8 @@ class Stop:
     time_window: TimeWindow | None  # None means "no constraint" (full-horizon window)
     late_penalty: int  # priority-scaled soft-upper-bound violation cost
     drop_penalty: int  # cost of not visiting this stop at all (disjunction penalty)
+    # Vehicle UUIDs allowed to serve this stop (territory zones); None = any.
+    allowed_vehicle_ids: list[str] | None = None
 
 
 @dataclass

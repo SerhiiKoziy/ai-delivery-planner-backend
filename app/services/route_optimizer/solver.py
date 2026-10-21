@@ -11,6 +11,7 @@ from app.services.route_optimizer.constraints import (
     apply_drop_penalties,
     apply_time_window_constraints,
     apply_working_hours_constraints,
+    apply_zone_constraints,
 )
 from app.services.route_optimizer.distance import build_distance_duration_matrix
 from app.services.route_optimizer.models import HORIZON_MINUTES, RoutingProblem
@@ -83,6 +84,7 @@ class RouteSolver:
         apply_capacity_constraints(self.routing, self.manager, problem)
         apply_working_hours_constraints(self.routing, self.manager, time_dimension, problem)
         apply_drop_penalties(self.routing, self.manager, problem)
+        apply_zone_constraints(self.routing, self.manager, problem)
         try:
             apply_break_constraints(self.routing, self.manager, time_dimension, problem, service_minutes_by_node)
         except Exception:

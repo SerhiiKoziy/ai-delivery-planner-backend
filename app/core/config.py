@@ -48,6 +48,28 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
 
+    # Quantum territory planning (app.services.territory). Each bisection
+    # step is a QUBO over at most QUANTUM_MAX_QUBITS micro-zones — the
+    # built-in NumPy statevector simulator is 2^n memory, and real hardware
+    # turns deep circuits into noise well before ~20 qubits for this problem.
+    QUANTUM_MAX_QUBITS: int = 12
+    QUANTUM_DEFAULT_SHOTS: int = 2048
+    QUANTUM_DEFAULT_QAOA_REPS: int = 2
+    # IBM Quantum Platform. Empty token = the "ibm_quantum" solver is
+    # unavailable (the simulator and the local IBM emulator still work).
+    IBM_QUANTUM_TOKEN: str = ""
+    IBM_QUANTUM_INSTANCE: str = ""
+    IBM_QUANTUM_CHANNEL: str = "ibm_quantum_platform"
+    IBM_QUANTUM_BACKEND: str = ""  # empty = least busy operational device
+    IBM_QUANTUM_TIMEOUT_SECONDS: int = 300
+    # Per-organization monthly cap on real QPU time, below the free Open
+    # Plan's allowance so one tenant can't burn the whole account.
+    IBM_QUANTUM_MONTHLY_BUDGET_SECONDS: float = 540.0
+    # Also run every real-QPU circuit locally on Aer with the device's own
+    # noise model and store it in the quantum ledger ("model vs reality").
+    # Costs ~tens of CPU-seconds per 12-qubit job, so off by default.
+    QUANTUM_LEDGER_NOISE_MODEL_PREDICTION: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:

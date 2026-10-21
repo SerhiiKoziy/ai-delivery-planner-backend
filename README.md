@@ -49,6 +49,46 @@ structure:
 This is currently a **scaffold**: stub signatures and docstrings, not working
 business logic, aside from `GET /health` and its test.
 
+## Territory planning & Quantum lab
+
+`POST /api/v1/territories/plans` splits deliveries into stable per-vehicle
+zones (one zone per vehicle, balanced by stops or weight) by recursive
+balanced bisection. Each bisection step is a QUBO over at most
+`QUANTUM_MAX_QUBITS` micro-zones; it's always solved exactly classically,
+and — when `solver` is quantum — also with QAOA, using the quantum answer
+only when it's as good as the classical optimum. Pass the plan's id as
+`territory_plan_id` to `POST /routes/optimize` to keep every delivery on its
+zone's vehicle.
+
+Solvers: `classical`, `quantum_simulator` (built-in NumPy statevector, no
+extra deps), `ibm_emulator` (Qiskit transpile + SamplerV2 on a local fake IBM
+device with its noise model) and `ibm_quantum` (real IBM QPU; needs
+`IBM_QUANTUM_TOKEN`). The last two need `pip install ".[quantum]"`. QAOA
+angles are optimized on the free simulator; only the final sampling job goes
+to IBM, and real-QPU time is capped per organization per month
+(`IBM_QUANTUM_MONTHLY_BUDGET_SECONDS`).
+
+Every quantum interaction is logged as a `QuantumRun`: job id, backend,
+timestamps, per-phase timings (build, classical, angle optimization,
+transpile, IBM queue, execution), circuit size before/after transpilation,
+billed QPU seconds, result quality (approximation ratio, optimum probability
+vs. random guessing) and top measured bitstrings.
+Every job that goes to an IBM backend (real QPU or the local emulator) is
+additionally written to the **quantum ledger** (`app/quantum_ledger/`, table
+`quantum_job_ledger`): the exact circuits sent (logical + transpiled QASM),
+device calibration of the used qubits, raw counts and every shot, IBM job
+metadata/usage, and the CPU reference for the same circuit (exact
+statevector distribution, classical optimum) with TVD/fidelity comparisons.
+The row is written before submit and the job id right after it, so a result
+can be recovered from IBM after a timeout or crash
+(`POST /api/v1/quantum/ledger/{id}/sync`). The package has no imports from
+the rest of the app and can be copied into another project — see its
+README.
+
+`GET /api/v1/quantum/{runs,runs/{id},summary}` expose it, and
+**`/quantum-lab`** is a self-contained dashboard tab over those endpoints
+(visible to every logged-in user for now).
+
 ## Stack
 
 - **API**: FastAPI, Uvicorn

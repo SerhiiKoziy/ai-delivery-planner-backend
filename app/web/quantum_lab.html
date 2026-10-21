@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantum lab — AI Delivery Planner</title>
+<script>
+(function(){ try{ var t = localStorage.getItem('adp-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){} })();
+</script>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#6d4aff; --accent-soft:#f0ecff;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --bad:#c0392b; --bad-bg:#fdecea;
+    --warn:#9a6700; --warn-bg:#fff6e5; --info:#2f6feb; --info-bg:#eaf1ff;
+    --c1:#6d4aff; --c2:#2f6feb; --c3:#0f8a8a; --c4:#9a6700; --c5:#c0392b; --c6:#1a7f4b; --c7:#8a8f9c;
+    --radius:12px; color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4; --accent:#a48bff; --accent-soft:#251f3d;
+      --good:#5fd08d; --good-bg:#12261c; --bad:#ff8a7a; --bad-bg:#301716;
+      --warn:#f0c25a; --warn-bg:#2c2411; --info:#7fb0ff; --info-bg:#131f33;
+      --c1:#a48bff; --c2:#7fb0ff; --c3:#5fd6d6; --c4:#f0c25a; --c5:#ff8a7a; --c6:#5fd08d; --c7:#7c8494;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+    --fg:#e7eaf2; --fg-muted:#9aa2b4; --accent:#a48bff; --accent-soft:#251f3d;
+    --good:#5fd08d; --good-bg:#12261c; --bad:#ff8a7a; --bad-bg:#301716;
+    --warn:#f0c25a; --warn-bg:#2c2411; --info:#7fb0ff; --info-bg:#131f33;
+    --c1:#a48bff; --c2:#7fb0ff; --c3:#5fd6d6; --c4:#f0c25a; --c5:#ff8a7a; --c6:#5fd08d; --c7:#7c8494;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  code,.mono{font-family:"SF Mono",ui-monospace,Consolas,monospace; font-size:12.5px;}
+  header{position:sticky; top:0; z-index:5; background:color-mix(in srgb,var(--bg) 90%,transparent); backdrop-filter:blur(8px); border-bottom:1px solid var(--border);}
+  .bar{max-width:1320px; margin:0 auto; padding:12px 20px; display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;}
+  .brand{font-weight:700;} .brand span{color:var(--accent);}
+  .tabs{display:flex; gap:6px; flex-wrap:wrap;}
+  .tabs button,.btn{cursor:pointer; border:1px solid var(--border); background:var(--bg-soft); color:var(--fg); border-radius:999px; padding:6px 14px; font:inherit; font-size:13px; font-weight:600;}
+  .tabs button.active{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .btn.primary{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .btn:disabled{opacity:.5; cursor:not-allowed;}
+  main{max-width:1320px; margin:0 auto; padding:20px 20px 80px;}
+  h1{font-size:24px; margin:4px 0 4px;} h2{font-size:18px; margin:28px 0 10px;}
+  .muted{color:var(--fg-muted);} .small{font-size:12.5px;}
+  .card{border:1px solid var(--border); border-radius:var(--radius); background:var(--card); padding:16px 18px;}
+  .kpis{display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:12px;}
+  .kpi .k{font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--fg-muted); font-weight:700;}
+  .kpi .v{font-size:24px; font-weight:750; margin-top:4px; font-variant-numeric:tabular-nums;}
+  .kpi .s{font-size:12.5px; color:var(--fg-muted);}
+  .chips{display:flex; gap:8px; flex-wrap:wrap;}
+  .chip{font-size:12px; font-weight:700; padding:4px 10px; border-radius:999px; border:1px solid var(--border);}
+  .chip.on{background:var(--good-bg); color:var(--good);} .chip.off{background:var(--bg-soft); color:var(--fg-muted);}
+  .st{display:inline-block; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap;}
+  .st.completed{background:var(--good-bg); color:var(--good);} .st.failed,.st.timeout{background:var(--bad-bg); color:var(--bad);}
+  .st.submitted{background:var(--info-bg); color:var(--info);} .st.budget_exceeded{background:var(--warn-bg); color:var(--warn);}
+  .src-quantum{color:var(--accent); font-weight:700;} .src-classical{color:var(--fg-muted);}
+  .tablewrap{overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius);}
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th,td{padding:8px 10px; border-bottom:1px solid var(--border); text-align:left; white-space:nowrap; vertical-align:top;}
+  th{font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--fg-muted); background:var(--bg-soft); position:sticky; top:0;}
+  td.num,th.num{text-align:right; font-variant-numeric:tabular-nums;}
+  tbody tr{cursor:pointer;} tbody tr:hover{background:var(--bg-soft);} tbody tr.sel{background:var(--accent-soft);}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;} @media(max-width:900px){.grid2{grid-template-columns:1fr;}}
+  .phasebar{display:flex; height:8px; border-radius:4px; overflow:hidden; background:var(--bg-soft); min-width:90px; margin-top:4px;}
+  .phasebar span{display:block; height:100%;}
+  .legend{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--fg-muted); margin:6px 0;}
+  .legend i{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px;}
+  .hist .row{display:grid; grid-template-columns:150px 1fr 110px; gap:8px; align-items:center; font-size:12px; margin:3px 0;}
+  .hist .b{height:12px; border-radius:3px; background:var(--c2);} .hist .b.opt{background:var(--good);}
+  dl.kv{display:grid; grid-template-columns:max-content 1fr; gap:4px 14px; margin:0; font-size:13px;}
+  dl.kv dt{color:var(--fg-muted);} dl.kv dd{margin:0; font-variant-numeric:tabular-nums; word-break:break-all;}
+  form .row{display:flex; gap:12px; flex-wrap:wrap; align-items:end; margin:10px 0;}
+  label.f{display:flex; flex-direction:column; gap:4px; font-size:12.5px; color:var(--fg-muted); font-weight:600;}
+  input,select{font:inherit; font-size:14px; padding:7px 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--fg);}
+  .checks{display:flex; gap:8px; flex-wrap:wrap; max-height:150px; overflow:auto;}
+  .checks label{font-size:13px; border:1px solid var(--border); border-radius:8px; padding:4px 8px; display:flex; gap:6px; align-items:center;}
+  .alert{border-radius:10px; padding:10px 14px; margin:12px 0; font-size:14px;}
+  .alert.err{background:var(--bad-bg); color:var(--bad);} .alert.info{background:var(--info-bg); color:var(--info);}
+  .hidden{display:none !important;}
+  pre.json{background:var(--bg-soft); border:1px solid var(--border); border-radius:10px; padding:12px; overflow:auto; max-height:360px; font-size:12px;}
+  #login{max-width:380px; margin:60px auto;}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <div class="brand">⚛️ Quantum lab <span>· AI Delivery Planner</span></div>
+    <div class="tabs" id="tabs">
+      <button data-tab="overview" class="active">Огляд</button>
+      <button data-tab="runs">Запити до QPU</button>
+      <button data-tab="recalc">Перерахунок зон</button>
+    </div>
+    <div class="tabs">
+      <label class="small muted"><input type="checkbox" id="autorefresh" checked> автооновлення</label>
+      <button class="btn" id="theme">🌙</button>
+      <button class="btn hidden" id="logout">Вийти</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="login" class="card hidden">
+    <h1>Вхід</h1>
+    <p class="muted small">Сторінка показує дані вашої організації, тому потрібен той самий логін, що й у застосунку.</p>
+    <form id="login-form">
+      <div class="row"><label class="f" style="flex:1">Email<input name="email" type="email" required autocomplete="username"></label></div>
+      <div class="row"><label class="f" style="flex:1">Пароль<input name="password" type="password" required autocomplete="current-password"></label></div>
+      <button class="btn primary" type="submit">Увійти</button>
+    </form>
+    <div id="login-error" class="alert err hidden"></div>
+  </section>
+
+  <div id="app" class="hidden">
+    <div id="global-error" class="alert err hidden"></div>
+
+    <!-- OVERVIEW -->
+    <section data-panel="overview">
+      <h1>Взаємодія з квантовим комп'ютером</h1>
+      <p class="muted">Кожен перерахунок зон розбиває доставки рекурсивною бісекцією. Кожен крок, відправлений на квантовий бекенд,
+        логується тут: коли, куди, скільки тривала кожна фаза і наскільки хорошу відповідь повернув QAOA порівняно з точним класичним оптимумом.</p>
+      <div class="chips" id="solvers"></div>
+      <h2>Ключові метрики</h2>
+      <div class="kpis" id="kpis"></div>
+      <h2>Час за фазами</h2>
+      <div class="legend" id="phase-legend"></div>
+      <div class="tablewrap"><table id="timings"><thead><tr><th>Фаза</th><th class="num">N</th><th class="num">Середнє</th><th class="num">p50</th><th class="num">p95</th><th class="num">Макс</th><th>Частка в середньому запиті</th></tr></thead><tbody></tbody></table></div>
+      <h2>Останні перерахунки</h2>
+      <div class="tablewrap"><table id="plans"><thead><tr><th>Коли</th><th>Солвер</th><th>Статус</th><th class="num">Зон</th><th class="num">Доставок</th><th class="num">Квант. кроків</th><th class="num">Дисбаланс</th><th class="num">Час</th><th></th></tr></thead><tbody></tbody></table></div>
+    </section>
+
+    <!-- RUNS -->
+    <section data-panel="runs" class="hidden">
+      <h1>Запити до квантового бекенда</h1>
+      <p class="muted small" id="runs-filter"></p>
+      <div class="tablewrap" style="max-height:460px; overflow:auto">
+        <table id="runs"><thead><tr>
+          <th>Коли</th><th>Крок</th><th>Бекенд</th><th>Статус</th>
+          <th class="num" title="кубітів · шарів QAOA · shots">n · p · shots</th>
+          <th class="num" title="логічна → після транспіляції">Глибина</th><th class="num" title="логічні RZZ → фізичні 2-кубітні гейти">2q гейти</th>
+          <th class="num">Черга</th><th class="num">Виконання</th><th class="num">Всього</th>
+          <th class="num" title="1.0 = кожен shot оптимальний">Approx</th>
+          <th class="num" title="частота оптимуму в shots / у випадкових бітрядках">Оптимум у shots</th><th>Відповідь</th>
+        </tr></thead><tbody></tbody></table>
+      </div>
+      <div id="run-detail" class="hidden" style="margin-top:16px"></div>
+    </section>
+
+    <!-- RECALC -->
+    <section data-panel="recalc" class="hidden">
+      <h1>Перерахунок зон</h1>
+      <p class="muted">Одна зона на авто. Кожен крок бісекції має не більше ніж 12 вузлів (кубітів). Класичний точний оптимум рахується завжди,
+        тому план ніколи не гірший за класику, а квант порівнюється з ним чесно.</p>
+      <form id="recalc-form" class="card">
+        <div class="row">
+          <label class="f">Солвер<select name="solver" id="solver-select"></select></label>
+          <label class="f">Баланс за<select name="balance_by"><option value="stops">кількістю зупинок</option><option value="weight">вагою</option></select></label>
+          <label class="f">Шари QAOA (p)<input name="qaoa_reps" type="number" min="1" max="5" value="2" style="width:90px"></label>
+          <label class="f">Shots<input name="shots" type="number" min="100" max="20000" step="100" value="2048" style="width:110px"></label>
+        </div>
+        <div class="row" style="display:block">
+          <div class="small muted" style="margin-bottom:6px">Авто (зона на кожне)</div>
+          <div class="checks" id="vehicle-checks"></div>
+        </div>
+        <div class="row small muted" id="delivery-info"></div>
+        <button class="btn primary" type="submit" id="recalc-btn">Перерахувати</button>
+      </form>
+      <div id="recalc-result"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+(function(){
+  var TOKEN_KEY = 'adp-quantum-lab-token';
+  var API = '/api/v1';
+  var PHASES = [
+    ['build_ms','Побудова QUBO','var(--c7)'], ['classical_ms','Класичний оптимум','var(--c6)'],
+    ['optimize_ms','Підбір кутів QAOA','var(--c1)'], ['transpile_ms','Транспіляція','var(--c3)'],
+    ['queue_ms','Черга IBM','var(--c4)'], ['execution_ms','Виконання / семплінг','var(--c2)']
+  ];
+  var state = { runs: [], plans: [], summary: null, selectedRun: null, planFilter: null, timer: null };
+
+  function $(s, r){ return (r||document).querySelector(s); }
+  function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function fmtMs(v){ if(v == null) return '—'; if(v >= 60000) return (v/60000).toFixed(1)+' хв'; if(v >= 1000) return (v/1000).toFixed(2)+' с'; return v.toFixed(v < 10 ? 1 : 0)+' мс'; }
+  function pct(v, d){ return v == null ? '—' : (v*100).toFixed(d == null ? 1 : d)+'%'; }
+  function num(v, d){ return v == null ? '—' : Number(v).toFixed(d == null ? 3 : d); }
+  function when(v){ if(!v) return '—'; var d = new Date(v); return d.toLocaleString('uk-UA', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'}); }
+  function token(){ try{ return localStorage.getItem(TOKEN_KEY); }catch(e){ return null; } }
+  function setToken(t){ try{ t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); }catch(e){} }
+
+  async function api(path, opts){
+    opts = opts || {};
+    var headers = Object.assign({'Content-Type':'application/json'}, opts.headers || {});
+    var t = token(); if(t) headers['Authorization'] = 'Bearer ' + t;
+    var res = await fetch(API + path, Object.assign({}, opts, {headers: headers}));
+    if(res.status === 401){ setToken(null); showLogin(); throw new Error('Сесія закінчилась, увійдіть знову'); }
+    var body = res.status === 204 ? null : await res.json().catch(function(){ return null; });
+    if(!res.ok) throw new Error((body && (typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail))) || ('HTTP ' + res.status));
+    return body;
+  }
+
+  function showLogin(){ $('#login').classList.remove('hidden'); $('#app').classList.add('hidden'); $('#logout').classList.add('hidden'); stopTimer(); }
+  function showApp(){ $('#login').classList.add('hidden'); $('#app').classList.remove('hidden'); $('#logout').classList.remove('hidden'); }
+  function showError(msg){ var e = $('#global-error'); e.textContent = msg; e.classList.toggle('hidden', !msg); }
+
+  // ---------- overview ----------
+  function renderSummary(){
+    var s = state.summary; if(!s) return;
+    $('#solvers').innerHTML = Object.keys(s.solvers).map(function(k){
+      var v = s.solvers[k];
+      return '<span class="chip '+(v.available ? 'on' : 'off')+'" title="'+esc(v.reason || 'доступний')+'">'+(v.available ? '● ' : '○ ')+esc(k)+'</span>';
+    }).join('');
+    var st = s.runs_by_status || {};
+    var ok = st.completed || 0;
+    var cards = [
+      ['Запитів до квант. бекенда', s.total_runs, Object.keys(s.runs_by_provider).map(function(k){ return k+': '+s.runs_by_provider[k]; }).join(' · ') || 'ще не було'],
+      ['Успішних', s.total_runs ? pct(ok / s.total_runs) : '—', Object.keys(st).map(function(k){ return k+': '+st[k]; }).join(' · ')],
+      ['Перевага над випадковим', s.avg_lift_over_random == null ? '—' : '×' + num(s.avg_lift_over_random, 1), 'як часто оптимум у shots порівняно з випадковими бітрядками (×1 = користі нема)'],
+      ['Квант знайшов оптимум', pct(s.quantum_matched_optimum_rate), 'але випадкові shots влучили б із шансом ' + pct(s.avg_random_hit_probability, 0)],
+      ['Approximation ratio', num(s.avg_approximation_ratio), '1.0 = кожен shot оптимальний; середнє по семплах'],
+      ['P(оптимум) у QAOA', pct(s.avg_optimum_probability, 2), 'проти ' + pct(s.avg_uniform_optimum_probability, 2) + ' у випадкового вгадування'],
+      ['Частота оптимуму в shots', pct(s.avg_sampled_optimum_frequency, 2), 'з урахуванням шуму бекенда'],
+      ['Shots усього', (s.total_shots || 0).toLocaleString('uk-UA'), 'вимірювань в успішних запитах'],
+      ['QPU цього місяця', num(s.qpu_seconds_this_month, 1) + ' с', 'бюджет ' + num(s.qpu_monthly_budget_seconds, 0) + ' с (IBM, реальне залізо)'],
+      ['Останній запит', when(s.last_run_at), '']
+    ];
+    $('#kpis').innerHTML = cards.map(function(c){
+      return '<div class="card kpi"><div class="k">'+esc(c[0])+'</div><div class="v">'+esc(c[1])+'</div><div class="s">'+esc(c[2])+'</div></div>';
+    }).join('');
+
+    $('#phase-legend').innerHTML = PHASES.map(function(p){ return '<span><i style="background:'+p[2]+'"></i>'+esc(p[1])+'</span>'; }).join('');
+    var avgTotal = PHASES.reduce(function(a, p){ var t = s.timings[p[0]]; return a + (t && t.avg_ms || 0); }, 0);
+    var rows = PHASES.concat([['total_ms','Увесь крок','var(--fg)']]).map(function(p){
+      var t = s.timings[p[0]] || {count:0};
+      var share = p[0] === 'total_ms' || !avgTotal ? '' :
+        '<div class="phasebar" style="width:220px"><span style="width:'+((t.avg_ms||0)/avgTotal*100).toFixed(1)+'%;background:'+p[2]+'"></span></div>';
+      return '<tr><td>'+esc(p[1])+'</td><td class="num">'+t.count+'</td><td class="num">'+fmtMs(t.avg_ms)+'</td><td class="num">'+fmtMs(t.p50_ms)+'</td><td class="num">'+fmtMs(t.p95_ms)+'</td><td class="num">'+fmtMs(t.max_ms)+'</td><td>'+share+'</td></tr>';
+    }).join('');
+    $('#timings tbody').innerHTML = rows;
+  }
+
+  function renderPlans(){
+    $('#plans tbody').innerHTML = state.plans.slice(0, 15).map(function(p){
+      var m = p.metrics || {};
+      return '<tr data-plan="'+esc(p.id)+'"><td>'+when(p.created_at)+'</td><td>'+esc(p.solver)+'</td><td><span class="st '+esc(p.status)+'">'+esc(p.status)+'</span></td>'+
+        '<td class="num">'+p.num_zones+'</td><td class="num">'+p.num_deliveries+'</td><td class="num">'+(m.quantum_runs == null ? '—' : (m.quantum_steps_used||0)+' / '+m.quantum_runs)+'</td>'+
+        '<td class="num">'+num(m.imbalance, 2)+'</td><td class="num">'+fmtMs(p.total_ms)+'</td><td class="small muted">запити →</td></tr>';
+    }).join('') || '<tr><td colspan="9" class="muted">Ще немає перерахунків — запустіть на вкладці «Перерахунок зон».</td></tr>';
+  }
+
+  // ---------- runs ----------
+  function phaseBar(r){
+    var total = PHASES.reduce(function(a, p){ return a + (r[p[0]] || 0); }, 0);
+    if(!total) return '';
+    return '<div class="phasebar">' + PHASES.map(function(p){
+      var v = r[p[0]] || 0; return v ? '<span title="'+esc(p[1])+': '+fmtMs(v)+'" style="width:'+(v/total*100).toFixed(2)+'%;background:'+p[2]+'"></span>' : '';
+    }).join('') + '</div>';
+  }
+
+  function renderRuns(){
+    var runs = state.planFilter ? state.runs.filter(function(r){ return r.territory_plan_id === state.planFilter; }) : state.runs;
+    $('#runs-filter').innerHTML = state.planFilter
+      ? 'Показано запити перерахунку <code>'+esc(state.planFilter.slice(0,8))+'</code> · <a href="#" id="clear-filter">показати всі</a>'
+      : 'Останні ' + runs.length + ' запитів. Клік по рядку — повні дані запиту й відповіді.';
+    var cf = $('#clear-filter'); if(cf) cf.onclick = function(e){ e.preventDefault(); state.planFilter = null; renderRuns(); };
+    $('#runs tbody').innerHTML = runs.map(function(r){
+      var depth = r.transpiled_depth != null ? r.logical_depth+' → '+r.transpiled_depth : (r.logical_depth == null ? '—' : r.logical_depth);
+      var twoq = r.transpiled_two_qubit_gates != null ? r.two_qubit_gates+' → '+r.transpiled_two_qubit_gates : (r.two_qubit_gates == null ? '—' : r.two_qubit_gates);
+      return '<tr data-run="'+esc(r.id)+'" class="'+(state.selectedRun === r.id ? 'sel' : '')+'">'+
+        '<td>'+when(r.created_at)+'</td><td><code>'+esc(r.step)+'</code></td>'+
+        '<td>'+esc(r.backend_name || r.provider)+'<div class="small muted">'+esc(r.provider)+'</div></td>'+
+        '<td><span class="st '+esc(r.status)+'">'+esc(r.status)+'</span></td>'+
+        '<td class="num">'+r.num_qubits+' · '+r.qaoa_reps+' · '+r.shots+'</td>'+
+        '<td class="num">'+esc(depth)+'</td><td class="num">'+esc(twoq)+'</td>'+
+        '<td class="num">'+fmtMs(r.queue_ms)+'</td><td class="num">'+fmtMs(r.execution_ms)+'</td>'+
+        '<td class="num">'+fmtMs(r.total_ms)+phaseBar(r)+'</td>'+
+        '<td class="num">'+num(r.approximation_ratio)+'</td>'+
+        '<td class="num">'+pct(r.sampled_optimum_frequency, 2)+'<div class="small muted">'+lift(r)+'</div></td>'+
+        '<td class="src-'+esc(r.chosen_source || 'classical')+'">'+esc(r.chosen_source || '—')+'</td></tr>';
+    }).join('') || '<tr><td colspan="13" class="muted">Запитів ще не було.</td></tr>';
+  }
+
+  async function openRun(id){
+    state.selectedRun = id; renderRuns();
+    try{ history.replaceState(null, '', '#run=' + id); }catch(e){}
+    var box = $('#run-detail'); box.classList.remove('hidden'); box.innerHTML = '<div class="card muted">Завантаження…</div>';
+    try{
+      var r = await api('/quantum/runs/' + id);
+      var d = r.details || {};
+      var top = d.top_counts || [];
+      var maxP = top.reduce(function(a, t){ return Math.max(a, t.probability); }, 0) || 1;
+      var hist = top.map(function(t){
+        var opt = r.optimal_energy != null && Math.abs(t.energy - r.optimal_energy) < 1e-9;
+        return '<div class="row"><code>'+esc(t.bitstring)+'</code><div><div class="b'+(opt ? ' opt' : '')+'" style="width:'+(t.probability/maxP*100).toFixed(1)+'%"></div></div>'+
+          '<span class="small">'+t.count+' · '+pct(t.probability, 1)+' · E='+num(t.energy)+(opt ? ' ✓' : '')+'</span></div>';
+      }).join('');
+      var ex = d.execution || {}, ibm = ex.ibm_timestamps;
+      var circ = d.circuit || {}, prep = d.prepare || {};
+      box.innerHTML =
+        '<div class="grid2">' +
+        '<div class="card"><h2 style="margin-top:0">Запит</h2><dl class="kv">' +
+          kv('ID запиту', '<code>'+esc(r.id)+'</code>') + kv('Перерахунок', '<code>'+esc(r.territory_plan_id)+'</code>') +
+          kv('Крок бісекції', esc(r.step) + ' · частка навантаження сторони A: ' + num(d.target_fraction, 3)) +
+          kv('Провайдер', esc(r.provider)) + kv('Бекенд', esc(r.backend_name || '—')) + kv('IBM job id', r.job_id ? '<code>'+esc(r.job_id)+'</code>' : '—') +
+          kv('Статус', '<span class="st '+esc(r.status)+'">'+esc(r.status)+'</span>' + (r.error ? ' <span class="small" style="color:var(--bad)">'+esc(r.error)+'</span>' : '')) +
+          kv('Створено', when(r.created_at)) + kv('Відправлено', when(r.submitted_at)) + kv('Завершено', when(r.completed_at)) +
+          (ibm ? kv('IBM timestamps', esc(Object.keys(ibm).map(function(k){ return k+': '+ibm[k]; }).join(' · '))) : '') +
+          (ex.ibm_usage ? kv('IBM usage', '<code>'+esc(JSON.stringify(ex.ibm_usage))+'</code>') : '') +
+          kv('QPU секунд', num(r.qpu_seconds, 2)) +
+        '</dl></div>' +
+        '<div class="card"><h2 style="margin-top:0">Схема і задача</h2><dl class="kv">' +
+          kv('Кубітів / термів', r.num_qubits + ' / ' + r.num_terms) + kv('Мікрозон (стоп у кожній)', esc((d.micro_zones||[]).join(', '))) +
+          kv('Ребер графа', esc(d.graph_edges)) + kv('Шари QAOA (p)', r.qaoa_reps) + kv('Shots', r.shots) +
+          kv('Логічна схема', 'глибина ' + esc(r.logical_depth) + ', RZZ ' + esc(circ.rzz_gates) + ', RX ' + esc(circ.rx_gates) + ', ≈CNOT ' + esc(circ.cnot_equivalent)) +
+          kv('Після транспіляції', r.transpiled_depth != null ? 'глибина ' + r.transpiled_depth + ', 2q гейтів ' + r.transpiled_two_qubit_gates + (prep.physical_qubits ? ', фіз. кубіти ' + esc(prep.physical_qubits.join(',')) : '') : '—') +
+          (prep.gate_counts ? kv('Гейти', '<code>'+esc(JSON.stringify(prep.gate_counts))+'</code>') : '') +
+          kv('Кути γ / β', esc((d.gammas||[]).map(function(x){return x.toFixed(3);}).join(', ')) + ' / ' + esc((d.betas||[]).map(function(x){return x.toFixed(3);}).join(', '))) +
+          kv('Оцінок оптимізатора', esc(r.optimizer_evaluations)) +
+        '</dl></div></div>' +
+        '<div class="grid2" style="margin-top:16px">' +
+        '<div class="card"><h2 style="margin-top:0">Час</h2>' + phaseBar(r) + '<dl class="kv" style="margin-top:10px">' +
+          PHASES.map(function(p){ return kv(p[1], fmtMs(r[p[0]])); }).join('') + kv('<b>Увесь крок</b>', '<b>'+fmtMs(r.total_ms)+'</b>') +
+        '</dl></div>' +
+        '<div class="card"><h2 style="margin-top:0">Результат</h2><dl class="kv">' +
+          kv('Відповідь у плані', '<span class="src-'+esc(r.chosen_source||'classical')+'">'+esc(r.chosen_source || '—')+'</span>') +
+          kv('Найкращий семпл / оптимум', num(r.best_energy) + ' / ' + num(r.optimal_energy) + (d.best_sampled_bitstring ? ' · <code>'+esc(d.best_sampled_bitstring)+'</code>' : '')) +
+          kv('Класичний оптимум', d.classical_best_bitstring ? '<code>'+esc(d.classical_best_bitstring)+'</code> (оптимальних розв\'язків: '+esc(d.optimal_solutions)+')' : '—') +
+          kv('Середня енергія семплів', num(r.expected_energy) + ' (ідеально: ' + num(d.ideal_expected_energy) + ')') +
+          kv('Approximation ratio', num(r.approximation_ratio)) +
+          kv('P(оптимум)', 'QAOA ідеально ' + pct(r.optimum_probability, 2) + ' · у shots ' + pct(r.sampled_optimum_frequency, 2) + ' · випадково ' + pct(d.uniform_optimum_probability, 2) + ' (' + esc(lift(r)) + ')') +
+          kv('Шанс, що випадкові shots влучать', pct(d.uniform_optimum_probability == null ? null : 1 - Math.pow(1 - d.uniform_optimum_probability, r.shots), 0)) +
+          kv('Унікальних бітрядків', esc(r.unique_bitstrings)) +
+        '</dl></div></div>' +
+        (hist ? '<div class="card hist" style="margin-top:16px"><h2 style="margin-top:0">Найчастіші результати вимірювань</h2><p class="small muted">Біт q = мікрозона q; 0 → сторона A, 1 → сторона B (кубіт 0 — крайній правий). Зелені — оптимальні розбиття.</p>'+hist+'</div>' : '') +
+        '<details style="margin-top:12px"><summary class="small muted">Сирі дані запиту (JSON)</summary><pre class="json">'+esc(JSON.stringify(r, null, 2))+'</pre></details>';
+      renderRuns();
+    }catch(e){ box.innerHTML = '<div class="alert err">'+esc(e.message)+'</div>'; }
+  }
+  function lift(r){
+    if(r.sampled_optimum_frequency == null || !r.uniform_optimum_probability) return 'випадково ' + pct(r.uniform_optimum_probability, 2);
+    return '×' + (r.sampled_optimum_frequency / r.uniform_optimum_probability).toFixed(1) + ' від випадк.';
+  }
+  function kv(k, v){ return '<dt>'+k+'</dt><dd>'+v+'</dd>'; }
+
+  // ---------- recalc ----------
+  var recalcData = { vehicles: [], deliveries: [] };
+  async function loadRecalc(){
+    var res = await Promise.all([api('/vehicles/'), api('/deliveries/')]);
+    recalcData.vehicles = res[0]; recalcData.deliveries = res[1].filter(function(d){ return d.latitude != null && d.longitude != null; });
+    $('#vehicle-checks').innerHTML = recalcData.vehicles.map(function(v, i){
+      return '<label><input type="checkbox" value="'+esc(v.id)+'" '+(i < 2 ? 'checked' : '')+'> '+esc(v.plate_number || v.id.slice(0,8))+'</label>';
+    }).join('') || '<span class="muted small">Немає авто — додайте їх у застосунку.</span>';
+    $('#delivery-info').textContent = 'Буде використано всі геокодовані доставки: ' + recalcData.deliveries.length + ' із ' + res[1].length + '.';
+    var s = state.summary && state.summary.solvers || {};
+    var names = {classical:'Класичний (точний)', quantum_simulator:'Квантовий симулятор (NumPy, без шуму)', ibm_emulator:'Емулятор IBM (FakeBrisbane, з шумом)', ibm_quantum:'Реальний IBM QPU'};
+    $('#solver-select').innerHTML = Object.keys(names).map(function(k){
+      var a = !s[k] || s[k].available;
+      return '<option value="'+k+'" '+(a ? '' : 'disabled')+' '+(k === 'quantum_simulator' ? 'selected' : '')+'>'+esc(names[k])+(a ? '' : ' — недоступний')+'</option>';
+    }).join('');
+  }
+
+  $('#recalc-form').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var f = e.target, btn = $('#recalc-btn'), out = $('#recalc-result');
+    var vehicles = Array.prototype.map.call(f.querySelectorAll('#vehicle-checks input:checked'), function(i){ return i.value; });
+    if(!vehicles.length){ out.innerHTML = '<div class="alert err">Оберіть хоча б одне авто.</div>'; return; }
+    if(!recalcData.deliveries.length){ out.innerHTML = '<div class="alert err">Немає геокодованих доставок.</div>'; return; }
+    btn.disabled = true; btn.textContent = 'Рахуємо…'; out.innerHTML = '<div class="alert info">Перерахунок запущено. Для реального QPU це може тривати хвилини (черга IBM).</div>';
+    try{
+      var plan = await api('/territories/plans', {method:'POST', body: JSON.stringify({
+        delivery_ids: recalcData.deliveries.map(function(d){ return d.id; }), vehicle_ids: vehicles,
+        solver: f.solver.value, balance_by: f.balance_by.value, qaoa_reps: +f.qaoa_reps.value, shots: +f.shots.value
+      })});
+      var m = plan.metrics || {};
+      out.innerHTML = '<div class="card" style="margin-top:14px"><h2 style="margin-top:0">Результат: <span class="st '+esc(plan.status)+'">'+esc(plan.status)+'</span> за '+fmtMs(plan.total_ms)+'</h2>' +
+        (plan.error ? '<div class="alert err">'+esc(plan.error)+'</div>' : '') +
+        '<p class="small muted">Квантових кроків: '+esc(m.quantum_runs)+', з них відповідь кванта використана в '+esc(m.quantum_steps_used)+'. Дисбаланс '+num(m.imbalance, 2)+', макс. радіус зони '+num(m.max_radius_km, 2)+' км.</p>' +
+        '<div class="tablewrap"><table><thead><tr><th>Зона</th><th>Авто</th><th class="num">Зупинок</th><th class="num">Навантаження</th><th class="num">Радіус, км</th><th>Центр</th></tr></thead><tbody>' +
+        plan.zones.map(function(z){ return '<tr><td>'+z.index+'</td><td>'+esc(z.plate_number || z.vehicle_id.slice(0,8))+'</td><td class="num">'+z.stop_count+'</td><td class="num">'+num(z.load, 1)+'</td><td class="num">'+num(z.radius_km, 2)+'</td><td class="small">'+(z.centroid_lat == null ? '—' : z.centroid_lat.toFixed(4)+', '+z.centroid_lng.toFixed(4))+'</td></tr>'; }).join('') +
+        '</tbody></table></div><p><button class="btn" id="see-runs">Переглянути запити цього перерахунку →</button></p></div>';
+      $('#see-runs').onclick = function(){ state.planFilter = plan.id; switchTab('runs'); };
+      await refresh();
+    }catch(err){ out.innerHTML = '<div class="alert err">'+esc(err.message)+'</div>'; }
+    finally{ btn.disabled = false; btn.textContent = 'Перерахувати'; }
+  });
+
+  // ---------- data / tabs ----------
+  async function refresh(){
+    try{
+      var res = await Promise.all([api('/quantum/summary'), api('/quantum/runs?limit=200'), api('/territories/plans')]);
+      state.summary = res[0]; state.runs = res[1]; state.plans = res[2];
+      showError(''); renderSummary(); renderPlans(); renderRuns();
+    }catch(e){ showError(e.message); }
+  }
+  function switchTab(name){
+    document.querySelectorAll('#tabs button').forEach(function(b){ b.classList.toggle('active', b.dataset.tab === name); });
+    document.querySelectorAll('[data-panel]').forEach(function(p){ p.classList.toggle('hidden', p.dataset.panel !== name); });
+    if(name === 'runs') renderRuns();
+    if(name === 'recalc') loadRecalc().catch(function(e){ showError(e.message); });
+    try{ localStorage.setItem('adp-quantum-lab-tab', name); }catch(e){}
+  }
+  function startTimer(){ stopTimer(); if($('#autorefresh').checked) state.timer = setInterval(refresh, 15000); }
+  function stopTimer(){ if(state.timer) clearInterval(state.timer); state.timer = null; }
+
+  document.querySelectorAll('#tabs button').forEach(function(b){ b.onclick = function(){ switchTab(b.dataset.tab); }; });
+  $('#plans tbody').addEventListener('click', function(e){ var tr = e.target.closest('tr[data-plan]'); if(tr){ state.planFilter = tr.dataset.plan; switchTab('runs'); } });
+  $('#runs tbody').addEventListener('click', function(e){ var tr = e.target.closest('tr[data-run]'); if(tr) openRun(tr.dataset.run); });
+  $('#autorefresh').onchange = startTimer;
+  $('#logout').onclick = function(){ setToken(null); showLogin(); };
+
+  $('#login-form').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var err = $('#login-error'); err.classList.add('hidden');
+    try{
+      var body = await api('/auth/login', {method:'POST', body: JSON.stringify({email: e.target.email.value, password: e.target.password.value})});
+      setToken(body.access_token); await boot();
+    }catch(ex){ err.textContent = ex.message; err.classList.remove('hidden'); }
+  });
+
+  // theme
+  var root = document.documentElement, mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function curTheme(){ var t = root.getAttribute('data-theme'); return t === 'light' || t === 'dark' ? t : (mq && mq.matches ? 'dark' : 'light'); }
+  function renderTheme(){ $('#theme').textContent = curTheme() === 'dark' ? '☀️' : '🌙'; }
+  $('#theme').onclick = function(){ var n = curTheme() === 'dark' ? 'light' : 'dark'; root.setAttribute('data-theme', n); try{ localStorage.setItem('adp-theme', n); }catch(e){} renderTheme(); };
+  renderTheme();
+
+  async function boot(){
+    if(!token()){ showLogin(); return; }
+    showApp(); await refresh();
+    var last = null; try{ last = localStorage.getItem('adp-quantum-lab-tab'); }catch(e){}
+    var deep = /^#run=([0-9a-f-]{36})$/.exec(location.hash);
+    switchTab(deep ? 'runs' : (last === 'runs' || last === 'recalc' ? last : 'overview'));
+    if(deep) openRun(deep[1]);
+    startTimer();
+  }
+  boot();
+})();
+</script>
+</body>
+</html>
