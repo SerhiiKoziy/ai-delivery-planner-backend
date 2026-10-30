@@ -1,7 +1,12 @@
-/* Mobile navigation drawer for the docs site (see mobile-nav.css).
-   Level 1 lists the tutorial sections (the sidebar's tab buttons), level 2
-   lists the pages of the chosen section (that tab's .nav-links). Everything
-   is read from the page's own .nav-sidebar, so no link list is duplicated. */
+/* Site navigation helpers for the docs pages (see mobile-nav.css):
+   1. Mobile drawer (≤768px): level 1 lists the tutorial sections (the
+      sidebar's tab buttons), level 2 the pages of the chosen section. Read
+      from the page's own .nav-sidebar, so no link list is duplicated.
+   2. Wraps tables that sit directly in the text flow in a horizontal
+      scroller, so wide tables scroll instead of widening the page.
+   3. "На цій сторінці" scroll-spy: highlights the section being read in
+      aside.toc; on mobile, where the TOC is hidden, a small bar under the
+      header shows that section's number and title and opens the TOC list. */
 (function () {
   var MOBILE = window.matchMedia ? window.matchMedia('(max-width: 768px)') : null;
   var sidebar = document.querySelector('.nav-sidebar');
@@ -151,4 +156,141 @@
     if (MOBILE.addEventListener) MOBILE.addEventListener('change', onChange);
     else if (MOBILE.addListener) MOBILE.addListener(onChange);
   }
+})();
+
+(function () {
+  var toc = document.querySelector('aside.toc');
+  var header = document.querySelector('header.top');
+  if (!toc || !header) return;
+
+  // TOC entries that point at a section on this page, in document order.
+  var items = [];
+  Array.prototype.forEach.call(toc.querySelectorAll('a[href^="#"]'), function (a) {
+    var id = decodeURIComponent(a.getAttribute('href').slice(1));
+    var target = id && document.getElementById(id);
+    if (!target) return;
+    var label = '';
+    a.childNodes.forEach(function (n) {   // skip badges such as <span class="toc-count">
+      if (n.nodeType === 3 || !(n.classList && n.classList.contains('toc-count'))) label += n.textContent;
+    });
+    items.push({ link: a, target: target, label: label.replace(/\s+/g, ' ').trim() });
+  });
+  if (!items.length) return;
+  items.sort(function (x, y) {
+    return x.target.compareDocumentPosition(y.target) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+  });
+
+  // ----- mobile "you are reading" bar + dropdown with the page TOC -----
+  var bar = document.createElement('div');
+  bar.className = 'toc-here';
+  bar.hidden = true;
+  var barBtn = document.createElement('button');
+  barBtn.type = 'button';
+  barBtn.className = 'toc-here-btn';
+  barBtn.setAttribute('aria-expanded', 'false');
+  barBtn.setAttribute('aria-controls', 'toc-here-list');
+  var barText = document.createElement('span');
+  barText.className = 'toc-here-text';
+  var barChev = document.createElement('span');
+  barChev.className = 'toc-here-chev';
+  barChev.setAttribute('aria-hidden', 'true');
+  barChev.textContent = '▾';
+  barBtn.appendChild(barText); barBtn.appendChild(barChev);
+  var list = document.createElement('nav');
+  list.id = 'toc-here-list';
+  list.className = 'toc-here-list';
+  list.setAttribute('aria-label', 'На цій сторінці');
+  list.hidden = true;
+  items.forEach(function (it, i) {
+    var a = document.createElement('a');
+    a.href = it.link.getAttribute('href');
+    a.textContent = it.label;
+    a.dataset.idx = String(i);
+    list.appendChild(a);
+  });
+  bar.appendChild(barBtn); bar.appendChild(list);
+  header.appendChild(bar);
+
+  function setListOpen(open) {
+    list.hidden = !open;
+    barBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    bar.classList.toggle('is-open', open);
+    if (open) {
+      var cur = list.querySelector('a.is-active');
+      if (cur) list.scrollTop = cur.offsetTop - list.clientHeight / 2;
+    }
+  }
+  barBtn.addEventListener('click', function () { setListOpen(list.hidden); });
+  list.addEventListener('click', function (e) { if (e.target.closest('a')) setListOpen(false); });
+  document.addEventListener('click', function (e) { if (!list.hidden && !bar.contains(e.target)) setListOpen(false); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !list.hidden) { setListOpen(false); barBtn.focus(); } });
+
+  // ----- scroll-spy -----
+  var current = -1;
+  function activate(idx) {
+    if (idx === current) return;
+    if (current >= 0) {
+      items[current].link.classList.remove('is-active');
+      items[current].link.removeAttribute('aria-current');
+      var prev = list.querySelector('a[data-idx="' + current + '"]');
+      if (prev) prev.classList.remove('is-active');
+    }
+    current = idx;
+    bar.hidden = idx < 0;
+    if (idx < 0) return;
+    var it = items[idx];
+    it.link.classList.add('is-active');
+    it.link.setAttribute('aria-current', 'location');
+    var mob = list.querySelector('a[data-idx="' + idx + '"]');
+    if (mob) mob.classList.add('is-active');
+    barText.textContent = it.label;
+    // keep the highlighted entry visible inside the sticky TOC without moving the page
+    if (toc.scrollHeight > toc.clientHeight) {
+      var top = it.link.offsetTop - toc.offsetTop, h = it.link.offsetHeight;
+      if (top < toc.scrollTop + 40 || top + h > toc.scrollTop + toc.clientHeight - 40) {
+        toc.scrollTop = Math.max(0, top - toc.clientHeight / 3);
+      }
+    }
+  }
+
+  function compute() {
+    var line = header.getBoundingClientRect().bottom + 24;   // "reading line" just below the sticky header
+    var idx = -1;
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].target.getBoundingClientRect().top <= line) idx = i; else break;
+    }
+    // at the very bottom the last short sections can never reach the line
+    var doc = document.documentElement;
+    if (window.innerHeight + window.scrollY >= doc.scrollHeight - 4 && items[items.length - 1].target.getBoundingClientRect().top < window.innerHeight) {
+      idx = items.length - 1;
+    }
+    activate(idx);
+  }
+
+  var ticking = false;
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(function () { ticking = false; compute(); });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  window.addEventListener('load', compute);
+  compute();
+})();
+
+(function () {
+  var article = document.querySelector('article');
+  if (!article) return;
+  Array.prototype.forEach.call(article.querySelectorAll('table'), function (table) {
+    for (var p = table.parentElement; p && p !== article; p = p.parentElement) {
+      var o = getComputedStyle(p).overflowX;
+      if (o === 'auto' || o === 'scroll' || o === 'hidden') return;   // already scrolls
+    }
+    if (getComputedStyle(table).display === 'block') return;           // page styles it as a scroller
+    var wrap = document.createElement('div');
+    wrap.className = 'table-scroll';
+    table.parentNode.insertBefore(wrap, table);
+    wrap.appendChild(table);
+  });
 })();
