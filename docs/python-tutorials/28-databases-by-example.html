@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>28. Бази даних на одному прикладі — AI Delivery Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<script>
+(function(){
+  try{ var t = localStorage.getItem('docs-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+    --fg:#e7eaf2; --fg-muted:#9aa2b4;
+    --accent:#6d9bff; --accent-soft:#1c2740;
+    --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+    --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+    --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+    --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+    --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+    --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--accent); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent-soft);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"],
+  #tab-sysdesign:checked ~ .nav-tabbar label[for="tab-sysdesign"],
+  #tab-quantum:checked ~ .nav-tabbar label[for="tab-quantum"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  #tab-quantum:checked ~ .nav-links.quantum{display:flex;}
+  #tab-sysdesign:checked ~ .nav-links.sysdesign{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:12px 0 4px;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.9px; display:flex; align-items:baseline; gap:10px;
+  }
+  .qa summary .qnum{
+    color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700;
+    flex-shrink:0;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 18px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .a p{margin:8px 0; color:var(--fg-muted);}
+  .qa .a p:first-child{margin-top:0;}
+  .qa .checks{
+    margin-top:10px; padding:10px 12px; border-radius:9px; background:var(--interview-bg);
+    border:1px solid var(--interview-border); font-size:13.2px; color:var(--interview);
+  }
+  .qa .checks b{color:var(--interview);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:2px; vertical-align:middle; flex-shrink:0;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .qa .difficulty.sys{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+
+  .cat-head{
+    display:flex; align-items:center; gap:12px; margin-bottom:4px;
+  }
+  .cat-letter{
+    width:34px; height:34px; border-radius:10px; background:var(--accent-soft); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;
+  }
+
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- theme switch --- */
+  :root{color-scheme:light;}
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .theme-toggle{
+    cursor:pointer; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+    background:var(--bg-soft); color:var(--fg); font:inherit; font-size:12.5px; font-weight:600;
+    transition:background .15s, border-color .15s;
+  }
+  .theme-toggle:hover{background:var(--card); border-color:var(--accent);}
+  .theme-toggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+  /* --- tutorial 28: databases by example --- */
+  :root{ --pg:#336791; --mongo:#13aa52; --redis:#d82c20; --cass:#1287b1; --ch:#b38f00; --es:#d63f86; --neo:#3d72b0; }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --pg:#6fa3d6; --mongo:#4fd18a; --redis:#ff7a6e; --cass:#5cc3e8; --ch:#f0cf4a; --es:#ff8cc3; --neo:#86b2ec; }
+  }
+  :root[data-theme="dark"]{ --pg:#6fa3d6; --mongo:#4fd18a; --redis:#ff7a6e; --cass:#5cc3e8; --ch:#f0cf4a; --es:#ff8cc3; --neo:#86b2ec; }
+  .content-center > article{max-width:820px;}
+  article h4{font-size:15.5px; margin:20px 0 6px;}
+  .tablewrap{overflow-x:auto; margin:16px 0;}
+  .tablewrap table{margin:0;}
+  td.c{text-align:center; white-space:nowrap;}
+  .y{color:var(--good); font-weight:700;} .m{color:var(--warn); font-weight:700;} .n{color:var(--bad); font-weight:700;}
+  .callout.fe{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .verdict{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0;}
+  @media (max-width:640px){ .verdict{grid-template-columns:1fr;} }
+  .verdict > div{border-radius:var(--radius); padding:12px 14px; border:1px solid; font-size:14.3px;}
+  .verdict .win{background:var(--good-bg); border-color:var(--good-border);}
+  .verdict .lose{background:var(--bad-bg); border-color:var(--bad-border);}
+  .verdict .t{font-weight:700; display:block; margin-bottom:4px;}
+  .verdict .win .t{color:var(--good);} .verdict .lose .t{color:var(--bad);}
+  .verdict ul{margin:4px 0 0; padding-left:18px;} .verdict li{margin:3px 0;}
+  .dbhead{display:flex; align-items:center; gap:12px; margin-bottom:4px;}
+  .dbbadge{width:38px; height:38px; border-radius:10px; color:#fff; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px;}
+  .qlist{list-style:none; padding:0;}
+  .qlist li{border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin:8px 0; background:var(--card);}
+  .qlist li b.q{color:var(--accent); margin-right:6px;}
+  figure.db{margin:20px 0;}
+  figure.db svg{width:100%; height:auto; display:block; border:1px solid var(--border); border-radius:var(--radius); background:var(--card);}
+  figure.db figcaption{font-size:13px; color:var(--fg-muted); text-align:center; margin-top:6px;}
+  figure.db svg text{fill:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  figure.db svg .mut{fill:var(--fg-muted);}
+  figure.db svg .box{fill:var(--bg-soft); stroke:var(--border); stroke-width:1.5;}
+  figure.db svg .ln{stroke:var(--fg-muted); stroke-width:1.4; fill:none;}
+  figure.db svg .ar{fill:var(--fg-muted);}
+  figure.db svg .mono{font-family:"SF Mono",ui-monospace,Menlo,monospace;}
+  .task{border:1px solid var(--interview-border); background:var(--interview-bg); border-radius:var(--radius); padding:14px 16px; margin:16px 0;}
+  .task .tt{font-weight:700; color:var(--interview);}
+  details.ans{border:1px solid var(--border); border-radius:10px; background:var(--card); margin:10px 0 0;}
+  details.ans summary{cursor:pointer; padding:10px 14px; font-weight:600; font-size:14.5px;}
+  details.ans .a{padding:4px 16px 14px; border-top:1px solid var(--border); font-size:14.5px;}
+  .deeper{font-size:13.5px; color:var(--fg-muted); margin-top:8px;}
+  .deeper a{color:var(--accent);}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="top-row">
+      <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Темна тема</button>
+    </div>
+  </div>
+</header>
+
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал 28 · Бази даних на практиці</div>
+  <h1>Бази даних на одному прикладі: чому тут краща одна, а там інша</h1>
+  <p class="lead">
+    <a href="17-databases-fundamentals.html">Туторіал 17</a> дав карту сімейств баз, а
+    <a href="18-databases-interview-qa.html">туторіал 18</a> — питання по конкретних СУБД. Тут ми беремо
+    <b>реальну схему цього проєкту</b> (організації, доставки, водії, машини, маршрути, зупинки),
+    моделюємо її у семи різних базах і проганяємо через кожну <b>той самий набір із 8 запитів</b>. Так
+    видно не абстрактне «Mongo гнучкіша», а конкретно, <i>на якому запиті й чому</i> одна модель виграє,
+    а інша починає боліти.
+  </p>
+  <div class="pills">
+    <span class="pill">🗂 1 домен · 7 баз · 8 запитів</span>
+    <span class="pill">🖼 Схеми структури даних</span>
+    <span class="pill">⚖️ Матриця «запит × база»</span>
+    <span class="pill">🧩 5 задач з розв'язками</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-sysdesign" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-quantum" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-sysdesign" class="nav-tabbtn">🏗️ System Design</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+      <label for="tab-quantum" class="nav-tabbtn">⚛️ Квантове</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-python-types.html">4. Типи</a>
+        <a href="05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="11-logging.html">11. Логування</a>
+        <a href="12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="13-design-patterns.html">13. Патерни</a>
+        <a href="14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="16-pydantic.html">16. Pydantic</a>
+        <a href="17-databases-fundamentals.html">17. Бази даних: основи</a>
+        <a href="18-databases-interview-qa.html">18. Бази даних: Q&amp;A</a>
+        <a href="19-postgres-storage-and-memory.html">19. Postgres storage &amp; пам'ять</a>
+        <a href="20-redis.html">20. Redis</a>
+        <a href="21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="25-system-design.html">25. Системний дизайн</a>
+        <a href="26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="27-kubernetes.html">27. Kubernetes</a>
+        <a href="28-databases-by-example.html" class="active">28. Бази даних на прикладі</a>
+      </nav>
+      <nav class="nav-links sysdesign">
+        <a href="../system-design/01-interview-framework.html">1. Фреймворк співбесіди</a>
+        <a href="../system-design/02-networking-entry.html">2. Мережа: DNS, CDN, LB, API</a>
+        <a href="../system-design/03-caching.html">3. Кешування углиб</a>
+        <a href="../system-design/04-databases-storage.html">4. БД I: моделі, індекси, ACID</a>
+        <a href="../system-design/05-replication-sharding.html">5. БД II: реплікація, шардинг</a>
+        <a href="../system-design/06-distributed-systems.html">6. Розподілені системи</a>
+        <a href="../system-design/07-async-messaging.html">7. Черги, Kafka, саги</a>
+        <a href="../system-design/08-reliability-scale.html">8. Надійність і rate limiting</a>
+        <a href="../system-design/09-classic-url-id-kv.html">9. Задачі I: URL, ID, KV</a>
+        <a href="../system-design/10-classic-feed-chat.html">10. Задачі II: стрічка, чат</a>
+        <a href="../system-design/11-classic-storage-video-crawler.html">11. Задачі III: файли, відео</a>
+        <a href="../system-design/12-classic-geo-booking-topk.html">12. Задачі IV: гео, бронювання</a>
+        <a href="../system-design/13-tricky-topics-qa.html">13. Трікі теми й Q&amp;A</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="../node-doc/01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="../node-doc/02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="../node-doc/03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="../node-doc/04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="../node-doc/05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="../node-doc/06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="../node-doc/07-fs-process-os.html">7. fs, process, os</a>
+        <a href="../node-doc/08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="../node-doc/09-http-networking.html">9. HTTP і мережа</a>
+        <a href="../node-doc/10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="../node-doc/11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="../node-doc/12-databases-orm.html">12. БД і ORM</a>
+        <a href="../node-doc/13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="../node-doc/14-security.html">14. Безпека Node</a>
+        <a href="../node-doc/15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="../node-doc/16-testing.html">16. Тестування</a>
+        <a href="../node-doc/17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="../node-doc/18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="../node-doc/19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="../node-doc/20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+      <nav class="nav-links quantum">
+        <a href="../quantum-doc/01-quanta-and-quantum-computing.html">1. Кванти й обчислення</a>
+        <a href="../quantum-doc/02-quantum-engineering-history.html">2. Квантова інженерія</a>
+        <a href="../quantum-doc/03-quantum-backend-python-ibm.html">3. Бекенд + IBM Quantum</a>
+        <a href="../quantum-doc/04-pet-project-quantum-routing.html">4. Пет-проєкт: маршрути</a>
+        <a href="../quantum-doc/05-quantum-engineer-roadmap.html">5. Шлях інженера: ресурси</a>
+        <a href="../quantum-doc/06-linear-algebra-vectors-matrices.html">6. Лін. алгебра I: вектори, матриці</a>
+        <a href="../quantum-doc/07-linear-algebra-eigen-tensor.html">7. Лін. алгебра II: власні, тензори</a>
+        <a href="../quantum-doc/08-complex-numbers-phase.html">8. Комплексні числа й фаза</a>
+        <a href="../quantum-doc/09-probability-shots.html">9. Ймовірності й shots</a>
+        <a href="../quantum-doc/10-numpy-statevector-simulator.html">10. NumPy: свій симулятор</a>
+        <a href="../quantum-doc/11-qiskit-circuits-aer.html">11. Qiskit I: схеми й Aer</a>
+        <a href="../quantum-doc/12-qiskit-runtime-real-qpu.html">12. Qiskit II: реальний QPU</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s0">0. Головна ідея</a></li>
+      <li><a href="#s1">1. Домен і 8 запитів</a></li>
+      <li><a href="#s2">2. PostgreSQL</a></li>
+      <li><a href="#s3">3. MongoDB</a></li>
+      <li><a href="#s4">4. Redis</a></li>
+      <li><a href="#s5">5. Cassandra</a></li>
+      <li><a href="#s6">6. ClickHouse</a></li>
+      <li><a href="#s7">7. Elasticsearch</a></li>
+      <li><a href="#s8">8. Neo4j</a></li>
+      <li><a href="#s9">9. Матриця «запит × база»</a></li>
+      <li><a href="#s10">10. Postgres first: що він закриває сам</a></li>
+      <li><a href="#s11">11. Polyglot persistence</a></li>
+      <li><a href="#s12">12. Дерево рішень</a></li>
+      <li><a href="#s13">13. Задачі</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <!-- ============ 0 ============ -->
+    <section id="s0">
+      <h2><span class="num">00</span>Головна ідея: база обирається під запити, а не під дані</h2>
+      <p>Ті самі дані (доставки, маршрути, водії) можна покласти в будь-яку базу. Різниця не в тому,
+      «чи влізуть», а в тому, <b>скільки роботи база робить на кожен ваш типовий запит</b>: скільки
+      рядків/документів прочитати, скільки разів сходити на диск, скільки вузлів кластера опитати, чи
+      можна зробити зміну атомарно.</p>
+      <p>Кожна модель зберігання — це <b>заздалегідь оплачена відповідь на певний тип запитів</b>:</p>
+      <ul>
+        <li><b>Реляційна</b> платить нормалізацією, щоб <i>будь-який</i> запит (навіть непередбачений) був можливим і дані не суперечили собі.</li>
+        <li><b>Документна</b> платить дублюванням, щоб <i>один конкретний</i> запит («дай маршрут цілком») був одним читанням.</li>
+        <li><b>Key-value</b> платить відмовою від запитів «по вмісту», щоб доступ за ключем займав мікросекунди.</li>
+        <li><b>Wide-column</b> платить «одна таблиця на запит», щоб писати мільйони рядків на секунду на багатьох серверах.</li>
+        <li><b>Колонкова OLAP</b> платить дорогими оновленнями, щоб агрегувати мільярди рядків.</li>
+        <li><b>Пошукова</b> платить відставанням і не-ACID, щоб шукати по тексту з помилками.</li>
+        <li><b>Графова</b> платить слабкими агрегаціями «по всьому», щоб обходити зв'язки на будь-яку глибину.</li>
+      </ul>
+      <div class="callout fe"><div class="ic">🎨</div><div class="body"><b>Аналогія для фронтендера.</b>
+        Це як вибір форми стану у фронтенді. Нормалізований Redux-store (<code>entities.byId</code> + масиви id)
+        — це реляційна модель: оновив водія в одному місці, і всі екрани бачать нове. Вкладений JSON з API
+        «як є» в React Query кеші — це документна модель: показати екран миттєво, але оновлення
+        водія доведеться робити в кожному кешованому маршруті (або інвалідувати все). <code>Map</code> у
+        пам'яті — key-value. Ти ж обираєш форму стану під те, як компоненти його <i>читають</i>.
+        З базами те саме.</div></div>
+    </section>
+
+    <!-- ============ 1 ============ -->
+    <section id="s1">
+      <h2><span class="num">01</span>Домен (реальна схема проєкту) і 8 запитів-тестів</h2>
+      <p class="section-desc">Схема спрощена з <code>app/db/models/</code>: <code>organizations</code>,
+      <code>drivers</code>, <code>vehicles</code>, <code>depots</code>, <code>deliveries</code>, <code>routes</code>,
+      <code>route_stops</code>.</p>
+
+      <figure class="db">
+        <svg viewBox="0 0 820 400" role="img" aria-label="ER-діаграма домену">
+          <defs><marker id="m1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ar"/></marker></defs>
+          <g font-size="12">
+            <!-- organizations -->
+            <rect x="320" y="14" width="180" height="70" rx="8" class="box" style="stroke:var(--pg)"/>
+            <text x="410" y="34" text-anchor="middle" font-weight="700">organizations</text>
+            <text x="332" y="54" class="mono mut">id PK · name</text>
+            <text x="332" y="72" class="mono mut">subscription_plan</text>
+            <!-- drivers -->
+            <rect x="20" y="120" width="180" height="88" rx="8" class="box"/>
+            <text x="110" y="140" text-anchor="middle" font-weight="700">drivers</text>
+            <text x="32" y="160" class="mono mut">id PK · organization_id FK</text>
+            <text x="32" y="178" class="mono mut">name · phone</text>
+            <text x="32" y="196" class="mono mut">working_hours_*</text>
+            <!-- vehicles -->
+            <rect x="230" y="120" width="170" height="88" rx="8" class="box"/>
+            <text x="315" y="140" text-anchor="middle" font-weight="700">vehicles</text>
+            <text x="242" y="160" class="mono mut">id PK · organization_id FK</text>
+            <text x="242" y="178" class="mono mut">plate_number</text>
+            <text x="242" y="196" class="mono mut">capacity_* · driver_id FK</text>
+            <!-- depots -->
+            <rect x="430" y="120" width="150" height="70" rx="8" class="box"/>
+            <text x="505" y="140" text-anchor="middle" font-weight="700">depots</text>
+            <text x="442" y="160" class="mono mut">id PK · address</text>
+            <text x="442" y="178" class="mono mut">lat · lng</text>
+            <!-- deliveries -->
+            <rect x="610" y="120" width="190" height="106" rx="8" class="box"/>
+            <text x="705" y="140" text-anchor="middle" font-weight="700">deliveries</text>
+            <text x="622" y="160" class="mono mut">id PK · organization_id FK</text>
+            <text x="622" y="178" class="mono mut">customer_name · address</text>
+            <text x="622" y="196" class="mono mut">weight_kg · window_*</text>
+            <text x="622" y="214" class="mono mut">lat · lng · status</text>
+            <!-- routes -->
+            <rect x="200" y="270" width="230" height="106" rx="8" class="box" style="stroke:var(--accent)"/>
+            <text x="315" y="290" text-anchor="middle" font-weight="700">routes</text>
+            <text x="212" y="310" class="mono mut">id PK · organization_id FK</text>
+            <text x="212" y="328" class="mono mut">driver_id FK · vehicle_id FK</text>
+            <text x="212" y="346" class="mono mut">depot_id FK · status</text>
+            <text x="212" y="364" class="mono mut">total_distance_km</text>
+            <!-- route_stops -->
+            <rect x="500" y="270" width="230" height="106" rx="8" class="box" style="stroke:var(--accent)"/>
+            <text x="615" y="290" text-anchor="middle" font-weight="700">route_stops</text>
+            <text x="512" y="310" class="mono mut">id PK · route_id FK</text>
+            <text x="512" y="328" class="mono mut">delivery_id FK · sequence</text>
+            <text x="512" y="346" class="mono mut">estimated_arrival</text>
+            <text x="512" y="364" class="mono mut">distance_from_previous_km</text>
+            <!-- relations -->
+            <path d="M380 84 L110 118" class="ln" marker-end="url(#m1)"/>
+            <path d="M400 84 L315 118" class="ln" marker-end="url(#m1)"/>
+            <path d="M440 84 L505 118" class="ln" marker-end="url(#m1)"/>
+            <path d="M470 84 L705 118" class="ln" marker-end="url(#m1)"/>
+            <path d="M110 208 L250 268" class="ln" marker-end="url(#m1)"/>
+            <path d="M315 208 L315 268" class="ln" marker-end="url(#m1)"/>
+            <path d="M505 190 L380 268" class="ln" marker-end="url(#m1)"/>
+            <path d="M430 323 L498 323" class="ln" marker-end="url(#m1)"/>
+            <path d="M705 226 L650 268" class="ln" marker-end="url(#m1)"/>
+            <text x="463" y="316" text-anchor="middle" class="mut">1 : N</text>
+            <text x="580" y="100" class="mut">усе належить організації (tenant)</text>
+          </g>
+        </svg>
+        <figcaption>Класична реляційна форма: кожен факт один раз (телефон водія лише в <code>drivers</code>), зв'язки через FK.</figcaption>
+      </figure>
+
+      <h3>Вісім запитів, якими «тестуємо» кожну базу</h3>
+      <ol class="qlist">
+        <li><b class="q">Q1</b><b>Екран маршруту:</b> маршрут + 30 зупинок по порядку + адреси доставок + водій + машина. <i>Читання цілого агрегату, дуже часте.</i></li>
+        <li><b class="q">Q2</b><b>Звіт:</b> скільки км проїхав кожен водій організації за жовтень. <i>Агрегація з JOIN, рідше, але по великому обсягу.</i></li>
+        <li><b class="q">Q3</b><b>Оновлення факту:</b> водій змінив телефон. <i>Один факт, що згадується в сотнях маршрутів.</i></li>
+        <li><b class="q">Q4</b><b>Атомарна операція:</b> створити маршрут, створити 30 зупинок, перевести 30 доставок у <code>assigned</code>, збільшити лічильник квоти — «усе або нічого».</li>
+        <li><b class="q">Q5</b><b>Гарячий лічильник:</b> rate limit «не більше 60 запитів на хвилину на організацію» на кожен HTTP-запит.</li>
+        <li><b class="q">Q6</b><b>Потік телеметрії:</b> кожна машина шле GPS кожні 5 с (1 000 машин → 200 записів/с, ~17 млн/добу); показати трек машини за день.</li>
+        <li><b class="q">Q7</b><b>Пошук:</b> менеджер вводить «хрещатик 22» або «Khreshchatyk», або з помилкою «хрещятик», і має знайти доставку.</li>
+        <li><b class="q">Q8</b><b>Мережа:</b> посилки переходять між депо-хабами; знайти найкоротший ланцюжок передач з депо A у депо Z (і всі депо, досяжні за ≤3 переходи).</li>
+      </ol>
+      <div class="callout info"><div class="ic">ℹ️</div><div class="body">Позначення далі: <span class="y">✅</span> — природна сильна сторона,
+        <span class="m">⚠️</span> — можна, але з компромісом/додатковою роботою, <span class="n">❌</span> — неприродно або небезпечно.
+        Складність пишемо в нотації O(·) («O від…»: як росте робота зі зростанням даних), де n — кількість рядків.</div></div>
+    </section>
+
+    <!-- ============ 2 PG ============ -->
+    <section id="s2">
+      <div class="dbhead"><div class="dbbadge" style="background:var(--pg)">PG</div><h2 style="margin:0;"><span class="num">02</span>PostgreSQL (реляційна): універсал і джерело правди</h2></div>
+      <p class="section-desc">Те, що використовує цей проєкт. Модель — саме схема вище.</p>
+      <div class="codecard"><div class="bar"><span class="path">schema.sql (скорочено)</span></div><pre><code>CREATE TABLE drivers (
+  id uuid PRIMARY KEY, organization_id uuid NOT NULL REFERENCES organizations(id),
+  name text NOT NULL, phone text NOT NULL
+);
+CREATE TABLE routes (
+  id uuid PRIMARY KEY, organization_id uuid NOT NULL REFERENCES organizations(id),
+  driver_id uuid REFERENCES drivers(id), vehicle_id uuid REFERENCES vehicles(id),
+  depot_id uuid NOT NULL REFERENCES depots(id),
+  status text NOT NULL DEFAULT 'planned', total_distance_km numeric(10,2) NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE route_stops (
+  id uuid PRIMARY KEY, route_id uuid NOT NULL REFERENCES routes(id) ON DELETE CASCADE,
+  delivery_id uuid NOT NULL REFERENCES deliveries(id),
+  sequence int NOT NULL, estimated_arrival time NOT NULL,
+  UNIQUE (route_id, sequence)                         <span class="cmt">-- інваріант: немає двох зупинок №5</span>
+);
+CREATE INDEX ON route_stops (route_id, sequence);    <span class="cmt">-- Q1</span>
+CREATE INDEX ON routes (organization_id, created_at); <span class="cmt">-- Q2 і списки маршрутів</span></code></pre></div>
+
+      <h3>Як виконуються запити</h3>
+      <div class="codecard"><div class="bar"><span class="path">Q1 — екран маршруту: 1 запит, 4 JOIN-и</span></div><pre><code>SELECT r.id, r.status, d.name AS driver, d.phone, v.plate_number,
+       s.sequence, s.estimated_arrival, dl.customer_name, dl.address
+FROM routes r
+LEFT JOIN drivers  d  ON d.id = r.driver_id
+LEFT JOIN vehicles v  ON v.id = r.vehicle_id
+JOIN route_stops   s  ON s.route_id = r.id
+JOIN deliveries    dl ON dl.id = s.delivery_id
+WHERE r.id = $1 AND r.organization_id = $2
+ORDER BY s.sequence;
+<span class="cmt">-- План: index lookup routes (1) → index range route_stops (30) → 30 index lookups deliveries.
+-- ~60 сторінок індексів/даних, часто з кешу (shared_buffers) → одиниці мілісекунд.</span></code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">Q2 — звіт по водіях</span></div><pre><code>SELECT d.name, SUM(r.total_distance_km) AS km, COUNT(*) AS routes
+FROM routes r JOIN drivers d ON d.id = r.driver_id
+WHERE r.organization_id = $1 AND r.created_at &gt;= '2026-10-01' AND r.created_at &lt; '2026-11-01'
+GROUP BY d.name ORDER BY km DESC;
+<span class="cmt">-- Індекс (organization_id, created_at) звужує до маршрутів місяця однієї організації. Для тисяч
+-- маршрутів — миттєво. Для сотень мільйонів рядків по всіх тенантах — уже біль (див. ClickHouse).</span></code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">Q3 і Q4</span></div><pre><code><span class="cmt">-- Q3: один рядок, і всі маршрути "бачать" новий телефон через JOIN</span>
+UPDATE drivers SET phone = '+380501112233' WHERE id = $1 AND organization_id = $2;
+
+<span class="cmt">-- Q4: справжня ACID-транзакція через кілька таблиць</span>
+BEGIN;
+  INSERT INTO routes (...) VALUES (...) RETURNING id;
+  INSERT INTO route_stops (route_id, delivery_id, sequence, estimated_arrival) VALUES (...), (...), ...;
+  UPDATE deliveries SET status = 'assigned' WHERE id = ANY($ids) AND status = 'pending';
+  UPDATE organizations SET routes_generated_count = routes_generated_count + 1
+   WHERE id = $org AND routes_generated_count &lt; $limit;   <span class="cmt">-- атомарна перевірка квоти</span>
+COMMIT;   <span class="cmt">-- або все, або нічого; FK і UNIQUE не дадуть зберегти биті дані</span></code></pre></div>
+
+      <div class="verdict">
+        <div class="win"><span class="t">✅ Де виграє</span><ul>
+          <li><b>Q3, Q4</b> — нормалізація + ACID + обмеження (FK, UNIQUE, CHECK): дані не можуть суперечити собі.</li>
+          <li><b>Q1, Q2</b> — будь-який запит, навіть непередбачений, пишеться декларативно; оптимізатор сам будує план.</li>
+          <li>Нові вимоги (новий звіт, новий фільтр) зазвичай = новий запит + індекс, без переробки моделі.</li>
+        </ul></div>
+        <div class="lose"><span class="t">❌ / ⚠️ Де болить</span><ul>
+          <li><b>Q5</b> — гарячий лічильник на кожен запит означає UPDATE одного рядка тисячі разів на секунду: блокування рядка, WAL, мертві версії (MVCC bloat — <a href="19-postgres-storage-and-memory.html">туторіал 19</a>).</li>
+          <li><b>Q6</b> — 17 млн рядків/добу: B-tree індекси й VACUUM не встигають без партиціювання (або розширення TimescaleDB).</li>
+          <li><b>Q2 на мільярдах</b> — рядкове зберігання читає всі колонки рядка, хоча потрібні дві.</li>
+          <li><b>Q7</b> — <code>LIKE '%хрещ%'</code> не використовує B-tree (повний скан). Рішення є (pg_trgm, full-text), див. розділ 10.</li>
+          <li>Горизонтальне масштабування записів (шардинг) — не з коробки.</li>
+        </ul></div>
+      </div>
+      <p class="deeper">Глибше: <a href="18-databases-interview-qa.html">18 · категорія A (індекси, MVCC, FOR UPDATE)</a> ·
+        <a href="19-postgres-storage-and-memory.html">19 · як Postgres зберігає рядки</a> ·
+        <a href="22-multi-tenancy-saas.html">22 · ізоляція тенантів</a> ·
+        <a href="../system-design/04-databases-storage.html">System Design 4 · моделі, індекси, ACID</a></p>
+    </section>
+
+    <!-- ============ 3 Mongo ============ -->
+    <section id="s3">
+      <div class="dbhead"><div class="dbbadge" style="background:var(--mongo)">Mg</div><h2 style="margin:0;"><span class="num">03</span>MongoDB (документна): агрегат одним читанням</h2></div>
+      <p class="section-desc">Модель будується навколо головного запиту Q1: маршрут — це «документ», який читається цілком.</p>
+      <div class="codecard"><div class="bar"><span class="path">collection: routes (embedding)</span></div><pre><code>{
+  "_id": "r_7f3a",
+  "organization_id": "org_1",
+  "status": "planned",
+  "created_at": ISODate("2026-10-14T07:00:00Z"),
+  "total_distance_km": 84.2,
+  "driver":  { "id": "drv_9", "name": "Олег", "phone": "+380671234567" },   <span class="cmt">// ← КОПІЯ даних водія</span>
+  "vehicle": { "id": "veh_3", "plate_number": "AA1234BB" },
+  "depot":   { "id": "dep_1", "address": "вул. Складська 1" },
+  "stops": [                                                                 <span class="cmt">// ← вкладений масив</span>
+    { "seq": 1, "delivery_id": "del_101", "customer": "Кава&amp;Ко", "address": "Хрещатик 22",
+      "eta": "08:40", "status": "pending" },
+    { "seq": 2, "delivery_id": "del_102", "customer": "Аптека 5", "address": "Велика Васильківська 10",
+      "eta": "09:05", "status": "pending" }
+    <span class="cmt">// ... ще 28</span>
+  ]
+}</code></pre></div>
+
+      <figure class="db">
+        <svg viewBox="0 0 820 230" role="img" aria-label="Реляційне читання vs документне читання">
+          <g font-size="12.5">
+            <text x="200" y="24" text-anchor="middle" font-weight="700">PostgreSQL: Q1 збирається з 5 таблиць</text>
+            <rect x="30" y="40" width="90" height="34" rx="6" class="box"/><text x="75" y="62" text-anchor="middle">routes</text>
+            <rect x="140" y="40" width="90" height="34" rx="6" class="box"/><text x="185" y="62" text-anchor="middle">drivers</text>
+            <rect x="250" y="40" width="90" height="34" rx="6" class="box"/><text x="295" y="62" text-anchor="middle">vehicles</text>
+            <rect x="85" y="100" width="110" height="34" rx="6" class="box"/><text x="140" y="122" text-anchor="middle">route_stops ×30</text>
+            <rect x="215" y="100" width="110" height="34" rx="6" class="box"/><text x="270" y="122" text-anchor="middle">deliveries ×30</text>
+            <path d="M75 74 L130 98 M185 74 L150 98 M295 74 L280 98 M195 117 L213 117" class="ln"/>
+            <text x="200" y="168" text-anchor="middle" class="mut">~60 точкових звернень до індексів/сторінок,</text>
+            <text x="200" y="186" text-anchor="middle" class="mut">з'єднання на льоту при кожному читанні</text>
+            <line x1="410" y1="20" x2="410" y2="215" class="ln" style="stroke-dasharray:4 4"/>
+            <text x="615" y="24" text-anchor="middle" font-weight="700">MongoDB: Q1 = один документ</text>
+            <rect x="500" y="40" width="230" height="110" rx="8" class="box" style="stroke:var(--mongo)"/>
+            <text x="515" y="62" class="mono">route r_7f3a</text>
+            <text x="515" y="82" class="mono mut">driver{…} vehicle{…}</text>
+            <text x="515" y="102" class="mono mut">depot{…}</text>
+            <text x="515" y="122" class="mono mut">stops[ 30 × {…} ]</text>
+            <text x="515" y="140" class="mono mut">≈ 10–20 KB, поруч на диску</text>
+            <text x="615" y="186" text-anchor="middle" class="mut">1 пошук за _id → весь екран одним читанням</text>
+          </g>
+        </svg>
+        <figcaption>Документна модель «попередньо JOIN-ить» дані під час запису, тож Q1 стає тривіальним. Платимо за це на Q3.</figcaption>
+      </figure>
+
+      <div class="codecard"><div class="bar"><span class="path">Q1, Q3, Q4 у Mongo</span></div><pre><code><span class="cmt">// Q1 — миттєво</span>
+db.routes.findOne({ _id: "r_7f3a", organization_id: "org_1" })
+
+<span class="cmt">// Q3 — телефон водія скопійований у КОЖЕН його маршрут (скажімо, 400 документів)</span>
+db.routes.updateMany({ "driver.id": "drv_9" }, { $set: { "driver.phone": "+380501112233" } })
+<span class="cmt">// ...і в drivers-колекцію теж. Не в одній транзакції → якийсь час частина маршрутів зі старим телефоном.
+// Забули одне місце, де копія ще живе (наприклад, архів) → тихо застарілі дані.</span>
+
+<span class="cmt">// Q4 — маршрут разом із зупинками — ОДИН документ → запис атомарний без транзакції ✅
+// але "перевести 30 доставок у assigned" + "збільшити квоту" — це інші колекції →
+// потрібна мультидокументна транзакція (є з 4.0), що дорожча й обмежена в часі.</span>
+const s = db.getMongo().startSession();
+s.withTransaction(() =&gt; {
+  s.getDatabase("app").routes.insertOne(routeDoc);
+  s.getDatabase("app").deliveries.updateMany({ _id: { $in: ids }, status: "pending" }, { $set: { status: "assigned" } });
+  s.getDatabase("app").organizations.updateOne({ _id: org, routes_generated_count: { $lt: limit } },
+                                               { $inc: { routes_generated_count: 1 } });
+});
+
+<span class="cmt">// Q2 — aggregation pipeline: працює, але це вже "SQL руками"</span>
+db.routes.aggregate([
+  { $match: { organization_id: "org_1", created_at: { $gte: ISODate("2026-10-01"), $lt: ISODate("2026-11-01") } } },
+  { $group: { _id: "$driver.id", name: { $first: "$driver.name" }, km: { $sum: "$total_distance_km" } } },
+  { $sort: { km: -1 } }
+])</code></pre></div>
+
+      <div class="verdict">
+        <div class="win"><span class="t">✅ Де виграє</span><ul>
+          <li><b>Q1</b>: агрегат одним читанням, без JOIN-ів.</li>
+          <li><b>Різна форма даних:</b> якщо в різних організацій різні поля доставки (кастомні атрибути, для одних «температурний режим», для інших «поверх і ліфт»), документи приймуть їх без міграцій.</li>
+          <li>Атомарність <i>в межах документа</i> (маршрут + зупинки) безкоштовна.</li>
+          <li>Горизонтальний шардинг вбудований (shard key, наприклад <code>organization_id</code>).</li>
+        </ul></div>
+        <div class="lose"><span class="t">❌ / ⚠️ Де болить</span><ul>
+          <li><b>Q3</b>: денормалізовані копії → оновлення в N місцях, ризик розбіжностей. <i>Головна пастка</i>.</li>
+          <li><b>Q4</b> через кілька колекцій: транзакції є, але дорожчі; якщо їх потрібно багато, модель обрана не під домен.</li>
+          <li><b>Нові ракурси запитів</b>: «усі зупинки з доставкою del_101 у всіх маршрутах» — пошук всередині масивів, потрібен multikey-індекс <code>stops.delivery_id</code>; «зупинки, згруповані за клієнтом» — $unwind по всіх документах.</li>
+          <li>Масиви, що ростуть необмежено (наприклад, історія GPS у документі машини), впираються в 16 MB і переписують документ.</li>
+          <li>Немає FK: «зупинка посилається на видалену доставку» база не зупинить.</li>
+        </ul></div>
+      </div>
+      <div class="callout warn"><div class="ic">⚖️</div><div class="body"><b>Компроміс одним реченням.</b>
+        Embedding (вкладати) — коли дані читаються разом, належать одному «власнику» і не ростуть без меж
+        (зупинки маршруту ✅). Referencing (посилатись за id) — коли дані живуть своїм життям і на них посилаються з
+        багатьох місць (водій ✅ → тримати <code>driver_id</code>, а не копію, або копіювати лише незмінні поля
+        на кшталт імені на момент маршруту).</div></div>
+      <p class="deeper">Глибше: <a href="18-databases-interview-qa.html">18 · категорія B (embedding vs referencing, 16 MB, транзакції)</a></p>
+    </section>
+
+    <!-- ============ 4 Redis ============ -->
+    <section id="s4">
+      <div class="dbhead"><div class="dbbadge" style="background:var(--redis)">Rd</div><h2 style="margin:0;"><span class="num">04</span>Redis (key-value в пам'яті): швидкість за ключем</h2></div>
+      <p class="section-desc">Тут немає «таблиць». Структура даних — це <b>схема ключів</b> і вибір типу значення під операцію.</p>
+      <figure class="db">
+        <svg viewBox="0 0 820 250" role="img" aria-label="Схема ключів Redis">
+          <g font-size="12.5">
+            <text x="20" y="26" font-weight="700">Ключ</text><text x="420" y="26" font-weight="700">Тип і значення</text><text x="680" y="26" font-weight="700">Запит</text>
+            <g class="mono">
+              <rect x="14" y="38" width="790" height="34" rx="6" class="box"/>
+              <text x="24" y="60">rl:org_1:2026-10-30T10:15</text><text x="420" y="60">STRING  "47"  (TTL 60 c)</text><text x="680" y="60" style="fill:var(--good)">Q5 ✅</text>
+              <rect x="14" y="80" width="790" height="34" rx="6" class="box"/>
+              <text x="24" y="102">cache:route:r_7f3a</text><text x="420" y="102">STRING  JSON екрана (TTL 5 хв)</text><text x="680" y="102" style="fill:var(--good)">Q1 кеш ✅</text>
+              <rect x="14" y="122" width="790" height="34" rx="6" class="box"/>
+              <text x="24" y="144">geo:org_1:vehicles</text><text x="420" y="144">GEO  veh_3 → (50.45, 30.52)</text><text x="680" y="144" style="fill:var(--good)">поточна позиція ✅</text>
+              <rect x="14" y="164" width="790" height="34" rx="6" class="box"/>
+              <text x="24" y="186">top:org_1:2026-10:km</text><text x="420" y="186">ZSET  drv_9 → 1840.5</text><text x="680" y="186" style="fill:var(--warn)">Q2 лише якщо</text>
+              <text x="680" y="198" class="mut" font-size="10.5">рахувати заздалегідь</text>
+              <rect x="14" y="206" width="790" height="34" rx="6" class="box"/>
+              <text x="24" y="228">session:9c1e…</text><text x="420" y="228">HASH  user_id, org_id, exp</text><text x="680" y="228" style="fill:var(--good)">сесії ✅</text>
+            </g>
+          </g>
+        </svg>
+        <figcaption>Ключ кодує «запит»: щоб щось знайти, треба знати ключ наперед. «Знайди всі маршрути водія Олега» без окремого ключа-індексу неможливо.</figcaption>
+      </figure>
+      <div class="codecard"><div class="bar"><span class="path">Q5 — rate limiter (fixed window)</span></div><pre><code><span class="cmt"># атомарно: збільшити і (лише для нового ключа) поставити TTL</span>
+pipe = redis.pipeline(transaction=True)
+key = f"rl:{org_id}:{now:%Y-%m-%dT%H:%M}"
+pipe.incr(key)
+pipe.expire(key, 60, nx=True)
+count, _ = await pipe.execute()
+if count &gt; 60:
+    raise HTTPException(429, headers={"Retry-After": "60"})
+<span class="cmt"># ~0.1–0.5 мс, у пам'яті, однопотоково → немає гонок між INCR різних інстансів API</span></code></pre></div>
+      <div class="verdict">
+        <div class="win"><span class="t">✅ Де виграє</span><ul>
+          <li><b>Q5</b>: атомарний <code>INCR</code> + TTL — ідеальний розподілений лічильник для кількох інстансів API.</li>
+          <li><b>Кеш Q1</b>: готовий JSON екрана за ключем; знімає навантаження з Postgres.</li>
+          <li>Поточні позиції машин (GEO), лідерборди (ZSET), черги (Celery broker), pub/sub, сесії.</li>
+        </ul></div>
+        <div class="lose"><span class="t">❌ Де болить</span><ul>
+          <li><b>Q2, Q7, Q8</b>: немає запитів «за вмісту»; кожен новий ракурс = нова структура ключів, яку треба підтримувати вручну.</li>
+          <li><b>Q3, Q4</b> як джерело правди: дані в RAM, персистентність — компроміс (RDB/AOF), немає зв'язків і обмежень; <code>MULTI</code> не відкочує зміни при логічній помилці.</li>
+          <li><b>Q6 історія</b>: 17 млн точок/добу в RAM — дорого; Streams підходять як буфер, а не як архів.</li>
+        </ul></div>
+      </div>
+      <div class="callout fe"><div class="ic">🎨</div><div class="body"><b>Аналогія для фронтендера.</b>
+        Redis — це <code>Map</code>/<code>sessionStorage</code> на сервері, спільний для всіх інстансів. Ключ
+        <code>cache:route:r_7f3a</code> — як <code>queryKey: ['route', id]</code> у React Query. Кеш миттєвий, але
+        джерело правди — сервер (тут Postgres), і головна складність — інвалідація.</div></div>
+      <p class="deeper">Глибше: <a href="20-redis.html">20 · Redis у цьому проєкті</a> · <a href="../system-design/03-caching.html">System Design 3 · кешування</a> · <a href="18-databases-interview-qa.html">18 · категорія C</a></p>
+    </section>
+
+    <!-- ============ 5 Cassandra ============ -->
+    <section id="s5">
+      <div class="dbhead"><div class="dbbadge" style="background:var(--cass)">Cs</div><h2 style="margin:0;"><span class="num">05</span>Cassandra (wide-column): мільйони записів на секунду, але «одна таблиця на запит»</h2></div>
+      <p class="section-desc">Модель проєктується <b>від запиту назад</b> (query-first): спершу пишеш запит, потім таблицю під нього.</p>
+      <div class="codecard"><div class="bar"><span class="path">CQL — таблиця під Q6</span></div><pre><code>CREATE TABLE gps_by_vehicle_day (
+  vehicle_id  uuid,
+  day         date,
+  ts          timestamp,
+  lat double, lng double, speed_kmh float,
+  PRIMARY KEY ((vehicle_id, day), ts)       <span class="cmt">-- (partition key), clustering column</span>
+) WITH CLUSTERING ORDER BY (ts ASC)
+  AND default_time_to_live = 7776000;       <span class="cmt">-- 90 днів, видаляється само</span>
+
+<span class="cmt">-- Q6: трек машини за день = ОДНА партиція, послідовне читання вже відсортованих рядків</span>
+SELECT ts, lat, lng FROM gps_by_vehicle_day WHERE vehicle_id = ? AND day = '2026-10-30';</code></pre></div>
+      <figure class="db">
+        <svg viewBox="0 0 820 230" role="img" aria-label="Партиціювання Cassandra">
+          <g font-size="12">
+            <text x="410" y="22" text-anchor="middle" font-weight="700">Кільце вузлів: партиція (vehicle_id, day) живе на 3 репліках</text>
+            <circle cx="160" cy="125" r="80" class="ln" style="stroke-dasharray:4 4"/>
+            <circle cx="160" cy="45" r="16" style="fill:var(--cass);opacity:.8"/><text x="160" y="49" text-anchor="middle" style="fill:#fff">N1</text>
+            <circle cx="240" cy="125" r="16" style="fill:var(--cass);opacity:.8"/><text x="240" y="129" text-anchor="middle" style="fill:#fff">N2</text>
+            <circle cx="160" cy="205" r="16" style="fill:var(--cass);opacity:.35"/><text x="160" y="209" text-anchor="middle">N3</text>
+            <circle cx="80" cy="125" r="16" style="fill:var(--cass);opacity:.8"/><text x="80" y="129" text-anchor="middle" style="fill:#fff">N4</text>
+            <text x="160" y="129" text-anchor="middle" class="mut">hash(key)</text>
+            <rect x="330" y="50" width="470" height="150" rx="8" class="box" style="stroke:var(--cass)"/>
+            <text x="345" y="72" class="mono" font-weight="700">partition (veh_3, 2026-10-30)</text>
+            <text x="345" y="94" class="mono mut">ts=08:00:00  lat=50.4501 lng=30.5234</text>
+            <text x="345" y="112" class="mono mut">ts=08:00:05  lat=50.4503 lng=30.5241</text>
+            <text x="345" y="130" class="mono mut">ts=08:00:10  …   (≈17 280 рядків за день)</text>
+            <text x="345" y="152" class="mut">запис = append у memtable + commit log → дуже дешево</text>
+            <text x="345" y="172" class="mut">читання дня = одна партиція, вже відсортована за ts</text>
+            <text x="345" y="190" class="mut">нові машини = нові партиції → рівномірно по вузлах</text>
+          </g>
+        </svg>
+        <figcaption>Партиція — одиниця розподілу. Добрий ключ партиції дає рівномірне навантаження й обмежений розмір (тому <code>day</code> у ключі: інакше партиція машини росла б вічно).</figcaption>
+      </figure>
+      <div class="codecard"><div class="bar"><span class="path">Що станеться з іншими запитами</span></div><pre><code><span class="cmt">-- "Всі точки, де швидкість &gt; 120" — не по ключу партиції:</span>
+SELECT * FROM gps_by_vehicle_day WHERE speed_kmh &gt; 120;            <span class="cmt">-- ❌ помилка</span>
+SELECT * FROM gps_by_vehicle_day WHERE speed_kmh &gt; 120 ALLOW FILTERING;  <span class="cmt">-- ⚠️ скан усього кластера</span>
+<span class="cmt">-- Правильно в Cassandra: ще одна таблиця, яку застосунок пише паралельно (денормалізація на запис)</span>
+CREATE TABLE speeding_by_org_day (org_id uuid, day date, ts timestamp, vehicle_id uuid, speed_kmh float,
+  PRIMARY KEY ((org_id, day), ts, vehicle_id));
+<span class="cmt">-- Q1/Q2 з JOIN-ами — неможливо; Q4 через кілька партицій — немає ACID-транзакцій
+-- (є lightweight transactions на одну партицію, повільні, через Paxos).</span></code></pre></div>
+      <div class="verdict">
+        <div class="win"><span class="t">✅ Де виграє</span><ul>
+          <li><b>Q6</b>: величезний стабільний потік записів, лінійне масштабування додаванням вузлів, кілька дата-центрів, немає єдиної точки відмови (AP-система).</li>
+          <li>TTL на рівні таблиці/рядка; передбачувана латентність запису.</li>
+        </ul></div>
+        <div class="lose"><span class="t">❌ Де болить</span><ul>
+          <li><b>Q1–Q4</b>: немає JOIN-ів, транзакцій між партиціями, гнучких фільтрів, FK.</li>
+          <li>Кожен новий запит — нова таблиця й подвійний запис; помилка в моделі ключів = міграція даних.</li>
+          <li>Для 200 записів/с (наш Q6) Cassandra — гармата по горобцях: Postgres з партиціями або TimescaleDB впораються. Cassandra виправдана на десятках і сотнях тисяч записів/с і в мульти-регіоні.</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <!-- ============ 6 ClickHouse ============ -->
+    <section id="s6">
+      <div class="dbhead"><div class="dbbadge" style="background:var(--ch)">CH</div><h2 style="margin:0;"><span class="num">06</span>ClickHouse (колонкова OLAP): агрегації по мільярдах рядків</h2></div>
+      <p class="section-desc">Відповідає на Q2 і аналітику Q6, коли даних стає дуже багато. Не замінює Postgres, а стоїть поруч.</p>
+      <figure class="db">
+        <svg viewBox="0 0 820 250" role="img" aria-label="Рядкове vs колонкове зберігання">
+          <g font-size="12">
+            <text x="200" y="22" text-anchor="middle" font-weight="700">Рядкове (Postgres): рядок цілком на сторінці</text>
+            <g class="mono">
+              <rect x="20" y="36" width="360" height="24" rx="4" class="box"/><text x="28" y="53">id | org | driver | status | km | created | …</text>
+              <rect x="20" y="64" width="360" height="24" rx="4" class="box"/><text x="28" y="81">id | org | driver | status | km | created | …</text>
+              <rect x="20" y="92" width="360" height="24" rx="4" class="box"/><text x="28" y="109">id | org | driver | status | km | created | …</text>
+            </g>
+            <text x="200" y="140" text-anchor="middle" class="mut">SUM(km) GROUP BY driver → читаємо ВСІ колонки</text>
+            <text x="200" y="158" text-anchor="middle" class="mut">кожного рядка (×12 колонок зайвих байтів)</text>
+            <line x1="410" y1="14" x2="410" y2="240" class="ln" style="stroke-dasharray:4 4"/>
+            <text x="615" y="22" text-anchor="middle" font-weight="700">Колонкове (ClickHouse): файл на колонку</text>
+            <g class="mono">
+              <rect x="440" y="36" width="70" height="110" rx="4" class="box" style="opacity:.45"/><text x="475" y="56" text-anchor="middle">id</text>
+              <rect x="515" y="36" width="70" height="110" rx="4" class="box" style="stroke:var(--ch);stroke-width:2.5"/><text x="550" y="56" text-anchor="middle">driver</text>
+              <rect x="590" y="36" width="70" height="110" rx="4" class="box" style="opacity:.45"/><text x="625" y="56" text-anchor="middle">status</text>
+              <rect x="665" y="36" width="70" height="110" rx="4" class="box" style="stroke:var(--ch);stroke-width:2.5"/><text x="700" y="56" text-anchor="middle">km</text>
+              <rect x="740" y="36" width="64" height="110" rx="4" class="box" style="opacity:.45"/><text x="772" y="56" text-anchor="middle">…</text>
+              <text x="550" y="90" text-anchor="middle" class="mut">drv_9</text><text x="550" y="108" text-anchor="middle" class="mut">drv_9</text><text x="550" y="126" text-anchor="middle" class="mut">drv_2</text>
+              <text x="700" y="90" text-anchor="middle" class="mut">84.2</text><text x="700" y="108" text-anchor="middle" class="mut">61.0</text><text x="700" y="126" text-anchor="middle" class="mut">97.5</text>
+            </g>
+            <text x="615" y="176" text-anchor="middle" class="mut">читаємо лише 2 колонки; однакові значення поруч</text>
+            <text x="615" y="194" text-anchor="middle" class="mut">→ стискаються в рази; обробка векторами (SIMD)</text>
+            <text x="615" y="222" text-anchor="middle" class="mut">але UPDATE одного рядка = переписати шматки кількох файлів</text>
+          </g>
+        </svg>
+        <figcaption>Це й є суть OLTP vs OLAP: рядкове зберігання оптимізоване під «дай/зміни рядок», колонкове — під «порахуй по колонці».</figcaption>
+      </figure>
+      <div class="codecard"><div class="bar"><span class="path">ClickHouse — таблиця фактів маршрутів і GPS</span></div><pre><code>CREATE TABLE route_facts (
+  organization_id UUID, route_id UUID, driver_id UUID,
+  created_at DateTime, status LowCardinality(String), total_distance_km Decimal(10,2)
+) ENGINE = ReplacingMergeTree
+PARTITION BY toYYYYMM(created_at)
+ORDER BY (organization_id, created_at, route_id);   <span class="cmt">-- розріджений індекс під фільтр Q2</span>
+
+<span class="cmt">-- Q2 по всіх тенантах за рік (сотні мільйонів рядків) — секунди або менше</span>
+SELECT organization_id, driver_id, sum(total_distance_km) AS km
+FROM route_facts WHERE created_at &gt;= '2026-01-01'
+GROUP BY organization_id, driver_id ORDER BY km DESC LIMIT 100;</code></pre></div>
+      <div class="verdict">
+        <div class="win"><span class="t">✅ Де виграє</span><ul>
+          <li><b>Q2 у великому масштабі</b>, дашборди, аналітика по GPS (середня швидкість по районах, простої).</li>
+          <li>Стискання дає дешеве зберігання історії; materialized views для готових агрегатів.</li>
+        </ul></div>
+        <div class="lose"><span class="t">❌ Де болить</span><ul>
+          <li><b>Q3</b> (оновити телефон) і <b>Q4</b> (транзакція) — оновлення й видалення важкі, ACID-транзакцій немає.</li>
+          <li><b>Q1</b>: «дай один маршрут з усіма полями» — збирати з багатьох колонок; працює, але це не його профіль.</li>
+          <li>Дрібні вставки по одному рядку — анти-патерн (вставляти батчами).</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <!-- ============ 7 Elasticsearch ============ -->
+    <section id="s7">
+      <div class="dbhead"><div class="dbbadge" style="background:var(--es)">ES</div><h2 style="margin:0;"><span class="num">07</span>Elasticsearch / OpenSearch (пошукова): текст, помилки, релевантність</h2></div>
+      <p class="section-desc">Головна структура — інвертований індекс: не «документ → слова», а «слово → документи».</p>
+      <figure class="db">
+        <svg viewBox="0 0 820 230" role="img" aria-label="Інвертований індекс">
+          <defs><marker id="m2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ar"/></marker></defs>
+          <g font-size="12">
+            <text x="150" y="22" text-anchor="middle" font-weight="700">Документи (доставки)</text>
+            <rect x="20" y="36" width="260" height="28" rx="5" class="box"/><text x="30" y="55" class="mono">del_101: "Кава&amp;Ко, Хрещатик 22"</text>
+            <rect x="20" y="70" width="260" height="28" rx="5" class="box"/><text x="30" y="89" class="mono">del_102: "Аптека 5, Хрещатик 3"</text>
+            <rect x="20" y="104" width="260" height="28" rx="5" class="box"/><text x="30" y="123" class="mono">del_103: "Склад, Саксаганського 22"</text>
+            <text x="150" y="160" text-anchor="middle" class="mut">аналізатор: lowercase, транслітерація,</text>
+            <text x="150" y="176" text-anchor="middle" class="mut">стемінг, n-грами</text>
+            <path d="M285 85 H360" class="ln" marker-end="url(#m2)"/>
+            <text x="560" y="22" text-anchor="middle" font-weight="700">Інвертований індекс (терм → id)</text>
+            <g class="mono">
+              <rect x="370" y="36" width="430" height="26" rx="5" class="box"/><text x="380" y="54">хрещатик / khreshchatyk  →  del_101, del_102</text>
+              <rect x="370" y="66" width="430" height="26" rx="5" class="box"/><text x="380" y="84">22                       →  del_101, del_103</text>
+              <rect x="370" y="96" width="430" height="26" rx="5" class="box"/><text x="380" y="114">кава                     →  del_101</text>
+              <rect x="370" y="126" width="430" height="26" rx="5" class="box"/><text x="380" y="144">аптека                   →  del_102</text>
+            </g>
+            <text x="585" y="180" text-anchor="middle" class="mut">«хрещятик 22» (помилка) → fuzzy: терми на відстані ≤1–2 правки</text>
+            <text x="585" y="198" text-anchor="middle" class="mut">перетин списків: del_101 найрелевантніший (обидва терми)</text>
+          </g>
+        </svg>
+        <figcaption>Пошук = злиття коротких відсортованих списків id, а не сканування рядків. Звідси швидкість і релевантність (BM25).</figcaption>
+      </figure>
+      <div class="codecard"><div class="bar"><span class="path">Q7 — пошук з помилками</span></div><pre><code>GET deliveries/_search
+{
+  "query": { "bool": {
+    "filter": [ { "term": { "organization_id": "org_1" } } ],        <span class="cmt">// ізоляція тенанта — обов'язково</span>
+    "must":   [ { "multi_match": { "query": "хрещятик 22",
+                  "fields": ["address^2", "customer_name"], "fuzziness": "AUTO" } } ]
+  } }
+}</code></pre></div>
+      <div class="verdict">
+        <div class="win"><span class="t">✅ Де виграє</span><ul>
+          <li><b>Q7</b>: повнотекстовий пошук, помилки, синоніми, транслітерація, підсвітка, ранжування.</li>
+          <li>Пошук і агрегації по логах (ELK/OpenSearch), фасети («скільки доставок за статусами» у результатах пошуку).</li>
+        </ul></div>
+        <div class="lose"><span class="t">❌ Де болить</span><ul>
+          <li><b>Як джерело правди</b>: немає ACID і FK; документ стає видимим для пошуку не одразу (refresh, за замовчуванням ~1 с: near-real-time).</li>
+          <li><b>Q3/Q4</b>: оновлення = переіндексація документа; транзакцій немає.</li>
+          <li>Потрібна синхронізація з основною базою (outbox / CDC) і обробка розбіжностей.</li>
+          <li>Для пошуку по одній таблиці на тисячі рядків — зайвий кластер (див. pg_trgm у розділі 10).</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <!-- ============ 8 Neo4j ============ -->
+    <section id="s8">
+      <div class="dbhead"><div class="dbbadge" style="background:var(--neo)">Gr</div><h2 style="margin:0;"><span class="num">08</span>Neo4j (графова): зв'язки як дані першого класу</h2></div>
+      <p class="section-desc">Q8: мережа депо-хабів, посилки передаються між ними. Питання про <i>шляхи</i> довільної довжини.</p>
+      <figure class="db">
+        <svg viewBox="0 0 820 220" role="img" aria-label="Граф депо">
+          <defs><marker id="m3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ar"/></marker></defs>
+          <g font-size="12.5">
+            <g>
+              <circle cx="70" cy="110" r="24" style="fill:var(--neo);opacity:.85"/><text x="70" y="115" text-anchor="middle" style="fill:#fff">A Київ</text>
+              <circle cx="230" cy="50" r="24" class="box"/><text x="230" y="55" text-anchor="middle">B</text>
+              <circle cx="230" cy="170" r="24" class="box"/><text x="230" y="175" text-anchor="middle">C</text>
+              <circle cx="400" cy="110" r="24" class="box"/><text x="400" y="115" text-anchor="middle">D</text>
+              <circle cx="560" cy="50" r="24" class="box"/><text x="560" y="55" text-anchor="middle">E</text>
+              <circle cx="560" cy="170" r="24" class="box"/><text x="560" y="175" text-anchor="middle">F</text>
+              <circle cx="730" cy="110" r="24" style="fill:var(--neo);opacity:.85"/><text x="730" y="115" text-anchor="middle" style="fill:#fff">Z Львів</text>
+            </g>
+            <path d="M93 100 L207 58" class="ln" style="stroke:var(--good);stroke-width:3"/><text x="140" y="68" class="mut">2 год</text>
+            <path d="M93 120 L207 162" class="ln"/><text x="140" y="160" class="mut">1 год</text>
+            <path d="M253 58 L377 102" class="ln" style="stroke:var(--good);stroke-width:3"/><text x="310" y="70" class="mut">3 год</text>
+            <path d="M253 162 L377 118" class="ln"/><text x="310" y="160" class="mut">5 год</text>
+            <path d="M423 102 L537 58" class="ln" style="stroke:var(--good);stroke-width:3"/><text x="470" y="70" class="mut">2 год</text>
+            <path d="M423 118 L537 162" class="ln"/><text x="470" y="160" class="mut">1 год</text>
+            <path d="M583 58 L707 102" class="ln" style="stroke:var(--good);stroke-width:3"/><text x="640" y="70" class="mut">1 год</text>
+            <path d="M583 162 L707 118" class="ln"/><text x="640" y="160" class="mut">6 год</text>
+            <text x="410" y="210" text-anchor="middle" class="mut">зелений шлях A→B→D→E→Z = 8 год (через C було б 1+5+2+1 = 9)</text>
+          </g>
+        </svg>
+        <figcaption>У графовій базі кожен вузол зберігає прямі посилання на сусідів (index-free adjacency), тож крок обходу не залежить від розміру всієї бази.</figcaption>
+      </figure>
+      <div class="codecard"><div class="bar"><span class="path">Q8 у Cypher (Neo4j) vs SQL</span></div><pre><code><span class="cmt">// Neo4j: шлях з найменшою кількістю переходів, усі депо, досяжні за ≤ 3 кроки</span>
+MATCH p = shortestPath((a:Depot {code:'A'})-[:SHIPS_TO*..10]-&gt;(z:Depot {code:'Z'})) RETURN p;
+MATCH (a:Depot {code:'A'})-[:SHIPS_TO*1..3]-&gt;(d:Depot) RETURN DISTINCT d.code;
+
+<span class="cmt">-- PostgreSQL: те саме через рекурсивний CTE (працює, але кожен рівень — JOIN по таблиці ребер)</span>
+WITH RECURSIVE reach(depot_id, depth, path) AS (
+  SELECT to_depot, 1, ARRAY[from_depot, to_depot] FROM depot_links WHERE from_depot = 'A'
+  UNION ALL
+  SELECT l.to_depot, r.depth + 1, r.path || l.to_depot
+  FROM depot_links l JOIN reach r ON l.from_depot = r.depot_id
+  WHERE r.depth &lt; 3 AND NOT l.to_depot = ANY(r.path)        <span class="cmt">-- захист від циклів</span>
+)
+SELECT DISTINCT depot_id FROM reach;</code></pre></div>
+      <div class="verdict">
+        <div class="win"><span class="t">✅ Де виграє</span><ul>
+          <li><b>Q8</b> на великих і щільних графах: шляхи змінної довжини, «друзі друзів», виявлення шахрайства (кільця транзакцій), рекомендації.</li>
+          <li>Запити про структуру зв'язків читаються природно.</li>
+        </ul></div>
+        <div class="lose"><span class="t">❌ Де болить</span><ul>
+          <li><b>Q2, Q6</b>: агрегації «по всьому» і потоки записів — не його профіль.</li>
+          <li>Для 50 депо і 200 зв'язків рекурсивний CTE у Postgres повністю достатній, а окрема база — зайва складність.</li>
+          <li>Зважений найкоротший шлях (за годинами) — алгоритми з бібліотеки GDS (Graph Data Science) або в застосунку (Dijkstra); для маршрутизації машин цей проєкт взагалі використовує OR-Tools (<a href="21-route-optimization-or-tools.html">туторіал 21</a>).</li>
+        </ul></div>
+      </div>
+    </section>
+
+    <!-- ============ 9 Matrix ============ -->
+    <section id="s9">
+      <h2><span class="num">09</span>Матриця «запит × база»: усе на одному екрані</h2>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Запит</th><th>PG</th><th>Mongo</th><th>Redis</th><th>Cassandra</th><th>ClickHouse</th><th>Elastic</th><th>Neo4j</th></tr></thead>
+        <tbody>
+          <tr><td><b>Q1</b> екран маршруту</td><td class="c y">✅</td><td class="c y">✅✅</td><td class="c m">⚠️ кеш</td><td class="c m">⚠️</td><td class="c n">❌</td><td class="c m">⚠️</td><td class="c m">⚠️</td></tr>
+          <tr><td><b>Q2</b> звіт по водіях</td><td class="c y">✅ (до ~сотень млн)</td><td class="c m">⚠️ pipeline</td><td class="c n">❌</td><td class="c n">❌</td><td class="c y">✅✅</td><td class="c m">⚠️ aggs</td><td class="c n">❌</td></tr>
+          <tr><td><b>Q3</b> оновити телефон</td><td class="c y">✅✅</td><td class="c n">❌ N копій</td><td class="c n">❌</td><td class="c m">⚠️</td><td class="c n">❌</td><td class="c m">⚠️ reindex</td><td class="c y">✅</td></tr>
+          <tr><td><b>Q4</b> атомарно 4 сутності</td><td class="c y">✅✅</td><td class="c m">⚠️ txn</td><td class="c n">❌</td><td class="c n">❌</td><td class="c n">❌</td><td class="c n">❌</td><td class="c y">✅</td></tr>
+          <tr><td><b>Q5</b> гарячий лічильник</td><td class="c m">⚠️ lock/bloat</td><td class="c m">⚠️ $inc</td><td class="c y">✅✅</td><td class="c m">⚠️ counters</td><td class="c n">❌</td><td class="c n">❌</td><td class="c n">❌</td></tr>
+          <tr><td><b>Q6</b> GPS-потік і трек</td><td class="c m">⚠️ партиції / Timescale</td><td class="c m">⚠️ time-series coll.</td><td class="c m">⚠️ лише «зараз»</td><td class="c y">✅✅</td><td class="c y">✅ аналітика</td><td class="c n">❌</td><td class="c n">❌</td></tr>
+          <tr><td><b>Q7</b> пошук з помилками</td><td class="c m">⚠️ pg_trgm/FTS</td><td class="c m">⚠️ Atlas Search</td><td class="c n">❌</td><td class="c n">❌</td><td class="c m">⚠️</td><td class="c y">✅✅</td><td class="c n">❌</td></tr>
+          <tr><td><b>Q8</b> шляхи в мережі</td><td class="c m">⚠️ рекурсивний CTE</td><td class="c m">⚠️ $graphLookup</td><td class="c n">❌</td><td class="c n">❌</td><td class="c n">❌</td><td class="c n">❌</td><td class="c y">✅✅</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout good"><div class="ic">💡</div><div class="body"><b>Як читати матрицю.</b> Зверніть увагу на стовпець PG: у ньому
+        майже немає ❌. Це і є аргумент «Postgres за замовчуванням». Спеціалізована база вмикається, коли один рядок
+        із ⚠️ у PG стає <i>головним</i> навантаженням системи (наприклад, Q6 зростає до 100 000 записів/с або Q7 стає ключовою фічею продукту).</div></div>
+    </section>
+
+    <!-- ============ 10 Postgres first ============ -->
+    <section id="s10">
+      <h2><span class="num">10</span>Postgres first: що він закриває сам, перш ніж додавати нову базу</h2>
+      <p class="section-desc">Кожна нова база — це ще один кластер, бекапи, моніторинг, синхронізація даних і on-call. Перевір спершу, чи не вистачить розширення.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Потреба</th><th>Спеціалізована база</th><th>Що є в Postgres</th><th>Коли Postgres перестає вистачати</th></tr></thead>
+        <tbody>
+          <tr><td>Документи з різною формою</td><td>MongoDB</td><td><code>jsonb</code> + GIN-індекс, <code>-&gt;&gt;</code>, <code>@&gt;</code></td><td>Документи — основна модель, шардинг з коробки</td></tr>
+          <tr><td>Пошук «%хрещ%», з помилками</td><td>Elasticsearch</td><td><code>pg_trgm</code> (GIN по триграмах), <code>tsvector</code> full-text, <code>unaccent</code></td><td>Складна релевантність, синоніми, мільйони документів, фасети</td></tr>
+          <tr><td>Часові ряди</td><td>Cassandra / InfluxDB</td><td>Декларативне партиціювання за часом, BRIN-індекси, TimescaleDB</td><td>Сотні тисяч записів/с, мульти-регіон</td></tr>
+          <tr><td>Аналітика</td><td>ClickHouse</td><td>Read replica + materialized views, партиції</td><td>Сотні мільйонів+ рядків, інтерактивні дашборди</td></tr>
+          <tr><td>Графи</td><td>Neo4j</td><td><code>WITH RECURSIVE</code>, розширення Apache AGE</td><td>Глибокі обходи на великих щільних графах</td></tr>
+          <tr><td>Геодані</td><td>—</td><td>PostGIS (індекси GiST, «доставки в радіусі 2 км»)</td><td>Рідко</td></tr>
+          <tr><td>Черга задач</td><td>RabbitMQ / Redis</td><td><code>SELECT … FOR UPDATE SKIP LOCKED</code></td><td>Високий throughput, fan-out</td></tr>
+          <tr><td>Кеш / лічильники</td><td>Redis</td><td>UNLOGGED таблиці (з обережністю)</td><td>Майже одразу: для Q5 Redis майже завжди кращий</td></tr>
+        </tbody>
+      </table></div>
+      <div class="codecard"><div class="bar"><span class="path">Q7 у самому Postgres — pg_trgm</span></div><pre><code>CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX deliveries_address_trgm ON deliveries USING gin (address gin_trgm_ops);
+
+<span class="cmt">-- тепер це використовує індекс, а не скан усієї таблиці</span>
+SELECT id, address, similarity(address, 'хрещятик 22') AS score
+FROM deliveries
+WHERE organization_id = $1 AND address % 'хрещятик 22'       <span class="cmt">-- % = "схожий" (поріг схожості)</span>
+ORDER BY score DESC LIMIT 10;
+<span class="cmt">-- Транслітерацію "Khreshchatyk" ↔ "Хрещатик" pg_trgm сам не зробить: зберігати нормалізовану
+-- латинську колонку address_translit або вже тоді — Elasticsearch з аналізатором.</span></code></pre></div>
+    </section>
+
+    <!-- ============ 11 Polyglot ============ -->
+    <section id="s11">
+      <h2><span class="num">11</span>Polyglot persistence: як бази живуть разом в одній системі</h2>
+      <p>У реальних системах зазвичай одна база — <b>джерело правди</b> (system of record), а решта — <b>похідні представлення</b>
+      (derived data), які можна перебудувати з неї. Ключове питання — як доставляти зміни.</p>
+      <figure class="db">
+        <svg viewBox="0 0 820 300" role="img" aria-label="Polyglot persistence">
+          <defs><marker id="m4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ar"/></marker></defs>
+          <g font-size="12.5">
+            <rect x="20" y="120" width="140" height="60" rx="10" class="box"/><text x="90" y="146" text-anchor="middle" font-weight="700">FastAPI</text><text x="90" y="164" text-anchor="middle" class="mut">API + воркери</text>
+            <rect x="230" y="110" width="170" height="80" rx="10" class="box" style="stroke:var(--pg);stroke-width:2.5"/><text x="315" y="138" text-anchor="middle" font-weight="700">PostgreSQL</text><text x="315" y="156" text-anchor="middle" class="mut">джерело правди</text><text x="315" y="174" text-anchor="middle" class="mut">+ outbox-таблиця</text>
+            <rect x="230" y="20" width="170" height="56" rx="10" class="box" style="stroke:var(--redis)"/><text x="315" y="44" text-anchor="middle" font-weight="700">Redis</text><text x="315" y="62" text-anchor="middle" class="mut">кеш, rate limit, черга</text>
+            <rect x="470" y="120" width="130" height="60" rx="10" class="box"/><text x="535" y="146" text-anchor="middle" font-weight="700">CDC / relay</text><text x="535" y="164" text-anchor="middle" class="mut">Debezium / outbox</text>
+            <rect x="660" y="30" width="140" height="56" rx="10" class="box" style="stroke:var(--es)"/><text x="730" y="54" text-anchor="middle" font-weight="700">Elasticsearch</text><text x="730" y="72" text-anchor="middle" class="mut">пошук (Q7)</text>
+            <rect x="660" y="122" width="140" height="56" rx="10" class="box" style="stroke:var(--ch)"/><text x="730" y="146" text-anchor="middle" font-weight="700">ClickHouse</text><text x="730" y="164" text-anchor="middle" class="mut">звіти (Q2)</text>
+            <rect x="660" y="214" width="140" height="56" rx="10" class="box" style="stroke:var(--cass)"/><text x="730" y="238" text-anchor="middle" font-weight="700">GPS-сховище</text><text x="730" y="256" text-anchor="middle" class="mut">Q6 (пряма запис)</text>
+            <path d="M160 150 H228" class="ln" marker-end="url(#m4)"/>
+            <path d="M120 120 Q150 48 228 48" class="ln" marker-end="url(#m4)"/>
+            <path d="M400 150 H468" class="ln" marker-end="url(#m4)"/>
+            <path d="M600 140 L658 62" class="ln" marker-end="url(#m4)"/>
+            <path d="M600 150 H658" class="ln" marker-end="url(#m4)"/>
+            <path d="M90 180 Q90 242 658 242" class="ln" style="stroke-dasharray:5 4" marker-end="url(#m4)"/>
+            <text x="360" y="236" class="mut">телеметрія не йде через Postgres</text>
+            <text x="535" y="210" text-anchor="middle" class="mut">похідні дані: можна перебудувати</text>
+          </g>
+        </svg>
+        <figcaption>Ніколи «запиши в Postgres і окремо в Elastic» з коду запиту (dual write): одна зі вставок колись впаде, і бази розійдуться. Outbox або CDC (change data capture: читання журналу змін бази).</figcaption>
+      </figure>
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body"><b>Ціна кожної бази.</b> Eventual consistency між представленнями
+        (пошук бачить доставку через секунду-дві), моніторинг lag-у синхронізації, повне переіндексування при зміні схеми,
+        окремі бекапи й права доступу, ще одна технологія для on-call. Тому для цього проєкту зараз правильно:
+        <b>Postgres + Redis</b>, і нічого більше, поки навантаження не покаже інше
+        (<a href="03-scaling.html">туторіал 3 · драбина масштабування</a>).</div></div>
+    </section>
+
+    <!-- ============ 12 Decision tree ============ -->
+    <section id="s12">
+      <h2><span class="num">12</span>Дерево рішень</h2>
+      <figure class="db">
+        <svg viewBox="0 0 820 400" role="img" aria-label="Дерево вибору бази">
+          <defs><marker id="m5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ar"/></marker></defs>
+          <g font-size="12.5">
+            <rect x="290" y="12" width="240" height="44" rx="10" class="box" style="stroke:var(--accent)"/><text x="410" y="39" text-anchor="middle" font-weight="700">Це джерело правди для бізнес-даних?</text>
+            <rect x="40" y="96" width="240" height="44" rx="10" class="box"/><text x="160" y="116" text-anchor="middle">Так → потрібні транзакції,</text><text x="160" y="132" text-anchor="middle">зв'язки, нові запити?</text>
+            <rect x="540" y="96" width="250" height="44" rx="10" class="box"/><text x="665" y="116" text-anchor="middle">Ні → це кеш / похідне /</text><text x="665" y="132" text-anchor="middle">спеціальний патерн доступу</text>
+            <rect x="20" y="186" width="170" height="44" rx="10" class="box" style="stroke:var(--pg);stroke-width:2.5"/><text x="105" y="206" text-anchor="middle" font-weight="700">PostgreSQL</text><text x="105" y="222" text-anchor="middle" class="mut">(дефолт)</text>
+            <rect x="210" y="186" width="190" height="44" rx="10" class="box" style="stroke:var(--mongo);stroke-width:2.5"/><text x="305" y="206" text-anchor="middle" font-weight="700">MongoDB</text><text x="305" y="222" text-anchor="middle" class="mut">агрегати, різна форма</text>
+            <text x="160" y="170" text-anchor="middle" class="mut">так</text><text x="290" y="170" text-anchor="middle" class="mut">читаємо цілими агрегатами,</text>
+            <rect x="430" y="186" width="120" height="44" rx="10" class="box" style="stroke:var(--redis);stroke-width:2.5"/><text x="490" y="206" text-anchor="middle" font-weight="700">Redis</text><text x="490" y="222" text-anchor="middle" class="mut">за ключем, швидко</text>
+            <rect x="565" y="186" width="120" height="44" rx="10" class="box" style="stroke:var(--es);stroke-width:2.5"/><text x="625" y="206" text-anchor="middle" font-weight="700">Elastic</text><text x="625" y="222" text-anchor="middle" class="mut">пошук по тексту</text>
+            <rect x="700" y="186" width="110" height="44" rx="10" class="box" style="stroke:var(--neo);stroke-width:2.5"/><text x="755" y="206" text-anchor="middle" font-weight="700">Neo4j</text><text x="755" y="222" text-anchor="middle" class="mut">шляхи, зв'язки</text>
+            <rect x="430" y="290" width="180" height="44" rx="10" class="box" style="stroke:var(--ch);stroke-width:2.5"/><text x="520" y="310" text-anchor="middle" font-weight="700">ClickHouse</text><text x="520" y="326" text-anchor="middle" class="mut">агрегації по мільярдах</text>
+            <rect x="630" y="290" width="180" height="44" rx="10" class="box" style="stroke:var(--cass);stroke-width:2.5"/><text x="720" y="310" text-anchor="middle" font-weight="700">Cassandra</text><text x="720" y="326" text-anchor="middle" class="mut">потік записів, мульти-DC</text>
+            <path d="M330 56 L190 94" class="ln" marker-end="url(#m5)"/>
+            <path d="M490 56 L640 94" class="ln" marker-end="url(#m5)"/>
+            <path d="M130 140 L110 184" class="ln" marker-end="url(#m5)"/>
+            <path d="M200 140 L290 184" class="ln" marker-end="url(#m5)"/>
+            <path d="M600 140 L500 184" class="ln" marker-end="url(#m5)"/>
+            <path d="M640 140 L627 184" class="ln" marker-end="url(#m5)"/>
+            <path d="M700 140 L750 184" class="ln" marker-end="url(#m5)"/>
+            <path d="M660 140 Q600 250 530 288" class="ln" marker-end="url(#m5)"/>
+            <path d="M690 140 Q760 250 725 288" class="ln" marker-end="url(#m5)"/>
+            <text x="290" y="250" class="mut">рідко зв'язки між агрегатами</text>
+            <text x="20" y="380" class="mut">Перевір спершу розділ 10: часто той самий ефект дає розширення Postgres без нового кластера.</text>
+          </g>
+        </svg>
+      </figure>
+    </section>
+
+    <!-- ============ 13 Tasks ============ -->
+    <section id="s13">
+      <h2><span class="num">13</span>Задачі (спершу подумай, потім відкривай)</h2>
+
+      <div class="task"><div class="tt">Задача 1. Кастомні поля доставки</div>
+        <p>Клієнти-організації хочуть додавати власні поля до доставки: одній потрібен «температурний режим», іншій «поверх» і «є ліфт», третій «номер ТТН». Полів може бути до 20, різних у кожної організації, і за ними треба фільтрувати. Переходити на MongoDB?</p>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <ol>
+            <li><b>Що змінилось:</b> лише форма <i>частини</i> даних. Транзакції, зв'язки з маршрутами, квоти залишились, а це сильна сторона Postgres.</li>
+            <li><b>Рішення:</b> колонка <code>custom_fields jsonb NOT NULL DEFAULT '{}'</code> у <code>deliveries</code> + GIN-індекс: <code>CREATE INDEX ON deliveries USING gin (custom_fields jsonb_path_ops);</code></li>
+            <li><b>Фільтр:</b> <code>WHERE organization_id = $1 AND custom_fields @&gt; '{"has_elevator": true}'</code> використовує GIN.</li>
+            <li><b>Валідація:</b> схема полів кожної організації — окрема таблиця <code>custom_field_definitions</code>; Pydantic перевіряє значення при записі. Це повертає частину дисципліни schema-on-write.</li>
+            <li><b>Висновок:</b> переходити на Mongo заради 5% даних — міняти сильні сторони на слабкі. JSONB дає гнучкість там, де вона потрібна.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task"><div class="tt">Задача 2. Чому екран маршруту повільний?</div>
+        <p>Q1 у Postgres займає 400 мс. У логах видно 31 SQL-запит на один HTTP-запит. Що відбувається і як виправити? Чи допоможе MongoDB?</p>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <ol>
+            <li>31 запит = 1 на маршрут + 30 на доставки кожної зупинки. Це <b>N+1</b> в ORM (ліниве завантаження <code>stop.delivery</code> у циклі).</li>
+            <li>Виправлення: <code>select(Route).options(selectinload(Route.stops).joinedload(RouteStop.delivery))</code>, тобто 2 запити замість 31.</li>
+            <li>Перевірити індекс <code>route_stops(route_id, sequence)</code> через <code>EXPLAIN ANALYZE</code>.</li>
+            <li>Якщо екран дуже гарячий — кеш у Redis з ключем <code>cache:route:{id}</code> та інвалідацією при зміні маршруту.</li>
+            <li>MongoDB «вирішив» би проблему ціною Q3/Q4. Але причина була в ORM, а не в моделі даних. Спершу знайди справжнє вузьке місце (<a href="18-databases-interview-qa.html">18 · питання 22</a>).</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task"><div class="tt">Задача 3. GPS-трекінг</div>
+        <p>Додаємо live-трекінг: 1 000 машин × точка кожні 5 с. Потрібно: (а) показати диспетчеру поточну позицію всіх машин організації на карті; (б) трек машини за будь-який день за останні 90 днів; (в) щомісячний звіт «простої понад 15 хв по водіях». Які сховища і чому?</p>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <ol>
+            <li><b>Обсяг:</b> 1000 / 5 = 200 записів/с ≈ 17,3 млн/добу ≈ 1,5 млрд за 90 днів.</li>
+            <li><b>(а) поточна позиція:</b> Redis GEO (<code>GEOADD geo:org_1:vehicles lng lat veh_3</code>) + pub/sub або WebSocket для оновлень. Потрібне лише останнє значення, тож RAM і O(1) якраз до місця.</li>
+            <li><b>(б) трек за день:</b> 200 записів/с — це небагато. Postgres з декларативним партиціюванням за днем (або TimescaleDB hypertable), індекс <code>(vehicle_id, ts)</code>, видалення старих партицій <code>DROP</code> замість <code>DELETE</code> (миттєво, без bloat). Cassandra з ключем <code>((vehicle_id, day), ts)</code> була б доречна при 100× більшому потоці або мульти-регіоні.</li>
+            <li><b>(в) звіт по простоях:</b> агрегація по 500+ млн точок на місяць — це ClickHouse (або continuous aggregates у Timescale), щоб не навантажувати OLTP-базу.</li>
+            <li><b>Головне:</b> не тримати історію GPS у масиві документа машини (Mongo) чи в Redis. Це необмежене зростання.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task"><div class="tt">Задача 4. Rate limiter на 3 інстанси</div>
+        <p>Бекенд масштабуємо з 1 до 3 інстансів на Fly.io. Зараз rate limit рахується в пам'яті процесу (<code>app/core/rate_limiting.py</code>). Що зламається і де тримати лічильник: Postgres чи Redis?</p>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <ol>
+            <li>Кожен інстанс рахує свої запити, тож реальний ліміт стає 3× більшим, а балансувальник розподіляє запити нерівномірно (<a href="18-databases-interview-qa.html">18 · питання 12</a>).</li>
+            <li><b>Postgres:</b> <code>UPDATE counters SET n = n + 1</code> на кожен HTTP-запит — це гарячий рядок: черга на блокування рядка, WAL-запис, мертві версії після кожного оновлення (MVCC), постійний VACUUM. Працює на малих RPS, але змішує кеш-навантаження з основною базою.</li>
+            <li><b>Redis:</b> <code>INCR</code> + <code>EXPIRE NX</code> у пайплайні — атомарно, у пам'яті, субмілісекундно, ключі самі зникають за TTL. Втрата лічильників при рестарті некритична (це не гроші).</li>
+            <li><b>Висновок:</b> Redis. Але квоти тарифу (<code>routes_generated_count</code>), які пов'язані з оплатою, лишаються в Postgres у транзакції Q4, бо там важлива надійність, а не швидкість.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task"><div class="tt">Задача 5. «Давайте все в DynamoDB / Cassandra, бо масштабується»</div>
+        <p>Колега пропонує перенести всі дані проєкту в DynamoDB, «щоб ніколи не думати про масштабування». Сформулюй контраргументи і чесно назви, коли він мав би рацію.</p>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <ol>
+            <li><b>Масштаб зараз:</b> тисячі доставок на організацію на день — один Postgres з репліками обслуговує це з великим запасом.</li>
+            <li><b>Ціна моделі:</b> key-value / wide-column вимагають знати всі запити наперед. Q2 (новий звіт), фільтри в адмінці, ad-hoc аналітика вимагатимуть нових таблиць/індексів (GSI) і дублювання даних.</li>
+            <li><b>Q3/Q4:</b> транзакції в DynamoDB є, але обмежені (кількість елементів у транзакції, вартість). Інваріанти на кшталт «зупинка не посилається на видалену доставку» доведеться гарантувати кодом.</li>
+            <li><b>Операційно:</b> міграція, переписування репозиторіїв, нові патерни для команди.</li>
+            <li><b>Коли колега правий:</b> якщо патерн доступу вузький і стабільний (наприклад, лише Q6-подібні записи і читання за ключем), трафік величезний і нерівномірний, потрібна мульти-регіональна доступність, і команда готова до query-first моделювання. Тоді частину даних (телеметрію), а не все, варто винести туди.</li>
+          </ol>
+        </div></details>
+      </div>
+    </section>
+
+    <div class="card">
+      Короткий підсумок: <b>обирай базу під найважливіші запити й інваріанти, а не під «тип даних»</b>. Postgres як джерело правди
+      закриває більшість випадків (і з розширеннями ще більше). Спеціалізовані бази додаються як похідні представлення,
+      коли конкретний запит став головним навантаженням, і синхронізуються через outbox/CDC. Теорія для повторення:
+      <a href="17-databases-fundamentals.html">17 · основи, CAP, ACID/BASE</a>; питання для співбесіди:
+      <a href="18-databases-interview-qa.html">18 · Q&amp;A</a>.
+    </div>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Схема домену взята з <code>app/db/models/</code> репозиторію <code>ai-delivery-planner-backend</code>; Q5 і задача 4 спираються на
+  реальний <code>app/core/rate_limiting.py</code>. Цифри латентності й обсягів — порядки величин для орієнтиру, а не бенчмарк.
+</footer>
+
+<script>
+(function(){
+  var root = document.documentElement, btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function current(){
+    var t = root.getAttribute('data-theme');
+    return t === 'light' || t === 'dark' ? t : (mq && mq.matches ? 'dark' : 'light');
+  }
+  function render(){
+    var dark = current() === 'dark';
+    btn.textContent = dark ? '☀️ Світла тема' : '🌙 Темна тема';
+    btn.setAttribute('aria-label', dark ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('docs-theme', next); }catch(e){}
+    render();
+  });
+  if(mq && mq.addEventListener) mq.addEventListener('change', render);
+  render();
+})();
+</script>
+</body>
+</html>
+
