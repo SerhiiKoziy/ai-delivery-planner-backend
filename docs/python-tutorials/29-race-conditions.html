@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>29. Race conditions: як запобігати — AI Delivery Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<script>
+(function(){
+  try{ var t = localStorage.getItem('docs-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+    --fg:#e7eaf2; --fg-muted:#9aa2b4;
+    --accent:#6d9bff; --accent-soft:#1c2740;
+    --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+    --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+    --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+    --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+    --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+    --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--accent); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent-soft);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"],
+  #tab-sysdesign:checked ~ .nav-tabbar label[for="tab-sysdesign"],
+  #tab-quantum:checked ~ .nav-tabbar label[for="tab-quantum"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  #tab-quantum:checked ~ .nav-links.quantum{display:flex;}
+  #tab-sysdesign:checked ~ .nav-links.sysdesign{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:12px 0 4px;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.9px; display:flex; align-items:baseline; gap:10px;
+  }
+  .qa summary .qnum{
+    color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700;
+    flex-shrink:0;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 18px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .a p{margin:8px 0; color:var(--fg-muted);}
+  .qa .a p:first-child{margin-top:0;}
+  .qa .checks{
+    margin-top:10px; padding:10px 12px; border-radius:9px; background:var(--interview-bg);
+    border:1px solid var(--interview-border); font-size:13.2px; color:var(--interview);
+  }
+  .qa .checks b{color:var(--interview);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:2px; vertical-align:middle; flex-shrink:0;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .qa .difficulty.sys{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+
+  .cat-head{
+    display:flex; align-items:center; gap:12px; margin-bottom:4px;
+  }
+  .cat-letter{
+    width:34px; height:34px; border-radius:10px; background:var(--accent-soft); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;
+  }
+
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- theme switch --- */
+  :root{color-scheme:light;}
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .theme-toggle{
+    cursor:pointer; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+    background:var(--bg-soft); color:var(--fg); font:inherit; font-size:12.5px; font-weight:600;
+    transition:background .15s, border-color .15s;
+  }
+  .theme-toggle:hover{background:var(--card); border-color:var(--accent);}
+  .theme-toggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+  /* --- tutorial 28: databases by example --- */
+  :root{ --pg:#336791; --mongo:#13aa52; --redis:#d82c20; --cass:#1287b1; --ch:#b38f00; --es:#d63f86; --neo:#3d72b0; }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --pg:#6fa3d6; --mongo:#4fd18a; --redis:#ff7a6e; --cass:#5cc3e8; --ch:#f0cf4a; --es:#ff8cc3; --neo:#86b2ec; }
+  }
+  :root[data-theme="dark"]{ --pg:#6fa3d6; --mongo:#4fd18a; --redis:#ff7a6e; --cass:#5cc3e8; --ch:#f0cf4a; --es:#ff8cc3; --neo:#86b2ec; }
+  .content-center > article{max-width:820px;}
+  article h4{font-size:15.5px; margin:20px 0 6px;}
+  .tablewrap{overflow-x:auto; margin:16px 0;}
+  .tablewrap table{margin:0;}
+  td.c{text-align:center; white-space:nowrap;}
+  .y{color:var(--good); font-weight:700;} .m{color:var(--warn); font-weight:700;} .n{color:var(--bad); font-weight:700;}
+  .callout.fe{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .verdict{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0;}
+  @media (max-width:640px){ .verdict{grid-template-columns:1fr;} }
+  .verdict > div{border-radius:var(--radius); padding:12px 14px; border:1px solid; font-size:14.3px;}
+  .verdict .win{background:var(--good-bg); border-color:var(--good-border);}
+  .verdict .lose{background:var(--bad-bg); border-color:var(--bad-border);}
+  .verdict .t{font-weight:700; display:block; margin-bottom:4px;}
+  .verdict .win .t{color:var(--good);} .verdict .lose .t{color:var(--bad);}
+  .verdict ul{margin:4px 0 0; padding-left:18px;} .verdict li{margin:3px 0;}
+  .dbhead{display:flex; align-items:center; gap:12px; margin-bottom:4px;}
+  .dbbadge{width:38px; height:38px; border-radius:10px; color:#fff; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px;}
+  .qlist{list-style:none; padding:0;}
+  .qlist li{border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin:8px 0; background:var(--card);}
+  .qlist li b.q{color:var(--accent); margin-right:6px;}
+  figure.db{margin:20px 0;}
+  figure.db svg{width:100%; height:auto; display:block; border:1px solid var(--border); border-radius:var(--radius); background:var(--card);}
+  figure.db figcaption{font-size:13px; color:var(--fg-muted); text-align:center; margin-top:6px;}
+  figure.db svg text{fill:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  figure.db svg .mut{fill:var(--fg-muted);}
+  figure.db svg .box{fill:var(--bg-soft); stroke:var(--border); stroke-width:1.5;}
+  figure.db svg .ln{stroke:var(--fg-muted); stroke-width:1.4; fill:none;}
+  figure.db svg .ar{fill:var(--fg-muted);}
+  figure.db svg .mono{font-family:"SF Mono",ui-monospace,Menlo,monospace;}
+  .task{border:1px solid var(--interview-border); background:var(--interview-bg); border-radius:var(--radius); padding:14px 16px; margin:16px 0;}
+  .task .tt{font-weight:700; color:var(--interview);}
+  details.ans{border:1px solid var(--border); border-radius:10px; background:var(--card); margin:10px 0 0;}
+  details.ans summary{cursor:pointer; padding:10px 14px; font-weight:600; font-size:14.5px;}
+  details.ans .a{padding:4px 16px 14px; border-top:1px solid var(--border); font-size:14.5px;}
+  .deeper{font-size:13.5px; color:var(--fg-muted); margin-top:8px;}
+  .deeper a{color:var(--accent);}
+</style>
+<link rel="stylesheet" href="../assets/mobile-nav.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="top-row">
+      <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Темна тема</button>
+    </div>
+  </div>
+</header>
+
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал 29 · Конкурентність на практиці</div>
+  <h1>Race conditions: усі способи запобігти — з прикладами й поясненнями</h1>
+  <p class="lead">
+    Гонка (race condition) — це баг, який не відтворюється на ноутбуці, проходить усі тести і з'являється
+    в проді під навантаженням. Тут зібрано <b>всі основні техніки захисту</b> на всіх рівнях: пам'ять одного процесу,
+    база даних, API, кілька інстансів, черги, кеш і фронтенд. Кожна техніка має таймлайн «як ламається»,
+    код «як виправити», пояснення «чому працює» і межі застосування. Частина матеріалу свідомо перетинається з
+    іншими туторіалами, щоб тут була повна картина в одному місці.
+  </p>
+  <div class="pills">
+    <span class="pill">🧵 8 типів гонок</span>
+    <span class="pill">🛡️ 25+ технік захисту</span>
+    <span class="pill">⏱️ Таймлайни «два запити одночасно»</span>
+    <span class="pill">🔎 Справжня гонка з цього репо</span>
+    <span class="pill">🧩 6 задач з розв'язками</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-sysdesign" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-quantum" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-sysdesign" class="nav-tabbtn">🏗️ System Design</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+      <label for="tab-quantum" class="nav-tabbtn">⚛️ Квантове</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-python-types.html">4. Типи</a>
+        <a href="05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="11-logging.html">11. Логування</a>
+        <a href="12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="13-design-patterns.html">13. Патерни</a>
+        <a href="14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="16-pydantic.html">16. Pydantic</a>
+        <a href="21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="25-system-design.html">25. Системний дизайн</a>
+        <a href="26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="27-kubernetes.html">27. Kubernetes</a>
+        <a href="17-databases-fundamentals.html">17. 🗄️ Бази даних: основи</a>
+        <a href="18-databases-interview-qa.html">18. 🗄️ Бази даних: Q&amp;A</a>
+        <a href="19-postgres-storage-and-memory.html">19. 🗄️ Postgres storage &amp; пам'ять</a>
+        <a href="20-redis.html">20. 🗄️ Redis</a>
+        <a href="28-databases-by-example.html">28. 🗄️ Бази даних на прикладі</a>
+        <a href="29-race-conditions.html" class="active">29. 🗄️ Race conditions</a>
+      </nav>
+      <nav class="nav-links sysdesign">
+        <a href="../system-design/01-interview-framework.html">1. Фреймворк співбесіди</a>
+        <a href="../system-design/02-networking-entry.html">2. Мережа: DNS, CDN, LB, API</a>
+        <a href="../system-design/03-caching.html">3. Кешування углиб</a>
+        <a href="../system-design/04-databases-storage.html">4. БД I: моделі, індекси, ACID</a>
+        <a href="../system-design/05-replication-sharding.html">5. БД II: реплікація, шардинг</a>
+        <a href="../system-design/06-distributed-systems.html">6. Розподілені системи</a>
+        <a href="../system-design/07-async-messaging.html">7. Черги, Kafka, саги</a>
+        <a href="../system-design/08-reliability-scale.html">8. Надійність і rate limiting</a>
+        <a href="../system-design/09-classic-url-id-kv.html">9. Задачі I: URL, ID, KV</a>
+        <a href="../system-design/10-classic-feed-chat.html">10. Задачі II: стрічка, чат</a>
+        <a href="../system-design/11-classic-storage-video-crawler.html">11. Задачі III: файли, відео</a>
+        <a href="../system-design/12-classic-geo-booking-topk.html">12. Задачі IV: гео, бронювання</a>
+        <a href="../system-design/13-tricky-topics-qa.html">13. Трікі теми й Q&amp;A</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="../node-doc/01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="../node-doc/02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="../node-doc/03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="../node-doc/04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="../node-doc/05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="../node-doc/06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="../node-doc/07-fs-process-os.html">7. fs, process, os</a>
+        <a href="../node-doc/08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="../node-doc/09-http-networking.html">9. HTTP і мережа</a>
+        <a href="../node-doc/10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="../node-doc/11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="../node-doc/12-databases-orm.html">12. БД і ORM</a>
+        <a href="../node-doc/13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="../node-doc/14-security.html">14. Безпека Node</a>
+        <a href="../node-doc/15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="../node-doc/16-testing.html">16. Тестування</a>
+        <a href="../node-doc/17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="../node-doc/18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="../node-doc/19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="../node-doc/20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+      <nav class="nav-links quantum">
+        <a href="../quantum-doc/01-quanta-and-quantum-computing.html">1. Кванти й обчислення</a>
+        <a href="../quantum-doc/02-quantum-engineering-history.html">2. Квантова інженерія</a>
+        <a href="../quantum-doc/03-quantum-backend-python-ibm.html">3. Бекенд + IBM Quantum</a>
+        <a href="../quantum-doc/04-pet-project-quantum-routing.html">4. Пет-проєкт: маршрути</a>
+        <a href="../quantum-doc/05-quantum-engineer-roadmap.html">5. Шлях інженера: ресурси</a>
+        <a href="../quantum-doc/06-linear-algebra-vectors-matrices.html">6. Лін. алгебра I: вектори, матриці</a>
+        <a href="../quantum-doc/07-linear-algebra-eigen-tensor.html">7. Лін. алгебра II: власні, тензори</a>
+        <a href="../quantum-doc/08-complex-numbers-phase.html">8. Комплексні числа й фаза</a>
+        <a href="../quantum-doc/09-probability-shots.html">9. Ймовірності й shots</a>
+        <a href="../quantum-doc/10-numpy-statevector-simulator.html">10. NumPy: свій симулятор</a>
+        <a href="../quantum-doc/11-qiskit-circuits-aer.html">11. Qiskit I: схеми й Aer</a>
+        <a href="../quantum-doc/12-qiskit-runtime-real-qpu.html">12. Qiskit II: реальний QPU</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s0">0. Що таке гонка</a></li>
+      <li><a href="#s1">1. Вісім типів гонок</a></li>
+      <li><a href="#s2">2. Карта технік</a></li>
+      <li><a href="#sA">A. Пам'ять процесу</a></li>
+      <li><a href="#sB1">B1. Атомарний UPDATE</a></li>
+      <li><a href="#sB2">B2. Унікальні обмеження</a></li>
+      <li><a href="#sB3">B3. FOR UPDATE</a></li>
+      <li><a href="#sB4">B4. Оптимістичне блокування</a></li>
+      <li><a href="#sB5">B5. Рівні ізоляції</a></li>
+      <li><a href="#sB6">B6. Advisory locks</a></li>
+      <li><a href="#sB7">B7. CHECK, EXCLUDE</a></li>
+      <li><a href="#sBsum">Порівняння B1–B7</a></li>
+      <li><a href="#sC">C. API: ідемпотентність</a></li>
+      <li><a href="#sD">D. Кілька інстансів</a></li>
+      <li><a href="#sE">E. Кеш</a></li>
+      <li><a href="#sF">F. Фронтенд</a></li>
+      <li><a href="#sG">G. Як знайти й протестувати</a></li>
+      <li><a href="#sH">H. Кейс з цього репо</a></li>
+      <li><a href="#sI">I. Шпаргалка</a></li>
+      <li><a href="#sJ">J. Задачі</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <!-- ============ 0 ============ -->
+    <section id="s0">
+      <h2><span class="num">00</span>Що таке race condition</h2>
+      <p><b>Race condition</b> (стан гонки) — ситуація, коли результат програми залежить від того, <i>в якому порядку
+      переплелися</i> кроки кількох конкурентних виконавців (потоків, корутин, процесів, серверів, вкладок браузера).
+      При одному порядку все гаразд, при іншому дані псуються.</p>
+      <p>Гонка можлива лише тоді, коли збігаються <b>чотири умови</b>, і кожна техніка захисту прибирає хоча б одну з них:</p>
+      <ol>
+        <li><b>Спільний стан</b>: рядок у БД, ключ у Redis, змінна в пам'яті, файл, кеш.</li>
+        <li><b>Конкурентний доступ</b>: два виконавці працюють з ним в перекритий проміжок часу.</li>
+        <li><b>Хоча б один запис</b>: лише читання ніколи не дає гонки.</li>
+        <li><b>Неатомарна послідовність кроків</b>: «прочитати → вирішити → записати» розірвано в часі, і між кроками може вклинитись хтось інший.</li>
+      </ol>
+
+      <h3>Класичний приклад: втрачене оновлення (lost update)</h3>
+      <p>На рахунку 500 грн. Одночасно приходять два списання: 100 грн (запит A) і 50 грн (запит B). Код застосунку
+      робить «прочитати → порахувати в Python → записати»:</p>
+      <div class="codecard"><div class="bar"><span class="path">❌ read-modify-write у застосунку</span></div><pre><code>account = await repo.get(account_id)          <span class="cmt"># SELECT balance … → 500</span>
+account.balance = account.balance - amount    <span class="cmt"># рахуємо в пам'яті сервера</span>
+await session.commit()                        <span class="cmt"># UPDATE accounts SET balance = 400 …</span></code></pre></div>
+      <figure class="db">
+        <svg viewBox="0 0 820 290" role="img" aria-label="Таймлайн lost update">
+          <defs><marker id="t1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ar"/></marker></defs>
+          <g font-size="12.5">
+            <text x="130" y="24" text-anchor="middle" font-weight="700">Запит A (−100)</text>
+            <text x="410" y="24" text-anchor="middle" font-weight="700">БД: balance</text>
+            <text x="690" y="24" text-anchor="middle" font-weight="700">Запит B (−50)</text>
+            <path d="M130 34 V280 M410 34 V280 M690 34 V280" class="ln" style="stroke-dasharray:3 4;opacity:.55"/>
+            <rect x="370" y="40" width="80" height="26" rx="6" class="box"/><text x="410" y="58" text-anchor="middle" class="mono">500</text>
+            <path d="M406 80 H134" class="ln" marker-end="url(#t1)"/><text x="270" y="74" text-anchor="middle">1. SELECT → 500</text>
+            <path d="M414 112 H686" class="ln" marker-end="url(#t1)"/><text x="550" y="106" text-anchor="middle">2. SELECT → 500</text>
+            <rect x="40" y="124" width="180" height="26" rx="6" class="box"/><text x="130" y="142" text-anchor="middle" class="mono">3. 500 − 100 = 400</text>
+            <rect x="600" y="124" width="180" height="26" rx="6" class="box"/><text x="690" y="142" text-anchor="middle" class="mono">4. 500 − 50 = 450</text>
+            <path d="M134 176 H406" class="ln" marker-end="url(#t1)"/><text x="270" y="170" text-anchor="middle">5. UPDATE balance = 400</text>
+            <rect x="370" y="184" width="80" height="26" rx="6" class="box"/><text x="410" y="202" text-anchor="middle" class="mono">400</text>
+            <path d="M686 230 H414" class="ln" marker-end="url(#t1)"/><text x="550" y="224" text-anchor="middle">6. UPDATE balance = 450</text>
+            <rect x="370" y="240" width="80" height="26" rx="6" class="box" style="stroke:var(--bad);stroke-width:2.5"/><text x="410" y="258" text-anchor="middle" class="mono" style="fill:var(--bad)">450</text>
+            <text x="560" y="275" class="mut">мало бути 350 — списання A «зникло»</text>
+          </g>
+        </svg>
+        <figcaption>Обидва запити прочитали одне й те саме старе значення. Останній запис перезаписав попередній, і списання на 100 грн база «втратила».</figcaption>
+      </figure>
+      <div class="callout fe"><div class="ic">🎨</div><div class="body"><b>Аналогія для фронтендера.</b>
+        Це те саме, що <code>setCount(count + 1)</code> двічі поспіль у React-обробнику: обидва виклики бачать один і той
+        самий <code>count</code> із замикання, і замість +2 виходить +1. Виправлення у React — функціональне оновлення
+        <code>setCount(c =&gt; c + 1)</code>: «застосуй зміну до <i>поточного</i> значення, а не до того, що я колись прочитав».
+        Атомарний <code>UPDATE … SET balance = balance - 100</code> у БД — рівно та сама ідея (розділ B1).</div></div>
+    </section>
+
+    <!-- ============ 1 ============ -->
+    <section id="s1">
+      <h2><span class="num">01</span>Вісім типів гонок (щоб упізнавати їх у коді)</h2>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Тип</th><th>Як виглядає в коді</th><th>Приклад</th><th>Головні ліки</th></tr></thead>
+        <tbody>
+          <tr><td><b>1. Read-modify-write</b> (lost update)</td><td>прочитав значення → змінив у коді → записав</td><td>баланс, лічильник, залишок на складі</td><td>атомарний UPDATE, FOR UPDATE, version</td></tr>
+          <tr><td><b>2. Check-then-act</b> (TOCTOU: time of check to time of use)</td><td><code>if not exists: create</code>, <code>if count &lt; limit: …</code></td><td>унікальний email, квота, «місце вільне»</td><td>UNIQUE + ON CONFLICT, умовний UPDATE</td></tr>
+          <tr><td><b>3. Write skew</b></td><td>дві транзакції читають набір рядків і пишуть <i>різні</i> рядки, разом порушуючи правило</td><td>«хоча б один диспетчер на зміні», «машина не в двох маршрутах одночасно»</td><td>Serializable, FOR UPDATE на «ключовому» рядку, EXCLUDE</td></tr>
+          <tr><td><b>4. Подвійна обробка</b> (double submit / redelivery)</td><td>той самий запит чи повідомлення приходить двічі</td><td>подвійний клік «Pay», ретрай клієнта, повторна доставка Celery</td><td>idempotency key, ідемпотентний консюмер</td></tr>
+          <tr><td><b>5. Неправильний порядок</b> (out-of-order)</td><td>відповіді/події приходять не в порядку відправки</td><td>пошук «ки» повертається після «київ»; webhook «refunded» раніше за «paid»</td><td>скасування, перевірка версії/послідовності, state machine</td></tr>
+          <tr><td><b>6. Застарілий кеш</b></td><td>інвалідація і повторне заповнення кешу переплітаються</td><td>у кеші залишився старий телефон водія</td><td>видаляти після коміту, версії ключів, TTL</td></tr>
+          <tr><td><b>7. Між інстансами</b></td><td>лок або лічильник у пам'яті процесу при кількох серверах</td><td><code>threading.Lock</code> у rate limiter на 3 машинах</td><td>Redis/БД як спільна точка, single writer</td></tr>
+          <tr><td><b>8. Ініціалізація / lazy singleton</b></td><td><code>if self._client is None: self._client = create()</code> з <code>await</code> посередині</td><td>два пули з'єднань, два прогріви кешу</td><td>ініціалізація на старті (lifespan), lock, singleflight</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout warn"><div class="ic">🔎</div><div class="body"><b>Сигнали в code review</b>, що поруч може бути гонка: «get or create»,
+        «прочитати, а потім зберегти» одним ORM-об'єктом, <code>if … exists</code> перед <code>insert</code>, перевірка ліміту
+        окремо від списання, <code>await</code> між перевіркою і дією, глобальні змінні/кеші в модулі, будь-що «один раз»
+        (відправити лист, нарахувати бонус), фонові задачі з ретраями.</div></div>
+    </section>
+
+    <!-- ============ 2 ============ -->
+    <section id="s2">
+      <h2><span class="num">02</span>Карта технік: що прибирає яку з чотирьох умов</h2>
+      <figure class="db">
+        <svg viewBox="0 0 820 330" role="img" aria-label="Карта технік захисту">
+          <g font-size="12.5">
+            <rect x="20" y="20" width="185" height="290" rx="10" class="box" style="stroke:var(--accent)"/>
+            <text x="112" y="44" text-anchor="middle" font-weight="700">Прибрати спільний стан</text>
+            <text x="34" y="72">• immutability</text><text x="34" y="94">• confinement (стан</text><text x="46" y="112">належить одному)</text>
+            <text x="34" y="134">• партиціювання за</text><text x="46" y="152">ключем</text>
+            <rect x="220" y="20" width="185" height="290" rx="10" class="box" style="stroke:var(--fun)"/>
+            <text x="312" y="44" text-anchor="middle" font-weight="700">Прибрати конкурентність</text>
+            <text x="234" y="72">• Lock / Mutex</text><text x="234" y="94">• SELECT … FOR UPDATE</text><text x="234" y="116">• advisory lock</text>
+            <text x="234" y="138">• single writer (черга,</text><text x="246" y="156">актор, партиція)</text><text x="234" y="178">• Serializable</text>
+            <text x="234" y="200">• distributed lock</text><text x="246" y="218">+ fencing token</text>
+            <rect x="420" y="20" width="185" height="290" rx="10" class="box" style="stroke:var(--good)"/>
+            <text x="512" y="44" text-anchor="middle" font-weight="700">Зробити кроки атомарними</text>
+            <text x="434" y="72">• SET x = x − 1</text><text x="434" y="94">• умовний UPDATE … WHERE</text><text x="434" y="116">• INSERT … ON CONFLICT</text>
+            <text x="434" y="138">• UNIQUE / CHECK /</text><text x="446" y="156">EXCLUDE обмеження</text><text x="434" y="178">• Redis INCR, Lua, SET NX</text>
+            <text x="434" y="200">• transactional outbox</text><text x="434" y="222">• setState(c =&gt; c + 1)</text>
+            <rect x="620" y="20" width="185" height="290" rx="10" class="box" style="stroke:var(--warn)"/>
+            <text x="712" y="44" text-anchor="middle" font-weight="700">Виявити й повторити</text>
+            <text x="634" y="72">• optimistic locking</text><text x="646" y="90">(version / ETag)</text><text x="634" y="112">• Serializable + retry</text>
+            <text x="634" y="134">• idempotency key</text><text x="634" y="156">• ідемпотентний</text><text x="646" y="174">консюмер</text>
+            <text x="634" y="196">• перевірка версії /</text><text x="646" y="214">порядку подій</text><text x="634" y="236">• AbortController,</text><text x="646" y="254">switchMap</text>
+            <text x="410" y="328" text-anchor="middle" class="mut">Правило вибору: найпростіше, що прибирає умову гонки на тому рівні, де лежить спільний стан</text>
+          </g>
+        </svg>
+      </figure>
+      <p>Дуже грубе правило пріоритету для бекенду: <b>атомарна операція в БД → обмеження (UNIQUE/CHECK) → оптимістичне
+      блокування → песимістичне блокування → Serializable → розподілений лок</b>. Ліворуч дешевше й надійніше,
+      праворуч гнучкіше, але дорожче й складніше зробити правильно.</p>
+    </section>
+
+    <!-- ============ A ============ -->
+    <section id="sA">
+      <h2><span class="num">A</span>Пам'ять одного процесу: потоки й корутини</h2>
+      <h3>A1. <code>+=</code> — не атомарна операція, навіть з GIL</h3>
+      <p>GIL гарантує, що одночасно виконується лише один байткод, але <code>counter += 1</code> — це кілька байткодів
+      (прочитати, додати, записати), і потік може бути перемкнений між ними
+      (<a href="06-gil-and-concurrency.html">туторіал 6, розділ 08</a>).</p>
+      <div class="codecard"><div class="bar"><span class="path">threading — гонка і виправлення</span></div><pre><code>import threading
+counter = 0
+lock = threading.Lock()
+
+def unsafe():
+    global counter
+    for _ in range(100_000):
+        counter += 1                 <span class="cmt"># LOAD → ADD → STORE: між ними може перемкнутись інший потік</span>
+
+def safe():
+    global counter
+    for _ in range(100_000):
+        with lock:                   <span class="cmt"># критична секція: лише один потік всередині</span>
+            counter += 1
+
+threads = [threading.Thread(target=unsafe) for _ in range(8)]
+for t in threads: t.start()
+for t in threads: t.join()
+print(counter)   <span class="cmt"># unsafe: може бути &lt; 800 000 (залежить від версії Python і навантаження); safe: завжди 800 000</span></code></pre></div>
+      <p>Так зроблено і в цьому проєкті: <code>app/core/rate_limiting.py</code> тримає вікна запитів у <code>dict</code> і змінює їх
+      під <code>threading.Lock</code>, бо синхронні залежності FastAPI виконуються в пулі потоків.</p>
+
+      <h3>A2. asyncio: гонка живе між <code>await</code></h3>
+      <p>Корутини перемикаються <b>лише</b> на <code>await</code>. Код без <code>await</code> між перевіркою і дією атомарний
+      відносно інших корутин того ж event loop. Але щойно між ними є <code>await</code>, туди може вклинитись інший запит.</p>
+      <div class="codecard"><div class="bar"><span class="path">asyncio — lazy-ініціалізація з гонкою</span></div><pre><code><span class="cmt"># ❌ два одночасні запити обидва побачать None і створять ДВА клієнти/пули</span>
+_client = None
+async def get_client():
+    global _client
+    if _client is None:
+        _client = await create_expensive_client()     <span class="cmt"># ← await: тут вклинюється другий запит</span>
+    return _client
+
+<span class="cmt"># ✅ варіант 1: asyncio.Lock + повторна перевірка (double-checked)</span>
+_lock = asyncio.Lock()
+async def get_client():
+    global _client
+    if _client is None:
+        async with _lock:
+            if _client is None:                       <span class="cmt"># перевірити ще раз уже під локом</span>
+                _client = await create_expensive_client()
+    return _client
+
+<span class="cmt"># ✅ варіант 2 (кращий): створювати на старті в lifespan — гонки просто немає</span>
+@asynccontextmanager
+async def lifespan(app):
+    app.state.client = await create_expensive_client()
+    yield
+    await app.state.client.close()</code></pre></div>
+
+      <h3>A3. Request coalescing (singleflight): один запит замість ста</h3>
+      <div class="codecard"><div class="bar"><span class="path">кілька корутин чекають ОДИН результат</span></div><pre><code>_inflight: dict[str, asyncio.Future] = {}
+
+async def get_route_cached(route_id: str):
+    if (cached := cache.get(route_id)) is not None:
+        return cached
+    if route_id in _inflight:                        <span class="cmt"># хтось уже рахує — чекаємо його результат</span>
+        return await _inflight[route_id]
+    fut = asyncio.get_running_loop().create_future()
+    _inflight[route_id] = fut
+    try:
+        value = await load_route_from_db(route_id)
+        cache.set(route_id, value)
+        fut.set_result(value)
+        return value
+    except Exception as e:
+        fut.set_exception(e)
+        raise
+    finally:
+        _inflight.pop(route_id, None)</code></pre></div>
+
+      <h3>A4. Прибрати спільний стан замість захисту</h3>
+      <ul>
+        <li><b>Immutability:</b> незмінні об'єкти (<code>@dataclass(frozen=True)</code>, кортежі) можна ділити без локів.</li>
+        <li><b>Confinement:</b> стан належить одному виконавцю (наприклад, сесія БД — одна на запит, а не глобальна).</li>
+        <li><b>Черга + один споживач</b> (actor model): усі зміни стану йдуть через <code>asyncio.Queue</code> одному обробнику, тож він бачить їх послідовно.</li>
+      </ul>
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body"><b>Межа розділу A:</b> усе тут працює лише <b>всередині одного процесу</b>.
+        Uvicorn з 4 воркерами або 3 машини на Fly.io — це 4 чи 3 різні копії <code>_lock</code> і <code>_WINDOWS</code>. Для
+        спільного стану між процесами потрібна спільна точка: БД або Redis (розділи B і D).</div></div>
+    </section>
+
+    <!-- ============ B1 ============ -->
+    <section id="sB1">
+      <h2><span class="num">B1</span>Атомарні оновлення (atomic updates) на рівні БД</h2>
+      <p><b>Атомарне оновлення</b> — це зміна поля на основі його <i>поточного</i> значення прямо в базі одним оператором,
+      без перезапису всього рядка з боку застосунку. Замість «прочитати баланс у пам'ять → відняти → записати число назад»
+      база виконує все як один неподільний крок:</p>
+      <div class="codecard"><div class="bar"><span class="path">✅ атомарне списання</span></div><pre><code>UPDATE accounts SET balance = balance - 100 WHERE id = 5;</code></pre></div>
+
+      <h3>Чому це працює</h3>
+      <p>Коли Postgres виконує <code>UPDATE</code>, він бере <b>row-level lock</b> (блокування рядка) на рядок, який змінює,
+      до кінця транзакції. Другий <code>UPDATE</code> того самого рядка чекає, а після коміту першого
+      <b>перечитує вже нову версію рядка</b> і застосовує свій вираз до неї (у режимі Read Committed). Тому
+      <code>balance - 50</code> рахується від 400, а не від 500.</p>
+      <figure class="db">
+        <svg viewBox="0 0 820 250" role="img" aria-label="Таймлайн атомарного UPDATE">
+          <defs><marker id="t2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ar"/></marker></defs>
+          <g font-size="12.5">
+            <text x="130" y="24" text-anchor="middle" font-weight="700">Запит A</text>
+            <text x="410" y="24" text-anchor="middle" font-weight="700">БД: рядок id = 5</text>
+            <text x="690" y="24" text-anchor="middle" font-weight="700">Запит B</text>
+            <path d="M130 34 V240 M410 34 V240 M690 34 V240" class="ln" style="stroke-dasharray:3 4;opacity:.55"/>
+            <rect x="370" y="40" width="80" height="26" rx="6" class="box"/><text x="410" y="58" text-anchor="middle" class="mono">500</text>
+            <path d="M134 84 H406" class="ln" marker-end="url(#t2)"/><text x="270" y="78" text-anchor="middle" class="mono">SET balance = balance − 100</text>
+            <path d="M686 100 H414" class="ln" marker-end="url(#t2)"/><text x="550" y="94" text-anchor="middle" class="mono">SET balance = balance − 50</text>
+            <rect x="330" y="108" width="160" height="26" rx="6" class="box" style="stroke:var(--warn)"/><text x="410" y="126" text-anchor="middle">🔒 lock для A, B чекає</text>
+            <rect x="370" y="144" width="80" height="26" rx="6" class="box"/><text x="410" y="162" text-anchor="middle" class="mono">400</text>
+            <text x="560" y="162" class="mut">A закомітив → B перечитує рядок</text>
+            <rect x="370" y="184" width="80" height="26" rx="6" class="box" style="stroke:var(--good);stroke-width:2.5"/><text x="410" y="202" text-anchor="middle" class="mono" style="fill:var(--good)">350</text>
+            <text x="560" y="202" class="mut">400 − 50 = 350 ✅</text>
+          </g>
+        </svg>
+        <figcaption>Обчислення відбувається там, де лежать дані, і під блокуванням рядка, тому вікна між «прочитав» і «записав» просто немає.</figcaption>
+      </figure>
+
+      <h3>Умовне атомарне оновлення: перевірка правила в тому самому операторі</h3>
+      <p>Якщо баланс не може піти в мінус, простого <code>balance - 100</code> замало: перевірку «чи достатньо коштів» треба
+      зробити <b>в тому самому операторі</b>, інакше повертається check-then-act гонка.</p>
+      <div class="codecard"><div class="bar"><span class="path">SQL + SQLAlchemy</span></div><pre><code>UPDATE accounts SET balance = balance - 100
+WHERE id = 5 AND balance &gt;= 100
+RETURNING balance;                 <span class="cmt">-- 0 рядків → коштів не вистачило (або рахунку немає)</span>
+
+<span class="cmt"># SQLAlchemy 2.x</span>
+stmt = (
+    update(Account)
+    .where(Account.id == account_id, Account.balance &gt;= amount)
+    .values(balance=Account.balance - amount)
+    .returning(Account.balance)
+)
+new_balance = (await session.execute(stmt)).scalar_one_or_none()
+if new_balance is None:
+    raise HTTPException(409, "Insufficient funds")
+await session.commit()</code></pre></div>
+      <div class="callout good"><div class="ic">✅</div><div class="body"><b>Так зроблено в цьому проєкті:</b>
+        <code>OrganizationRepository.try_consume_quota</code> (<code>app/repositories/organization_repository.py</code>) збільшує лічильник
+        AI-викликів одним <code>UPDATE … WHERE ai_calls_count + 1 &lt;= :limit</code> (і ще умова на сумарний ліміт) та
+        перевіряє <code>rowcount</code>. Тобто «перевірити квоту» і «списати одиницю» неподільні.</div></div>
+
+      <h3>Переваги</h3>
+      <ul>
+        <li><b>Захист від гонок</b> без ручних локів у коді застосунку.</li>
+        <li><b>Продуктивність:</b> один round-trip замість SELECT + UPDATE; рядок заблокований мінімальний час.</li>
+        <li><b>Менше конфліктів:</b> оновлюються лише потрібні колонки. Якщо один сервіс міняє <code>balance</code>, а інший <code>last_login_at</code>, вони не затирають зміни один одного. З ORM-підходом «завантажив об'єкт, зберіг цілком» таке теж можливо, якщо ORM пише всі поля.</li>
+      </ul>
+      <h3>Коли цього недостатньо</h3>
+      <ul>
+        <li>Рішення залежить від <b>кількох рядків або таблиць</b> (наприклад, переказ між двома рахунками з інваріантом «сума не змінюється»). Тоді потрібна транзакція з обома UPDATE в однаковому порядку id (B3) або Serializable (B5).</li>
+        <li>Між читанням і записом потрібна <b>складна логіка в коді</b> або <b>зовнішній виклик</b> (PSP, OpenAI): тоді оптимістичне блокування (B4) або «зарезервувати → виконати → підтвердити».</li>
+        <li><b>Дуже гарячий рядок</b> (тисячі UPDATE/с одного лічильника): усі стають у чергу на одне блокування. Тоді шардовані лічильники (N рядків, сума при читанні) або Redis <code>INCR</code> (D1).</li>
+      </ul>
+      <div class="callout fe"><div class="ic">🎨</div><div class="body"><b>Аналогія для фронтендера.</b>
+        <code>SET balance = balance - 100</code> — це <code>setBalance(b =&gt; b - 100)</code>, а <code>WHERE balance &gt;= 100</code> —
+        як <code>setBalance(b =&gt; b &gt;= 100 ? b - 100 : b)</code>. Різниця лише в тому, що «чергу оновлень» тримає база,
+        а не React.</div></div>
+    </section>
+
+    <!-- ============ B2 ============ -->
+    <section id="sB2">
+      <h2><span class="num">B2</span>Унікальні обмеження + <code>INSERT … ON CONFLICT</code></h2>
+      <p>Найчастіша check-then-act гонка — «перевірити, що такого ще немає, потім вставити». Перевірка в коді <b>ніколи</b>
+      не захищає: між SELECT і INSERT інша транзакція встигає вставити те саме (і рівень Read Committed не допоможе,
+      бо рядка, який можна заблокувати, ще не існує).</p>
+      <div class="codecard"><div class="bar"><span class="path">❌ → ✅ реєстрація з унікальним email</span></div><pre><code><span class="cmt"># ❌ два одночасні /register з однаковим email обидва пройдуть перевірку</span>
+if await users.get_by_email(email) is None:
+    await users.create(email=email, ...)
+
+<span class="cmt">-- ✅ інваріант живе в базі</span>
+CREATE UNIQUE INDEX users_email_uq ON users (lower(email));
+
+<span class="cmt"># ✅ і застосунок обробляє конфлікт як очікуваний результат</span>
+try:
+    await users.create(email=email, ...)
+    await session.commit()
+except IntegrityError:
+    await session.rollback()
+    raise HTTPException(409, "Email already registered")</code></pre></div>
+      <h3>Upsert і «get or create» без гонки</h3>
+      <div class="codecard"><div class="bar"><span class="path">PostgreSQL</span></div><pre><code><span class="cmt">-- створити або нічого не робити, і дізнатись, чи вставили</span>
+INSERT INTO processed_events (event_id) VALUES ($1)
+ON CONFLICT (event_id) DO NOTHING
+RETURNING event_id;                     <span class="cmt">-- порожньо → подію вже обробляли (ідемпотентність, розділ C/D)</span>
+
+<span class="cmt">-- створити або атомарно оновити лічильник</span>
+INSERT INTO daily_usage (organization_id, day, calls) VALUES ($1, current_date, 1)
+ON CONFLICT (organization_id, day) DO UPDATE SET calls = daily_usage.calls + 1
+RETURNING calls;</code></pre></div>
+      <h3>Часткові (partial) унікальні індекси: правило лише для частини рядків</h3>
+      <div class="codecard"><div class="bar"><span class="path">«у машини не більше одного активного маршруту»</span></div><pre><code>CREATE UNIQUE INDEX one_active_route_per_vehicle
+  ON routes (vehicle_id)
+  WHERE status IN ('planned', 'in_progress');
+<span class="cmt">-- два паралельні "призначити машину" → другий отримає unique violation, а не тихий дубль</span></code></pre></div>
+      <p><b>Чому це найнадійніше:</b> обмеження перевіряє база всередині власних механізмів (індекс + блокування ключа),
+      незалежно від того, скільки інстансів застосунку, які мови й скрипти пишуть у таблицю. Це <b>остання лінія оборони</b>,
+      яка спрацює, навіть якщо в коді забули про гонку.</p>
+    </section>
+
+    <!-- ============ B3 ============ -->
+    <section id="sB3">
+      <h2><span class="num">B3</span>Песимістичне блокування: <code>SELECT … FOR UPDATE</code></h2>
+      <p>Коли треба <i>прочитати</i>, прийняти рішення складною логікою і <i>записати</i>, а одним UPDATE це не виразити,
+      можна явно заблокувати рядки на час транзакції. Інші транзакції, що хочуть змінити (або теж <code>FOR UPDATE</code>)
+      ці рядки, чекають на коміт.</p>
+      <div class="codecard"><div class="bar"><span class="path">переказ між рахунками</span></div><pre><code>async with session.begin():
+    <span class="cmt"># блокуємо обидва рядки в ОДНАКОВОМУ порядку (за id) → немає deadlock</span>
+    ids = sorted([from_id, to_id])
+    rows = (await session.execute(
+        select(Account).where(Account.id.in_(ids)).order_by(Account.id).with_for_update()
+    )).scalars().all()
+    src = next(a for a in rows if a.id == from_id)
+    dst = next(a for a in rows if a.id == to_id)
+    if src.balance &lt; amount:
+        raise HTTPException(409, "Insufficient funds")
+    src.balance -= amount          <span class="cmt"># тут read-modify-write безпечний: рядки заблоковані</span>
+    dst.balance += amount
+<span class="cmt"># коміт знімає блокування</span></code></pre></div>
+      <h3>Варіанти</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Форма</th><th>Що робить</th><th>Коли</th></tr></thead>
+        <tbody>
+          <tr><td><code>FOR UPDATE</code></td><td>Ексклюзивне блокування рядків до кінця транзакції</td><td>Будемо змінювати ці рядки</td></tr>
+          <tr><td><code>FOR NO KEY UPDATE</code></td><td>Слабше: не блокує вставку дочірніх рядків з FK</td><td>Змінюємо не-ключові поля (менше конфліктів з FK)</td></tr>
+          <tr><td><code>FOR SHARE</code></td><td>Інші можуть читати з FOR SHARE, але не змінювати</td><td>«Цей рядок не має змінитися, поки я працюю»</td></tr>
+          <tr><td><code>… NOWAIT</code></td><td>Помилка одразу, якщо рядок зайнятий</td><td>Краще відповісти «зайнято», ніж чекати</td></tr>
+          <tr><td><code>… SKIP LOCKED</code></td><td>Пропустити зайняті рядки</td><td>Черга задач з кількома воркерами (D4)</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Deadlock і як його уникнути</h3>
+      <figure class="db">
+        <svg viewBox="0 0 820 170" role="img" aria-label="Deadlock">
+          <defs><marker id="t3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ar"/></marker></defs>
+          <g font-size="12.5">
+            <rect x="60" y="30" width="200" height="40" rx="8" class="box"/><text x="160" y="55" text-anchor="middle">T1: lock рахунок 1</text>
+            <rect x="560" y="30" width="200" height="40" rx="8" class="box"/><text x="660" y="55" text-anchor="middle">T2: lock рахунок 2</text>
+            <rect x="60" y="110" width="200" height="40" rx="8" class="box" style="stroke:var(--bad)"/><text x="160" y="135" text-anchor="middle">T1 чекає рахунок 2…</text>
+            <rect x="560" y="110" width="200" height="40" rx="8" class="box" style="stroke:var(--bad)"/><text x="660" y="135" text-anchor="middle">T2 чекає рахунок 1…</text>
+            <path d="M262 128 Q410 90 558 60" class="ln" style="stroke:var(--bad)" marker-end="url(#t3)"/>
+            <path d="M558 128 Q410 90 262 60" class="ln" style="stroke:var(--bad)" marker-end="url(#t3)"/>
+            <text x="410" y="165" text-anchor="middle" class="mut">T1 переказує 1→2, T2 переказує 2→1. Postgres виявить цикл і вб'є одну транзакцію (deadlock detected)</text>
+          </g>
+        </svg>
+      </figure>
+      <ul>
+        <li><b>Однаковий порядок захоплення</b> (сортувати id) — головний спосіб.</li>
+        <li><b>Короткі транзакції:</b> жодних HTTP-викликів, <code>await</code> на зовнішні сервіси чи «подумати» всередині транзакції з локами.</li>
+        <li><b><code>lock_timeout</code></b> і повтор транзакції при <code>deadlock detected</code> (40P01).</li>
+      </ul>
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body"><b>Ціна:</b> блокування знижує паралельність (запити до одного рядка йдуть по черзі),
+        тримає з'єднання з пулу, ризик deadlock-ів. Якщо конфлікти рідкісні, оптимістичний підхід (B4) зазвичай кращий.</div></div>
+    </section>
+
+    <!-- ============ B4 ============ -->
+    <section id="sB4">
+      <h2><span class="num">B4</span>Оптимістичне блокування: колонка <code>version</code></h2>
+      <p>Ідея: <b>не блокувати</b> під час читання, а під час запису перевірити, що рядок не змінився з моменту читання.
+      Якщо змінився, хтось нас випередив: повторюємо операцію або повертаємо 409 користувачу.</p>
+      <div class="codecard"><div class="bar"><span class="path">SQL + SQLAlchemy version_id_col</span></div><pre><code>UPDATE routes SET status = 'in_progress', version = version + 1
+WHERE id = $1 AND version = $2;          <span class="cmt">-- 0 рядків → конфлікт</span>
+
+<span class="cmt"># SQLAlchemy робить це автоматично</span>
+class Route(Base):
+    __tablename__ = "routes"
+    version: Mapped[int] = mapped_column(nullable=False, default=1)
+    __mapper_args__ = {"version_id_col": version}
+<span class="cmt"># при flush: UPDATE … WHERE id = ? AND version = ?; якщо 0 рядків → StaleDataError</span>
+
+async def update_with_retry(route_id, change, attempts=3):
+    for _ in range(attempts):
+        try:
+            async with session.begin():
+                route = await session.get(Route, route_id)
+                change(route)
+            return route
+        except StaleDataError:
+            session.expunge_all()                <span class="cmt"># перечитати свіжу версію і спробувати ще</span>
+    raise HTTPException(409, "Route was modified concurrently, please reload")</code></pre></div>
+      <h3>Те саме на рівні HTTP: ETag + If-Match</h3>
+      <div class="codecard"><div class="bar"><span class="path">два менеджери редагують маршрут в адмінці</span></div><pre><code>GET /api/v1/routes/r_7f3a          → 200, ETag: "v7"
+PATCH /api/v1/routes/r_7f3a
+If-Match: "v7"                     → 200, ETag: "v8"     (перший менеджер)
+PATCH /api/v1/routes/r_7f3a
+If-Match: "v7"                     → 412 Precondition Failed (другий: "дані змінились, перезавантажте")</code></pre></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th></th><th>Песимістичне (FOR UPDATE)</th><th>Оптимістичне (version)</th></tr></thead>
+        <tbody>
+          <tr><td>Коли конфлікти</td><td>Часті</td><td>Рідкісні</td></tr>
+          <tr><td>Паралельність</td><td>Нижча (чекання)</td><td>Висока (без блокувань)</td></tr>
+          <tr><td>Довгі операції / людина в циклі</td><td>❌ не можна тримати лок, поки користувач редагує форму</td><td>✅ ідеально (ETag між GET і PATCH)</td></tr>
+          <tr><td>Ціна конфлікту</td><td>Очікування</td><td>Повтор роботи / 409 користувачу</td></tr>
+          <tr><td>Ризики</td><td>Deadlock, вичерпання пулу</td><td>Livelock при дуже частих конфліктах</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout fe"><div class="ic">🎨</div><div class="body"><b>Аналогія для фронтендера.</b>
+        Оптимістичне блокування — як <code>git push</code>: ти працюєш локально без локів, а якщо хтось запушив раніше,
+        отримуєш «rejected, fetch first» і робиш rebase. Песимістичне — як «заблокувати файл» у старих SVN/Figma-подібних
+        інструментах, щоб ніхто інший не редагував.</div></div>
+    </section>
+
+    <!-- ============ B5 ============ -->
+    <section id="sB5">
+      <h2><span class="num">B5</span>Рівні ізоляції транзакцій і write skew</h2>
+      <p>Рівень ізоляції визначає, які «переплетення» транзакцій база допускає. За замовчуванням Postgres працює в
+      <b>Read Committed</b>: кожен оператор бачить дані, закомічені до його старту.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Рівень (Postgres)</th><th>Lost update через read-modify-write у коді</th><th>Write skew</th><th>Ціна</th></tr></thead>
+        <tbody>
+          <tr><td>Read Committed (дефолт)</td><td class="n">можливий</td><td class="n">можливий</td><td>найдешевший</td></tr>
+          <tr><td>Repeatable Read (snapshot)</td><td class="y">ловиться: помилка serialization при конкурентній зміні того ж рядка</td><td class="n">можливий</td><td>треба повторювати транзакції</td></tr>
+          <tr><td>Serializable (SSI)</td><td class="y">ловиться</td><td class="y">ловиться</td><td>більше відкатів, треба повторювати</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Write skew на прикладі проєкту</h3>
+      <p>Правило: «у водія не може бути двох маршрутів, що перетинаються в часі». Дві транзакції одночасно перевіряють,
+      що водій вільний, і кожна вставляє <i>свій</i> новий маршрут. Жоден рядок не змінювався двічі, тому ні атомарний
+      UPDATE, ні version не допоможуть.</p>
+      <figure class="db">
+        <svg viewBox="0 0 820 210" role="img" aria-label="Write skew">
+          <defs><marker id="t4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ar"/></marker></defs>
+          <g font-size="12.5">
+            <text x="150" y="24" text-anchor="middle" font-weight="700">T1: маршрут 09:00–13:00</text>
+            <text x="670" y="24" text-anchor="middle" font-weight="700">T2: маршрут 11:00–15:00</text>
+            <rect x="30" y="40" width="240" height="30" rx="6" class="box"/><text x="150" y="60" text-anchor="middle" class="mono">SELECT перетинів → 0</text>
+            <rect x="550" y="40" width="240" height="30" rx="6" class="box"/><text x="670" y="60" text-anchor="middle" class="mono">SELECT перетинів → 0</text>
+            <rect x="30" y="90" width="240" height="30" rx="6" class="box"/><text x="150" y="110" text-anchor="middle" class="mono">INSERT route A</text>
+            <rect x="550" y="90" width="240" height="30" rx="6" class="box"/><text x="670" y="110" text-anchor="middle" class="mono">INSERT route B</text>
+            <rect x="30" y="140" width="240" height="30" rx="6" class="box"/><text x="150" y="160" text-anchor="middle">COMMIT ✅</text>
+            <rect x="550" y="140" width="240" height="30" rx="6" class="box"/><text x="670" y="160" text-anchor="middle">COMMIT ✅</text>
+            <text x="410" y="200" text-anchor="middle" style="fill:var(--bad)">у водія два маршрути, що перетинаються, хоча кожна транзакція «перевірила»</text>
+          </g>
+        </svg>
+      </figure>
+      <div class="codecard"><div class="bar"><span class="path">три способи закрити write skew</span></div><pre><code><span class="cmt">-- 1) Serializable + повтор при 40001 serialization_failure</span>
+BEGIN ISOLATION LEVEL SERIALIZABLE;
+  SELECT count(*) FROM routes WHERE driver_id = $1 AND tstzrange(starts_at, ends_at) &amp;&amp; tstzrange($2, $3);
+  INSERT INTO routes (...);
+COMMIT;      <span class="cmt">-- одна з двох транзакцій отримає 40001 → застосунок повторює її → тепер бачить перетин</span>
+
+<span class="cmt">-- 2) Матеріалізувати конфлікт: заблокувати "ключовий" рядок, спільний для обох транзакцій</span>
+SELECT 1 FROM drivers WHERE id = $1 FOR UPDATE;     <span class="cmt">-- усі планування для водія тепер ідуть по черзі</span>
+
+<span class="cmt">-- 3) Найнадійніше: виразити правило обмеженням (розділ B7, EXCLUDE)</span></code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">повтор транзакції при serialization failure</span></div><pre><code>from sqlalchemy.exc import DBAPIError
+
+async def run_serializable(fn, attempts=5):
+    for attempt in range(attempts):
+        try:
+            async with engine.connect() as conn:
+                conn = await conn.execution_options(isolation_level="SERIALIZABLE")
+                async with conn.begin():
+                    return await fn(conn)
+        except DBAPIError as e:
+            if getattr(e.orig, "sqlstate", None) in ("40001", "40P01") and attempt &lt; attempts - 1:
+                await asyncio.sleep(random.uniform(0, 0.05 * 2 ** attempt))   <span class="cmt"># backoff + jitter</span>
+                continue
+            raise</code></pre></div>
+      <p class="deeper">Глибше: <a href="../system-design/04-databases-storage.html">System Design 4 · розділи 07–08 (аномалії, ізоляція, MVCC)</a> ·
+        <a href="24-senior-interview-qa.html">24 · питання 23 і 55</a></p>
+    </section>
+
+    <!-- ============ B6 ============ -->
+    <section id="sB6">
+      <h2><span class="num">B6</span>Advisory locks: лок на «ідею», а не на рядок</h2>
+      <p>Postgres дозволяє брати іменовані блокування на довільне число (ключ), не прив'язане до таблиці. Зручно, коли треба
+      серіалізувати <i>операцію</i>: «одночасно лише одна оптимізація маршрутів на організацію», «лише один інстанс
+      запускає міграцію / cron-задачу».</p>
+      <div class="codecard"><div class="bar"><span class="path">одна генерація маршрутів на організацію одночасно</span></div><pre><code><span class="cmt">-- транзакційний варіант: знімається автоматично на COMMIT/ROLLBACK</span>
+SELECT pg_try_advisory_xact_lock(hashtext('optimize:' || $1::text));   <span class="cmt">-- false → уже йде інша генерація</span>
+
+<span class="cmt"># Python</span>
+got = (await session.execute(
+    text("SELECT pg_try_advisory_xact_lock(hashtext(:k))"), {"k": f"optimize:{org_id}"}
+)).scalar()
+if not got:
+    raise HTTPException(409, "Route generation already running for this organization")</code></pre></div>
+      <ul>
+        <li>Перевага: спільний лок для всіх інстансів застосунку без Redis, бо всі ходять в одну БД.</li>
+        <li>Обережно з сесійними (<code>pg_advisory_lock</code> без <code>_xact</code>) і PgBouncer у transaction mode: лок може «прилипнути» до чужого з'єднання. Транзакційний варіант безпечніший.</li>
+        <li>Не тримати лок під час довгих зовнішніх викликів, якщо можна інакше: це тримає з'єднання з пулу.</li>
+      </ul>
+    </section>
+
+    <!-- ============ B7 ============ -->
+    <section id="sB7">
+      <h2><span class="num">B7</span>CHECK і EXCLUDE: правила, які база не дасть порушити</h2>
+      <div class="codecard"><div class="bar"><span class="path">інваріанти як обмеження</span></div><pre><code><span class="cmt">-- баланс ніколи не від'ємний: навіть якщо хтось забув WHERE balance &gt;= …</span>
+ALTER TABLE accounts ADD CONSTRAINT balance_non_negative CHECK (balance &gt;= 0);
+
+<span class="cmt">-- квота не перевищує ліміт (якщо ліміт зберігається в рядку)</span>
+ALTER TABLE organizations ADD CONSTRAINT routes_within_limit
+  CHECK (route_limit IS NULL OR routes_generated_count &lt;= route_limit);
+
+<span class="cmt">-- водій не може мати маршрути, що перетинаються в часі (закриває write skew з B5)</span>
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+ALTER TABLE routes ADD CONSTRAINT no_overlapping_routes_per_driver
+  EXCLUDE USING gist (driver_id WITH =, tstzrange(starts_at, ends_at) WITH &amp;&amp;)
+  WHERE (status &lt;&gt; 'cancelled');</code></pre></div>
+      <p><code>EXCLUDE</code> — це «унікальність для діапазонів»: дві строки конфліктують, якщо <code>driver_id</code> рівні <b>і</b>
+      часові діапазони перетинаються (<code>&amp;&amp;</code> читається «перетинається з»). Друга паралельна вставка отримає
+      помилку незалежно від рівня ізоляції. Класичний інструмент для бронювань, розкладів і змін.</p>
+    </section>
+
+    <!-- ============ B summary ============ -->
+    <section id="sBsum">
+      <h2><span class="num">B·</span>Порівняння технік рівня БД</h2>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Техніка</th><th>Закриває</th><th>Плюси</th><th>Мінуси / межі</th></tr></thead>
+        <tbody>
+          <tr><td><b>B1</b> атомарний / умовний UPDATE</td><td>lost update, check-then-act на одному рядку</td><td>найпростіше, найшвидше, 1 запит</td><td>лише логіка, що вміщується в один оператор</td></tr>
+          <tr><td><b>B2</b> UNIQUE + ON CONFLICT</td><td>дублікати, get-or-create</td><td>гарантія на рівні бази, для всіх клієнтів</td><td>лише правило «не більше одного»</td></tr>
+          <tr><td><b>B3</b> FOR UPDATE</td><td>складний read-modify-write, кілька рядків</td><td>будь-яка логіка в коді</td><td>чекання, deadlock, не тримати довго</td></tr>
+          <tr><td><b>B4</b> version / ETag</td><td>lost update при рідких конфліктах, редагування людьми</td><td>без блокувань, працює через HTTP</td><td>треба повтор або 409; погано при частих конфліктах</td></tr>
+          <tr><td><b>B5</b> Serializable</td><td>усе, включно з write skew</td><td>не треба думати про кожен випадок</td><td>відкати, повтори, нижча пропускна здатність</td></tr>
+          <tr><td><b>B6</b> advisory lock</td><td>«одна операція одночасно»</td><td>спільний лок без Redis</td><td>з'єднання з пулу, нюанси з PgBouncer</td></tr>
+          <tr><td><b>B7</b> CHECK / EXCLUDE</td><td>порушення інваріантів (від'ємний баланс, перетини)</td><td>остання лінія оборони</td><td>правило має виражатися декларативно</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <!-- ============ C ============ -->
+    <section id="sC">
+      <h2><span class="num">C</span>API: повторні запити й ідемпотентність</h2>
+      <p>Гонка «той самий запит двічі»: користувач двічі клікнув «Згенерувати», мобільна мережа обірвалась і клієнт
+      повторив запит, балансувальник зробив retry. Без захисту двічі списуються гроші або квота і створюються два маршрути.</p>
+      <h3>C1. Idempotency key</h3>
+      <div class="codecard"><div class="bar"><span class="path">таблиця і логіка</span></div><pre><code>CREATE TABLE idempotency_keys (
+  organization_id uuid NOT NULL,
+  key text NOT NULL,
+  request_hash text NOT NULL,
+  status text NOT NULL,                 <span class="cmt">-- in_progress | completed</span>
+  response jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (organization_id, key)    <span class="cmt">-- ← саме UNIQUE робить це безпечним при паралельних дублях</span>
+);
+
+async def idempotent(org_id, key, body, handler):
+    h = sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
+    inserted = (await db.execute(text("""
+        INSERT INTO idempotency_keys (organization_id, key, request_hash, status)
+        VALUES (:o, :k, :h, 'in_progress') ON CONFLICT DO NOTHING RETURNING key"""),
+        {"o": org_id, "k": key, "h": h})).first()
+    await db.commit()
+    if not inserted:                                    <span class="cmt"># ключ уже бачили</span>
+        row = await get_key(org_id, key)
+        if row.request_hash != h:
+            raise HTTPException(422, "Idempotency-Key reused with a different body")
+        if row.status == "in_progress":
+            raise HTTPException(409, "Request with this key is still being processed")
+        return row.response                             <span class="cmt"># повертаємо збережений результат, нічого не виконуючи</span>
+    response = await handler()
+    await save_completed(org_id, key, response)
+    return response</code></pre></div>
+      <ul>
+        <li>Ключ генерує <b>клієнт</b> (UUID на одну логічну дію) і повторює його при ретраях; інакше сервер не відрізнить ретрай від нової дії.</li>
+        <li>Зберігати ключ і бізнес-зміну <b>в одній транзакції</b>, якщо це можливо; інакше між «виконали» і «зберегли відповідь» залишається вікно.</li>
+        <li>TTL на ключі (наприклад, 24 год), окремий простір ключів на тенанта.</li>
+      </ul>
+      <h3>C2. Природна ідемпотентність і state machine</h3>
+      <div class="codecard"><div class="bar"><span class="path">переходи стану як умовний UPDATE</span></div><pre><code><span class="cmt">-- ❌ "додати 1" не ідемпотентне;  ✅ "встановити стан" — ідемпотентне</span>
+UPDATE route_stops SET status = 'delivered', delivered_at = now()
+WHERE id = $1 AND status IN ('pending', 'arrived')      <span class="cmt">-- дозволений перехід</span>
+RETURNING id;
+<span class="cmt">-- повтор: 0 рядків (вже delivered) → відповідаємо 200 з поточним станом, а не помилкою
+-- конкурентне "cancel" після "delivered": 0 рядків → 409 "already delivered"</span></code></pre></div>
+      <p>Так само обробляються події не по порядку: webhook <code>refunded</code> прийшов раніше за <code>paid</code>. Перехід
+      <code>refunded → paid</code> заборонений умовою <code>WHERE</code>, тож запізніла подія нічого не зламає.</p>
+    </section>
+
+    <!-- ============ D ============ -->
+    <section id="sD">
+      <h2><span class="num">D</span>Кілька інстансів, черги й розподілені системи</h2>
+      <h3>D1. Спільний лічильник і атомарні операції в Redis</h3>
+      <p><code>threading.Lock</code> у <code>rate_limiting.py</code> захищає лише свій процес. На трьох машинах кожна має свій
+      <code>_WINDOWS</code>, і реальний ліміт множиться на три. Спільна атомарна точка — Redis, який виконує команди однопотоково.</p>
+      <div class="codecard"><div class="bar"><span class="path">Redis: INCR, Lua, SET NX</span></div><pre><code><span class="cmt"># атомарний лічильник вікна</span>
+pipe = redis.pipeline(transaction=True)
+pipe.incr(key); pipe.expire(key, 60, nx=True)
+count, _ = await pipe.execute()
+
+<span class="cmt"># складніша умова атомарно — Lua-скрипт виконується без переплетень з іншими командами</span>
+CONSUME = redis.register_script("""
+local used = tonumber(redis.call('GET', KEYS[1]) or '0')
+if used + tonumber(ARGV[1]) &gt; tonumber(ARGV[2]) then return -1 end
+return redis.call('INCRBY', KEYS[1], ARGV[1])
+""")
+left = await CONSUME(keys=[f"quota:{org_id}"], args=[1, limit])   <span class="cmt"># −1 → ліміт вичерпано</span>
+
+<span class="cmt"># "зробити один раз": SET NX (лише якщо ключа немає) + TTL</span>
+first = await redis.set(f"email-sent:{event_id}", 1, nx=True, ex=86400)
+if first:
+    await send_email(...)</code></pre></div>
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body"><b>Пастка:</b> <code>GET</code> у Python, перевірка, потім <code>SET</code> — та сама
+        check-then-act гонка, тільки в Redis. Атомарні лише окремі команди, MULTI/EXEC-блоки та Lua-скрипти.
+        <code>WATCH</code> + <code>MULTI</code> — оптимістичне блокування в Redis.</div></div>
+
+      <h3>D2. Розподілені локи і fencing tokens</h3>
+      <p>Розподілений лок (Redis <code>SET lock NX PX 30000</code>, etcd, ZooKeeper, Postgres advisory) дає «лише один
+      інстанс виконує це зараз». Головна проблема — <b>лок має TTL</b>: якщо власник завис (GC-пауза, мережа, повільний
+      зовнішній виклик) довше за TTL, лок отримує інший, і тепер працюють <i>двоє</i>.</p>
+      <figure class="db">
+        <svg viewBox="0 0 820 220" role="img" aria-label="Fencing token">
+          <defs><marker id="t5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ar"/></marker></defs>
+          <g font-size="12.5">
+            <text x="20" y="30" font-weight="700">Воркер 1</text>
+            <rect x="110" y="16" width="140" height="22" rx="4" style="fill:var(--good);opacity:.7"/><text x="180" y="32" text-anchor="middle" style="fill:#fff">lock, token 33</text>
+            <rect x="250" y="16" width="250" height="22" rx="4" style="fill:var(--warn);opacity:.55"/><text x="375" y="32" text-anchor="middle">⏸ пауза GC / мережа (TTL минув)</text>
+            <rect x="500" y="16" width="160" height="22" rx="4" style="fill:var(--bad);opacity:.7"/><text x="580" y="32" text-anchor="middle" style="fill:#fff">write(token 33)</text>
+            <text x="20" y="90" font-weight="700">Воркер 2</text>
+            <rect x="320" y="76" width="140" height="22" rx="4" style="fill:var(--good);opacity:.7"/><text x="390" y="92" text-anchor="middle" style="fill:#fff">lock, token 34</text>
+            <rect x="460" y="76" width="140" height="22" rx="4" style="fill:var(--accent);opacity:.7"/><text x="530" y="92" text-anchor="middle" style="fill:#fff">write(token 34)</text>
+            <rect x="110" y="140" width="600" height="40" rx="8" class="box"/>
+            <text x="410" y="158" text-anchor="middle">Сховище приймає запис, лише якщо token &gt; останнього прийнятого</text>
+            <text x="410" y="174" text-anchor="middle" class="mut">34 прийнято → пізній запис з token 33 відхилено ✅</text>
+            <path d="M580 38 L560 138" class="ln" style="stroke:var(--bad)" marker-end="url(#t5)"/>
+            <path d="M530 98 L500 138" class="ln" marker-end="url(#t5)"/>
+          </g>
+        </svg>
+        <figcaption>Fencing token (монотонно зростаючий номер, виданий разом з локом) перетворює «лок вийшов з ладу» на «запізнілий запис відхилено».</figcaption>
+      </figure>
+      <ul>
+        <li>Лок для <b>ефективності</b> (не робити ту саму роботу двічі) прийнятний і простий. Лок для <b>коректності</b> (гроші, інваріанти) потребує fencing token або захисту на рівні сховища (умовний UPDATE з версією).</li>
+        <li>Дебати Kleppmann vs antirez про Redlock — у <a href="../system-design/13-tricky-topics-qa.html">System Design 13 · розділ 08</a>.</li>
+        <li>Часто кращий шлях — <b>не потребувати лок</b>: атомарна операція в БД або single writer.</li>
+      </ul>
+
+      <h3>D3. Single writer: «зміни однієї сутності — лише через одного виконавця»</h3>
+      <p>Якщо всі зміни замовлення <code>order_42</code> потрапляють в одну партицію Kafka (ключ = <code>order_id</code>) або
+      в одну чергу, їх обробляє один консюмер <b>послідовно</b>, і гонки між ними неможливі в принципі. Масштабування —
+      більше партицій, тобто більше незалежних сутностей паралельно. Це той самий actor model з розділу A4, але між серверами.</p>
+
+      <h3>D4. Черги задач: at-least-once означає «готуйся до дублів»</h3>
+      <ul>
+        <li>Брокери (Celery/Redis, RabbitMQ, Kafka, NATS) гарантують <b>at-least-once</b>: воркер упав після виконання, але до ack, і задача прийде ще раз. З <code>acks_late=True</code> у Celery це штатна поведінка.</li>
+        <li><b>Ідемпотентний консюмер:</b> <code>INSERT INTO processed_events … ON CONFLICT DO NOTHING</code> в одній транзакції з ефектом задачі (B2).</li>
+        <li><b>Кілька воркерів з однієї таблиці-черги:</b> <code>FOR UPDATE SKIP LOCKED</code> (кожен воркер бере свої рядки, без подвійної обробки).</li>
+      </ul>
+      <div class="codecard"><div class="bar"><span class="path">Postgres як черга без подвійного захоплення</span></div><pre><code>WITH next AS (
+  SELECT id FROM jobs WHERE status = 'queued'
+  ORDER BY created_at LIMIT 10
+  FOR UPDATE SKIP LOCKED
+)
+UPDATE jobs SET status = 'running', started_at = now(), worker = $1
+FROM next WHERE jobs.id = next.id
+RETURNING jobs.*;</code></pre></div>
+      <div class="codecard"><div class="bar"><span class="path">Celery: ідемпотентна задача</span></div><pre><code>@celery_app.task(bind=True, acks_late=True, autoretry_for=(TemporaryError,),
+                 retry_backoff=True, retry_jitter=True, max_retries=5)
+def send_route_summary(self, route_id: str, event_id: str):
+    with SessionLocal.begin() as s:
+        done = s.execute(text("""INSERT INTO processed_events (event_id) VALUES (:e)
+                                 ON CONFLICT DO NOTHING RETURNING event_id"""), {"e": event_id}).first()
+        if not done:
+            return "duplicate, skipped"
+        s.add(OutboxEmail(route_id=route_id, ...))       <span class="cmt"># сам лист — через outbox, в тій самій транзакції</span></code></pre></div>
+      <p class="deeper">Глибше: <a href="20-redis.html">20 · Celery в глибину: at-least-once, ретраї, ідемпотентність</a></p>
+
+      <h3>D5. Dual write і transactional outbox</h3>
+      <p>«Записати в БД і відправити подію в брокер» — два незалежні кроки: процес може впасти між ними, а дві паралельні
+      зміни можуть відправити події в іншому порядку, ніж закомітились. Рішення — записати подію в таблицю
+      <code>outbox</code> <b>у тій самій транзакції</b>, що й бізнес-дані; окремий relay публікує їх по порядку
+      (<a href="../system-design/07-async-messaging.html">System Design 7 · розділ 07</a>).</p>
+    </section>
+
+    <!-- ============ E ============ -->
+    <section id="sE">
+      <h2><span class="num">E</span>Кеш: гонки між кешем і базою</h2>
+      <h3>E1. Застаріле значення після інвалідації</h3>
+      <figure class="db">
+        <svg viewBox="0 0 820 240" role="img" aria-label="Гонка cache-aside">
+          <defs><marker id="t6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ar"/></marker></defs>
+          <g font-size="12.5">
+            <text x="110" y="22" text-anchor="middle" font-weight="700">Читач</text>
+            <text x="320" y="22" text-anchor="middle" font-weight="700">Кеш</text>
+            <text x="520" y="22" text-anchor="middle" font-weight="700">БД</text>
+            <text x="720" y="22" text-anchor="middle" font-weight="700">Писач</text>
+            <path d="M110 30 V230 M320 30 V230 M520 30 V230 M720 30 V230" class="ln" style="stroke-dasharray:3 4;opacity:.55"/>
+            <path d="M110 50 H316" class="ln" marker-end="url(#t6)"/><text x="215" y="44" text-anchor="middle">1. miss</text>
+            <path d="M110 76 H516" class="ln" marker-end="url(#t6)"/><text x="315" y="70" text-anchor="middle">2. SELECT → телефон v1</text>
+            <path d="M716 104 H524" class="ln" marker-end="url(#t6)"/><text x="620" y="98" text-anchor="middle">3. UPDATE → v2</text>
+            <path d="M716 132 H324" class="ln" marker-end="url(#t6)"/><text x="520" y="126" text-anchor="middle">4. DEL cache</text>
+            <path d="M110 166 H316" class="ln" style="stroke:var(--bad)" marker-end="url(#t6)"/><text x="215" y="160" text-anchor="middle" style="fill:var(--bad)">5. SET cache = v1 (повільний читач)</text>
+            <rect x="260" y="182" width="120" height="28" rx="6" class="box" style="stroke:var(--bad);stroke-width:2"/><text x="320" y="201" text-anchor="middle" class="mono" style="fill:var(--bad)">v1 до TTL</text>
+          </g>
+        </svg>
+        <figcaption>Читач почав до оновлення, а записав у кеш після інвалідації, тож у кеші застаріле значення аж до кінця TTL.</figcaption>
+      </figure>
+      <ul>
+        <li><b>Інвалідувати після коміту</b> (не до), а для чутливих даних ще раз із затримкою («delayed double delete»).</li>
+        <li><b>Версія в ключі або значенні:</b> <code>route:{id}:v{version}</code>; читач записує в кеш лише якщо версія не старша за поточну (Lua з порівнянням).</li>
+        <li><b>Leases</b> (як у Memcache у Facebook): кеш видає токен на заповнення після miss; інвалідація анулює токен, і запізнілий SET відхиляється.</li>
+        <li><b>Короткий TTL</b> обмежує час, скільки житиме помилка; для критичних даних (баланс, квоти) не кешувати взагалі.</li>
+      </ul>
+      <h3>E2. Cache stampede</h3>
+      <p>Популярний ключ протух, і 1000 запитів одночасно йдуть у БД рахувати те саме. Захист: singleflight (A3) або
+      Redis-лок на перерахунок (<code>SET rebuild:key NX EX 10</code>, решта віддають старе значення або чекають),
+      ранній перерахунок до закінчення TTL, jitter у TTL, щоб ключі не протухали одночасно
+      (<a href="../system-design/03-caching.html">System Design 3 · розділи 06–07</a>).</p>
+    </section>
+
+    <!-- ============ F ============ -->
+    <section id="sF">
+      <h2><span class="num">F</span>Фронтенд: гонки в браузері</h2>
+      <h3>F1. Відповіді не в тому порядку</h3>
+      <div class="codecard"><div class="bar"><span class="path">пошук доставок: «ки» відповів після «київ»</span></div><pre><code><span class="cmt">// ❌ показуємо ту відповідь, що прийшла останньою, а не ту, що для останнього запиту</span>
+useEffect(() =&gt; { fetch(`/api/v1/deliveries?q=${q}`).then(r =&gt; r.json()).then(setItems); }, [q]);
+
+<span class="cmt">// ✅ скасувати попередній запит</span>
+useEffect(() =&gt; {
+  const ctrl = new AbortController();
+  fetch(`/api/v1/deliveries?q=${q}`, { signal: ctrl.signal })
+    .then(r =&gt; r.json()).then(setItems)
+    .catch(e =&gt; { if (e.name !== 'AbortError') throw e; });
+  return () =&gt; ctrl.abort();                 <span class="cmt">// cleanup при зміні q</span>
+}, [q]);
+
+<span class="cmt">// ✅ або React Query: queryKey ['deliveries', q] сам ігнорує застарілі відповіді
+// ✅ Angular/RxJS: switchMap скасовує попередній запит</span></code></pre></div>
+      <h3>F2. Подвійний submit</h3>
+      <ul>
+        <li><b>UI:</b> кнопка <code>disabled</code> під час <code>isPending</code> (так зроблено в <code>GenerateRouteModal</code> фронтенду: <code>disabled={optimizeRoutes.isPending || …}</code>). Але це лише UX: дві вкладки, ретрай мережі чи скрипт його обійдуть.</li>
+        <li><b>RxJS:</b> <code>exhaustMap</code> ігнорує нові кліки, поки триває поточний запит.</li>
+        <li><b>Справжній захист — на сервері:</b> idempotency key (C1), який фронт генерує один раз на відкриття форми (<code>crypto.randomUUID()</code>).</li>
+      </ul>
+      <h3>F3. Stale closure і функціональні оновлення</h3>
+      <div class="codecard"><div class="bar"><span class="path">React</span></div><pre><code>setCount(count + 1); setCount(count + 1);     <span class="cmt">// ❌ +1: обидва бачать той самий count</span>
+setCount(c =&gt; c + 1); setCount(c =&gt; c + 1);   <span class="cmt">// ✅ +2: "атомарне оновлення" відносно черги React</span>
+
+<span class="cmt">// optimistic update з відкатом (React Query)</span>
+onMutate: async (patch) =&gt; {
+  await qc.cancelQueries({ queryKey: ['route', id] });     <span class="cmt">// щоб старий refetch не затер оптимістичне значення</span>
+  const prev = qc.getQueryData(['route', id]);
+  qc.setQueryData(['route', id], old =&gt; ({ ...old, ...patch }));
+  return { prev };
+},
+onError: (_e, _p, ctx) =&gt; qc.setQueryData(['route', id], ctx.prev),</code></pre></div>
+      <p>Також у браузері: кілька вкладок з одним <code>localStorage</code> (подія <code>storage</code>, <code>BroadcastChannel</code>,
+      <code>navigator.locks</code> — Web Locks API для взаємного виключення між вкладками), паралельний refresh токена
+      з кількох запитів (одна спільна Promise на refresh, як singleflight з A3).</p>
+      <p class="deeper">Глибше: <a href="../js-doc/14-frontend-caching-advanced.html">JS Doc 14 · Race conditions у кешуванні</a></p>
+    </section>
+
+    <!-- ============ G ============ -->
+    <section id="sG">
+      <h2><span class="num">G</span>Як знаходити й тестувати гонки</h2>
+      <p>Звичайний тест виконує запити послідовно, тож гонку не побачить ніколи. Потрібно <b>навмисно запустити кроки
+      одночасно</b> і перевірити інваріант.</p>
+      <div class="codecard"><div class="bar"><span class="path">pytest: 20 паралельних списань проти справжнього Postgres</span></div><pre><code>import asyncio, pytest
+
+@pytest.mark.integration
+async def test_concurrent_withdrawals_do_not_lose_updates(make_client, account_with_balance):
+    account_id = await account_with_balance(1000)
+
+    async def withdraw():
+        async with make_client() as c:              <span class="cmt"># окремий клієнт/сесія = окреме з'єднання з БД</span>
+            return await c.post(f"/accounts/{account_id}/withdraw", json={"amount": 100})
+
+    responses = await asyncio.gather(*(withdraw() for _ in range(20)))
+    ok = [r for r in responses if r.status_code == 200]
+    assert len(ok) == 10                             <span class="cmt"># рівно 10 по 100 з 1000</span>
+    assert await get_balance(account_id) == 0        <span class="cmt"># і нічого не втрачено / не пішло в мінус</span></code></pre></div>
+      <ul>
+        <li><b>Тестуйте на справжній БД</b> (testcontainers / docker compose): SQLite в пам'яті має іншу модель блокувань і сховає гонку.</li>
+        <li><b>Розширити вікно гонки</b> в тесті: штучний <code>await asyncio.sleep(0.05)</code> між читанням і записом (через фікстуру чи monkeypatch), <code>threading.Barrier</code>, щоб потоки стартували одночасно.</li>
+        <li><b>Навантаження:</b> k6/Locust з багатьма одночасними запитами на той самий ресурс (один рахунок, одна організація).</li>
+        <li><b>Інваріанти в моніторингу:</b> періодичні звірки (сума ledger = баланс, квота ≤ ліміту), алерти на дублікати.</li>
+        <li><b>Postgres:</b> <code>pg_stat_activity</code> + <code>pg_locks</code> для очікувань, <code>log_lock_waits = on</code>, лог deadlock-ів.</li>
+        <li><b>Python:</b> asyncio debug mode, ThreadSanitizer для C-розширень; у Go/Rust — race detector, у Python такого немає, тож тести й рев'ю важливіші.</li>
+      </ul>
+    </section>
+
+    <!-- ============ H ============ -->
+    <section id="sH">
+      <h2><span class="num">H</span>Кейс з цього репозиторію: квота на генерацію маршрутів</h2>
+      <p>У проєкті є обидва підходи поруч, тож добре видно різницю.</p>
+      <div class="verdict">
+        <div class="win"><span class="t">✅ AI-квота: атомарно</span><ul>
+          <li><code>require_ai_quota</code> викликає <code>try_consume_quota</code>: один <code>UPDATE … WHERE ai_calls_count + 1 &lt;= limit</code> і перевірку <code>rowcount</code>.</li>
+          <li>Перевірка й списання неподільні, тож 50 паралельних запитів не перевищать ліміт.</li>
+        </ul></div>
+        <div class="lose"><span class="t">⚠️ Квота маршрутів: check-then-act</span><ul>
+          <li><code>require_route_quota</code> (<code>app/core/dependencies.py</code>) <b>читає</b> <code>routes_generated_count</code> і порівнює з лімітом.</li>
+          <li>Потім кілька секунд працює солвер OR-Tools.</li>
+          <li>Потім <code>increment_route_count</code> збільшує лічильник атомарно, але <b>без умови</b> на ліміт.</li>
+        </ul></div>
+      </div>
+      <figure class="db">
+        <svg viewBox="0 0 820 230" role="img" aria-label="Гонка квоти маршрутів">
+          <defs><marker id="t7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ar"/></marker></defs>
+          <g font-size="12.5">
+            <text x="20" y="24" class="mut">TRIAL: ліміт 5 маршрутів, використано 4</text>
+            <text x="20" y="60" font-weight="700">Запит A</text>
+            <rect x="110" y="46" width="160" height="22" rx="4" class="box"/><text x="190" y="62" text-anchor="middle">check: 4 &lt; 5 ✅</text>
+            <rect x="270" y="46" width="300" height="22" rx="4" style="fill:var(--accent);opacity:.25"/><text x="420" y="62" text-anchor="middle">OR-Tools рахує ~3 с</text>
+            <rect x="570" y="46" width="180" height="22" rx="4" class="box"/><text x="660" y="62" text-anchor="middle">count += 1 → 5</text>
+            <text x="20" y="120" font-weight="700">Запит B</text>
+            <rect x="160" y="106" width="160" height="22" rx="4" class="box"/><text x="240" y="122" text-anchor="middle">check: 4 &lt; 5 ✅</text>
+            <rect x="320" y="106" width="300" height="22" rx="4" style="fill:var(--accent);opacity:.25"/><text x="470" y="122" text-anchor="middle">OR-Tools рахує ~3 с</text>
+            <rect x="620" y="106" width="180" height="22" rx="4" class="box" style="stroke:var(--bad);stroke-width:2"/><text x="710" y="122" text-anchor="middle" style="fill:var(--bad)">count += 1 → 6</text>
+            <text x="410" y="170" text-anchor="middle">Обидві перевірки бачили 4, бо лічильник змінюється лише після солвера.</text>
+            <text x="410" y="192" text-anchor="middle" class="mut">Крім того, один запит може створити кілька маршрутів (increment by=len(routes)),</text>
+            <text x="410" y="210" text-anchor="middle" class="mut">тож навіть без паралельності 4 + 3 = 7 &gt; 5. Вікно гонки = весь час роботи солвера.</text>
+          </g>
+        </svg>
+      </figure>
+      <h3>Як можна виправити (варіанти з trade-offs)</h3>
+      <ol>
+        <li><b>Резерв наперед атомарно:</b> списати квоту умовним UPDATE <i>до</i> солвера (як AI-квота), а якщо солвер упав або повернув менше маршрутів, повернути різницю (<code>SET count = count - :unused</code>). Найпростіше й узгоджено з <code>try_consume_quota</code>. Мінус: треба вирішити, скільки резервувати, коли кількість маршрутів відома лише після розв'язку (наприклад, рахувати за кількістю вибраних машин як верхню межу).</li>
+        <li><b>Умовне списання після солвера:</b> <code>UPDATE … SET count = count + :n WHERE count + :n &lt;= limit</code>; якщо 0 рядків — не зберігати маршрути (транзакція з відкатом). Чесно, але солвер відпрацював дарма.</li>
+        <li><b>Advisory lock на організацію</b> (B6) на час генерації: серіалізує генерації однієї організації, і перевірка стає коректною. Мінус: тримає з'єднання з БД під час роботи солвера.</li>
+        <li><b>CHECK-обмеження</b> як страховка (B7), якщо ліміт зберігати в рядку організації.</li>
+      </ol>
+      <div class="callout info"><div class="ic">ℹ️</div><div class="body">Наслідок у цьому проєкті м'який: TRIAL-організація може отримати на кілька
+        маршрутів більше за ліміт. Але той самий шаблон коду на грошах дав би реальні збитки, і тому його варто впізнавати.</div></div>
+    </section>
+
+    <!-- ============ I ============ -->
+    <section id="sI">
+      <h2><span class="num">I</span>Шпаргалка: яку техніку брати</h2>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Ситуація</th><th>Перший вибір</th><th>Якщо не підходить</th></tr></thead>
+        <tbody>
+          <tr><td>Лічильник, баланс, залишок</td><td>атомарний <code>SET x = x ± n</code> з умовою в <code>WHERE</code></td><td>Redis INCR / Lua (гарячий ключ), шардований лічильник</td></tr>
+          <tr><td>«Не більше одного» (email, активний маршрут)</td><td>UNIQUE / partial UNIQUE + ON CONFLICT</td><td>advisory lock</td></tr>
+          <tr><td>Непересічні діапазони (розклад, бронювання)</td><td>EXCLUDE USING gist</td><td>Serializable, FOR UPDATE на ключовому рядку</td></tr>
+          <tr><td>Складна логіка над кількома рядками</td><td>транзакція + FOR UPDATE у фіксованому порядку</td><td>Serializable + retry</td></tr>
+          <tr><td>Користувач редагує форму хвилинами</td><td>version / ETag + If-Match → 409/412</td><td>—</td></tr>
+          <tr><td>Повторні HTTP-запити</td><td>Idempotency-Key + UNIQUE</td><td>природна ідемпотентність (set замість add)</td></tr>
+          <tr><td>Повторна доставка задач / подій</td><td>processed_events + ON CONFLICT в одній транзакції з ефектом</td><td>single writer (партиція за ключем)</td></tr>
+          <tr><td>Події не по порядку</td><td>state machine в <code>WHERE status IN (…)</code></td><td>номер версії / sequence у події</td></tr>
+          <tr><td>«Лише один інстанс робить X»</td><td>advisory lock / <code>SET NX EX</code></td><td>лідер-елекція; для коректності — fencing token</td></tr>
+          <tr><td>Спільний стан у пам'яті</td><td>не мати його: lifespan, immutability, черга</td><td>threading/asyncio Lock (лише в межах процесу!)</td></tr>
+          <tr><td>Кеш</td><td>інвалідація після коміту + короткий TTL</td><td>версії/leases, singleflight від stampede</td></tr>
+          <tr><td>Фронтенд</td><td>AbortController / switchMap, функціональний setState</td><td>exhaustMap + серверна ідемпотентність</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout good"><div class="ic">💡</div><div class="body"><b>Три правила, які закривають більшість гонок:</b>
+        (1) рішення і зміна — в одному атомарному кроці там, де лежать дані; (2) інваріанти — обмеженнями бази, а не
+        перевірками в коді; (3) будь-що, що може прийти двічі, — ідемпотентне.</div></div>
+    </section>
+
+    <!-- ============ J ============ -->
+    <section id="sJ">
+      <h2><span class="num">J</span>Задачі (спершу подумай, потім відкривай)</h2>
+
+      <div class="task"><div class="tt">Задача 1. Знайди гонку</div>
+        <div class="codecard"><div class="bar"><span class="path">склад: резерв товару під замовлення</span></div><pre><code>async def reserve(product_id: str, qty: int):
+    product = await repo.get(product_id)
+    if product.stock &lt; qty:
+        raise HTTPException(409, "Out of stock")
+    product.stock -= qty
+    await session.commit()</code></pre></div>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <ol>
+            <li>Тип: <b>read-modify-write + check-then-act</b>. Два запити на останні 3 одиниці обидва прочитають <code>stock = 3</code>, обидва пройдуть перевірку і запишуть 0 (або один перезапише іншого). Продано 6 із 3.</li>
+            <li>Виправлення одним оператором: <code>UPDATE products SET stock = stock - :qty WHERE id = :id AND stock &gt;= :qty RETURNING stock</code>; немає рядка → 409.</li>
+            <li>Страховка: <code>CHECK (stock &gt;= 0)</code>.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task"><div class="tt">Задача 2. «get or create» водія за телефоном</div>
+        <p>Імпорт з Excel паралельно обробляє рядки і для кожного робить «знайти водія за телефоном, якщо немає — створити».
+        Після імпорту в організації з'являються дублікати водіїв. Чому і як виправити?</p>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <ol>
+            <li>Check-then-act: два рядки з однаковим телефоном одночасно не знаходять водія і обидва створюють.</li>
+            <li>Інваріант у базу: <code>CREATE UNIQUE INDEX ON drivers (organization_id, phone)</code> (з нормалізацією телефону, наприклад E.164).</li>
+            <li>Вставка: <code>INSERT … ON CONFLICT (organization_id, phone) DO UPDATE SET name = EXCLUDED.name RETURNING id</code> — завжди повертає id наявного або нового.</li>
+            <li>Ще краще для імпорту: спершу дедуплікувати рядки в Python за нормалізованим телефоном, потім один батч-upsert.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task"><div class="tt">Задача 3. Lock не допоміг</div>
+        <p>Розробник додав <code>asyncio.Lock()</code> навколо списання квоти, тести зелені, але на проді квоти все одно
+        перевищуються. Бекенд запущено як <code>uvicorn --workers 4</code> на двох машинах. Що не так?</p>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <ol>
+            <li><code>asyncio.Lock</code> існує в пам'яті одного процесу. Тут 4 × 2 = 8 процесів, тобто 8 незалежних локів.</li>
+            <li>Тести запускали один процес, тому гонку не бачили.</li>
+            <li>Виправлення: перенести атомарність туди, де лежить спільний стан, — умовний UPDATE в Postgres (як <code>try_consume_quota</code>) або Redis Lua-скрипт. Лок у пам'яті прибрати, бо він дає хибне відчуття безпеки.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task"><div class="tt">Задача 4. Переказ з deadlock-ами</div>
+        <p>Переказ між двома рахунками зроблено через <code>SELECT … FOR UPDATE</code> спершу рахунку-відправника, потім отримувача.
+        Під навантаженням з'являються помилки <code>deadlock detected</code>. Чому і що робити?</p>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <ol>
+            <li>Переказ 1→2 блокує 1, потім чекає 2; паралельний переказ 2→1 блокує 2, потім чекає 1. Виходить цикл очікування.</li>
+            <li>Блокувати в <b>однаковому порядку</b>: <code>WHERE id IN (:a, :b) ORDER BY id FOR UPDATE</code>.</li>
+            <li>Транзакція коротка: жодних зовнішніх викликів усередині.</li>
+            <li>Повторювати транзакцію при 40P01 з backoff (рідкісні deadlock-и все одно можливі при інших шляхах доступу).</li>
+            <li>Альтернатива: два умовні UPDATE в одній транзакції, теж у порядку id.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task"><div class="tt">Задача 5. Лист «маршрут готовий» приходить двічі</div>
+        <p>Після генерації маршруту Celery-задача шле водію SMS. Іноді водії отримують дві SMS. Celery налаштовано з
+        <code>acks_late=True</code>. Чому і як виправити?</p>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <ol>
+            <li>З <code>acks_late</code> задача підтверджується після виконання. Якщо воркер упав або перезапустився (деплой!) після відправки SMS, але до ack, задачу отримає інший воркер. Це at-least-once.</li>
+            <li>Ідемпотентність за ключем події: <code>notification_id</code> (наприклад, <code>route_ready:{route_id}</code>). <code>INSERT INTO sent_notifications … ON CONFLICT DO NOTHING</code> перед відправкою; якщо не вставилось, задача пропускає SMS.</li>
+            <li>Залишкове вікно «вставили запис, але SMS не пішла» закривається статусом (<code>pending → sent</code>) і повтором для <code>pending</code>. Або провайдер SMS з власним idempotency key.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="task"><div class="tt">Задача 6. Два диспетчери редагують маршрут</div>
+        <p>Два диспетчери відкрили той самий маршрут в адмінці. Перший переставив зупинки і зберіг, другий змінив водія
+        і зберіг на хвилину пізніше. Перестановка зупинок зникла. Як спроєктувати API?</p>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <ol>
+            <li>Це lost update на рівні людей: другий зберіг «увесь маршрут» на основі старої копії. Блокувати рядок на хвилини (FOR UPDATE) неможливо.</li>
+            <li>Оптимістичне блокування: <code>GET</code> повертає <code>ETag: "v7"</code>, <code>PATCH</code> з <code>If-Match: "v7"</code>; на сервері <code>UPDATE … WHERE id = :id AND version = 7</code>; 0 рядків → 412.</li>
+            <li>UI на 412: показати «маршрут змінив інший користувач», підтягнути нову версію, запропонувати застосувати свої зміни повторно.</li>
+            <li>Додатково зменшити конфлікти: <code>PATCH</code> лише змінених полів замість <code>PUT</code> цілого об'єкта, тоді зміна водія і перестановка зупинок взагалі не конфліктують.</li>
+          </ol>
+        </div></details>
+      </div>
+    </section>
+
+    <div class="card">
+      Короткий підсумок: гонка потребує спільного стану, конкурентності, запису і неатомарних кроків. Кожна техніка
+      прибирає одну з цих умов. Для бекенду найчастіше достатньо трьох речей: атомарного умовного <code>UPDATE</code>,
+      обмежень бази (UNIQUE, CHECK, EXCLUDE) та ідемпотентності для всього, що може прийти двічі. Локи (у пам'яті,
+      FOR UPDATE, розподілені) беріть свідомо й пам'ятайте їхні межі. Пов'язане:
+      <a href="06-gil-and-concurrency.html">6 · GIL і конкурентність</a>,
+      <a href="18-databases-interview-qa.html">18 · Q&amp;A по базах</a>,
+      <a href="28-databases-by-example.html">28 · бази на прикладі</a>,
+      <a href="../system-design/04-databases-storage.html">System Design 4</a>,
+      <a href="../system-design/12-classic-geo-booking-topk.html">System Design 12 · double booking</a>.
+    </div>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Приклади з проєкту прив'язані до <code>app/repositories/organization_repository.py</code>, <code>app/core/dependencies.py</code>,
+  <code>app/core/rate_limiting.py</code> і <code>app/api/routes/router.py</code> репозиторію <code>ai-delivery-planner-backend</code>.
+  Поведінка блокувань описана для PostgreSQL у режимі Read Committed, якщо не вказано інше.
+</footer>
+
+<script>
+(function(){
+  var root = document.documentElement, btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function current(){
+    var t = root.getAttribute('data-theme');
+    return t === 'light' || t === 'dark' ? t : (mq && mq.matches ? 'dark' : 'light');
+  }
+  function render(){
+    var dark = current() === 'dark';
+    btn.textContent = dark ? '☀️ Світла тема' : '🌙 Темна тема';
+    btn.setAttribute('aria-label', dark ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('docs-theme', next); }catch(e){}
+    render();
+  });
+  if(mq && mq.addEventListener) mq.addEventListener('change', render);
+  render();
+})();
+</script>
+<script src="../assets/mobile-nav.js"></script>
+</body>
+</html>
+
