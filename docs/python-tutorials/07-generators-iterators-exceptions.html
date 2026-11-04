@@ -503,7 +503,11 @@
       <li><a href="#s4">4. send/throw/close — генератор як корутина</a></li>
       <li><a href="#s5">5. yield from — делегування</a></li>
       <li><a href="#s6">6. itertools — лінькі інструменти</a></li>
-      <li><a href="#s7">7. Звідки виріс async/await</a></li>
+      <li><a href="#s7">7. Звідки виріс async/await</a>
+        <ol>
+          <li><a href="#s7-1">7.1 Корутина vs генератор</a></li>
+        </ol>
+      </li>
       <li><a href="#s8">8. Генератори у вашому проєкті</a></li>
     </ol>
     <div class="toc-group">Частина II — Винятки глибше</div>
@@ -800,6 +804,164 @@ async def modern_coroutine():
       у звичайному контекст-менеджері з туторіалу 5, тільки в async-формі).</p>
     </section>
 
+    <section id="s7-1">
+      <h2><span class="num">7.1</span> Корутина vs генератор — у чому різниця і де що використовувати</h2>
+      <p class="section-desc">Класичне питання співбесіди. Обидва вміють «заморозитись» посеред функції й продовжити пізніше, але відповідають на різні питання: генератор — <i>«дай наступне значення»</i>, корутина — <i>«дочекайся результату й поверни його»</i>.</p>
+
+      <h3>Спільне: одна й та сама машинерія</h3>
+      <p>І генератор, і корутина — це <b>призупинюваний фрейм функції</b>: локальні змінні й
+      позиція виконання зберігаються між кроками. Обидва мають <code>.send()</code>,
+      <code>.throw()</code>, <code>.close()</code>, і обидва сигналізують про кінець через
+      <code>StopIteration</code> (розділ 7 — корутини буквально виросли з генераторів).
+      Різниця не в механізмі, а в <b>ролі</b>: хто їх «крутить» і що вони віддають.</p>
+
+      <table>
+        <tr><th></th><th>Генератор</th><th>Корутина (<code>async def</code>)</th></tr>
+        <tr><td>Оголошення</td><td><code>def f(): ... yield x</code></td><td><code>async def f(): ... await y</code></td></tr>
+        <tr><td>Що повертає виклик <code>f()</code></td><td>об'єкт <code>generator</code> (тіло ще не виконується)</td><td>об'єкт <code>coroutine</code> (тіло ще не виконується)</td></tr>
+        <tr><td>Що «видає» назовні</td><td><b>багато значень</b> по одному — послідовність</td><td><b>одне значення</b> — результат через <code>return</code></td></tr>
+        <tr><td>Де призупиняється</td><td>на <code>yield</code> — «ось значення, чекаю наступного запиту»</td><td>на <code>await</code> — «чекаю, поки завершиться I/O»</td></tr>
+        <tr><td>Хто керує</td><td><b>споживач</b>: <code>for</code>, <code>next()</code>, <code>list()</code> (pull-модель)</td><td><b>event loop</b>: <code>await</code>, <code>asyncio.run()</code>, <code>create_task()</code></td></tr>
+        <tr><td>Протокол</td><td><code>__iter__</code> + <code>__next__</code></td><td><code>__await__</code> (немає <code>__next__</code>)</td></tr>
+        <tr><td>Як спожити</td><td><code>for x in f()</code> — <code>await f()</code> дасть <code>TypeError</code></td><td><code>await f()</code> — <code>for x in f()</code> дасть <code>TypeError</code></td></tr>
+        <tr><td>Якщо «забули» спожити</td><td>нічого не станеться, мовчки</td><td><code>RuntimeWarning: coroutine '...' was never awaited</code></td></tr>
+        <tr><td>Перевірка</td><td><code>inspect.isgenerator(obj)</code></td><td><code>inspect.iscoroutine(obj)</code></td></tr>
+        <tr><td>Для чого</td><td>ліниві послідовності, пайплайни даних, великі файли</td><td>конкурентне очікування I/O: HTTP, БД, черги, websockets</td></tr>
+      </table>
+
+      <h3>Приклад 1: та сама «подібна» задача — різні цілі</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">генератор — ВИРОБЛЯЄ послідовність, споживач тягне значення</span></div>
+        <pre><code>def read_rows(path):
+    <span class="cmt">"""Файл на 10 ГБ: у пам'яті завжди лише один рядок."""</span>
+    with open(path) as f:
+        for line in f:
+            yield line.rstrip("\n").split(",")
+
+def only_active(rows):
+    for row in rows:
+        if row[2] == "active":
+            yield row
+
+<span class="cmt"># пайплайн: нічого не читається, доки for не попросить наступний рядок</span>
+for row in only_active(read_rows("users.csv")):
+    print(row[0])</code></pre>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">корутина — ЧЕКАЄ на I/O і повертає ОДИН результат</span></div>
+        <pre><code>import asyncio
+import httpx
+
+async def fetch_user(client, user_id):
+    resp = await client.get(f"/users/{user_id}")   <span class="cmt"># тут віддає керування event loop</span>
+    return resp.json()                              <span class="cmt"># один результат, не послідовність</span>
+
+async def main():
+    async with httpx.AsyncClient(base_url="https://api.example.com") as client:
+        <span class="cmt"># 100 запитів чекають ОДНОЧАСНО: ~час одного запиту, а не 100x</span>
+        users = await asyncio.gather(*(fetch_user(client, i) for i in range(100)))
+    print(len(users))
+
+asyncio.run(main())</code></pre>
+      </div>
+      <p>Генератор економить <b>пам'ять</b> (не тримає всю послідовність). Корутина економить
+      <b>час</b> (поки одна чекає на мережу, інші працюють). Генератор сам по собі нічого не
+      робить паралельно, а корутина без event loop узагалі не запуститься.</p>
+
+      <h3>Приклад 2: їх не можна підмінити одне одним</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">python — що буде, якщо переплутати</span></div>
+        <pre><code>def gen():
+    yield 1
+
+async def coro():
+    return 42
+
+type(gen()).__name__    <span class="out"># 'generator'</span>
+type(coro()).__name__   <span class="out"># 'coroutine'</span>
+
+for x in coro(): ...    <span class="out"># TypeError: 'coroutine' object is not iterable</span>
+
+async def main():
+    await gen()         <span class="out"># TypeError: object generator can't be used in 'await' expression</span>
+
+def handler():
+    coro()              <span class="cmt"># забули await -- тіло НЕ виконається</span>
+                        <span class="out"># RuntimeWarning: coroutine 'coro' was never awaited</span></code></pre>
+      </div>
+
+      <h3>Приклад 3: під капотом корутина — «генератор без for»</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">python — крутимо корутину вручну, як це робить event loop</span></div>
+        <pre><code>c = coro()
+try:
+    c.send(None)          <span class="cmt"># event loop робить саме це: send(None), доки не StopIteration</span>
+except StopIteration as e:
+    print(e.value)        <span class="out"># 42 -- результат return лежить у StopIteration.value</span></code></pre>
+      </div>
+      <p>Це той самий трюк, що й <code>return</code> у генераторі з розділу 5. Event loop
+      викликає <code>.send(None)</code>. Коли корутина впирається в <code>await</code> на
+      незавершену операцію, вона віддає loop'у «майбутнє» (<code>Future</code>) і засинає.
+      Коли I/O готове, loop знову викликає <code>.send()</code> і корутина продовжується.
+      Генератор через <code>for</code> так не керується, бо в корутини навмисно немає
+      <code>__next__</code>. Python розвів ці типи в PEP 492, щоб їх не плутали.</p>
+
+      <h3>Чотири варіанти: <code>yield</code> × <code>async</code></h3>
+      <table>
+        <tr><th></th><th>без <code>yield</code></th><th>з <code>yield</code></th></tr>
+        <tr><td><code>def</code></td><td>звичайна функція — одне значення одразу</td><td><b>генератор</b> — багато значень, <code>for</code></td></tr>
+        <tr><td><code>async def</code></td><td><b>корутина</b> — одне значення після очікування, <code>await</code></td><td><b>асинхронний генератор</b> — багато значень, кожне після очікування, <code>async for</code></td></tr>
+      </table>
+      <p>Асинхронний генератор потрібен, коли кожен елемент послідовності треба <i>дочекатися</i>:
+      посторінкове читання API, стрімінг рядків із БД, Server-Sent Events, читання з Kafka.
+      Приклад із проєкту — <code>get_session()</code> вище.</p>
+
+      <div class="callout info">
+        <div class="ic">ℹ️</div>
+        <div class="body"><b>А «генератор-корутина» з розділу 4?</b> Слово «корутина» історично
+        ширше. Генератор із <code>received = yield</code>, у який значення <i>штовхають</i>
+        через <code>.send()</code>, — теж корутина в класичному сенсі (споживач даних, push-модель).
+        На співбесіді варто уточнити: <b>native coroutine</b> (<code>async def</code>) і
+        <b>generator-based coroutine</b> (старий стиль, <code>@asyncio.coroutine</code>
+        прибрали в Python 3.11).</div>
+      </div>
+
+      <h3>Що коли брати</h3>
+      <table>
+        <tr><th>Задача</th><th>Інструмент</th></tr>
+        <tr><td>Обробити великий файл / вибірку без завантаження в пам'ять</td><td>генератор</td></tr>
+        <tr><td>Пайплайн трансформацій (filter → map → batch)</td><td>генератори + <code>itertools</code></td></tr>
+        <tr><td>Нескінченна послідовність (id, лічильник, ретраї з backoff)</td><td>генератор</td></tr>
+        <tr><td>Setup/teardown: <code>@contextmanager</code>, FastAPI-залежність із <code>yield</code></td><td>генератор (або async-генератор)</td></tr>
+        <tr><td>Багато HTTP / DB / Redis запитів одночасно</td><td>корутини + <code>gather</code> / <code>TaskGroup</code></td></tr>
+        <tr><td>Websocket, довгі з'єднання, фонові таски в одному процесі</td><td>корутини</td></tr>
+        <tr><td>Потік даних, де кожен елемент приходить по мережі</td><td>асинхронний генератор</td></tr>
+        <tr><td>Важкі обчислення (CPU)</td><td>ні те, ні інше: процеси / <code>ProcessPoolExecutor</code></td></tr>
+      </table>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія з фронтендом</div>
+        Генератор — це <code>function*</code> з <code>.next()</code>, корутина — <code>async function</code>.
+        Є одна важлива різниця з JS: <code>async function</code> у JS <b>одразу</b> починає
+        виконуватись до першого <code>await</code> і повертає вже «запущений» Promise. Корутина в
+        Python <b>лінива</b>: <code>coro()</code> лише створює об'єкт. Без <code>await</code>
+        чи <code>create_task()</code> не виконається жоден рядок. Тому «забутий await» у Python
+        означає, що код просто не запустився, а не «запустився і ніхто не дочекався».
+      </div>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Відповідь на співбесіді за 20 секунд</span>
+        «Обидва — призупинювані функції на одній машинерії. Генератор <i>видає послідовність</i>
+        значень через <code>yield</code>, і його тягне споживач через <code>for</code>/<code>next()</code>.
+        Це про лінивість і пам'ять. Корутина <i>повертає один результат</i>, призупиняючись на
+        <code>await</code> поки чекає I/O, і її крутить event loop. Це про конкурентність
+        і час. Вони несумісні: корутину не можна ітерувати, генератор не можна await-ити. А
+        комбінація обох — асинхронний генератор з <code>async for</code>».</div>
+      </div>
+    </section>
+
     <section id="s8">
       <h2><span class="num">8</span> Генератори у вашому проєкті</h2>
       <div class="codecard">
@@ -1059,6 +1221,18 @@ logger.exception("Unhandled error on %s %s", request.method, request.url.path)
         <code>yield from</code>) у ранньому asyncio. PEP 492 (2015, Python 3.5) додав
         <code>async</code>/<code>await</code> як окремий, явний синтаксис поверх тієї самої
         базової машинерії.</div>
+      </details>
+
+      <details class="qa">
+        <summary><span class="difficulty core">База</span>Чим корутина відрізняється від генератора?</summary>
+        <div class="a">Генератор <b>видає послідовність</b> значень через <code>yield</code>.
+        Його тягне споживач (<code>for</code>/<code>next()</code>), і він потрібен для лінивості
+        та економії пам'яті. Корутина (<code>async def</code>) <b>повертає один результат</b>,
+        призупиняючись на <code>await</code> під час очікування I/O. Її крутить event loop, і
+        вона потрібна для конкурентності. Механізм у них спільний (фрейм, <code>send</code>,
+        <code>StopIteration</code>), але типи несумісні: <code>for</code> по корутині й
+        <code>await</code> генератора дають <code>TypeError</code>. Детально в розділі
+        <a href="#s7-1">7.1</a>.</div>
       </details>
 
       <details class="qa">
