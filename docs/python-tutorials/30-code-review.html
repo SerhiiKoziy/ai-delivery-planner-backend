@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>30. Code Review: знайди помилки — AI Delivery Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<script>
+(function(){
+  try{ var t = localStorage.getItem('docs-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+    --fg:#e7eaf2; --fg-muted:#9aa2b4;
+    --accent:#6d9bff; --accent-soft:#1c2740;
+    --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+    --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+    --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+    --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+    --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+    --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--accent); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent-soft);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"],
+  #tab-sysdesign:checked ~ .nav-tabbar label[for="tab-sysdesign"],
+  #tab-quantum:checked ~ .nav-tabbar label[for="tab-quantum"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  #tab-quantum:checked ~ .nav-links.quantum{display:flex;}
+  #tab-sysdesign:checked ~ .nav-links.sysdesign{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:12px 0 4px;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.9px; display:flex; align-items:baseline; gap:10px;
+  }
+  .qa summary .qnum{
+    color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700;
+    flex-shrink:0;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 18px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .a p{margin:8px 0; color:var(--fg-muted);}
+  .qa .a p:first-child{margin-top:0;}
+  .qa .checks{
+    margin-top:10px; padding:10px 12px; border-radius:9px; background:var(--interview-bg);
+    border:1px solid var(--interview-border); font-size:13.2px; color:var(--interview);
+  }
+  .qa .checks b{color:var(--interview);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:2px; vertical-align:middle; flex-shrink:0;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .qa .difficulty.sys{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+
+  .cat-head{
+    display:flex; align-items:center; gap:12px; margin-bottom:4px;
+  }
+  .cat-letter{
+    width:34px; height:34px; border-radius:10px; background:var(--accent-soft); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;
+  }
+
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- theme switch --- */
+  :root{color-scheme:light;}
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .theme-toggle{
+    cursor:pointer; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+    background:var(--bg-soft); color:var(--fg); font:inherit; font-size:12.5px; font-weight:600;
+    transition:background .15s, border-color .15s;
+  }
+  .theme-toggle:hover{background:var(--card); border-color:var(--accent);}
+  .theme-toggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+  /* --- tutorial 28: databases by example --- */
+  :root{ --pg:#336791; --mongo:#13aa52; --redis:#d82c20; --cass:#1287b1; --ch:#b38f00; --es:#d63f86; --neo:#3d72b0; }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --pg:#6fa3d6; --mongo:#4fd18a; --redis:#ff7a6e; --cass:#5cc3e8; --ch:#f0cf4a; --es:#ff8cc3; --neo:#86b2ec; }
+  }
+  :root[data-theme="dark"]{ --pg:#6fa3d6; --mongo:#4fd18a; --redis:#ff7a6e; --cass:#5cc3e8; --ch:#f0cf4a; --es:#ff8cc3; --neo:#86b2ec; }
+  .content-center > article{max-width:820px;}
+  article h4{font-size:15.5px; margin:20px 0 6px;}
+  .tablewrap{overflow-x:auto; margin:16px 0;}
+  .tablewrap table{margin:0;}
+  td.c{text-align:center; white-space:nowrap;}
+  .y{color:var(--good); font-weight:700;} .m{color:var(--warn); font-weight:700;} .n{color:var(--bad); font-weight:700;}
+  .callout.fe{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .verdict{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0;}
+  @media (max-width:640px){ .verdict{grid-template-columns:1fr;} }
+  .verdict > div{border-radius:var(--radius); padding:12px 14px; border:1px solid; font-size:14.3px;}
+  .verdict .win{background:var(--good-bg); border-color:var(--good-border);}
+  .verdict .lose{background:var(--bad-bg); border-color:var(--bad-border);}
+  .verdict .t{font-weight:700; display:block; margin-bottom:4px;}
+  .verdict .win .t{color:var(--good);} .verdict .lose .t{color:var(--bad);}
+  .verdict ul{margin:4px 0 0; padding-left:18px;} .verdict li{margin:3px 0;}
+  .dbhead{display:flex; align-items:center; gap:12px; margin-bottom:4px;}
+  .dbbadge{width:38px; height:38px; border-radius:10px; color:#fff; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px;}
+  .qlist{list-style:none; padding:0;}
+  .qlist li{border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin:8px 0; background:var(--card);}
+  .qlist li b.q{color:var(--accent); margin-right:6px;}
+  figure.db{margin:20px 0;}
+  figure.db svg{width:100%; height:auto; display:block; border:1px solid var(--border); border-radius:var(--radius); background:var(--card);}
+  figure.db figcaption{font-size:13px; color:var(--fg-muted); text-align:center; margin-top:6px;}
+  figure.db svg text{fill:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  figure.db svg .mut{fill:var(--fg-muted);}
+  figure.db svg .box{fill:var(--bg-soft); stroke:var(--border); stroke-width:1.5;}
+  figure.db svg .ln{stroke:var(--fg-muted); stroke-width:1.4; fill:none;}
+  figure.db svg .ar{fill:var(--fg-muted);}
+  figure.db svg .mono{font-family:"SF Mono",ui-monospace,Menlo,monospace;}
+  .task{border:1px solid var(--interview-border); background:var(--interview-bg); border-radius:var(--radius); padding:14px 16px; margin:16px 0;}
+  .task .tt{font-weight:700; color:var(--interview);}
+  details.ans{border:1px solid var(--border); border-radius:10px; background:var(--card); margin:10px 0 0;}
+  details.ans summary{cursor:pointer; padding:10px 14px; font-weight:600; font-size:14.5px;}
+  details.ans .a{padding:4px 16px 14px; border-top:1px solid var(--border); font-size:14.5px;}
+  .deeper{font-size:13.5px; color:var(--fg-muted); margin-top:8px;}
+  .deeper a{color:var(--accent);}
+
+  /* --- tutorial 30: code review --- */
+  .sev{display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; padding:1px 7px; border-radius:999px; border:1px solid; margin-right:4px; vertical-align:1px; white-space:nowrap;}
+  .sev.crit{background:var(--bad-bg); color:var(--bad); border-color:var(--bad-border);}
+  .sev.high{background:var(--warn-bg); color:var(--warn); border-color:var(--warn-border);}
+  .sev.med{background:var(--info-bg); color:var(--info); border-color:var(--info-border);}
+  .sev.low{background:var(--bg-soft); color:var(--fg-muted); border-color:var(--border);}
+  .lvlbadge{font-size:12px; font-weight:700; padding:2px 10px; border-radius:999px; border:1px solid var(--border); color:var(--fg-muted); background:var(--bg-soft); white-space:normal;}
+  .lvlbadge.l1{color:var(--good); border-color:var(--good-border); background:var(--good-bg);}
+  .lvlbadge.l2{color:var(--info); border-color:var(--info-border); background:var(--info-bg);}
+  .lvlbadge.l3, .lvlbadge.l4{color:var(--warn); border-color:var(--warn-border); background:var(--warn-bg);}
+  .lvlbadge.l5{color:var(--bad); border-color:var(--bad-border); background:var(--bad-bg);}
+  article h2 .lvlbadge{margin-left:4px;}
+  article h2{flex-wrap:wrap;}
+  .codecard.bad{border-color:var(--bad-border);}
+  .codecard.good{border-color:var(--good-border);}
+  .codecard.bad .bar .path{color:#ff9b8f;}
+  .codecard.good .bar .path{color:#7fe0a5;}
+  details.issues{border:1px solid var(--border); border-radius:10px; background:var(--card); margin:12px 0 16px;}
+  details.issues > summary{cursor:pointer; padding:11px 14px; font-weight:600; font-size:14.5px;}
+  details.issues > .a{padding:6px 16px 14px; border-top:1px solid var(--border); font-size:14.5px;}
+  .issue-list{padding-left:20px;}
+  .issue-list li{margin:8px 0;}
+
+  /* --- JetBrains New UI "Dark" scheme (WebStorm / PyCharm 2023+ default); tokens from Pygments --- */
+  .codecard:has(pre.jb){background:#1E1F22; border-color:#393B40;}
+  .codecard.bad:has(pre.jb){box-shadow:inset 3px 0 0 #F75464;}
+  .codecard.good:has(pre.jb){box-shadow:inset 3px 0 0 #5FB865;}
+  .codecard:has(pre.jb) .bar{background:#2B2D30; border-bottom:1px solid #1E1F22;}
+  .codecard:has(pre.jb) .bar .path{color:#DFE1E5; font-family:"JetBrains Mono","SF Mono",ui-monospace,Menlo,monospace; font-size:12.5px;}
+  pre.jb{counter-reset:jbln; padding:12px 16px 12px 0 !important; background:#1E1F22;}
+  pre.jb code{color:#BCBEC4; font-family:"JetBrains Mono","SF Mono",ui-monospace,Menlo,Consolas,monospace; font-size:13px; line-height:1.6;}
+  /* Pygments' short classes (.n, .m) collide with page classes like .n{font-weight:700} */
+  pre.jb code span{font-weight:400; font-style:normal;}
+  pre.jb .jb-ln{counter-increment:jbln; user-select:none; -webkit-user-select:none;}
+  pre.jb .jb-ln::before{
+    content:counter(jbln); display:inline-block; width:3.2em; padding-right:1.2em; margin-right:.6em; text-align:right;
+    color:#4B5059; background:#1E1F22;
+  }
+  /* keywords, word operators (and/or/not/in/is), string prefixes, escapes, f-string braces */
+  pre.jb .k, pre.jb .kn, pre.jb .kc, pre.jb .kd, pre.jb .kr, pre.jb .kp, pre.jb .ow,
+  pre.jb .sa, pre.jb .se, pre.jb .si{color:#CF8E6D;}
+  pre.jb .s, pre.jb .s1, pre.jb .s2, pre.jb .sb, pre.jb .sc, pre.jb .sh, pre.jb .sx, pre.jb .sr{color:#6AAB73;}
+  pre.jb .sd{color:#5F826B; font-style:italic;}
+  pre.jb .m, pre.jb .mi, pre.jb .mf, pre.jb .mh, pre.jb .mo, pre.jb .mb{color:#2AACB8;}
+  pre.jb .c, pre.jb .c1, pre.jb .cm, pre.jb .ch, pre.jb .cs{color:#7A7E85;}
+  pre.jb .nf{color:#56A8F5;}
+  pre.jb .fm{color:#B200B2;}
+  pre.jb .nd{color:#B3AE60;}
+  pre.jb .nb, pre.jb .ne{color:#8888C6;}
+  pre.jb .bp{color:#94558D;}
+  pre.jb .nc, pre.jb .nn, pre.jb .n, pre.jb .nv, pre.jb .o, pre.jb .p, pre.jb .w{color:#BCBEC4;}
+  pre.jb .err{color:#F75464; background:none;}
+</style>
+<link rel="stylesheet" href="../assets/mobile-nav.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="top-row">
+      <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Темна тема</button>
+    </div>
+  </div>
+</header>
+
+
+<div class="hero">
+  <div class="kicker">Бонус-туторіал 30 · Підготовка до співбесіди</div>
+  <h1>Code Review: знайди помилки в коді джуна (і поясни, як правильно)</h1>
+  <p class="lead">
+    Частий формат співбесіди: «ось PR, проведіть code review». Тут <b>5 прикладів поганого Python-коду</b> з домену
+    цього проєкту (доставки, геокодинг, маршрути, вебхуки), від очевидних помилок до тонких senior-рівня. У них
+    помилки з асинхронністю й конкурентністю корутин, ін'єкції, неправильний кеш, логування, виклики сторонніх API
+    та інші типові проблеми. Під кожним прикладом сховано список проблем, правильний варіант коду і пояснення,
+    <i>чому саме так</i>. Наприкінці — <b>5 найпоширеніших антипатернів</b> і швидкі async-пастки.
+  </p>
+  <div class="pills">
+    <span class="pill">🧪 5 прикладів, складність ↑</span>
+    <span class="pill">⚡ Акцент: asyncio і конкурентність</span>
+    <span class="pill">🛡️ Ін'єкції, кеш, логи, зовнішні API</span>
+    <span class="pill">🚫 5 антипатернів</span>
+    <span class="pill">🎯 12 швидких async-пасток</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-sysdesign" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-quantum" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-sysdesign" class="nav-tabbtn">🏗️ System Design</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+      <label for="tab-quantum" class="nav-tabbtn">⚛️ Квантове</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-python-types.html">4. Типи</a>
+        <a href="05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="11-logging.html">11. Логування</a>
+        <a href="12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="13-design-patterns.html">13. Патерни</a>
+        <a href="14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="16-pydantic.html">16. Pydantic</a>
+        <a href="21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="25-system-design.html">25. Системний дизайн</a>
+        <a href="26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="27-kubernetes.html">27. Kubernetes</a>
+        <a href="30-code-review.html" class="active">30. Code Review</a>
+        <a href="17-databases-fundamentals.html">17. 🗄️ Бази даних: основи</a>
+        <a href="18-databases-interview-qa.html">18. 🗄️ Бази даних: Q&amp;A</a>
+        <a href="19-postgres-storage-and-memory.html">19. 🗄️ Postgres storage &amp; пам'ять</a>
+        <a href="20-redis.html">20. 🗄️ Redis</a>
+        <a href="28-databases-by-example.html">28. 🗄️ Бази даних на прикладі</a>
+        <a href="29-race-conditions.html">29. 🗄️ Race conditions</a>
+      </nav>
+      <nav class="nav-links sysdesign">
+        <a href="../system-design/01-interview-framework.html">1. Фреймворк співбесіди</a>
+        <a href="../system-design/02-networking-entry.html">2. Мережа: DNS, CDN, LB, API</a>
+        <a href="../system-design/03-caching.html">3. Кешування углиб</a>
+        <a href="../system-design/04-databases-storage.html">4. БД I: моделі, індекси, ACID</a>
+        <a href="../system-design/05-replication-sharding.html">5. БД II: реплікація, шардинг</a>
+        <a href="../system-design/06-distributed-systems.html">6. Розподілені системи</a>
+        <a href="../system-design/07-async-messaging.html">7. Черги, Kafka, саги</a>
+        <a href="../system-design/08-reliability-scale.html">8. Надійність і rate limiting</a>
+        <a href="../system-design/09-classic-url-id-kv.html">9. Задачі I: URL, ID, KV</a>
+        <a href="../system-design/10-classic-feed-chat.html">10. Задачі II: стрічка, чат</a>
+        <a href="../system-design/11-classic-storage-video-crawler.html">11. Задачі III: файли, відео</a>
+        <a href="../system-design/12-classic-geo-booking-topk.html">12. Задачі IV: гео, бронювання</a>
+        <a href="../system-design/13-tricky-topics-qa.html">13. Трікі теми й Q&amp;A</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="../node-doc/01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="../node-doc/02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="../node-doc/03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="../node-doc/04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="../node-doc/05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="../node-doc/06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="../node-doc/07-fs-process-os.html">7. fs, process, os</a>
+        <a href="../node-doc/08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="../node-doc/09-http-networking.html">9. HTTP і мережа</a>
+        <a href="../node-doc/10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="../node-doc/11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="../node-doc/12-databases-orm.html">12. БД і ORM</a>
+        <a href="../node-doc/13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="../node-doc/14-security.html">14. Безпека Node</a>
+        <a href="../node-doc/15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="../node-doc/16-testing.html">16. Тестування</a>
+        <a href="../node-doc/17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="../node-doc/18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="../node-doc/19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="../node-doc/20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+      <nav class="nav-links quantum">
+        <a href="../quantum-doc/01-quanta-and-quantum-computing.html">1. Кванти й обчислення</a>
+        <a href="../quantum-doc/02-quantum-engineering-history.html">2. Квантова інженерія</a>
+        <a href="../quantum-doc/03-quantum-backend-python-ibm.html">3. Бекенд + IBM Quantum</a>
+        <a href="../quantum-doc/04-pet-project-quantum-routing.html">4. Пет-проєкт: маршрути</a>
+        <a href="../quantum-doc/05-quantum-engineer-roadmap.html">5. Шлях інженера: ресурси</a>
+        <a href="../quantum-doc/06-linear-algebra-vectors-matrices.html">6. Лін. алгебра I: вектори, матриці</a>
+        <a href="../quantum-doc/07-linear-algebra-eigen-tensor.html">7. Лін. алгебра II: власні, тензори</a>
+        <a href="../quantum-doc/08-complex-numbers-phase.html">8. Комплексні числа й фаза</a>
+        <a href="../quantum-doc/09-probability-shots.html">9. Ймовірності й shots</a>
+        <a href="../quantum-doc/10-numpy-statevector-simulator.html">10. NumPy: свій симулятор</a>
+        <a href="../quantum-doc/11-qiskit-circuits-aer.html">11. Qiskit I: схеми й Aer</a>
+        <a href="../quantum-doc/12-qiskit-runtime-real-qpu.html">12. Qiskit II: реальний QPU</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s0">0. Як робити review на співбесіді</a></li>
+      <li><a href="#ex1">1. Пошук доставок (junior)</a></li>
+      <li><a href="#ex2">2. Геокодинг з кешем</a></li>
+      <li><a href="#ex3">3. Пакетний геокодинг: asyncio</a></li>
+      <li><a href="#ex4">4. Вебхук оплати</a></li>
+      <li><a href="#ex5">5. Async-кеш і фонові задачі (senior)</a></li>
+      <li><a href="#anti">6. П'ять антипатернів</a></li>
+      <li><a href="#quick">7. 12 швидких async-пасток</a></li>
+      <li><a href="#check">8. Чекліст рев'ю</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <!-- ============ 0 ============ -->
+    <section id="s0">
+      <h2><span class="num">00</span>Як робити code review на співбесіді</h2>
+      <p>Інтерв'юер оцінює не кількість знайдених дрібниць, а <b>вміння бачити головне</b>: що зламає прод, що
+      відкриє дірку в безпеці, що загубить дані, і вміння пояснити це спокійно, як колезі.</p>
+      <ol>
+        <li><b>Прочитай код цілком</b> один раз, не коментуючи. Зрозумій, що він має робити.</li>
+        <li><b>Уточни контекст</b>: скільки запитів, чи кілька інстансів, хто викликає, чи це гроші/PII. Від цього залежить, що критично.</li>
+        <li><b>Іди за пріоритетами</b>, а не зверху вниз (таблиця нижче). Почни з найважчого.</li>
+        <li><b>Кожен коментар</b>: що не так → чим це загрожує (конкретний сценарій) → як виправити.</li>
+        <li><b>Наприкінці</b> підсумуй: «блокери такі-то, решта — покращення» і запропонуй, що робити першим.</li>
+      </ol>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Пріоритет</th><th>Що шукати</th><th>Мітка коментаря</th></tr></thead>
+        <tbody>
+          <tr><td><span class="sev crit">Critical</span></td><td>Безпека (ін'єкції, доступ до чужих даних, секрети), втрата або подвійне списання грошей, падіння сервісу</td><td><code>blocker:</code></td></tr>
+          <tr><td><span class="sev high">High</span></td><td>Гонки, блокування event loop, відсутні таймаути, неправильна обробка помилок, витік PII в логи</td><td><code>blocker:</code> / <code>issue:</code></td></tr>
+          <tr><td><span class="sev med">Medium</span></td><td>Продуктивність (N+1, без пулу з'єднань), кеш без меж, слабка спостережуваність</td><td><code>issue:</code> / <code>suggestion:</code></td></tr>
+          <tr><td><span class="sev low">Low</span></td><td>Іменування, структура, типи, дрібний стиль (краще автоматизувати лінтером)</td><td><code>nit:</code></td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout fe"><div class="ic">🎨</div><div class="body"><b>Аналогія для фронтендера.</b>
+        Це як рев'ю React-компонента: спершу «тут XSS через <code>dangerouslySetInnerHTML</code>» і «тут гонка відповідей
+        fetch», а вже потім «винеси в кастомний хук» і «перейменуй змінну». Ніхто не почне з відступів, якщо компонент
+        показує дані чужого користувача.</div></div>
+      <div class="callout warn"><div class="ic">💬</div><div class="body"><b>Як формулювати.</b> Не «це жахливо», а
+        «<code>blocker:</code> тут <code>requests.get</code> всередині <code>async def</code>: поки чекаємо геокодер, цей воркер не обслуговує жодного
+        іншого запиту. При 50 RPS латентність усіх ендпоінтів виросте до секунд. Пропоную <code>httpx.AsyncClient</code> зі спільним пулом».</div></div>
+    </section>
+
+    <!-- ============ EX1 ============ -->
+    <section id="ex1">
+      <h2><span class="num">01</span>Пошук доставок <span class="lvlbadge l1">Junior · очевидне</span></h2>
+      <p class="section-desc">Ендпоінт пошуку доставок організації за частиною адреси. Знайди щонайменше 8 проблем.</p>
+      <div class="codecard bad"><div class="bar"><span class="path">❌ app/api/deliveries/search.py — до рев'ю</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="kn">import</span><span class="w"> </span><span class="nn">requests</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">text</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/deliveries/search"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">search</span><span class="p">(</span><span class="n">q</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">org_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">db</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">get_db</span><span class="p">),</span> <span class="n">user</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">get_current_user</span><span class="p">)):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"user </span><span class="si">{</span><span class="n">user</span><span class="o">.</span><span class="n">email</span><span class="si">}</span><span class="s2"> searching </span><span class="si">{</span><span class="n">q</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">try</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">rows</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">text</span><span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="sa">f</span><span class="s2">"SELECT * FROM deliveries WHERE organization_id = '</span><span class="si">{</span><span class="n">org_id</span><span class="si">}</span><span class="s2">' "</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="sa">f</span><span class="s2">"AND address LIKE '%</span><span class="si">{</span><span class="n">q</span><span class="si">}</span><span class="s2">%'"</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="p">))</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">result</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">weather</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s2">"https://api.weather.example/now?lat=</span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">latitude</span><span class="si">}</span><span class="s2">&amp;lon=</span><span class="si">{</span><span class="n">r</span><span class="o">.</span><span class="n">longitude</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">result</span><span class="o">.</span><span class="n">append</span><span class="p">({</span><span class="o">**</span><span class="nb">dict</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">_mapping</span><span class="p">),</span> <span class="s2">"weather"</span><span class="p">:</span> <span class="n">weather</span><span class="p">[</span><span class="s2">"temp"</span><span class="p">]})</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">return</span> <span class="n">result</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">except</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">return</span> <span class="p">[]</span></code></pre></div>
+
+      <details class="issues"><summary>🔎 Показати проблеми (10)</summary><div class="a">
+        <ol class="issue-list">
+          <li><span class="sev crit">Critical</span> <b>SQL-ін'єкція.</b> <code>q</code> і <code>org_id</code> вклеєні f-рядком у SQL. Запит <code>q=%' OR '1'='1</code> поверне доставки <i>всіх</i> організацій, а <code>'; DROP TABLE …</code> залежить лише від прав користувача БД.</li>
+          <li><span class="sev crit">Critical</span> <b>IDOR / доступ до чужих даних.</b> <code>org_id</code> приходить з query-параметра, а не з токена. Будь-хто підставляє чужий id і читає чужі доставки (<a href="22-multi-tenancy-saas.html">туторіал 22</a>).</li>
+          <li><span class="sev high">High</span> <b>Блокуючий <code>requests</code> у <code>async def</code>.</b> Кожен виклик блокує event loop, тож усі інші запити воркера стоять.</li>
+          <li><span class="sev high">High</span> <b>Немає таймауту.</b> <code>requests</code> за замовчуванням чекає вічно; повисне API погоди — повисне ендпоінт.</li>
+          <li><span class="sev high">High</span> <b>Голий <code>except: return []</code>.</b> Ковтає все, навіть <code>KeyboardInterrupt</code>/<code>CancelledError</code> і помилки SQL. Клієнт бачить «нічого не знайдено» замість 500, а в логах порожньо.</li>
+          <li><span class="sev high">High</span> <b>N зовнішніх викликів у циклі</b> (N+1 до API): 200 доставок = 200 послідовних HTTP-запитів.</li>
+          <li><span class="sev med">Medium</span> <b><code>print</code> замість логера</b> + <b>PII</b> (email) у логах + рядок пошуку, який може містити персональні дані.</li>
+          <li><span class="sev med">Medium</span> <b><code>SELECT *</code> і без ліміту</b>: витягує всі колонки (включно з нотатками), може повернути 100 000 рядків.</li>
+          <li><span class="sev med">Medium</span> <b>Відповідь API не перевіряється</b>: <code>.json()["temp"]</code> впаде на 500/HTML-відповіді або іншій схемі.</li>
+          <li><span class="sev low">Low</span> <b>Немає схеми відповіді</b> (<code>response_model</code>), немає типів, <code>Depends</code> не імпортовано, <code>LIKE</code> регістрозалежний.</li>
+        </ol>
+      </div></details>
+
+      <div class="codecard good"><div class="bar"><span class="path">✅ після рев'ю</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">APIRouter</span><span class="p">,</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">Query</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="kn">from</span><span class="w"> </span><span class="nn">sqlalchemy</span><span class="w"> </span><span class="kn">import</span> <span class="n">select</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/deliveries/search"</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="nb">list</span><span class="p">[</span><span class="n">DeliverySearchItem</span><span class="p">])</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">search_deliveries</span><span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">q</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Query</span><span class="p">(</span><span class="n">min_length</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">max_length</span><span class="o">=</span><span class="mi">100</span><span class="p">)],</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">user</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">User</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_current_user</span><span class="p">)],</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">repo</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">DeliveryRepository</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_delivery_repository</span><span class="p">)],</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">limit</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">Query</span><span class="p">(</span><span class="n">ge</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mi">100</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">DeliverySearchItem</span><span class="p">]:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"delivery search"</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s2">"org_id"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">user</span><span class="o">.</span><span class="n">organization_id</span><span class="p">),</span> <span class="s2">"q_len"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">q</span><span class="p">)})</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="k">await</span> <span class="n">repo</span><span class="o">.</span><span class="n">search_by_address</span><span class="p">(</span><span class="n">user</span><span class="o">.</span><span class="n">organization_id</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1"># repositories/delivery_repository.py</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">search_by_address</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">org_id</span><span class="p">:</span> <span class="n">UUID</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">Delivery</span><span class="p">]:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">pattern</span> <span class="o">=</span> <span class="s2">"%"</span> <span class="o">+</span> <span class="n">q</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"</span><span class="se">\\</span><span class="s2">"</span><span class="p">,</span> <span class="s2">"</span><span class="se">\\\\</span><span class="s2">"</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"%"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"\%"</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"_"</span><span class="p">,</span> <span class="sa">r</span><span class="s2">"\_"</span><span class="p">)</span> <span class="o">+</span> <span class="s2">"%"</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">stmt</span> <span class="o">=</span> <span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">select</span><span class="p">(</span><span class="n">Delivery</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Delivery</span><span class="o">.</span><span class="n">organization_id</span> <span class="o">==</span> <span class="n">org_id</span><span class="p">,</span> <span class="n">Delivery</span><span class="o">.</span><span class="n">address</span><span class="o">.</span><span class="n">ilike</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="n">escape</span><span class="o">=</span><span class="s2">"</span><span class="se">\\</span><span class="s2">"</span><span class="p">))</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">Delivery</span><span class="o">.</span><span class="n">created_at</span><span class="o">.</span><span class="n">desc</span><span class="p">())</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="n">limit</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="nb">list</span><span class="p">((</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmt</span><span class="p">))</span><span class="o">.</span><span class="n">scalars</span><span class="p">())</span></code></pre></div>
+      <h4>Чому так</h4>
+      <ul>
+        <li><b>Параметризований запит</b> (SQLAlchemy Core/ORM передає значення окремо від SQL) → ін'єкція неможлива. Екранування <code>%</code> і <code>_</code> — щоб користувач не перетворив пошук на «знайди все».</li>
+        <li><b>Тенант береться з токена</b> (<code>user.organization_id</code>), а не з запиту, і фільтр живе в репозиторії, тож його неможливо забути.</li>
+        <li><b>Погода прибрана з ендпоінта пошуку.</b> Чужий повільний API не повинен бути на критичному шляху пошуку. Якщо вона потрібна — окремий ендпоінт або фоновий збір з кешем (приклади 2–3).</li>
+        <li><b>Без <code>try/except</code>:</b> неочікувана помилка має дійти до глобального обробника (500 + лог з traceback), а не перетворитися на порожній список.</li>
+        <li><b>Валідація вводу</b> (<code>min_length</code>, <code>max_length</code>, <code>limit ≤ 100</code>) і <b>response_model</b>, який віддає лише дозволені поля.</li>
+        <li><b>Лог без PII:</b> довжина запиту замість самого тексту, ідентифікатор замість email.</li>
+      </ul>
+    </section>
+
+    <!-- ============ EX2 ============ -->
+    <section id="ex2">
+      <h2><span class="num">02</span>Геокодинг з кешем <span class="lvlbadge l2">Junior+ · кеш, логи, зовнішній API</span></h2>
+      <p class="section-desc">Сервіс перетворює адресу на координати через Google Geocoding API і «кешує» результат. Знайди 10 проблем.</p>
+      <div class="codecard bad"><div class="bar"><span class="path">❌ app/services/geocoding.py — до рев'ю</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="kn">import</span><span class="w"> </span><span class="nn">time</span><span class="o">,</span><span class="w"> </span><span class="nn">httpx</span><span class="o">,</span><span class="w"> </span><span class="nn">logging</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">API_KEY</span> <span class="o">=</span> <span class="s2">"AIzaSyD-3x4mpl3-k3y"</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">CACHE</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">geocode</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">if</span> <span class="n">address</span> <span class="ow">in</span> <span class="n">CACHE</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">return</span> <span class="n">CACHE</span><span class="p">[</span><span class="n">address</span><span class="p">]</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">url</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"https://maps.googleapis.com/maps/api/geocode/json?address=</span><span class="si">{</span><span class="n">address</span><span class="si">}</span><span class="s2">&amp;key=</span><span class="si">{</span><span class="n">API_KEY</span><span class="si">}</span><span class="s2">"</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"calling "</span> <span class="o">+</span> <span class="n">url</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">try</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">async</span> <span class="k">with</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="n">r</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">data</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">loc</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">"results"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"geometry"</span><span class="p">][</span><span class="s2">"location"</span><span class="p">]</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">CACHE</span><span class="p">[</span><span class="n">address</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">loc</span><span class="p">[</span><span class="s2">"lat"</span><span class="p">],</span> <span class="n">loc</span><span class="p">[</span><span class="s2">"lng"</span><span class="p">])</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">return</span> <span class="n">CACHE</span><span class="p">[</span><span class="n">address</span><span class="p">]</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"geocode failed: "</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">CACHE</span><span class="p">[</span><span class="n">address</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="kc">None</span></code></pre></div>
+
+      <details class="issues"><summary>🔎 Показати проблеми (11)</summary><div class="a">
+        <ol class="issue-list">
+          <li><span class="sev crit">Critical</span> <b>Секрет у коді.</b> API-ключ потрапить у git, логи CI, кожен форк. Його треба ротувати й брати з env/секрет-менеджера.</li>
+          <li><span class="sev crit">Critical</span> <b>Ключ у логах:</b> <code>logging.info("calling " + url)</code> пише URL разом з <code>key=…</code>. Плюс адреса клієнта (PII) у логах.</li>
+          <li><span class="sev high">High</span> <b><code>time.sleep(1)</code> в async-коді</b> блокує event loop на секунду при кожній невдачі, тобто 5 секунд «заморозки» всього воркера.</li>
+          <li><span class="sev high">High</span> <b>Ретраї без розбору:</b> повторюємо і 400 (невалідна адреса), і <code>ZERO_RESULTS</code>, і <code>REQUEST_DENIED</code> (поганий ключ). Немає exponential backoff і jitter. 5 спроб × кожна адреса = швидко вичерпана квота платного API.</li>
+          <li><span class="sev high">High</span> <b>Статус не перевіряється:</b> Google повертає HTTP 200 навіть для помилок, а справжній статус лежить у <code>data["status"]</code>. <code>results[0]</code> на <code>ZERO_RESULTS</code> дає <code>IndexError</code>, що маскується під «мережеву» помилку.</li>
+          <li><span class="sev high">High</span> <b>Адреса не URL-закодована:</b> <code>&amp;</code> чи <code>#</code> в адресі ламають запит, і через це можна підставити інші параметри (parameter injection).</li>
+          <li><span class="sev med">Medium</span> <b>Кеш без меж і без TTL:</b> глобальний <code>dict</code> росте вічно (витік пам'яті), живе лише в одному процесі, не спільний для інстансів.</li>
+          <li><span class="sev med">Medium</span> <b>Кешуємо невдачу назавжди:</b> <code>CACHE[address] = None</code> після тимчасового збою мережі. Адреса «ламається» до рестарту.</li>
+          <li><span class="sev med">Medium</span> <b>Ключ кешу — сирий рядок:</b> «Хрещатик 22» і «хрещатик 22 » — різні записи. Нормалізації немає.</li>
+          <li><span class="sev med">Medium</span> <b>Новий <code>AsyncClient</code> на кожну спробу:</b> нове TCP+TLS з'єднання щоразу, жодного пулу з'єднань.</li>
+          <li><span class="sev low">Low</span> <b>Логування:</b> кореневий <code>logging</code> замість <code>getLogger(__name__)</code>, конкатенація рядків, <code>str(e)</code> без traceback, немає типів повернення.</li>
+        </ol>
+      </div></details>
+
+      <div class="codecard good"><div class="bar"><span class="path">✅ після рев'ю</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span><span class="o">,</span><span class="w"> </span><span class="nn">logging</span><span class="o">,</span><span class="w"> </span><span class="nn">random</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="kn">import</span><span class="w"> </span><span class="nn">httpx</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="kn">from</span><span class="w"> </span><span class="nn">cachetools</span><span class="w"> </span><span class="kn">import</span> <span class="n">TTLCache</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">class</span><span class="w"> </span><span class="nc">Coordinates</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">lat</span><span class="p">:</span> <span class="nb">float</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">lng</span><span class="p">:</span> <span class="nb">float</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">class</span><span class="w"> </span><span class="nc">GeocodingError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span> <span class="o">...</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">class</span><span class="w"> </span><span class="nc">AddressNotFound</span><span class="p">(</span><span class="n">GeocodingError</span><span class="p">):</span> <span class="o">...</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">RETRYABLE_STATUS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"OVER_QUERY_LIMIT"</span><span class="p">,</span> <span class="s2">"UNKNOWN_ERROR"</span><span class="p">}</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">class</span><span class="w"> </span><span class="nc">GoogleGeocodingClient</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">http</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="bp">self</span><span class="o">.</span><span class="n">_http</span> <span class="o">=</span> <span class="n">http</span>                                   <span class="c1"># спільний клієнт з пулом, створений у lifespan</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="bp">self</span><span class="o">.</span><span class="n">_key</span> <span class="o">=</span> <span class="n">api_key</span>                                 <span class="c1"># з settings (env), не з коду</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span> <span class="n">TTLCache</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Coordinates</span><span class="p">]</span> <span class="o">=</span> <span class="n">TTLCache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">10_000</span><span class="p">,</span> <span class="n">ttl</span><span class="o">=</span><span class="mi">24</span> <span class="o">*</span> <span class="mi">3600</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="nd">@staticmethod</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">def</span><span class="w"> </span><span class="nf">_norm</span><span class="p">(</span><span class="n">address</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">return</span> <span class="s2">" "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">address</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">geocode</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Coordinates</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_norm</span><span class="p">(</span><span class="n">address</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">if</span> <span class="p">(</span><span class="n">hit</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">))</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">return</span> <span class="n">hit</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">coords</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fetch_with_retry</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">coords</span>                           <span class="c1"># кешуємо лише успіх</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">return</span> <span class="n">coords</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_fetch_with_retry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">attempts</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Coordinates</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">for</span> <span class="n">attempt</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">attempts</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">try</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="n">r</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_http</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>                    <span class="s2">"https://maps.googleapis.com/maps/api/geocode/json"</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span>                    <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">"address"</span><span class="p">:</span> <span class="n">address</span><span class="p">,</span> <span class="s2">"key"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_key</span><span class="p">},</span>     <span class="c1"># httpx сам закодує параметри</span>
+<span class="jb-ln" aria-hidden="true"></span>                    <span class="n">timeout</span><span class="o">=</span><span class="n">httpx</span><span class="o">.</span><span class="n">Timeout</span><span class="p">(</span><span class="mf">5.0</span><span class="p">,</span> <span class="n">connect</span><span class="o">=</span><span class="mf">2.0</span><span class="p">),</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="n">r</span><span class="o">.</span><span class="n">raise_for_status</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="n">data</span> <span class="o">=</span> <span class="n">r</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">except</span> <span class="p">(</span><span class="n">httpx</span><span class="o">.</span><span class="n">TimeoutException</span><span class="p">,</span> <span class="n">httpx</span><span class="o">.</span><span class="n">TransportError</span><span class="p">,</span> <span class="n">httpx</span><span class="o">.</span><span class="n">HTTPStatusError</span><span class="p">)</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="n">status</span> <span class="o">=</span> <span class="s2">"TRANSPORT"</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"geocoding transport error"</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s2">"attempt"</span><span class="p">:</span> <span class="n">attempt</span><span class="p">,</span> <span class="s2">"error"</span><span class="p">:</span> <span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">})</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">else</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="n">status</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"status"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="s2">"OK"</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>                    <span class="n">loc</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">"results"</span><span class="p">][</span><span class="mi">0</span><span class="p">][</span><span class="s2">"geometry"</span><span class="p">][</span><span class="s2">"location"</span><span class="p">]</span>
+<span class="jb-ln" aria-hidden="true"></span>                    <span class="k">return</span> <span class="n">Coordinates</span><span class="p">(</span><span class="n">lat</span><span class="o">=</span><span class="n">loc</span><span class="p">[</span><span class="s2">"lat"</span><span class="p">],</span> <span class="n">lng</span><span class="o">=</span><span class="n">loc</span><span class="p">[</span><span class="s2">"lng"</span><span class="p">])</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="k">if</span> <span class="n">status</span> <span class="o">==</span> <span class="s2">"ZERO_RESULTS"</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>                    <span class="k">raise</span> <span class="n">AddressNotFound</span><span class="p">()</span>                     <span class="c1"># не ретраїмо: відповідь не зміниться</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="k">if</span> <span class="n">status</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">RETRYABLE_STATUS</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>                    <span class="k">raise</span> <span class="n">GeocodingError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"geocoding rejected: </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>   <span class="c1"># REQUEST_DENIED тощо</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">if</span> <span class="n">attempt</span> <span class="o">&lt;</span> <span class="n">attempts</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">**</span> <span class="n">attempt</span><span class="p">))</span>  <span class="c1"># backoff + jitter, НЕ блокує loop</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">raise</span> <span class="n">GeocodingError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"geocoding failed after </span><span class="si">{</span><span class="n">attempts</span><span class="si">}</span><span class="s2"> attempts (last: </span><span class="si">{</span><span class="n">status</span><span class="si">}</span><span class="s2">)"</span><span class="p">)</span></code></pre></div>
+      <h4>Чому так</h4>
+      <ul>
+        <li><b>Секрети</b> лише з конфігурації (pydantic-settings, env, Vault). У логи не потрапляють ні ключ, ні адреса: логуємо тип помилки і номер спроби.</li>
+        <li><b>Ретраїмо лише тимчасове</b> (таймаут, мережа, 5xx, <code>OVER_QUERY_LIMIT</code>). Помилки, що не зникнуть, піднімаємо одразу окремими типами винятків, щоб викликач міг відрізнити «адреси не існує» від «сервіс недоступний».</li>
+        <li><b><code>await asyncio.sleep</code></b> замість <code>time.sleep</code>: пауза віддає керування event loop, і інші запити обробляються.</li>
+        <li><b>Кеш з межею і TTL</b>, нормалізований ключ, кешується лише успіх. Для кількох інстансів — Redis з тим самим ключем (<a href="20-redis.html">туторіал 20</a>).</li>
+        <li><b>Один <code>httpx.AsyncClient</code> на застосунок</b> (у lifespan): пул з'єднань, keep-alive, явні таймаути.</li>
+        <li><b>Повертаємо значення-об'єкт</b> <code>Coordinates</code> (frozen dataclass), а не голий tuple або <code>None</code>.</li>
+      </ul>
+      <div class="callout info"><div class="ic">ℹ️</div><div class="body">Залишкова проблема, яку варто назвати на співбесіді сеньйорського рівня:
+        дві корутини одночасно геокодують одну нову адресу, і обидві підуть в API (немає захисту від одночасних промахів кешу, тобто stampede).
+        Рішення — у прикладі 5.</div></div>
+    </section>
+
+    <!-- ============ EX3 ============ -->
+    <section id="ex3">
+      <h2><span class="num">03</span>Пакетний геокодинг: asyncio і конкурентність <span class="lvlbadge l3">Middle · корутини</span></h2>
+      <p class="section-desc">Після імпорту Excel треба геокодувати 2 000 доставок і зберегти координати. Розробник «прискорив» код через asyncio. Знайди 9 проблем.</p>
+      <div class="codecard bad"><div class="bar"><span class="path">❌ app/services/import_geocode.py — до рев'ю</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">processed</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">geocode_one</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">geocoder</span><span class="p">,</span> <span class="n">delivery</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">global</span> <span class="n">processed</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">coords</span> <span class="o">=</span> <span class="k">await</span> <span class="n">geocoder</span><span class="o">.</span><span class="n">geocode</span><span class="p">(</span><span class="n">delivery</span><span class="o">.</span><span class="n">address</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">delivery</span><span class="o">.</span><span class="n">latitude</span><span class="p">,</span> <span class="n">delivery</span><span class="o">.</span><span class="n">longitude</span> <span class="o">=</span> <span class="n">coords</span><span class="o">.</span><span class="n">lat</span><span class="p">,</span> <span class="n">coords</span><span class="o">.</span><span class="n">lng</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">delivery</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">processed</span> <span class="o">=</span> <span class="n">processed</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">if</span> <span class="n">processed</span> <span class="o">%</span> <span class="mi">100</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="nb">print</span><span class="p">(</span><span class="s2">"progress"</span><span class="p">,</span> <span class="n">processed</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">geocode_all</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">geocoder</span><span class="p">,</span> <span class="n">deliveries</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span><span class="n">geocode_one</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">geocoder</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">deliveries</span><span class="p">]</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="o">*</span><span class="n">tasks</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">processed</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">def</span><span class="w"> </span><span class="nf">geocode_import_sync</span><span class="p">(</span><span class="n">deliveries</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="c1"># викликається з FastAPI-ендпоінта після завантаження файлу</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">geocode_all</span><span class="p">(</span><span class="n">get_session</span><span class="p">(),</span> <span class="n">get_geocoder</span><span class="p">(),</span> <span class="n">deliveries</span><span class="p">))</span></code></pre></div>
+
+      <details class="issues"><summary>🔎 Показати проблеми (9)</summary><div class="a">
+        <ol class="issue-list">
+          <li><span class="sev crit">Critical</span> <b>Одна <code>AsyncSession</code> на 2 000 конкурентних корутин.</b> <code>AsyncSession</code> (як і <code>Session</code>) <i>не безпечна</i> для одночасного використання з кількох задач: паралельні <code>commit</code> на одному з'єднанні дають помилки на кшталт «another operation is in progress», зіпсований стан identity map або частково збережені дані.</li>
+          <li><span class="sev crit">Critical</span> <b>Необмежена конкурентність:</b> <code>gather</code> запускає 2 000 запитів до Google одночасно. Отримаємо <code>OVER_QUERY_LIMIT</code>, бан за rate limit, вичерпаний пул з'єднань HTTP і БД.</li>
+          <li><span class="sev high">High</span> <b>Одна помилка ламає все незрозуміло як.</b> <code>gather</code> без <code>return_exceptions</code> піднімає першу помилку, але інші задачі <i>продовжують виконуватись</i> у фоні. Частина доставок збережена, частина ні, і невідомо які.</li>
+          <li><span class="sev high">High</span> <b><code>asyncio.run</code> всередині вже запущеного event loop.</b> Якщо <code>geocode_import_sync</code> викликати з <code>async def</code>-ендпоінта: <code>RuntimeError: asyncio.run() cannot be called from a running event loop</code>. Якщо з <code>def</code>-ендпоінта (threadpool), запуститься <i>новий</i> loop у потоці, і об'єкти, прив'язані до головного loop (сесія, httpx-клієнт), зламаються. До того ж HTTP-запит чекатиме, поки 2 000 адрес не закінчаться.</li>
+          <li><span class="sev high">High</span> <b>Глобальний лічильник <code>processed</code></b>: модульна змінна спільна між <i>усіма</i> імпортами всіх користувачів (два імпорти одночасно змішують прогрес), не скидається між викликами, а <code>return processed</code> повертає не те, що здається.</li>
+          <li><span class="sev med">Medium</span> <b>Commit на кожну доставку:</b> 2 000 транзакцій і 2 000 round-trip замість кількох батчів.</li>
+          <li><span class="sev med">Medium</span> <b>Немає ізоляції тенанта і ідемпотентності:</b> повторний виклик (ретрай) знову платно геокодує вже оброблені доставки.</li>
+          <li><span class="sev med">Medium</span> <b>Немає таймауту на весь процес</b> і обробки скасування: користувач закрив вкладку, а 2 000 викликів тривають.</li>
+          <li><span class="sev low">Low</span> <b><code>print</code> для прогресу</b> замість логера/статусу задачі, яку може прочитати фронтенд.</li>
+        </ol>
+        <p><b>Тонкий момент про гонку.</b> <code>processed = processed + 1</code> між двома <code>await</code> не має <code>await</code>, тому в asyncio <i>сама по собі</i> ця
+        операція атомарна відносно інших корутин (на відміну від потоків). Проблема тут не в цьому рядку, а в тому, що стан глобальний і спільний для різних запусків.
+        Варто проговорити цю різницю вголос, бо інтерв'юер часто перевіряє саме її (<a href="29-race-conditions.html">туторіал 29, розділ A2</a>).</p>
+      </div></details>
+
+      <div class="codecard good"><div class="bar"><span class="path">✅ після рев'ю: ендпоінт ставить задачу, воркер обробляє батчами з обмеженою конкурентністю</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span><span class="o">,</span><span class="w"> </span><span class="nn">logging</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="nd">@dataclass</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">class</span><span class="w"> </span><span class="nc">GeocodeReport</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">ok</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">not_found</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">UUID</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">failed</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">UUID</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">list</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">geocode_pending</span><span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">session_factory</span><span class="p">:</span> <span class="n">async_sessionmaker</span><span class="p">[</span><span class="n">AsyncSession</span><span class="p">],</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">geocoder</span><span class="p">:</span> <span class="n">GoogleGeocodingClient</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">org_id</span><span class="p">:</span> <span class="n">UUID</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="o">*</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">concurrency</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">200</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GeocodeReport</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">report</span> <span class="o">=</span> <span class="n">GeocodeReport</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">sem</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Semaphore</span><span class="p">(</span><span class="n">concurrency</span><span class="p">)</span>                       <span class="c1"># не більше 10 запитів до Google одночасно</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span><span class="n">d</span><span class="p">:</span> <span class="n">DeliveryToGeocode</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">UUID</span><span class="p">,</span> <span class="n">Coordinates</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">|</span> <span class="ne">Exception</span><span class="p">]:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">async</span> <span class="k">with</span> <span class="n">sem</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">try</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="k">return</span> <span class="n">d</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="k">await</span> <span class="n">geocoder</span><span class="o">.</span><span class="n">geocode</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">address</span><span class="p">)</span>    <span class="c1"># лише HTTP, БД тут не чіпаємо</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">except</span> <span class="n">AddressNotFound</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="k">return</span> <span class="n">d</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="kc">None</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">except</span> <span class="n">GeocodingError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="k">return</span> <span class="n">d</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">e</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">async</span> <span class="k">with</span> <span class="n">session_factory</span><span class="p">()</span> <span class="k">as</span> <span class="n">s</span><span class="p">:</span>                     <span class="c1"># читаємо батч окремою короткою сесією</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">batch</span> <span class="o">=</span> <span class="k">await</span> <span class="n">DeliveryRepository</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="o">.</span><span class="n">pending_geocode</span><span class="p">(</span><span class="n">org_id</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">batch_size</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">if</span> <span class="ow">not</span> <span class="n">batch</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">return</span> <span class="n">report</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">async</span> <span class="k">with</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mi">120</span><span class="p">):</span>                       <span class="c1"># межа на батч (Python 3.11+)</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">async</span> <span class="k">with</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">TaskGroup</span><span class="p">()</span> <span class="k">as</span> <span class="n">tg</span><span class="p">:</span>              <span class="c1"># structured concurrency</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="n">tasks</span> <span class="o">=</span> <span class="p">[</span><span class="n">tg</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">resolve</span><span class="p">(</span><span class="n">d</span><span class="p">))</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">batch</span><span class="p">]</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">results</span> <span class="o">=</span> <span class="p">[</span><span class="n">t</span><span class="o">.</span><span class="n">result</span><span class="p">()</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">]</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">async</span> <span class="k">with</span> <span class="n">session_factory</span><span class="p">()</span> <span class="k">as</span> <span class="n">s</span><span class="p">,</span> <span class="n">s</span><span class="o">.</span><span class="n">begin</span><span class="p">():</span>          <span class="c1"># ОДНА сесія, ОДИН потік, ОДНА транзакція на батч</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">repo</span> <span class="o">=</span> <span class="n">DeliveryRepository</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">for</span> <span class="n">delivery_id</span><span class="p">,</span> <span class="n">res</span> <span class="ow">in</span> <span class="n">results</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">Coordinates</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>                    <span class="k">await</span> <span class="n">repo</span><span class="o">.</span><span class="n">set_coordinates</span><span class="p">(</span><span class="n">org_id</span><span class="p">,</span> <span class="n">delivery_id</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">lat</span><span class="p">,</span> <span class="n">res</span><span class="o">.</span><span class="n">lng</span><span class="p">)</span>   <span class="c1"># status → geocoded</span>
+<span class="jb-ln" aria-hidden="true"></span>                    <span class="n">report</span><span class="o">.</span><span class="n">ok</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="k">elif</span> <span class="n">res</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>                    <span class="k">await</span> <span class="n">repo</span><span class="o">.</span><span class="n">mark_geocode_failed</span><span class="p">(</span><span class="n">org_id</span><span class="p">,</span> <span class="n">delivery_id</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s2">"not_found"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>                    <span class="n">report</span><span class="o">.</span><span class="n">not_found</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">delivery_id</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="k">else</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>                    <span class="k">await</span> <span class="n">repo</span><span class="o">.</span><span class="n">mark_geocode_failed</span><span class="p">(</span><span class="n">org_id</span><span class="p">,</span> <span class="n">delivery_id</span><span class="p">,</span> <span class="n">reason</span><span class="o">=</span><span class="s2">"error"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>                    <span class="n">report</span><span class="o">.</span><span class="n">failed</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">delivery_id</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"geocode batch done"</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s2">"org_id"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">org_id</span><span class="p">),</span> <span class="s2">"ok"</span><span class="p">:</span> <span class="n">report</span><span class="o">.</span><span class="n">ok</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span>                                              <span class="s2">"not_found"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">not_found</span><span class="p">),</span> <span class="s2">"failed"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">failed</span><span class="p">)})</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1"># Ендпоінт не чекає 2 000 адрес: ставить задачу у фон і повертає 202 + id задачі для статусу.</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1"># (Celery/arq-воркер, або для простих випадків — окрема asyncio-задача зі збереженим посиланням, див. приклад 5.)</span></code></pre></div>
+      <h4>Чому так</h4>
+      <ul>
+        <li><b>Конкурентність — лише для I/O, що цього потребує</b> (HTTP до Google), і <b>обмежена семафором</b>. Робота з БД послідовна в одній сесії на батч: сесія ніколи не використовується з двох корутин одночасно.</li>
+        <li><b><code>TaskGroup</code> замість <code>gather</code></b>: якщо щось піде не так (наприклад, таймаут), решта задач <i>скасовується</i>, і ми не маємо «напівживих» фонових запитів. Очікувані помилки (<code>AddressNotFound</code>, <code>GeocodingError</code>) обробляються всередині <code>resolve</code>, тому не валять усю групу.</li>
+        <li><b>Батчі й одна транзакція на батч:</b> у 200 разів менше commit-ів; при падінні втрачається максимум один батч, і він переобробиться.</li>
+        <li><b>Ідемпотентність</b>: беремо лише доставки зі статусом <code>pending_geocode</code>, тож повторний запуск продовжує з місця зупинки і не платить двічі.</li>
+        <li><b>Стан — локальний</b> (<code>GeocodeReport</code>), а не глобальний. Різні запуски не змішуються.</li>
+        <li><b>Довга робота поза HTTP-запитом</b>: ендпоінт повертає 202, а прогрес видно через статус задачі. Ніякого <code>asyncio.run</code> з коду, що вже працює в event loop.</li>
+      </ul>
+      <figure class="db">
+        <svg viewBox="0 0 820 230" role="img" aria-label="gather vs TaskGroup + Semaphore">
+          <g font-size="12.5">
+            <text x="200" y="22" text-anchor="middle" font-weight="700">❌ gather(2000) на одній сесії</text>
+            <g>
+              <rect x="30" y="36" width="340" height="16" rx="3" style="fill:var(--bad);opacity:.55"/>
+              <rect x="30" y="56" width="340" height="16" rx="3" style="fill:var(--bad);opacity:.55"/>
+              <rect x="30" y="76" width="340" height="16" rx="3" style="fill:var(--bad);opacity:.55"/>
+              <text x="200" y="112" text-anchor="middle" class="mut">… ще 1997 одночасних запитів</text>
+              <rect x="120" y="128" width="160" height="34" rx="8" class="box" style="stroke:var(--bad);stroke-width:2"/>
+              <text x="200" y="150" text-anchor="middle">1 AsyncSession 💥</text>
+              <text x="200" y="190" text-anchor="middle" class="mut">429 від API, конфлікти сесії,</text>
+              <text x="200" y="208" text-anchor="middle" class="mut">часткові збереження</text>
+            </g>
+            <line x1="410" y1="14" x2="410" y2="220" class="ln" style="stroke-dasharray:4 4"/>
+            <text x="615" y="22" text-anchor="middle" font-weight="700">✅ Semaphore(10) + батч + 1 транзакція</text>
+            <g>
+              <rect x="450" y="36" width="80" height="16" rx="3" style="fill:var(--good);opacity:.7"/><rect x="540" y="36" width="80" height="16" rx="3" style="fill:var(--good);opacity:.7"/><rect x="630" y="36" width="80" height="16" rx="3" style="fill:var(--good);opacity:.7"/>
+              <rect x="450" y="56" width="80" height="16" rx="3" style="fill:var(--good);opacity:.7"/><rect x="540" y="56" width="80" height="16" rx="3" style="fill:var(--good);opacity:.7"/><rect x="630" y="56" width="80" height="16" rx="3" style="fill:var(--good);opacity:.7"/>
+              <text x="615" y="96" text-anchor="middle" class="mut">≤10 HTTP одночасно, лише I/O</text>
+              <rect x="520" y="110" width="190" height="34" rx="8" class="box" style="stroke:var(--good);stroke-width:2"/>
+              <text x="615" y="132" text-anchor="middle">запис батчу: 1 сесія, 1 txn</text>
+              <text x="615" y="176" text-anchor="middle" class="mut">помилка → решта скасовується (TaskGroup),</text>
+              <text x="615" y="194" text-anchor="middle" class="mut">повторний запуск продовжує з pending</text>
+            </g>
+          </g>
+        </svg>
+      </figure>
+    </section>
+
+    <!-- ============ EX4 ============ -->
+    <section id="ex4">
+      <h2><span class="num">04</span>Вебхук оплати підписки <span class="lvlbadge l4">Middle+ · безпека, гроші, транзакції</span></h2>
+      <p class="section-desc">Платіжний провайдер шле вебхук, коли організація оплатила тариф. Код підвищує план і шле лист. Знайди 10 проблем.</p>
+      <div class="codecard bad"><div class="bar"><span class="path">❌ app/api/billing/webhook.py — до рев'ю</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="nd">@router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/billing/webhook"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">billing_webhook</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">db</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">get_db</span><span class="p">)):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">event</span> <span class="o">=</span> <span class="k">await</span> <span class="n">request</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">"webhook received: </span><span class="si">{</span><span class="n">event</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">try</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">org</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">Organization</span><span class="p">,</span> <span class="n">event</span><span class="p">[</span><span class="s2">"data"</span><span class="p">][</span><span class="s2">"org_id"</span><span class="p">])</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">if</span> <span class="n">org</span><span class="o">.</span><span class="n">subscription_plan</span> <span class="o">!=</span> <span class="n">event</span><span class="p">[</span><span class="s2">"data"</span><span class="p">][</span><span class="s2">"plan"</span><span class="p">]:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">org</span><span class="o">.</span><span class="n">subscription_plan</span> <span class="o">=</span> <span class="n">event</span><span class="p">[</span><span class="s2">"data"</span><span class="p">][</span><span class="s2">"plan"</span><span class="p">]</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">org</span><span class="o">.</span><span class="n">paid_amount</span> <span class="o">=</span> <span class="n">org</span><span class="o">.</span><span class="n">paid_amount</span> <span class="o">+</span> <span class="nb">float</span><span class="p">(</span><span class="n">event</span><span class="p">[</span><span class="s2">"data"</span><span class="p">][</span><span class="s2">"amount"</span><span class="p">])</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">org</span><span class="o">.</span><span class="n">plan_changed_at</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">utcnow</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">send_receipt_email</span><span class="p">(</span><span class="n">org</span><span class="o">.</span><span class="n">owner_email</span><span class="p">,</span> <span class="n">event</span><span class="p">[</span><span class="s2">"data"</span><span class="p">][</span><span class="s2">"amount"</span><span class="p">])</span>   <span class="c1"># SMTP, ~2 с</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">result</span> <span class="o">=</span> <span class="n">generate_invoice_pdf</span><span class="o">.</span><span class="n">delay</span><span class="p">(</span><span class="n">org</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>                  <span class="c1"># Celery</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="p">{</span><span class="s2">"ok"</span><span class="p">:</span> <span class="kc">True</span><span class="p">}</span></code></pre></div>
+
+      <details class="issues"><summary>🔎 Показати проблеми (10)</summary><div class="a">
+        <ol class="issue-list">
+          <li><span class="sev crit">Critical</span> <b>Немає перевірки підпису.</b> Будь-хто може надіслати POST з <code>plan: "enterprise"</code> і отримати безкоштовний тариф. Підпис (HMAC) треба перевіряти по <i>сирому</i> тілу запиту, до парсингу JSON.</li>
+          <li><span class="sev crit">Critical</span> <b>Не ідемпотентно.</b> Провайдери доставляють вебхуки at-least-once. Повтор того самого події двічі додасть <code>paid_amount</code>. Немає перевірки <code>event_id</code>.</li>
+          <li><span class="sev crit">Critical</span> <b>Гроші у <code>float</code></b> (<code>0.1 + 0.2 != 0.3</code>) і read-modify-write <code>paid_amount + …</code> у Python → lost update при паралельних подіях (<a href="29-race-conditions.html">туторіал 29, B1</a>).</li>
+          <li><span class="sev high">High</span> <b>Ковтаємо помилку і відповідаємо 200.</b> Провайдер вважає подію доставленою і більше не повторить, а план не оновлено. Гроші взяли, сервіс не дали.</li>
+          <li><span class="sev high">High</span> <b>Синхронний SMTP усередині транзакції і в async-ендпоінті:</b> блокує event loop на 2 с і тримає транзакцію відкритою. Якщо <code>commit</code> потім впаде, лист «оплату отримано» вже пішов.</li>
+          <li><span class="sev high">High</span> <b><code>.delay(...).get()</code> у запиті</b> — синхронне очікування Celery-задачі. Блокує loop, нівелює сенс черги, а провайдер отримає таймаут і почне ретраї (знову див. ідемпотентність).</li>
+          <li><span class="sev high">High</span> <b>Події не по порядку:</b> <code>subscription.updated</code> може прийти раніше за <code>subscription.created</code> або старіша подія після новішої, і план «відкотиться». Потрібна перевірка часу/версії події.</li>
+          <li><span class="sev med">Medium</span> <b>Увесь payload у лог</b> (<code>{event}</code>): email, суми, можливо частина картки. Плюс f-рядок форматується завжди, навіть коли рівень вимкнено.</li>
+          <li><span class="sev med">Medium</span> <b><code>datetime.utcnow()</code></b> повертає «naive» дату без часової зони (і застаріле з Python 3.12) → помилки порівняння з timezone-aware полями.</li>
+          <li><span class="sev med">Medium</span> <b><code>logger.error(e)</code> без traceback</b>, <code>org</code> може бути <code>None</code> → <code>AttributeError</code>, немає валідації схеми події (Pydantic).</li>
+        </ol>
+      </div></details>
+
+      <div class="codecard good"><div class="bar"><span class="path">✅ після рев'ю</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="kn">import</span><span class="w"> </span><span class="nn">hmac</span><span class="o">,</span><span class="w"> </span><span class="nn">hashlib</span><span class="o">,</span><span class="w"> </span><span class="nn">logging</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">UTC</span><span class="p">,</span> <span class="n">datetime</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="kn">from</span><span class="w"> </span><span class="nn">decimal</span><span class="w"> </span><span class="kn">import</span> <span class="n">Decimal</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">class</span><span class="w"> </span><span class="nc">BillingEvent</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="nb">type</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">"subscription.paid"</span><span class="p">]</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">created</span><span class="p">:</span> <span class="n">datetime</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">org_id</span><span class="p">:</span> <span class="n">UUID</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">plan</span><span class="p">:</span> <span class="n">SubscriptionPlan</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">amount</span><span class="p">:</span> <span class="n">Decimal</span>                                     <span class="c1"># або цілі центи: int</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">def</span><span class="w"> </span><span class="nf">verify_signature</span><span class="p">(</span><span class="n">raw</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">header</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">secret</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">expected</span> <span class="o">=</span> <span class="n">hmac</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">secret</span><span class="p">,</span> <span class="n">raw</span><span class="p">,</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">)</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">if</span> <span class="ow">not</span> <span class="n">header</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">hmac</span><span class="o">.</span><span class="n">compare_digest</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">header</span><span class="p">):</span>      <span class="c1"># стійко до timing-атак</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="mi">400</span><span class="p">,</span> <span class="s2">"invalid signature"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="nd">@router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/billing/webhook"</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">billing_webhook</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">AsyncSession</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_db</span><span class="p">)],</span>
+<span class="jb-ln" aria-hidden="true"></span>                          <span class="n">settings</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Settings</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_settings</span><span class="p">)]):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">raw</span> <span class="o">=</span> <span class="k">await</span> <span class="n">request</span><span class="o">.</span><span class="n">body</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">verify_signature</span><span class="p">(</span><span class="n">raw</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">headers</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"X-Signature"</span><span class="p">),</span> <span class="n">settings</span><span class="o">.</span><span class="n">BILLING_WEBHOOK_SECRET</span><span class="o">.</span><span class="n">encode</span><span class="p">())</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">event</span> <span class="o">=</span> <span class="n">BillingEvent</span><span class="o">.</span><span class="n">model_validate_json</span><span class="p">(</span><span class="n">raw</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"billing webhook"</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s2">"event_id"</span><span class="p">:</span> <span class="n">event</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="s2">"type"</span><span class="p">:</span> <span class="n">event</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="s2">"org_id"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">org_id</span><span class="p">)})</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">async</span> <span class="k">with</span> <span class="n">db</span><span class="o">.</span><span class="n">begin</span><span class="p">():</span>                                            <span class="c1"># одна транзакція: подія + зміни + outbox</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">inserted</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">insert</span><span class="p">(</span><span class="n">ProcessedBillingEvent</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">on_conflict_do_nothing</span><span class="p">()</span><span class="o">.</span><span class="n">returning</span><span class="p">(</span><span class="n">ProcessedBillingEvent</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="p">))</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">if</span> <span class="ow">not</span> <span class="n">inserted</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"duplicate"</span><span class="p">}</span>                            <span class="c1"># повтор: 200, нічого не робимо</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">updated</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">update</span><span class="p">(</span><span class="n">Organization</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Organization</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">event</span><span class="o">.</span><span class="n">org_id</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span>                   <span class="n">or_</span><span class="p">(</span><span class="n">Organization</span><span class="o">.</span><span class="n">plan_changed_at</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">None</span><span class="p">),</span> <span class="n">Organization</span><span class="o">.</span><span class="n">plan_changed_at</span> <span class="o">&lt;</span> <span class="n">event</span><span class="o">.</span><span class="n">created</span><span class="p">))</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="o">.</span><span class="n">values</span><span class="p">(</span><span class="n">subscription_plan</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">plan</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span>                    <span class="n">paid_amount</span><span class="o">=</span><span class="n">Organization</span><span class="o">.</span><span class="n">paid_amount</span> <span class="o">+</span> <span class="n">event</span><span class="o">.</span><span class="n">amount</span><span class="p">,</span>      <span class="c1"># атомарно в БД</span>
+<span class="jb-ln" aria-hidden="true"></span>                    <span class="n">plan_changed_at</span><span class="o">=</span><span class="n">event</span><span class="o">.</span><span class="n">created</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="o">.</span><span class="n">returning</span><span class="p">(</span><span class="n">Organization</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="p">))</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">if</span> <span class="n">updated</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">db</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">OutboxMessage</span><span class="p">(</span><span class="n">kind</span><span class="o">=</span><span class="s2">"billing.receipt"</span><span class="p">,</span> <span class="n">payload</span><span class="o">=</span><span class="p">{</span><span class="s2">"org_id"</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">event</span><span class="o">.</span><span class="n">org_id</span><span class="p">),</span> <span class="s2">"event_id"</span><span class="p">:</span> <span class="n">event</span><span class="o">.</span><span class="n">id</span><span class="p">}))</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="c1"># лист і PDF шле окремий воркер з outbox ПІСЛЯ коміту; ендпоінт нічого не чекає</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"processed"</span> <span class="k">if</span> <span class="n">updated</span> <span class="k">else</span> <span class="s2">"stale"</span><span class="p">}</span></code></pre></div>
+      <h4>Чому так</h4>
+      <ul>
+        <li><b>Автентичність:</b> HMAC по сирому тілу і <code>hmac.compare_digest</code>. Без цього вебхук — публічний ендпоінт «зроби мені тариф».</li>
+        <li><b>Ідемпотентність:</b> запис <code>event.id</code> з унікальним ключем <i>у тій самій транзакції</i>, що й зміни. Повтор події нічого не змінює і отримує 200.</li>
+        <li><b>Порядок подій:</b> умова <code>plan_changed_at &lt; event.created</code> не дає старішій події перезаписати новішу.</li>
+        <li><b>Гроші:</b> <code>Decimal</code> або цілі мінорні одиниці, збільшення атомарно в SQL.</li>
+        <li><b>Побічні ефекти після коміту</b> через outbox: лист «оплату отримано» гарантовано відповідає збереженому стану, повільні дії не блокують вебхук.</li>
+        <li><b>Помилки не ковтаються:</b> неочікувана помилка → 500, провайдер повторить, а завдяки ідемпотентності повтор безпечний.</li>
+        <li><b>Лог без PII:</b> лише id, тип і організація.</li>
+      </ul>
+    </section>
+
+    <!-- ============ EX5 ============ -->
+    <section id="ex5">
+      <h2><span class="num">05</span>Async-кеш і фонові задачі <span class="lvlbadge l5">Senior · тонка конкурентність</span></h2>
+      <p class="section-desc">Сервіс пояснення маршруту через OpenAI. Розробник додав кеш, лок від «подвійних» викликів і фонове
+      оновлення статистики. Код проходить тести, але в проді поводиться дивно. Знайди 9 проблем.</p>
+      <div class="codecard bad"><div class="bar"><span class="path">❌ app/services/ai/explainer_cache.py — до рев'ю</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span><span class="o">,</span><span class="w"> </span><span class="nn">threading</span><span class="o">,</span><span class="w"> </span><span class="nn">time</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">lru_cache</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">_lock</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Lock</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">_cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">dict</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="nd">@lru_cache</span><span class="p">(</span><span class="n">maxsize</span><span class="o">=</span><span class="mi">1024</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">load_route_summary</span><span class="p">(</span><span class="n">route_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="k">await</span> <span class="n">fetch_route_summary_from_db</span><span class="p">(</span><span class="n">route_id</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">explain_route</span><span class="p">(</span><span class="n">route_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">user</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">if</span> <span class="n">route_id</span> <span class="ow">in</span> <span class="n">_cache</span> <span class="ow">and</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">_cache</span><span class="p">[</span><span class="n">route_id</span><span class="p">][</span><span class="s2">"ts"</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">300</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">return</span> <span class="n">_cache</span><span class="p">[</span><span class="n">route_id</span><span class="p">]</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">with</span> <span class="n">_lock</span><span class="p">:</span>                                            <span class="c1"># «щоб не викликати OpenAI двічі»</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">summary</span> <span class="o">=</span> <span class="k">await</span> <span class="n">load_route_summary</span><span class="p">(</span><span class="n">route_id</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">try</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">text</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait_for</span><span class="p">(</span><span class="n">call_openai</span><span class="p">(</span><span class="n">summary</span><span class="p">),</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">except</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">text</span> <span class="o">=</span> <span class="s2">"Explanation unavailable"</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">_cache</span><span class="p">[</span><span class="n">route_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"text"</span><span class="p">:</span> <span class="n">text</span><span class="p">,</span> <span class="s2">"ts"</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()}</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">asyncio</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">track_usage</span><span class="p">(</span><span class="n">user</span><span class="o">.</span><span class="n">organization_id</span><span class="p">))</span>   <span class="c1"># fire-and-forget</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">asyncio</span><span class="o">.</span><span class="n">ensure_future</span><span class="p">(</span><span class="n">notify_analytics</span><span class="p">(</span><span class="n">route_id</span><span class="p">))</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">result</span> <span class="o">=</span> <span class="n">_cache</span><span class="p">[</span><span class="n">route_id</span><span class="p">]</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">result</span><span class="p">[</span><span class="s2">"requested_by"</span><span class="p">]</span> <span class="o">=</span> <span class="n">user</span><span class="o">.</span><span class="n">email</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">result</span></code></pre></div>
+
+      <details class="issues"><summary>🔎 Показати проблеми (9)</summary><div class="a">
+        <ol class="issue-list">
+          <li><span class="sev crit">Critical</span> <b><code>threading.Lock</code> навколо <code>await</code> в async-коді.</b> Перша корутина бере лок і на <code>await call_openai</code> віддає керування. Друга корутина <i>в тому ж потоці</i> викликає <code>_lock.acquire()</code>, яке блокує весь потік, тобто весь event loop. Перша корутина вже ніколи не продовжиться, і це <b>deadlock усього воркера</b>. Для корутин потрібен <code>asyncio.Lock</code>.</li>
+          <li><span class="sev crit">Critical</span> <b><code>@lru_cache</code> на <code>async def</code></b> кешує не результат, а <i>об'єкт корутини</i>. Другий виклик з тим самим <code>route_id</code> поверне вже відпрацьовану корутину, і <code>await</code> впаде з <code>RuntimeError: cannot reuse already awaited coroutine</code>. Тести з одним викликом цього не помічають.</li>
+          <li><span class="sev crit">Critical</span> <b>Витік між тенантами і мутація кешу.</b> <code>result["requested_by"] = user.email</code> змінює <i>спільний</i> об'єкт у кеші. Наступний користувач, можливо з іншої організації, отримає чужий email. Ключ кешу <code>route_id</code> без <code>organization_id</code> (і без перевірки доступу) віддає пояснення чужого маршруту.</li>
+          <li><span class="sev high">High</span> <b>Один глобальний лок на всі маршрути:</b> навіть з <code>asyncio.Lock</code> усі пояснення стали б у чергу по одному (20 с кожне). Потрібен лок <i>на ключ</i> або об'єднання однакових запитів.</li>
+          <li><span class="sev high">High</span> <b>Немає повторної перевірки кешу під локом</b> (double-checked): друга корутина, що чекала лок, все одно викличе OpenAI, хоча перша вже заповнила кеш.</li>
+          <li><span class="sev high">High</span> <b>Голий <code>except:</code> ковтає <code>CancelledError</code>.</b> Коли клієнт відключився або спрацював зовнішній таймаут, задачу скасовують, а код ловить скасування, кешує «Explanation unavailable» на 5 хвилин і продовжує роботу. Скасування зламане, а користувачі отримують кешовану заглушку.</li>
+          <li><span class="sev high">High</span> <b>Fire-and-forget без посилання.</b> Event loop тримає лише слабкі посилання на задачі. Задача з <code>create_task</code>, на яку ніхто не посилається, може бути зібрана збирачем сміття до завершення. Її винятки ніхто не побачить («Task exception was never retrieved»). При зупинці сервера вона просто обривається.</li>
+          <li><span class="sev med">Medium</span> <b><code>time.time()</code> для TTL</b> стрибає при зміні системного годинника (NTP). Для інтервалів потрібен <code>time.monotonic()</code>. Кеш без меж за розміром.</li>
+          <li><span class="sev med">Medium</span> <b>Кешується невдача</b> («unavailable») так само, як успіх, тож тимчасовий збій OpenAI «застигає» на 5 хвилин для всіх.</li>
+        </ol>
+      </div></details>
+
+      <div class="codecard good"><div class="bar"><span class="path">✅ після рев'ю</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="kn">import</span><span class="w"> </span><span class="nn">asyncio</span><span class="o">,</span><span class="w"> </span><span class="nn">logging</span><span class="o">,</span><span class="w"> </span><span class="nn">time</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>                       <span class="c1"># незмінне значення в кеші: ніхто не змінить спільний об'єкт</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">class</span><span class="w"> </span><span class="nc">Explanation</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">text</span><span class="p">:</span> <span class="nb">str</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">created_at</span><span class="p">:</span> <span class="nb">float</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">class</span><span class="w"> </span><span class="nc">ExplanationService</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ai</span><span class="p">:</span> <span class="n">AIClient</span><span class="p">,</span> <span class="n">routes</span><span class="p">:</span> <span class="n">RouteRepository</span><span class="p">,</span> <span class="n">ttl</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">300</span><span class="p">,</span> <span class="n">maxsize</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2048</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="bp">self</span><span class="o">.</span><span class="n">_ai</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_routes</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ttl</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maxsize</span> <span class="o">=</span> <span class="n">ai</span><span class="p">,</span> <span class="n">routes</span><span class="p">,</span> <span class="n">ttl</span><span class="p">,</span> <span class="n">maxsize</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">UUID</span><span class="p">,</span> <span class="n">UUID</span><span class="p">],</span> <span class="n">Explanation</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="bp">self</span><span class="o">.</span><span class="n">_inflight</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">UUID</span><span class="p">,</span> <span class="n">UUID</span><span class="p">],</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Task</span><span class="p">[</span><span class="n">Explanation</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">def</span><span class="w"> </span><span class="nf">_fresh</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Explanation</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">e</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">return</span> <span class="n">e</span> <span class="k">if</span> <span class="n">e</span> <span class="ow">and</span> <span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">()</span> <span class="o">-</span> <span class="n">e</span><span class="o">.</span><span class="n">created_at</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ttl</span> <span class="k">else</span> <span class="kc">None</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">explain</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">org_id</span><span class="p">:</span> <span class="n">UUID</span><span class="p">,</span> <span class="n">route_id</span><span class="p">:</span> <span class="n">UUID</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Explanation</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">key</span> <span class="o">=</span> <span class="p">(</span><span class="n">org_id</span><span class="p">,</span> <span class="n">route_id</span><span class="p">)</span>                                    <span class="c1"># тенант у ключі</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">if</span> <span class="p">(</span><span class="n">hit</span> <span class="o">:=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fresh</span><span class="p">(</span><span class="n">key</span><span class="p">))</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">return</span> <span class="n">hit</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">task</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inflight</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">if</span> <span class="n">task</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>                                            <span class="c1"># singleflight: один виклик OpenAI на ключ</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">task</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_compute</span><span class="p">(</span><span class="n">org_id</span><span class="p">,</span> <span class="n">route_id</span><span class="p">))</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="bp">self</span><span class="o">.</span><span class="n">_inflight</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">task</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">task</span><span class="o">.</span><span class="n">add_done_callback</span><span class="p">(</span><span class="k">lambda</span> <span class="n">_t</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_inflight</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">return</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">shield</span><span class="p">(</span><span class="n">task</span><span class="p">)</span>    <span class="c1"># скасування одного очікувача не скасовує спільну роботу</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_compute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">org_id</span><span class="p">:</span> <span class="n">UUID</span><span class="p">,</span> <span class="n">route_id</span><span class="p">:</span> <span class="n">UUID</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Explanation</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">summary</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_routes</span><span class="o">.</span><span class="n">summary</span><span class="p">(</span><span class="n">org_id</span><span class="p">,</span> <span class="n">route_id</span><span class="p">)</span>      <span class="c1"># перевірка доступу: чужий маршрут → NotFound</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">async</span> <span class="k">with</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">timeout</span><span class="p">(</span><span class="mi">20</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">text</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ai</span><span class="o">.</span><span class="n">explain</span><span class="p">(</span><span class="n">summary</span><span class="p">)</span>                  <span class="c1"># помилка/таймаут піднімаються, НЕ кешуються</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">exp</span> <span class="o">=</span> <span class="n">Explanation</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">text</span><span class="p">,</span> <span class="n">created_at</span><span class="o">=</span><span class="n">time</span><span class="o">.</span><span class="n">monotonic</span><span class="p">())</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_maxsize</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">)))</span>                <span class="c1"># найстаріший (dict зберігає порядок вставки)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[(</span><span class="n">org_id</span><span class="p">,</span> <span class="n">route_id</span><span class="p">)]</span> <span class="o">=</span> <span class="n">exp</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">return</span> <span class="n">exp</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1"># Фонові задачі: зберігаємо посилання, логуємо помилки, чекаємо при зупинці</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">class</span><span class="w"> </span><span class="nc">BackgroundTasks</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="p">:</span> <span class="nb">set</span><span class="p">[</span><span class="n">asyncio</span><span class="o">.</span><span class="n">Task</span><span class="p">]</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">def</span><span class="w"> </span><span class="nf">spawn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">coro</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">t</span> <span class="o">=</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">coro</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>                                          <span class="c1"># сильне посилання → GC не збере</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">t</span><span class="o">.</span><span class="n">add_done_callback</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_done</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">def</span><span class="w"> </span><span class="nf">_done</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">Task</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="o">.</span><span class="n">discard</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">if</span> <span class="ow">not</span> <span class="n">t</span><span class="o">.</span><span class="n">cancelled</span><span class="p">()</span> <span class="ow">and</span> <span class="p">(</span><span class="n">exc</span> <span class="o">:=</span> <span class="n">t</span><span class="o">.</span><span class="n">exception</span><span class="p">())</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s2">"background task failed"</span><span class="p">,</span> <span class="n">exc_info</span><span class="o">=</span><span class="n">exc</span><span class="p">,</span> <span class="n">extra</span><span class="o">=</span><span class="p">{</span><span class="s2">"task"</span><span class="p">:</span> <span class="n">t</span><span class="o">.</span><span class="n">get_name</span><span class="p">()})</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">drain</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>            <span class="c1"># викликати в lifespan при shutdown</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">wait</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tasks</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1"># Ендпоінт: відповідь збирається окремо, кеш не мутується</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/routes/</span><span class="si">{route_id}</span><span class="s2">/explanation"</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ExplanationOut</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_explanation</span><span class="p">(</span><span class="n">route_id</span><span class="p">:</span> <span class="n">UUID</span><span class="p">,</span> <span class="n">user</span><span class="p">:</span> <span class="n">CurrentUser</span><span class="p">,</span> <span class="n">svc</span><span class="p">:</span> <span class="n">ExplainerDep</span><span class="p">,</span> <span class="n">bg</span><span class="p">:</span> <span class="n">BackgroundDep</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">exp</span> <span class="o">=</span> <span class="k">await</span> <span class="n">svc</span><span class="o">.</span><span class="n">explain</span><span class="p">(</span><span class="n">user</span><span class="o">.</span><span class="n">organization_id</span><span class="p">,</span> <span class="n">route_id</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">bg</span><span class="o">.</span><span class="n">spawn</span><span class="p">(</span><span class="n">track_usage</span><span class="p">(</span><span class="n">user</span><span class="o">.</span><span class="n">organization_id</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s2">"track_usage"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">ExplanationOut</span><span class="p">(</span><span class="n">text</span><span class="o">=</span><span class="n">exp</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>                            <span class="c1"># email користувача в кеш не потрапляє</span></code></pre></div>
+      <h4>Чому так</h4>
+      <ul>
+        <li><b>Singleflight замість глобального лока:</b> одночасні запити на <i>той самий</i> маршрут чекають одну спільну задачу, а різні маршрути йдуть паралельно. Повторна перевірка не потрібна: перший приходить до <code>_inflight</code> раніше, ніж будь-хто дійде до <code>await</code>, бо між перевіркою і записом у словник немає <code>await</code>.</li>
+        <li><b><code>asyncio.shield</code></b>: якщо один клієнт відключився і його корутину скасували, спільна задача продовжується для інших очікувачів.</li>
+        <li><b>Жодного <code>threading.Lock</code> навколо <code>await</code></b> і жодного <code>lru_cache</code> на корутинах. Для async-кешу: кешуємо результат (значення), а не корутину.</li>
+        <li><b>Незмінні значення в кеші</b> і окремий DTO відповіді: дані запиту (email) ніколи не змішуються зі спільним станом.</li>
+        <li><b>Скасування поважається:</b> немає голого <code>except</code>; таймаут і помилки OpenAI піднімаються і не кешуються. Заглушку «недоступно» можна показати на рівні ендпоінта, не кешуючи її.</li>
+        <li><b>Фонові задачі під контролем:</b> сильні посилання, лог помилок, очікування при shutdown. Для важливого (облік використання, за яким білінг) краще черга або outbox, ніж задача в пам'яті процесу.</li>
+        <li><b>Межі процесу:</b> кеш і singleflight тут — на інстанс. На кількох машинах спільний кеш і лок — Redis (<code>SET NX</code> + TTL), див. <a href="29-race-conditions.html">туторіал 29, D1–D2</a>.</li>
+      </ul>
+      <figure class="db">
+        <svg viewBox="0 0 820 220" role="img" aria-label="Deadlock threading.Lock в asyncio">
+          <defs><marker id="c1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ar"/></marker></defs>
+          <g font-size="12.5">
+            <text x="410" y="22" text-anchor="middle" font-weight="700">Один потік, один event loop</text>
+            <rect x="40" y="40" width="330" height="34" rx="6" class="box"/><text x="205" y="62" text-anchor="middle">корутина A: with threading.Lock ✔</text>
+            <rect x="40" y="84" width="330" height="34" rx="6" class="box"/><text x="205" y="106" text-anchor="middle">A: await call_openai → віддає керування loop</text>
+            <rect x="450" y="84" width="330" height="34" rx="6" class="box" style="stroke:var(--bad);stroke-width:2"/><text x="615" y="106" text-anchor="middle">корутина B: _lock.acquire() блокує ПОТІК</text>
+            <rect x="200" y="150" width="420" height="40" rx="8" class="box" style="stroke:var(--bad);stroke-width:2"/>
+            <text x="410" y="168" text-anchor="middle" style="fill:var(--bad)">loop стоїть → A ніколи не продовжиться → лок не звільниться</text>
+            <text x="410" y="184" text-anchor="middle" class="mut">увесь воркер завис (усі запити, health-check теж)</text>
+            <path d="M370 101 H448" class="ln" marker-end="url(#c1)"/>
+            <path d="M615 118 L520 148" class="ln" marker-end="url(#c1)"/>
+          </g>
+        </svg>
+        <figcaption>Класична пастка: лок потоків у коді на корутинах. <code>asyncio.Lock</code> при зайнятості не блокує потік, а призупиняє лише ту корутину, що чекає.</figcaption>
+      </figure>
+    </section>
+
+    <!-- ============ ANTI ============ -->
+    <section id="anti">
+      <h2><span class="num">06</span>П'ять найпоширеніших антипатернів у Python-коді</h2>
+
+      <h3>1. Ковтання винятків («Pokémon exception handling»: gotta catch 'em all)</h3>
+      <div class="codecard bad"><div class="bar"><span class="path">❌</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">try</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">route</span> <span class="o">=</span> <span class="k">await</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">problem</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">except</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">pass</span>                     <span class="c1"># або: except Exception: return None</span></code></pre></div>
+      <div class="codecard good"><div class="bar"><span class="path">✅</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">try</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">route</span> <span class="o">=</span> <span class="k">await</span> <span class="n">optimizer</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">problem</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">except</span> <span class="n">NoFeasibleSolution</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>                   <span class="c1"># ловимо лише те, що вміємо обробити</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="mi">422</span><span class="p">,</span> <span class="s2">"No feasible route for these constraints"</span><span class="p">)</span> <span class="kn">from</span><span class="w"> </span><span class="nn">e</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1"># усе інше — до глобального обробника: 500 + log.exception з traceback</span></code></pre></div>
+      <p><b>Чому погано:</b> баг перетворюється на «тихі» неправильні дані; голий <code>except</code> ловить навіть <code>CancelledError</code>, <code>KeyboardInterrupt</code>, <code>SystemExit</code>. <b>Правило:</b> ловити конкретні винятки якомога ближче до місця, де знаєш, що робити; інакше пропускати вище; <code>log.exception</code> або <code>exc_info=True</code>, щоб зберегти traceback; <code>raise … from e</code>, щоб не губити причину.</p>
+
+      <h3>2. Блокуючий код в async (sync-in-async)</h3>
+      <div class="codecard bad"><div class="bar"><span class="path">❌</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handler</span><span class="p">():</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">data</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>          <span class="c1"># блокуючий HTTP</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>                            <span class="c1"># блокуючий сон</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">rows</span> <span class="o">=</span> <span class="n">psycopg2_cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">sql</span><span class="p">)</span>      <span class="c1"># синхронний драйвер БД</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">result</span> <span class="o">=</span> <span class="n">heavy_numpy_or_ortools</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>    <span class="c1"># CPU на секунди</span></code></pre></div>
+      <div class="codecard good"><div class="bar"><span class="path">✅</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handler</span><span class="p">(</span><span class="n">http</span><span class="p">:</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">data</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="n">http</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">))</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">rows</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmt</span><span class="p">)</span>                           <span class="c1"># asyncpg / async SQLAlchemy</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">to_thread</span><span class="p">(</span><span class="n">heavy_numpy_or_ortools</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>  <span class="c1"># або ProcessPool / Celery для CPU</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1"># альтернатива: зробити ендпоінт звичайним def — FastAPI виконає його в threadpool</span></code></pre></div>
+      <p><b>Чому погано:</b> event loop однопотоковий: поки один блокуючий виклик триває, <i>жоден</i> інший запит цього воркера не обробляється. Симптоми — «латентність усіх ендпоінтів стрибає до секунд при невеликому RPS», health-check падає (<a href="06-gil-and-concurrency.html">туторіал 6</a>, <a href="10-wsgi-asgi.html">туторіал 10</a>).</p>
+
+      <h3>3. Mutable default arguments і глобальний змінюваний стан</h3>
+      <div class="codecard bad"><div class="bar"><span class="path">❌</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">def</span><span class="w"> </span><span class="nf">add_stop</span><span class="p">(</span><span class="n">stop</span><span class="p">,</span> <span class="n">stops</span><span class="o">=</span><span class="p">[]):</span>        <span class="c1"># список створюється ОДИН раз</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">stops</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stop</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">stops</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">current_org</span> <span class="o">=</span> <span class="kc">None</span>                   <span class="c1"># "контекст" через глобальну змінну</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handler</span><span class="p">(</span><span class="n">user</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">global</span> <span class="n">current_org</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">current_org</span> <span class="o">=</span> <span class="n">user</span><span class="o">.</span><span class="n">organization_id</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">await</span> <span class="n">do_work</span><span class="p">()</span>                  <span class="c1"># інший запит змінить current_org під час await</span></code></pre></div>
+      <div class="codecard good"><div class="bar"><span class="path">✅</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">def</span><span class="w"> </span><span class="nf">add_stop</span><span class="p">(</span><span class="n">stop</span><span class="p">,</span> <span class="n">stops</span><span class="p">:</span> <span class="nb">list</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">stops</span> <span class="o">=</span> <span class="p">[]</span> <span class="k">if</span> <span class="n">stops</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">stops</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">stops</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stop</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">stops</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextvars</span><span class="w"> </span><span class="kn">import</span> <span class="n">ContextVar</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">current_org</span><span class="p">:</span> <span class="n">ContextVar</span><span class="p">[</span><span class="n">UUID</span> <span class="o">|</span> <span class="kc">None</span><span class="p">]</span> <span class="o">=</span> <span class="n">ContextVar</span><span class="p">(</span><span class="s2">"current_org"</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handler</span><span class="p">(</span><span class="n">user</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">current_org</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">user</span><span class="o">.</span><span class="n">organization_id</span><span class="p">)</span>    <span class="c1"># своє значення в кожній задачі/запиті</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">await</span> <span class="n">do_work</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1"># а найкраще — передавати залежності явно (параметри, Depends), без прихованого стану</span></code></pre></div>
+      <p><b>Чому погано:</b> значення за замовчуванням обчислюється при визначенні функції, тож усі виклики ділять один список. Глобальна змінна в async-сервері спільна для <i>всіх одночасних запитів</i>, і між <code>await</code> її перезапише інший запит. Звідси витоки даних між користувачами. <code>ContextVar</code> дає кожній задачі asyncio власну копію.</p>
+
+      <h3>4. N+1 запитів (до БД або до API)</h3>
+      <div class="codecard bad"><div class="bar"><span class="path">❌</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="n">routes</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">Route</span><span class="p">)))</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">routes</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">for</span> <span class="n">stop</span> <span class="ow">in</span> <span class="n">r</span><span class="o">.</span><span class="n">stops</span><span class="p">:</span>                      <span class="c1"># lazy load → окремий SELECT на кожен маршрут</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="nb">print</span><span class="p">(</span><span class="n">stop</span><span class="o">.</span><span class="n">delivery</span><span class="o">.</span><span class="n">address</span><span class="p">)</span>          <span class="c1"># і ще SELECT на кожну зупинку</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1"># (в async SQLAlchemy це взагалі впаде: MissingGreenlet — ліниве завантаження в async заборонене)</span></code></pre></div>
+      <div class="codecard good"><div class="bar"><span class="path">✅</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="n">stmt</span> <span class="o">=</span> <span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">select</span><span class="p">(</span><span class="n">Route</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Route</span><span class="o">.</span><span class="n">organization_id</span> <span class="o">==</span> <span class="n">org_id</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="n">selectinload</span><span class="p">(</span><span class="n">Route</span><span class="o">.</span><span class="n">stops</span><span class="p">)</span><span class="o">.</span><span class="n">joinedload</span><span class="p">(</span><span class="n">RouteStop</span><span class="o">.</span><span class="n">delivery</span><span class="p">))</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">routes</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmt</span><span class="p">))</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>    <span class="c1"># 2–3 запити замість 1 + N + N·M</span></code></pre></div>
+      <p><b>Чому погано:</b> 50 маршрутів × 30 зупинок = 1 551 запит на одну сторінку. Локально з 3 рядками непомітно, у проді — секунди. Той самий патерн з HTTP: виклик API в циклі замість батч-ендпоінта або обмеженої конкурентності (приклад 1, приклад 3). Детальніше: <a href="18-databases-interview-qa.html">туторіал 18, питання 22</a>.</p>
+
+      <h3>5. «Товстий» ендпоінт (God function) і змішування шарів</h3>
+      <div class="codecard bad"><div class="bar"><span class="path">❌ 200 рядків в одному роутері</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="nd">@router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/routes/optimize"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">optimize</span><span class="p">(</span><span class="n">body</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span> <span class="n">db</span><span class="o">=</span><span class="n">Depends</span><span class="p">(</span><span class="n">get_db</span><span class="p">)):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="c1"># парсинг body руками, валідація if-ами, SQL-запити, виклик OR-Tools,</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="c1"># розрахунок квоти, формування email, логування, побудова JSON — усе тут</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="o">...</span></code></pre></div>
+      <div class="codecard good"><div class="bar"><span class="path">✅ тонкий роутер → сервіс → репозиторій</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="nd">@router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/routes/optimize"</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">OptimizeResult</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">optimize</span><span class="p">(</span><span class="n">body</span><span class="p">:</span> <span class="n">OptimizeRequest</span><span class="p">,</span>                     <span class="c1"># Pydantic валідує вхід</span>
+<span class="jb-ln" aria-hidden="true"></span>                   <span class="n">org</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Organization</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">require_route_quota</span><span class="p">)],</span>
+<span class="jb-ln" aria-hidden="true"></span>                   <span class="n">service</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">RouteOptimizerService</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_route_optimizer_service</span><span class="p">)]):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="k">await</span> <span class="n">service</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">org</span><span class="p">,</span> <span class="n">body</span><span class="p">)</span>                  <span class="c1"># бізнес-логіка не знає про HTTP</span></code></pre></div>
+      <p><b>Чому погано:</b> неможливо протестувати логіку без HTTP і БД, неможливо перевикористати (CLI, Celery-задача), будь-яка зміна зачіпає все. Так влаштований і цей проєкт: <code>api/</code> → <code>services/</code> → <code>repositories/</code> з DI через <code>Depends</code> (<a href="01-architecture.html">туторіал 1</a>, <a href="13-design-patterns.html">туторіал 13</a>, <a href="14-oop-and-solid.html">туторіал 14</a>).</p>
+
+      <div class="callout info"><div class="ic">ℹ️</div><div class="body"><b>Ще кілька, які часто трапляються:</b> «магічні» рядки й числа замість <code>Enum</code>/констант; <code>dict</code> замість типізованих моделей (primitive obsession); передчасна оптимізація і кеш «про всяк випадок»; копіпаст замість функції; <code>isinstance</code>-драбини замість поліморфізму; <code>from module import *</code>; відкриті файли/з'єднання без <code>with</code>.</div></div>
+    </section>
+
+    <!-- ============ QUICK ============ -->
+    <section id="quick">
+      <h2><span class="num">07</span>12 швидких async-пасток (бліц на співбесіді)</h2>
+      <p class="section-desc">Кожна — 1–3 рядки. Спершу скажи, що не так, потім відкривай.</p>
+
+      <details class="issues"><summary>1. <code>result = fetch_user(1)</code> (де <code>fetch_user</code> — <code>async def</code>)</summary><div class="a">
+        <p><b>Забутий <code>await</code>.</b> <code>result</code> — об'єкт корутини, функція не виконалась (warning «coroutine was never awaited»). Ловиться тайпчекером: mypy (код помилки <code>unused-coroutine</code>), pyright (<code>reportUnusedCoroutine</code>).</p></div></details>
+
+      <details class="issues"><summary>2. <code>for u in urls: data.append(await client.get(u))</code></summary><div class="a">
+        <p><b>Послідовно, а не конкурентно.</b> Кожен запит чекає попередній. Якщо порядок і залежність не потрібні: <code>TaskGroup</code>/<code>gather</code> з <code>Semaphore</code> (приклад 3).</p></div></details>
+
+      <details class="issues"><summary>3. <code>await asyncio.gather(*[client.get(u) for u in ten_thousand_urls])</code></summary><div class="a">
+        <p><b>Необмежена конкурентність:</b> 10 000 одночасних з'єднань, rate limit, вичерпання файлових дескрипторів і пулу. Потрібен <code>Semaphore</code> або пакети.</p></div></details>
+
+      <details class="issues"><summary>4. <code>asyncio.create_task(send_email(...))</code> і більше нічого</summary><div class="a">
+        <p><b>Задача без посилання</b> може бути зібрана GC, винятки втрачаються, при shutdown обривається. Тримати в <code>set</code> + done-callback (приклад 5) або черга. Ruff ловить це правилом <code>RUF006</code> (asyncio-dangling-task).</p></div></details>
+
+      <details class="issues"><summary>5. <code>except Exception: ...</code> навколо <code>await</code> — чи ловить скасування?</summary><div class="a">
+        <p>З Python 3.8 <code>asyncio.CancelledError</code> наслідує <code>BaseException</code>, тож <code>except Exception</code> його <b>не</b> ловить, і це правильно. А голий <code>except:</code> або <code>except BaseException:</code> — ловить і ламає скасування. Якщо треба прибрати за собою, то <code>finally</code> або <code>except CancelledError: cleanup(); raise</code>.</p></div></details>
+
+      <details class="issues"><summary>6. <code>@lru_cache</code> над <code>async def</code></summary><div class="a">
+        <p>Кешує об'єкт корутини; другий виклик → <code>RuntimeError: cannot reuse already awaited coroutine</code>. Кешувати результат (див. приклад 5) або <code>async-lru</code>.</p></div></details>
+
+      <details class="issues"><summary>7. <code>with threading.Lock(): await something()</code></summary><div class="a">
+        <p>Лок потоків, утримуваний через <code>await</code>, призводить до deadlock event loop, щойно інша корутина спробує його взяти. Потрібен <code>asyncio.Lock</code>.</p></div></details>
+
+      <details class="issues"><summary>8. Одна <code>AsyncSession</code> в <code>gather</code> з кількох корутин</summary><div class="a">
+        <p><code>AsyncSession</code> не безпечна для конкурентного використання з кількох задач. Кожна задача — своя сесія з <code>async_sessionmaker</code>, або конкурентно лише I/O, а запис послідовно (приклад 3).</p></div></details>
+
+      <details class="issues"><summary>9. <code>asyncio.run(main())</code> всередині FastAPI-обробника</summary><div class="a">
+        <p>В <code>async def</code> → <code>RuntimeError</code> (loop уже працює). У <code>def</code> → новий loop у потоці, несумісний з об'єктами головного loop. Просто <code>await</code> у async-коді, або <code>asyncio.run_coroutine_threadsafe</code> з потоку в наявний loop.</p></div></details>
+
+      <details class="issues"><summary>10. <code>if key not in cache: cache[key] = await load(key)</code> — гонка?</summary><div class="a">
+        <p><b>Так:</b> між перевіркою і записом є <code>await</code>, тож кілька корутин одночасно не знайдуть ключ і всі підуть у <code>load</code> (stampede). Для дорогих викликів — singleflight через спільну <code>Task</code> (приклад 5). Сам запис у <code>dict</code> без <code>await</code> атомарний відносно інших корутин.</p></div></details>
+
+      <details class="issues"><summary>11. <code>await asyncio.wait_for(task, 5)</code> — що станеться з <code>task</code> після таймауту?</summary><div class="a">
+        <p><code>wait_for</code> <b>скасує</b> задачу при таймауті. Якщо задача спільна для кількох очікувачів, обгорни її в <code>asyncio.shield(task)</code>. Для блоку коду з 3.11 зручніше <code>async with asyncio.timeout(5):</code>.</p></div></details>
+
+      <details class="issues"><summary>12. <code>async def get(): return requests.get(url)</code> працює в тестах, чому це проблема?</summary><div class="a">
+        <p>У тесті один запит, тож блокування не видно. Під навантаженням блокує event loop. «Async def» не робить код асинхронним: асинхронними мають бути самі виклики I/O (await на async-бібліотеці).</p></div></details>
+    </section>
+
+    <!-- ============ CHECK ============ -->
+    <section id="check">
+      <h2><span class="num">08</span>Чекліст code review для Python-бекенду</h2>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Зона</th><th>Питання до коду</th></tr></thead>
+        <tbody>
+          <tr><td><b>Безпека</b></td><td>Параметризовані запити? Тенант/власник з токена, а не з запиту? Секрети з конфігу? Вхід провалідовано (Pydantic, ліміти)? Підписи вебхуків?</td></tr>
+          <tr><td><b>Async</b></td><td>Немає блокуючих викликів у <code>async def</code>? Усі корутини з <code>await</code>? Конкурентність обмежена? Сесія БД не ділиться між задачами? Фонові задачі мають посилання? Скасування не ковтається? Немає <code>threading.Lock</code> навколо <code>await</code>?</td></tr>
+          <tr><td><b>Конкурентність / дані</b></td><td>Read-modify-write і check-then-act атомарні (умовний UPDATE, UNIQUE)? Ідемпотентність для повторів? Транзакції короткі, без зовнішніх викликів усередині? (<a href="29-race-conditions.html">туторіал 29</a>)</td></tr>
+          <tr><td><b>Зовнішні API</b></td><td>Таймаути? Ретраї лише для тимчасових помилок, з backoff і jitter? Статус відповіді перевіряється? Спільний клієнт з пулом? Що буде, якщо API лежить 10 хвилин?</td></tr>
+          <tr><td><b>Кеш</b></td><td>Межа розміру і TTL? Ключ включає тенанта і всі параметри? Кешуються лише успіхи? Значення незмінні? Що з інвалідацією і кількома інстансами?</td></tr>
+          <tr><td><b>Логи</b></td><td><code>getLogger(__name__)</code>, без <code>print</code>? Без PII і секретів? <code>log.exception</code> для помилок? Структуровані поля, а не f-рядки? (<a href="11-logging.html">туторіал 11</a>)</td></tr>
+          <tr><td><b>Помилки</b></td><td>Ловляться конкретні винятки? Неочікуване доходить до глобального обробника? Коректні HTTP-статуси?</td></tr>
+          <tr><td><b>БД</b></td><td>Немає N+1? Індекси під нові запити? Міграція backward-compatible? Гроші в <code>Decimal</code>/центах? Дати timezone-aware?</td></tr>
+          <tr><td><b>Тести</b></td><td>Є тест на щасливий шлях і на помилки? На конкурентний сценарій, якщо він є? Тести перевіряють поведінку, а не реалізацію?</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout good"><div class="ic">💡</div><div class="body"><b>Фінальна фраза на співбесіді.</b> «Блокери: SQL-ін'єкція, доступ до чужих даних і
+        блокуючий HTTP в async, їх я б виправив до мерджу. Друге: таймаути, ретраї і кеш з межами. Решту можна окремим PR.
+        І я б додав тест на паралельні запити, бо саме там цей код ламався б у проді.»</div></div>
+    </section>
+
+    <div class="card">
+      Пов'язане: <a href="06-gil-and-concurrency.html">6 · GIL і конкурентність</a> ·
+      <a href="10-wsgi-asgi.html">10 · WSGI vs ASGI</a> · <a href="11-logging.html">11 · логування</a> ·
+      <a href="22-multi-tenancy-saas.html">22 · multi-tenancy та IDOR</a> · <a href="24-senior-interview-qa.html">24 · питання Senior</a> ·
+      <a href="29-race-conditions.html">29 · race conditions</a>.
+    </div>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Усі «погані» приклади навмисно вигадані в стилі коду початківця й не взяті з репозиторію; «правильні» варіанти
+  спираються на патерни, які реально використовує <code>ai-delivery-planner-backend</code> (репозиторії, сервіси, DI через <code>Depends</code>).
+  Поведінка asyncio описана для Python 3.11+.
+</footer>
+
+<script>
+(function(){
+  var root = document.documentElement, btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function current(){
+    var t = root.getAttribute('data-theme');
+    return t === 'light' || t === 'dark' ? t : (mq && mq.matches ? 'dark' : 'light');
+  }
+  function render(){
+    var dark = current() === 'dark';
+    btn.textContent = dark ? '☀️ Світла тема' : '🌙 Темна тема';
+    btn.setAttribute('aria-label', dark ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('docs-theme', next); }catch(e){}
+    render();
+  });
+  if(mq && mq.addEventListener) mq.addEventListener('change', render);
+  render();
+})();
+</script>
+<script src="../assets/mobile-nav.js"></script>
+</body>
+</html>
+

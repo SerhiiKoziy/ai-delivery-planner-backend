@@ -383,6 +383,10 @@
   details.ans .a{padding:4px 16px 14px; border-top:1px solid var(--border); font-size:14.5px;}
   .deeper{font-size:13.5px; color:var(--fg-muted); margin-top:8px;}
   .deeper a{color:var(--accent);}
+
+  /* --- tutorial 29: red stars for the four main DB approaches --- */
+  .star{color:#e5484d; font-weight:800;}
+  article h2 .num .star{font-size:15px;}
 </style>
 <link rel="stylesheet" href="../assets/mobile-nav.css">
 </head>
@@ -460,6 +464,7 @@
         <a href="25-system-design.html">25. Системний дизайн</a>
         <a href="26-sentry-monitoring.html">26. Sentry: моніторинг</a>
         <a href="27-kubernetes.html">27. Kubernetes</a>
+        <a href="30-code-review.html">30. Code Review</a>
         <a href="17-databases-fundamentals.html">17. 🗄️ Бази даних: основи</a>
         <a href="18-databases-interview-qa.html">18. 🗄️ Бази даних: Q&amp;A</a>
         <a href="19-postgres-storage-and-memory.html">19. 🗄️ Postgres storage &amp; пам'ять</a>
@@ -546,19 +551,55 @@
       <li><a href="#s0">0. Що таке гонка</a></li>
       <li><a href="#s1">1. Вісім типів гонок</a></li>
       <li><a href="#s2">2. Карта технік</a></li>
-      <li><a href="#sA">A. Пам'ять процесу</a></li>
-      <li><a href="#sB1">B1. Атомарний UPDATE</a></li>
-      <li><a href="#sB2">B2. Унікальні обмеження</a></li>
-      <li><a href="#sB3">B3. FOR UPDATE</a></li>
-      <li><a href="#sB4">B4. Оптимістичне блокування</a></li>
-      <li><a href="#sB5">B5. Рівні ізоляції</a></li>
-      <li><a href="#sB6">B6. Advisory locks</a></li>
-      <li><a href="#sB7">B7. CHECK, EXCLUDE</a></li>
-      <li><a href="#sBsum">Порівняння B1–B7</a></li>
-      <li><a href="#sC">C. API: ідемпотентність</a></li>
-      <li><a href="#sD">D. Кілька інстансів</a></li>
-      <li><a href="#sE">E. Кеш</a></li>
-      <li><a href="#sF">F. Фронтенд</a></li>
+      <li><a href="#sA">A. Пам'ять процесу</a>
+        <ol>
+          <li><a href="#sA1">A1. <code>+=</code> не атомарний</a></li>
+          <li><a href="#sA2">A2. asyncio: гонка між await</a></li>
+          <li><a href="#sA3">A3. Singleflight</a></li>
+          <li><a href="#sA4">A4. Без спільного стану</a></li>
+        </ol>
+      </li>
+      <li><a href="#sB0">B. База даних: 4 головні підходи <span class="star" aria-hidden="true">★</span></a>
+        <ol>
+          <li><a href="#sB1">B1<span class="star" aria-hidden="true">★</span> Атомарні оновлення</a></li>
+          <li><a href="#sB4">B4<span class="star" aria-hidden="true">★</span> Оптимістичне (OCC)</a></li>
+          <li><a href="#sB3">B3<span class="star" aria-hidden="true">★</span> Песимістичне (FOR UPDATE)</a></li>
+          <li><a href="#sB8">B8<span class="star" aria-hidden="true">★</span> Розподілені локи (Redis)</a></li>
+          <li><a href="#sB2">B2. Унікальні обмеження</a></li>
+          <li><a href="#sB5">B5. Рівні ізоляції</a></li>
+          <li><a href="#sB6">B6. Advisory locks</a></li>
+          <li><a href="#sB7">B7. CHECK, EXCLUDE</a></li>
+          <li><a href="#sBsum">Порівняння B1–B8</a></li>
+        </ol>
+      </li>
+      <li><a href="#sC">C. API: ідемпотентність</a>
+        <ol>
+          <li><a href="#sC1">C1. Idempotency key</a></li>
+          <li><a href="#sC2">C2. State machine</a></li>
+        </ol>
+      </li>
+      <li><a href="#sD">D. Кілька інстансів</a>
+        <ol>
+          <li><a href="#sD1">D1. Атомарність у Redis</a></li>
+          <li><a href="#sD2">D2. Локи і fencing tokens</a></li>
+          <li><a href="#sD3">D3. Single writer</a></li>
+          <li><a href="#sD4">D4. Черги задач</a></li>
+          <li><a href="#sD5">D5. Outbox</a></li>
+        </ol>
+      </li>
+      <li><a href="#sE">E. Кеш</a>
+        <ol>
+          <li><a href="#sE1">E1. Застарілий кеш</a></li>
+          <li><a href="#sE2">E2. Stampede</a></li>
+        </ol>
+      </li>
+      <li><a href="#sF">F. Фронтенд</a>
+        <ol>
+          <li><a href="#sF1">F1. Відповіді не по порядку</a></li>
+          <li><a href="#sF2">F2. Подвійний submit</a></li>
+          <li><a href="#sF3">F3. Stale closure</a></li>
+        </ol>
+      </li>
       <li><a href="#sG">G. Як знайти й протестувати</a></li>
       <li><a href="#sH">H. Кейс з цього репо</a></li>
       <li><a href="#sI">I. Шпаргалка</a></li>
@@ -677,7 +718,7 @@ await session.commit()                        <span class="cmt"># UPDATE account
     <!-- ============ A ============ -->
     <section id="sA">
       <h2><span class="num">A</span>Пам'ять одного процесу: потоки й корутини</h2>
-      <h3>A1. <code>+=</code> — не атомарна операція, навіть з GIL</h3>
+      <h3 id="sA1">A1. <code>+=</code> — не атомарна операція, навіть з GIL</h3>
       <p>GIL гарантує, що одночасно виконується лише один байткод, але <code>counter += 1</code> — це кілька байткодів
       (прочитати, додати, записати), і потік може бути перемкнений між ними
       (<a href="06-gil-and-concurrency.html">туторіал 6, розділ 08</a>).</p>
@@ -703,7 +744,7 @@ print(counter)   <span class="cmt"># unsafe: може бути &lt; 800 000 (з�
       <p>Так зроблено і в цьому проєкті: <code>app/core/rate_limiting.py</code> тримає вікна запитів у <code>dict</code> і змінює їх
       під <code>threading.Lock</code>, бо синхронні залежності FastAPI виконуються в пулі потоків.</p>
 
-      <h3>A2. asyncio: гонка живе між <code>await</code></h3>
+      <h3 id="sA2">A2. asyncio: гонка живе між <code>await</code></h3>
       <p>Корутини перемикаються <b>лише</b> на <code>await</code>. Код без <code>await</code> між перевіркою і дією атомарний
       відносно інших корутин того ж event loop. Але щойно між ними є <code>await</code>, туди може вклинитись інший запит.</p>
       <div class="codecard"><div class="bar"><span class="path">asyncio — lazy-ініціалізація з гонкою</span></div><pre><code><span class="cmt"># ❌ два одночасні запити обидва побачать None і створять ДВА клієнти/пули</span>
@@ -731,7 +772,7 @@ async def lifespan(app):
     yield
     await app.state.client.close()</code></pre></div>
 
-      <h3>A3. Request coalescing (singleflight): один запит замість ста</h3>
+      <h3 id="sA3">A3. Request coalescing (singleflight): один запит замість ста</h3>
       <div class="codecard"><div class="bar"><span class="path">кілька корутин чекають ОДИН результат</span></div><pre><code>_inflight: dict[str, asyncio.Future] = {}
 
 async def get_route_cached(route_id: str):
@@ -752,7 +793,7 @@ async def get_route_cached(route_id: str):
     finally:
         _inflight.pop(route_id, None)</code></pre></div>
 
-      <h3>A4. Прибрати спільний стан замість захисту</h3>
+      <h3 id="sA4">A4. Прибрати спільний стан замість захисту</h3>
       <ul>
         <li><b>Immutability:</b> незмінні об'єкти (<code>@dataclass(frozen=True)</code>, кортежі) можна ділити без локів.</li>
         <li><b>Confinement:</b> стан належить одному виконавцю (наприклад, сесія БД — одна на запит, а не глобальна).</li>
@@ -764,8 +805,69 @@ async def get_route_cached(route_id: str):
     </section>
 
     <!-- ============ B1 ============ -->
+    <!-- ============ B0 ============ -->
+    <section id="sB0">
+      <h2><span class="num">B</span>База даних: чотири головні підходи <span class="star" aria-label="головний підхід">★</span></h2>
+      <p class="section-desc">На співбесіді про race conditions у БД майже завжди чекають ці чотири підходи і вміння
+      пояснити, коли який брати. Детально кожен розібрано в позначених <span class="star">★</span> розділах; інші техніки (B2, B5–B7) доповнюють їх.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Підхід</th><th>Навантаження на БД</th><th>Складність логіки</th><th>Ризик deadlock</th><th>Швидкодія</th><th>Коли брати</th></tr></thead>
+        <tbody>
+          <tr><td><b><a href="#sB1">B1 <span class="star">★</span> Атомарні оновлення</a></b><br><code>SET x = x - 1 WHERE …</code></td><td class="y">Найнижче: один оператор, рядок заблоковано мікросекунди</td><td class="y">Дуже низька, але лише для логіки, що вміщується в один SQL</td><td class="y">Ні¹</td><td class="y">Найвища</td><td>лічильники, баланси, залишки, квоти, переходи стану</td></tr>
+          <tr><td><b><a href="#sB4">B4 <span class="star">★</span> Оптимістичне (OCC)</a></b><br><code>WHERE version = :v</code></td><td class="y">Низьке, але росте з колізіями (повтори роботи)</td><td class="m">Середня: колонка version + ретраї або 409</td><td class="y">Ні</td><td class="y">Висока при низькій конкуренції, різко падає при частих конфліктах</td><td>рідкі конфлікти, редагування людьми (форма відкрита хвилинами), ETag/If-Match</td></tr>
+          <tr><td><b><a href="#sB3">B3 <span class="star">★</span> Песимістичне</a></b><br><code>SELECT … FOR UPDATE</code></td><td class="n">Високе: тримає транзакцію, з'єднання і черги очікування</td><td class="n">Висока: порядок блокування, короткі транзакції, таймаути</td><td class="n">Так, високий</td><td class="n">Низька під конкуренцією (запити до рядка йдуть по черзі)</td><td>складна логіка над кількома рядками, часті конфлікти, гроші</td></tr>
+          <tr><td><b><a href="#sB8">B8 <span class="star">★</span> Розподілені локи (Redis)</a></b><br><code>SET lock token NX PX</code></td><td class="y">Мінімальне на БД (лок поза нею), але +мережевий виклик до Redis</td><td class="n">Висока: власник, TTL, безпечне звільнення, продовження, fencing</td><td class="m">Можливо на рівні коду</td><td class="m">Середня/висока</td><td>«лише один виконавець» між інстансами, дії поза БД (зовнішній API, файли, cron)</td></tr>
+        </tbody>
+      </table></div>
+      <p class="muted" style="font-size:13.5px">¹ Один атомарний <code>UPDATE</code> одного рядка сам собі deadlock не створить. Але дві транзакції, які кількома
+      атомарними UPDATE оновлюють <i>кілька</i> рядків у різному порядку (переказ 1→2 і 2→1), можуть заблокувати одна одну, як і в B3.
+      Ліки ті самі: однаковий порядок рядків.</p>
+
+      <figure class="db">
+        <svg viewBox="0 0 820 300" role="img" aria-label="Як чотири підходи поводяться при конфлікті двох запитів">
+          <g font-size="12.5">
+            <text x="20" y="22" font-weight="700">Два запити одночасно змінюють один рядок. Що відбувається з другим (B)?</text>
+            <text x="20" y="62" font-weight="700">B1 атомарний</text>
+            <rect x="170" y="48" width="70" height="22" rx="4" style="fill:var(--accent);opacity:.75"/><text x="205" y="64" text-anchor="middle" style="fill:#fff">A</text>
+            <rect x="240" y="48" width="70" height="22" rx="4" style="fill:var(--good);opacity:.75"/><text x="275" y="64" text-anchor="middle" style="fill:#fff">B</text>
+            <text x="330" y="64" class="mut">B чекає мікросекунди і застосовує зміну до нового значення</text>
+            <text x="20" y="122" font-weight="700">B4 оптимістичне</text>
+            <rect x="170" y="108" width="120" height="22" rx="4" style="fill:var(--accent);opacity:.75"/><text x="230" y="124" text-anchor="middle" style="fill:#fff">A: v7 → v8 ✓</text>
+            <rect x="200" y="132" width="120" height="16" rx="4" style="fill:var(--warn);opacity:.6"/><text x="260" y="144" text-anchor="middle" font-size="11">B: v7? 0 рядків</text>
+            <rect x="330" y="108" width="120" height="22" rx="4" style="fill:var(--good);opacity:.75"/><text x="390" y="124" text-anchor="middle" style="fill:#fff">B retry: v8 → v9</text>
+            <text x="470" y="124" class="mut">без очікування, але роботу повторено</text>
+            <text x="20" y="192" font-weight="700">B3 песимістичне</text>
+            <rect x="170" y="178" width="260" height="22" rx="4" style="fill:var(--accent);opacity:.75"/><text x="300" y="194" text-anchor="middle" style="fill:#fff">A: FOR UPDATE … логіка … COMMIT</text>
+            <rect x="170" y="204" width="260" height="14" rx="3" style="fill:var(--bad);opacity:.35"/><text x="300" y="215" text-anchor="middle" font-size="11">B чекає всю транзакцію A</text>
+            <rect x="430" y="178" width="120" height="22" rx="4" style="fill:var(--good);opacity:.75"/><text x="490" y="194" text-anchor="middle" style="fill:#fff">B</text>
+            <text x="570" y="194" class="mut">черга; ризик deadlock</text>
+            <text x="20" y="262" font-weight="700">B8 Redis-лок</text>
+            <rect x="170" y="248" width="60" height="22" rx="4" style="fill:var(--warn);opacity:.8"/><text x="200" y="264" text-anchor="middle" font-size="11">SET NX</text>
+            <rect x="230" y="248" width="170" height="22" rx="4" style="fill:var(--accent);opacity:.75"/><text x="315" y="264" text-anchor="middle" style="fill:#fff">A працює (з TTL)</text>
+            <rect x="400" y="248" width="40" height="22" rx="4" style="fill:var(--warn);opacity:.8"/><text x="420" y="264" text-anchor="middle" font-size="11">DEL</text>
+            <rect x="200" y="274" width="240" height="14" rx="3" style="fill:var(--bad);opacity:.35"/><text x="320" y="285" text-anchor="middle" font-size="11">B: SET NX → зайнято → backoff / 409</text>
+            <rect x="450" y="248" width="80" height="22" rx="4" style="fill:var(--good);opacity:.75"/><text x="490" y="264" text-anchor="middle" style="fill:#fff">B</text>
+            <text x="545" y="264" class="mut">+ мережа до Redis, TTL, fencing</text>
+          </g>
+        </svg>
+        <figcaption>Той самий конфлікт, чотири стратегії: «зроби разом» (B1), «перевір і повтори» (B4), «стань у чергу в БД» (B3), «стань у чергу поза БД» (B8).</figcaption>
+      </figure>
+
+      <h3>Як обрати за 20 секунд</h3>
+      <ol>
+        <li><b>Влазить в один SQL-оператор?</b> → <a href="#sB1">B1</a> атомарний / умовний UPDATE. Майже завжди найкращий вибір.</li>
+        <li><b>Між читанням і записом людина або довга робота, конфлікти рідкі?</b> → <a href="#sB4">B4</a> оптимістичне блокування.</li>
+        <li><b>Складна логіка над кількома рядками, конфлікти часті, транзакцію можна зробити короткою?</b> → <a href="#sB3">B3</a> песимістичне блокування.</li>
+        <li><b>Спільний стан не в одній БД (зовнішній API, файл, кілька сервісів) і потрібен «лише один виконавець»?</b> → <a href="#sB8">B8</a> розподілений лок. Якщо від цього залежить коректність даних, то з fencing token. Якщо спільна точка — одна Postgres, простіше <a href="#sB6">B6</a> advisory lock.</li>
+        <li><b>Завжди додатково</b> — інваріант обмеженням бази (<a href="#sB2">B2</a> UNIQUE, <a href="#sB7">B7</a> CHECK/EXCLUDE) як остання лінія оборони.</li>
+      </ol>
+      <div class="callout fe"><div class="ic">🎨</div><div class="body"><b>Аналогія для фронтендера.</b>
+        B1 — <code>setState(c =&gt; c + 1)</code>; B4 — <code>git push</code> з «rejected, fetch first»; B3 — заблокувати файл у Figma, поки редагуєш;
+        B8 — <code>navigator.locks.request('name', …)</code> (Web Locks API), але між серверами і з TTL.</div></div>
+    </section>
+
     <section id="sB1">
-      <h2><span class="num">B1</span>Атомарні оновлення (atomic updates) на рівні БД</h2>
+      <h2><span class="num">B1 <span class="star" aria-label="головний підхід">★</span></span>Атомарні оновлення (atomic updates) на рівні БД</h2>
       <p><b>Атомарне оновлення</b> — це зміна поля на основі його <i>поточного</i> значення прямо в базі одним оператором,
       без перезапису всього рядка з боку застосунку. Замість «прочитати баланс у пам'ять → відняти → записати число назад»
       база виконує все як один неподільний крок:</p>
@@ -880,7 +982,7 @@ RETURNING calls;</code></pre></div>
 
     <!-- ============ B3 ============ -->
     <section id="sB3">
-      <h2><span class="num">B3</span>Песимістичне блокування: <code>SELECT … FOR UPDATE</code></h2>
+      <h2><span class="num">B3 <span class="star" aria-label="головний підхід">★</span></span>Песимістичне блокування: <code>SELECT … FOR UPDATE</code></h2>
       <p>Коли треба <i>прочитати</i>, прийняти рішення складною логікою і <i>записати</i>, а одним UPDATE це не виразити,
       можна явно заблокувати рядки на час транзакції. Інші транзакції, що хочуть змінити (або теж <code>FOR UPDATE</code>)
       ці рядки, чекають на коміт.</p>
@@ -934,7 +1036,7 @@ RETURNING calls;</code></pre></div>
 
     <!-- ============ B4 ============ -->
     <section id="sB4">
-      <h2><span class="num">B4</span>Оптимістичне блокування: колонка <code>version</code></h2>
+      <h2><span class="num">B4 <span class="star" aria-label="головний підхід">★</span></span>Оптимістичне блокування (OCC): колонка <code>version</code></h2>
       <p>Ідея: <b>не блокувати</b> під час читання, а під час запису перевірити, що рядок не змінився з моменту читання.
       Якщо змінився, хтось нас випередив: повторюємо операцію або повертаємо 409 користувачу.</p>
       <div class="codecard"><div class="bar"><span class="path">SQL + SQLAlchemy version_id_col</span></div><pre><code>UPDATE routes SET status = 'in_progress', version = version + 1
@@ -1082,19 +1184,101 @@ ALTER TABLE routes ADD CONSTRAINT no_overlapping_routes_per_driver
       помилку незалежно від рівня ізоляції. Класичний інструмент для бронювань, розкладів і змін.</p>
     </section>
 
+    <!-- ============ B8 ============ -->
+    <section id="sB8">
+      <h2><span class="num">B8 <span class="star" aria-label="головний підхід">★</span></span>Розподілені локи (Redis)</h2>
+      <p class="section-desc">Коли захищений ресурс <b>не вміщується в одну транзакцію БД</b>: кілька інстансів не повинні одночасно
+      викликати платний API для однієї організації, перебудовувати один і той самий звіт, обробляти один файл, запускати cron.</p>
+      <h3>Ідея</h3>
+      <p>Лок — це ключ у Redis. Хто перший атомарно створив ключ (<code>SET … NX</code>, «лише якщо не існує»), той і власник.
+      Ключ має <b>TTL</b>, щоб упалий процес не тримав лок вічно, і <b>випадковий токен власника</b>, щоб звільнити лок міг лише той, хто його взяв.</p>
+      <div class="codecard"><div class="bar"><span class="path">правильний лок на redis.asyncio</span></div><pre><code>import asyncio, random, secrets
+from contextlib import asynccontextmanager
+
+<span class="cmt"># звільнити, лише якщо ключ досі НАШ (порівняння і видалення атомарно в одному Lua-скрипті)</span>
+RELEASE = """
+if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('DEL', KEYS[1]) end
+return 0
+"""
+<span class="cmt"># продовжити TTL, лише якщо ключ досі наш</span>
+EXTEND = """
+if redis.call('GET', KEYS[1]) == ARGV[1] then return redis.call('PEXPIRE', KEYS[1], ARGV[2]) end
+return 0
+"""
+
+class LockNotAcquired(Exception): ...
+
+@asynccontextmanager
+async def redis_lock(r, name: str, *, ttl_ms: int = 30_000, wait_s: float = 5.0):
+    key, token = f"lock:{name}", secrets.token_hex(16)
+    deadline = asyncio.get_running_loop().time() + wait_s
+    delay = 0.05
+    while not await r.set(key, token, nx=True, px=ttl_ms):          <span class="cmt"># атомарно: створити, якщо немає</span>
+        if asyncio.get_running_loop().time() &gt;= deadline:
+            raise LockNotAcquired(name)
+        await asyncio.sleep(random.uniform(0, delay))                <span class="cmt"># backoff + jitter, не bombarding Redis</span>
+        delay = min(delay * 2, 1.0)
+
+    async def keep_alive():                                          <span class="cmt"># "watchdog": продовжуємо, поки працюємо</span>
+        while True:
+            await asyncio.sleep(ttl_ms / 3000)
+            if not await r.eval(EXTEND, 1, key, token, ttl_ms):
+                return                                               <span class="cmt"># лок уже не наш (TTL минув) → далі не продовжуємо</span>
+
+    watchdog = asyncio.create_task(keep_alive())
+    try:
+        yield token
+    finally:
+        watchdog.cancel()
+        await r.eval(RELEASE, 1, key, token)                         <span class="cmt"># НЕ простий DEL: можна видалити чужий лок</span>
+
+<span class="cmt"># використання: одна генерація маршрутів на організацію між УСІМА інстансами</span>
+try:
+    async with redis_lock(redis, f"optimize:{org_id}", wait_s=0):
+        result = await optimizer.optimize(org, body)
+except LockNotAcquired:
+    raise HTTPException(409, "Route generation already running for this organization")</code></pre></div>
+      <p>У redis-py є готова реалізація з тим самим принципом (токен + Lua):
+      <code>async with redis.lock(f"lock:optimize:{org_id}", timeout=30, blocking_timeout=5): …</code>, плюс <code>lock.extend()</code>.
+      У продакшені краще брати її або перевірену бібліотеку, але на співбесіді треба вміти пояснити, що всередині.</p>
+
+      <h3>Чому кожна деталь важлива</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Деталь</th><th>Що зламається без неї</th></tr></thead>
+        <tbody>
+          <tr><td><code>NX</code> в одній команді з <code>PX</code></td><td><code>SETNX</code>, потім окремо <code>EXPIRE</code>: процес упав між ними, і лок без TTL висить вічно.</td></tr>
+          <tr><td>Токен власника</td><td>A взяв лок, працював довше за TTL, лок отримав B. A закінчив і робить <code>DEL</code>, видаляючи лок B. Тепер C теж заходить, і всередині вже двоє.</td></tr>
+          <tr><td>Lua для release/extend</td><td><code>GET</code> + порівняння в Python + <code>DEL</code> — та сама check-then-act гонка: між GET і DEL ключ міг протухнути й дістатися іншому.</td></tr>
+          <tr><td>TTL + продовження</td><td>Короткий TTL без продовження: довга операція переживає лок. Довгий TTL без продовження: після падіння власника всі чекають хвилинами.</td></tr>
+          <tr><td>Таймаут очікування + backoff з jitter</td><td>Без таймауту запити висять вічно; без jitter усі очікувачі одночасно б'ють у Redis.</td></tr>
+          <tr><td>Fencing token (<a href="#sD2">D2</a>)</td><td>GC-пауза або мережевий збій довші за TTL: старий власник «прокидається» і пише поверх нового. Лок сам по собі цього не запобігає.</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Межі й ризики</h3>
+      <ul>
+        <li><b>Redis-лок не дає гарантій коректності при збоях:</b> TTL може минути під час роботи, а при failover майстра з асинхронною реплікацією свіжий лок може загубитися. Тому розділяють: лок для <b>ефективності</b> (не робити дорогу роботу двічі) — ок; лок для <b>коректності</b> (гроші, інваріанти) — лише разом з fencing token або умовним записом у сховищі (B1/B4). Redlock і дебати Kleppmann vs antirez: <a href="../system-design/13-tricky-topics-qa.html">System Design 13 · розділ 08</a>.</li>
+        <li><b>Deadlock на рівні коду:</b> два процеси беруть локи <code>org:1</code> і <code>org:2</code> у різному порядку. Ліки: фіксований порядок імен локів, один спільний лок або таймаут очікування (без нього deadlock вічний, з ним — помилка й повтор).</li>
+        <li><b>Не тримати лок довше, ніж треба:</b> лише навколо критичної секції; важку частину, що не потребує ексклюзивності, винести за межі.</li>
+        <li><b>Якщо спільна точка — одна Postgres</b>, advisory lock (<a href="#sB6">B6</a>) простіший: не потрібен окремий сервіс, а лок знімається разом з транзакцією.</li>
+        <li><b>Альтернативи з сильнішими гарантіями:</b> etcd / ZooKeeper / Consul (lease + номер ревізії як готовий fencing token).</li>
+      </ul>
+    </section>
+
     <!-- ============ B summary ============ -->
     <section id="sBsum">
-      <h2><span class="num">B·</span>Порівняння технік рівня БД</h2>
+      <h2><span class="num">B·</span>Порівняння всіх технік рівня БД (B1–B8)</h2>
       <div class="tablewrap"><table>
         <thead><tr><th>Техніка</th><th>Закриває</th><th>Плюси</th><th>Мінуси / межі</th></tr></thead>
         <tbody>
-          <tr><td><b>B1</b> атомарний / умовний UPDATE</td><td>lost update, check-then-act на одному рядку</td><td>найпростіше, найшвидше, 1 запит</td><td>лише логіка, що вміщується в один оператор</td></tr>
+          <tr><td><b>B1 ★</b> атомарний / умовний UPDATE</td><td>lost update, check-then-act на одному рядку</td><td>найпростіше, найшвидше, 1 запит</td><td>лише логіка, що вміщується в один оператор</td></tr>
           <tr><td><b>B2</b> UNIQUE + ON CONFLICT</td><td>дублікати, get-or-create</td><td>гарантія на рівні бази, для всіх клієнтів</td><td>лише правило «не більше одного»</td></tr>
-          <tr><td><b>B3</b> FOR UPDATE</td><td>складний read-modify-write, кілька рядків</td><td>будь-яка логіка в коді</td><td>чекання, deadlock, не тримати довго</td></tr>
-          <tr><td><b>B4</b> version / ETag</td><td>lost update при рідких конфліктах, редагування людьми</td><td>без блокувань, працює через HTTP</td><td>треба повтор або 409; погано при частих конфліктах</td></tr>
+          <tr><td><b>B3 ★</b> FOR UPDATE</td><td>складний read-modify-write, кілька рядків</td><td>будь-яка логіка в коді</td><td>чекання, deadlock, не тримати довго</td></tr>
+          <tr><td><b>B4 ★</b> version / ETag</td><td>lost update при рідких конфліктах, редагування людьми</td><td>без блокувань, працює через HTTP</td><td>треба повтор або 409; погано при частих конфліктах</td></tr>
           <tr><td><b>B5</b> Serializable</td><td>усе, включно з write skew</td><td>не треба думати про кожен випадок</td><td>відкати, повтори, нижча пропускна здатність</td></tr>
           <tr><td><b>B6</b> advisory lock</td><td>«одна операція одночасно»</td><td>спільний лок без Redis</td><td>з'єднання з пулу, нюанси з PgBouncer</td></tr>
           <tr><td><b>B7</b> CHECK / EXCLUDE</td><td>порушення інваріантів (від'ємний баланс, перетини)</td><td>остання лінія оборони</td><td>правило має виражатися декларативно</td></tr>
+          <tr><td><b>B8 ★</b> Redis-лок</td><td>«лише один виконавець» між інстансами, дії поза БД</td><td>мінімальне навантаження на БД, працює поза транзакцією</td><td>TTL, власник, failover; для коректності потрібен fencing</td></tr>
         </tbody>
       </table></div>
     </section>
@@ -1104,7 +1288,7 @@ ALTER TABLE routes ADD CONSTRAINT no_overlapping_routes_per_driver
       <h2><span class="num">C</span>API: повторні запити й ідемпотентність</h2>
       <p>Гонка «той самий запит двічі»: користувач двічі клікнув «Згенерувати», мобільна мережа обірвалась і клієнт
       повторив запит, балансувальник зробив retry. Без захисту двічі списуються гроші або квота і створюються два маршрути.</p>
-      <h3>C1. Idempotency key</h3>
+      <h3 id="sC1">C1. Idempotency key</h3>
       <div class="codecard"><div class="bar"><span class="path">таблиця і логіка</span></div><pre><code>CREATE TABLE idempotency_keys (
   organization_id uuid NOT NULL,
   key text NOT NULL,
@@ -1137,7 +1321,7 @@ async def idempotent(org_id, key, body, handler):
         <li>Зберігати ключ і бізнес-зміну <b>в одній транзакції</b>, якщо це можливо; інакше між «виконали» і «зберегли відповідь» залишається вікно.</li>
         <li>TTL на ключі (наприклад, 24 год), окремий простір ключів на тенанта.</li>
       </ul>
-      <h3>C2. Природна ідемпотентність і state machine</h3>
+      <h3 id="sC2">C2. Природна ідемпотентність і state machine</h3>
       <div class="codecard"><div class="bar"><span class="path">переходи стану як умовний UPDATE</span></div><pre><code><span class="cmt">-- ❌ "додати 1" не ідемпотентне;  ✅ "встановити стан" — ідемпотентне</span>
 UPDATE route_stops SET status = 'delivered', delivered_at = now()
 WHERE id = $1 AND status IN ('pending', 'arrived')      <span class="cmt">-- дозволений перехід</span>
@@ -1151,7 +1335,7 @@ RETURNING id;
     <!-- ============ D ============ -->
     <section id="sD">
       <h2><span class="num">D</span>Кілька інстансів, черги й розподілені системи</h2>
-      <h3>D1. Спільний лічильник і атомарні операції в Redis</h3>
+      <h3 id="sD1">D1. Спільний лічильник і атомарні операції в Redis</h3>
       <p><code>threading.Lock</code> у <code>rate_limiting.py</code> захищає лише свій процес. На трьох машинах кожна має свій
       <code>_WINDOWS</code>, і реальний ліміт множиться на три. Спільна атомарна точка — Redis, який виконує команди однопотоково.</p>
       <div class="codecard"><div class="bar"><span class="path">Redis: INCR, Lua, SET NX</span></div><pre><code><span class="cmt"># атомарний лічильник вікна</span>
@@ -1175,7 +1359,8 @@ if first:
         check-then-act гонка, тільки в Redis. Атомарні лише окремі команди, MULTI/EXEC-блоки та Lua-скрипти.
         <code>WATCH</code> + <code>MULTI</code> — оптимістичне блокування в Redis.</div></div>
 
-      <h3>D2. Розподілені локи і fencing tokens</h3>
+      <h3 id="sD2">D2. Розподілені локи і fencing tokens</h3>
+      <p class="muted">Реалізація Redis-локу крок за кроком (токен, Lua, TTL, watchdog) — у <a href="#sB8">B8 ★</a>. Тут — чому навіть правильний лок не гарантує коректності і що з цим робити.</p>
       <p>Розподілений лок (Redis <code>SET lock NX PX 30000</code>, etcd, ZooKeeper, Postgres advisory) дає «лише один
       інстанс виконує це зараз». Головна проблема — <b>лок має TTL</b>: якщо власник завис (GC-пауза, мережа, повільний
       зовнішній виклик) довше за TTL, лок отримує інший, і тепер працюють <i>двоє</i>.</p>
@@ -1205,12 +1390,12 @@ if first:
         <li>Часто кращий шлях — <b>не потребувати лок</b>: атомарна операція в БД або single writer.</li>
       </ul>
 
-      <h3>D3. Single writer: «зміни однієї сутності — лише через одного виконавця»</h3>
+      <h3 id="sD3">D3. Single writer: «зміни однієї сутності — лише через одного виконавця»</h3>
       <p>Якщо всі зміни замовлення <code>order_42</code> потрапляють в одну партицію Kafka (ключ = <code>order_id</code>) або
       в одну чергу, їх обробляє один консюмер <b>послідовно</b>, і гонки між ними неможливі в принципі. Масштабування —
       більше партицій, тобто більше незалежних сутностей паралельно. Це той самий actor model з розділу A4, але між серверами.</p>
 
-      <h3>D4. Черги задач: at-least-once означає «готуйся до дублів»</h3>
+      <h3 id="sD4">D4. Черги задач: at-least-once означає «готуйся до дублів»</h3>
       <ul>
         <li>Брокери (Celery/Redis, RabbitMQ, Kafka, NATS) гарантують <b>at-least-once</b>: воркер упав після виконання, але до ack, і задача прийде ще раз. З <code>acks_late=True</code> у Celery це штатна поведінка.</li>
         <li><b>Ідемпотентний консюмер:</b> <code>INSERT INTO processed_events … ON CONFLICT DO NOTHING</code> в одній транзакції з ефектом задачі (B2).</li>
@@ -1235,7 +1420,7 @@ def send_route_summary(self, route_id: str, event_id: str):
         s.add(OutboxEmail(route_id=route_id, ...))       <span class="cmt"># сам лист — через outbox, в тій самій транзакції</span></code></pre></div>
       <p class="deeper">Глибше: <a href="20-redis.html">20 · Celery в глибину: at-least-once, ретраї, ідемпотентність</a></p>
 
-      <h3>D5. Dual write і transactional outbox</h3>
+      <h3 id="sD5">D5. Dual write і transactional outbox</h3>
       <p>«Записати в БД і відправити подію в брокер» — два незалежні кроки: процес може впасти між ними, а дві паралельні
       зміни можуть відправити події в іншому порядку, ніж закомітились. Рішення — записати подію в таблицю
       <code>outbox</code> <b>у тій самій транзакції</b>, що й бізнес-дані; окремий relay публікує їх по порядку
@@ -1245,7 +1430,7 @@ def send_route_summary(self, route_id: str, event_id: str):
     <!-- ============ E ============ -->
     <section id="sE">
       <h2><span class="num">E</span>Кеш: гонки між кешем і базою</h2>
-      <h3>E1. Застаріле значення після інвалідації</h3>
+      <h3 id="sE1">E1. Застаріле значення після інвалідації</h3>
       <figure class="db">
         <svg viewBox="0 0 820 240" role="img" aria-label="Гонка cache-aside">
           <defs><marker id="t6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ar"/></marker></defs>
@@ -1271,7 +1456,7 @@ def send_route_summary(self, route_id: str, event_id: str):
         <li><b>Leases</b> (як у Memcache у Facebook): кеш видає токен на заповнення після miss; інвалідація анулює токен, і запізнілий SET відхиляється.</li>
         <li><b>Короткий TTL</b> обмежує час, скільки житиме помилка; для критичних даних (баланс, квоти) не кешувати взагалі.</li>
       </ul>
-      <h3>E2. Cache stampede</h3>
+      <h3 id="sE2">E2. Cache stampede</h3>
       <p>Популярний ключ протух, і 1000 запитів одночасно йдуть у БД рахувати те саме. Захист: singleflight (A3) або
       Redis-лок на перерахунок (<code>SET rebuild:key NX EX 10</code>, решта віддають старе значення або чекають),
       ранній перерахунок до закінчення TTL, jitter у TTL, щоб ключі не протухали одночасно
@@ -1281,7 +1466,7 @@ def send_route_summary(self, route_id: str, event_id: str):
     <!-- ============ F ============ -->
     <section id="sF">
       <h2><span class="num">F</span>Фронтенд: гонки в браузері</h2>
-      <h3>F1. Відповіді не в тому порядку</h3>
+      <h3 id="sF1">F1. Відповіді не в тому порядку</h3>
       <div class="codecard"><div class="bar"><span class="path">пошук доставок: «ки» відповів після «київ»</span></div><pre><code><span class="cmt">// ❌ показуємо ту відповідь, що прийшла останньою, а не ту, що для останнього запиту</span>
 useEffect(() =&gt; { fetch(`/api/v1/deliveries?q=${q}`).then(r =&gt; r.json()).then(setItems); }, [q]);
 
@@ -1296,13 +1481,13 @@ useEffect(() =&gt; {
 
 <span class="cmt">// ✅ або React Query: queryKey ['deliveries', q] сам ігнорує застарілі відповіді
 // ✅ Angular/RxJS: switchMap скасовує попередній запит</span></code></pre></div>
-      <h3>F2. Подвійний submit</h3>
+      <h3 id="sF2">F2. Подвійний submit</h3>
       <ul>
         <li><b>UI:</b> кнопка <code>disabled</code> під час <code>isPending</code> (так зроблено в <code>GenerateRouteModal</code> фронтенду: <code>disabled={optimizeRoutes.isPending || …}</code>). Але це лише UX: дві вкладки, ретрай мережі чи скрипт його обійдуть.</li>
         <li><b>RxJS:</b> <code>exhaustMap</code> ігнорує нові кліки, поки триває поточний запит.</li>
         <li><b>Справжній захист — на сервері:</b> idempotency key (C1), який фронт генерує один раз на відкриття форми (<code>crypto.randomUUID()</code>).</li>
       </ul>
-      <h3>F3. Stale closure і функціональні оновлення</h3>
+      <h3 id="sF3">F3. Stale closure і функціональні оновлення</h3>
       <div class="codecard"><div class="bar"><span class="path">React</span></div><pre><code>setCount(count + 1); setCount(count + 1);     <span class="cmt">// ❌ +1: обидва бачать той самий count</span>
 setCount(c =&gt; c + 1); setCount(c =&gt; c + 1);   <span class="cmt">// ✅ +2: "атомарне оновлення" відносно черги React</span>
 

@@ -169,16 +169,26 @@
     var id = decodeURIComponent(a.getAttribute('href').slice(1));
     var target = id && document.getElementById(id);
     if (!target) return;
-    var label = '';
+    var label = '', nodes = [];
     a.childNodes.forEach(function (n) {   // skip badges such as <span class="toc-count">
-      if (n.nodeType === 3 || !(n.classList && n.classList.contains('toc-count'))) label += n.textContent;
+      if (n.nodeType === 3 || !(n.classList && n.classList.contains('toc-count'))) { label += n.textContent; nodes.push(n); }
     });
-    items.push({ link: a, target: target, label: label.replace(/\s+/g, ' ').trim() });
+    var depth = 0;                         // nesting level inside the TOC (0 = top level)
+    for (var p = a.parentElement; p && p !== toc; p = p.parentElement) if (p.tagName === 'OL' || p.tagName === 'UL') depth++;
+    items.push({ link: a, target: target, label: label.replace(/\s+/g, ' ').trim(), nodes: nodes, sub: depth > 1 });
   });
   if (!items.length) return;
-  items.sort(function (x, y) {
-    return x.target.compareDocumentPosition(y.target) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+  // `items` keeps the TOC's own order (a TOC may group entries out of document
+  // order); `byPosition` is the same entries sorted by where they are on the page.
+  var byPosition = items.map(function (_, i) { return i; }).sort(function (x, y) {
+    return items[x].target.compareDocumentPosition(items[y].target) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
   });
+
+  // copy the entry's own markup (code, ★ marks) rather than flattening it to text
+  function fill(el, it) {
+    el.textContent = '';
+    it.nodes.forEach(function (n) { el.appendChild(n.cloneNode(true)); });
+  }
 
   // ----- mobile "you are reading" bar + dropdown with the page TOC -----
   var bar = document.createElement('div');
@@ -204,8 +214,9 @@
   items.forEach(function (it, i) {
     var a = document.createElement('a');
     a.href = it.link.getAttribute('href');
-    a.textContent = it.label;
+    fill(a, it);
     a.dataset.idx = String(i);
+    if (it.sub) a.className = 'sub';
     list.appendChild(a);
   });
   bar.appendChild(barBtn); bar.appendChild(list);
@@ -215,10 +226,12 @@
     list.hidden = !open;
     barBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
     bar.classList.toggle('is-open', open);
-    if (open) {
-      var cur = list.querySelector('a.is-active');
-      if (cur) list.scrollTop = cur.offsetTop - list.clientHeight / 2;
-    }
+    if (open) centerActive();
+  }
+  // reading offsetTop forces layout, so this works right after un-hiding the list
+  function centerActive() {
+    var cur = list.querySelector('a.is-active');
+    if (cur) list.scrollTop = Math.max(0, cur.offsetTop - list.clientHeight / 2 + cur.offsetHeight / 2);
   }
   barBtn.addEventListener('click', function () { setListOpen(list.hidden); });
   list.addEventListener('click', function (e) { if (e.target.closest('a')) setListOpen(false); });
@@ -243,7 +256,8 @@
     it.link.setAttribute('aria-current', 'location');
     var mob = list.querySelector('a[data-idx="' + idx + '"]');
     if (mob) mob.classList.add('is-active');
-    barText.textContent = it.label;
+    if (!list.hidden) centerActive();
+    fill(barText, it);
     // keep the highlighted entry visible inside the sticky TOC without moving the page
     if (toc.scrollHeight > toc.clientHeight) {
       var top = it.link.offsetTop - toc.offsetTop, h = it.link.offsetHeight;
@@ -256,13 +270,14 @@
   function compute() {
     var line = header.getBoundingClientRect().bottom + 24;   // "reading line" just below the sticky header
     var idx = -1;
-    for (var i = 0; i < items.length; i++) {
+    for (var k = 0; k < byPosition.length; k++) {
+      var i = byPosition[k];
       if (items[i].target.getBoundingClientRect().top <= line) idx = i; else break;
     }
     // at the very bottom the last short sections can never reach the line
-    var doc = document.documentElement;
-    if (window.innerHeight + window.scrollY >= doc.scrollHeight - 4 && items[items.length - 1].target.getBoundingClientRect().top < window.innerHeight) {
-      idx = items.length - 1;
+    var doc = document.documentElement, last = byPosition[byPosition.length - 1];
+    if (window.innerHeight + window.scrollY >= doc.scrollHeight - 4 && items[last].target.getBoundingClientRect().top < window.innerHeight) {
+      idx = last;
     }
     activate(idx);
   }
