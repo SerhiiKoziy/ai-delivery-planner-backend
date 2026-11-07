@@ -300,12 +300,54 @@
   Array.prototype.forEach.call(article.querySelectorAll('table'), function (table) {
     for (var p = table.parentElement; p && p !== article; p = p.parentElement) {
       var o = getComputedStyle(p).overflowX;
-      if (o === 'auto' || o === 'scroll' || o === 'hidden') return;   // already scrolls
+      if (o === 'auto' || o === 'scroll') { table.classList.add('t-scrolls'); return; }  // already scrolls
+      if (o === 'hidden') break;              // clipped card: scroll inside it, right around the table
     }
-    if (getComputedStyle(table).display === 'block') return;           // page styles it as a scroller
+    // a page may style the table itself as a block scroller; its inner table then
+    // shrinks to the screen anyway, so on phones it goes back to display:table in a wrapper
+    if (getComputedStyle(table).display === 'block') table.classList.add('t-unblock');
     var wrap = document.createElement('div');
     wrap.className = 'table-scroll';
+    table.classList.add('t-scrolls');
     table.parentNode.insertBefore(wrap, table);
     wrap.appendChild(table);
   });
+})();
+
+/* Side-by-side grids (1fr 1fr cards, comparisons) keep their columns on a
+   phone and squeeze text to a word per line. Collapse a grid to one column
+   when its columns are roughly equal and narrower than 200px; icon + text
+   grids (34px 1fr) are left alone because their columns differ a lot. */
+(function () {
+  var article = document.querySelector('article');
+  if (!article) return;
+  var grids = [];
+  Array.prototype.forEach.call(article.querySelectorAll('div, ul, ol, section'), function (el) {
+    if (getComputedStyle(el).display === 'grid') grids.push(el);
+  });
+  if (!grids.length) return;
+  var phone = window.matchMedia('(max-width: 768px)');
+
+  function columns(el) {
+    return getComputedStyle(el).gridTemplateColumns.split(' ').map(parseFloat).filter(function (w) { return w > 0; });
+  }
+  function fit() {
+    grids.forEach(function (el) {
+      if (el.hasAttribute('data-stacked')) {               // re-check at the original layout
+        el.style.gridTemplateColumns = el.getAttribute('data-stacked');
+        el.removeAttribute('data-stacked');
+      }
+      if (!phone.matches) return;
+      var cols = columns(el);
+      if (cols.length < 2) return;
+      var min = Math.min.apply(null, cols), max = Math.max.apply(null, cols);
+      if (min < 200 && max / min < 1.5) {
+        el.setAttribute('data-stacked', el.style.gridTemplateColumns);
+        el.style.gridTemplateColumns = '1fr';
+      }
+    });
+  }
+  var t;
+  window.addEventListener('resize', function () { clearTimeout(t); t = setTimeout(fit, 150); });
+  fit();
 })();
