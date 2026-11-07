@@ -17,7 +17,7 @@
   // block that the stylesheet shows for that radio (#tab-x:checked ~ .nav-links.y).
   var NAV_CLASS = {
     'tab-project': 'proj', 'tab-interview': 'interview', 'tab-sysdesign': 'sysdesign',
-    'tab-jsdoc': 'jsdoc', 'tab-node': 'node', 'tab-quantum': 'quantum'
+    'tab-jsdoc': 'jsdoc', 'tab-node': 'node', 'tab-quantum': 'quantum', 'tab-ai': 'ai'
   };
   var groups = [];
   Array.prototype.forEach.call(sidebar.querySelectorAll('.nav-tabbtn'), function (label) {

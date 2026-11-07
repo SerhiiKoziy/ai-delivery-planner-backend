@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2. Пайплайн: Claude Code і Cursor — Робота з AI</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><rect x=%2718%27 y=%2730%27 width=%2764%27 height=%2752%27 rx=%2712%27 fill=%27white%27/><rect x=%2747%27 y=%2710%27 width=%276%27 height=%2720%27 fill=%27white%27/></svg>">
+<script>
+(function(){
+  try{ var t = localStorage.getItem('docs-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+    --fg:#e7eaf2; --fg-muted:#9aa2b4;
+    --accent:#6d9bff; --accent-soft:#1c2740;
+    --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+    --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+    --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+    --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+    --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+    --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"],
+  #tab-sysdesign:checked ~ .nav-tabbar label[for="tab-sysdesign"],
+  #tab-quantum:checked ~ .nav-tabbar label[for="tab-quantum"],
+  #tab-ai:checked ~ .nav-tabbar label[for="tab-ai"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  #tab-quantum:checked ~ .nav-links.quantum{display:flex;}
+  #tab-ai:checked ~ .nav-links.ai{display:flex;}
+  #tab-sysdesign:checked ~ .nav-links.sysdesign{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+
+  /* --- python-doc extras --- */
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider:first-child{margin-top:8px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+  .qa summary .qnum{color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700; margin-right:8px;}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  /* --- quantum-doc extras --- */
+  .res{border:1px solid var(--border); border-radius:var(--radius); background:var(--card); padding:14px 16px; margin:12px 0;}
+  .res .res-head{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:4px;}
+  .res .res-title{font-weight:700; font-size:15px;}
+  .res .res-meta{font-size:12.5px; color:var(--fg-muted);}
+  .res p{margin:6px 0 0; font-size:14.3px;}
+  .lvl{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap;}
+  .lvl.l1{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .lvl.l2{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .lvl.l3{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .lvl.type{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .timeline{border-left:2px solid var(--accent); margin:20px 0 20px 8px; padding-left:20px;}
+  .timeline .ev{position:relative; margin:0 0 18px;}
+  .timeline .ev::before{content:""; position:absolute; left:-27px; top:6px; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid var(--bg);}
+  .timeline .yr{font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; font-size:14px;}
+  .timeline .ev-t{font-weight:700;}
+  .timeline .ev p{margin:4px 0 0; font-size:14.3px; color:var(--fg-muted);}
+  .math{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:1.05em; white-space:nowrap;}
+  .math-block{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:18px; text-align:center; padding:14px; margin:14px 0; border:1px dashed var(--border); border-radius:var(--radius); background:var(--bg-soft); overflow-x:auto;}
+
+
+  /* --- system-design extras --- */
+  .say{color:var(--fg-muted); font-size:.9em; font-weight:400; font-style:normal;}
+  .steps{counter-reset:st; list-style:none; padding-left:0;}
+  .steps > li{counter-increment:st; position:relative; padding-left:38px; margin:12px 0;}
+  .steps > li::before{content:counter(st); position:absolute; left:0; top:0; width:26px; height:26px; border-radius:50%;
+    background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:13px; text-align:center; line-height:26px;}
+  .vs{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:16px 0;}
+  @media (max-width:700px){.vs{grid-template-columns:1fr;}}
+  .vs > div{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--card);}
+  .vs h4{margin:0 0 6px; font-size:15px;}
+  .vs ul{margin:6px 0 0; padding-left:18px; font-size:14.3px;}
+  /* --- ai-doc extras --- */
+  .kbd, kbd{
+    display:inline-block; font-family:"SF Mono",ui-monospace,Consolas,monospace; font-size:12px; line-height:1.2;
+    padding:2px 6px; border-radius:6px; border:1px solid var(--border); border-bottom-width:2px;
+    background:var(--bg-soft); color:var(--fg); white-space:nowrap;
+  }
+  .filetree-note{font-size:13px; color:var(--fg-muted); margin-top:-8px;}
+  .dirgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; margin:16px 0;}
+  .dir{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--card);}
+  .dir .dir-h{display:flex; align-items:center; gap:8px; font-weight:700; font-size:15px; margin-bottom:4px;}
+  .dir p{margin:4px 0 0; font-size:14px; color:var(--fg-muted);}
+  .dir .lvl{margin-left:auto;}
+  .checklist{list-style:none; padding-left:0;}
+  .checklist li{position:relative; padding-left:28px;}
+  .checklist li::before{content:"☐"; position:absolute; left:4px; top:0; color:var(--accent); font-weight:700;}
+  .metric-before-after{display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:center; margin:14px 0;}
+  .metric-before-after .m{border:1px solid var(--border); border-radius:10px; padding:10px 14px; background:var(--bg-soft); text-align:center;}
+  .metric-before-after .m b{display:block; font-size:20px;}
+  .metric-before-after .m.after b{color:var(--good);}
+  .metric-before-after .m.before b{color:var(--bad);}
+  /* --- theme switch --- */
+  :root{color-scheme:light;}
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .theme-toggle{
+    cursor:pointer; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+    background:var(--bg-soft); color:var(--fg); font:inherit; font-size:12.5px; font-weight:600;
+    transition:background .15s, border-color .15s;
+  }
+  .theme-toggle:hover{background:var(--card); border-color:var(--accent);}
+  .theme-toggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+</style>
+<link rel="stylesheet" href="../assets/mobile-nav.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="top-row">
+      <div class="brand">🤖 Робота з AI <span>· AI Delivery Planner</span></div>
+      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Темна тема</button>
+    </div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Робота з AI · робочий процес</div>
+  <h1>Нормальний AI-пайплайн у Claude Code і Cursor</h1>
+  <p class="lead">Як перетворити «чат, який іноді пише код» на передбачуваний конвеєр: дослідити → спланувати → реалізувати → перевірити → переглянути → закомітити. Покроково для цього репозиторію: CLAUDE.md, дозволи, хуки, скіли, сабагенти, правила Cursor і наскрізний приклад фічі.</p>
+  <div class="pills">
+    <span class="pill">CLAUDE.md і AGENTS.md</span>
+    <span class="pill">Permissions і hooks</span>
+    <span class="pill">Skills і subagents</span>
+    <span class="pill">Cursor rules</span>
+    <span class="pill">Наскрізний приклад</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-sysdesign" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-quantum" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-ai" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-sysdesign" class="nav-tabbtn">🏗️ System Design</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+      <label for="tab-quantum" class="nav-tabbtn">⚛️ Квантове</label>
+      <label for="tab-ai" class="nav-tabbtn">🤖 Робота з AI</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+        <a href="../python-tutorials/30-code-review.html">30. Code Review</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. 🗄️ Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. 🗄️ Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. 🗄️ Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. 🗄️ Redis</a>
+        <a href="../python-tutorials/28-databases-by-example.html">28. 🗄️ Бази даних на прикладі</a>
+        <a href="../python-tutorials/29-race-conditions.html">29. 🗄️ Race conditions</a>
+      </nav>
+      <nav class="nav-links sysdesign">
+        <a href="../system-design/01-interview-framework.html">1. Фреймворк співбесіди</a>
+        <a href="../system-design/02-networking-entry.html">2. Мережа: DNS, CDN, LB, API</a>
+        <a href="../system-design/03-caching.html">3. Кешування углиб</a>
+        <a href="../system-design/04-databases-storage.html">4. БД I: моделі, індекси, ACID</a>
+        <a href="../system-design/05-replication-sharding.html">5. БД II: реплікація, шардинг</a>
+        <a href="../system-design/06-distributed-systems.html">6. Розподілені системи</a>
+        <a href="../system-design/07-async-messaging.html">7. Черги, Kafka, саги</a>
+        <a href="../system-design/08-reliability-scale.html">8. Надійність і rate limiting</a>
+        <a href="../system-design/09-classic-url-id-kv.html">9. Задачі I: URL, ID, KV</a>
+        <a href="../system-design/10-classic-feed-chat.html">10. Задачі II: стрічка, чат</a>
+        <a href="../system-design/11-classic-storage-video-crawler.html">11. Задачі III: файли, відео</a>
+        <a href="../system-design/12-classic-geo-booking-topk.html">12. Задачі IV: гео, бронювання</a>
+        <a href="../system-design/13-tricky-topics-qa.html">13. Трікі теми й Q&amp;A</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="../node-doc/01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="../node-doc/02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="../node-doc/03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="../node-doc/04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="../node-doc/05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="../node-doc/06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="../node-doc/07-fs-process-os.html">7. fs, process, os</a>
+        <a href="../node-doc/08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="../node-doc/09-http-networking.html">9. HTTP і мережа</a>
+        <a href="../node-doc/10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="../node-doc/11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="../node-doc/12-databases-orm.html">12. БД і ORM</a>
+        <a href="../node-doc/13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="../node-doc/14-security.html">14. Безпека Node</a>
+        <a href="../node-doc/15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="../node-doc/16-testing.html">16. Тестування</a>
+        <a href="../node-doc/17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="../node-doc/18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="../node-doc/19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="../node-doc/20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+      <nav class="nav-links quantum">
+        <a href="../quantum-doc/01-quanta-and-quantum-computing.html">1. Кванти й обчислення</a>
+        <a href="../quantum-doc/02-quantum-engineering-history.html">2. Квантова інженерія</a>
+        <a href="../quantum-doc/03-quantum-backend-python-ibm.html">3. Бекенд + IBM Quantum</a>
+        <a href="../quantum-doc/04-pet-project-quantum-routing.html">4. Пет-проєкт: маршрути</a>
+        <a href="../quantum-doc/05-quantum-engineer-roadmap.html">5. Шлях інженера: ресурси</a>
+        <a href="../quantum-doc/06-linear-algebra-vectors-matrices.html">6. Лін. алгебра I: вектори, матриці</a>
+        <a href="../quantum-doc/07-linear-algebra-eigen-tensor.html">7. Лін. алгебра II: власні, тензори</a>
+        <a href="../quantum-doc/08-complex-numbers-phase.html">8. Комплексні числа й фаза</a>
+        <a href="../quantum-doc/09-probability-shots.html">9. Ймовірності й shots</a>
+        <a href="../quantum-doc/10-numpy-statevector-simulator.html">10. NumPy: свій симулятор</a>
+        <a href="../quantum-doc/11-qiskit-circuits-aer.html">11. Qiskit I: схеми й Aer</a>
+        <a href="../quantum-doc/12-qiskit-runtime-real-qpu.html">12. Qiskit II: реальний QPU</a>
+      </nav>
+      <nav class="nav-links ai">
+        <a href="../ai-doc/01-ai-directions.html">1. Напрямки розвитку</a>
+        <a href="../ai-doc/02-pipeline-claude-code-cursor.html" class="active">2. Пайплайн: Claude Code, Cursor</a>
+        <a href="../ai-doc/03-mcp-servers.html">3. MCP-сервери</a>
+        <a href="../ai-doc/04-agent-context.html">4. Контекст без галюцинацій</a>
+        <a href="../ai-doc/05-shortcuts-debugger-automation.html">5. Шорткати, дебагер, рутина</a>
+        <a href="../ai-doc/06-ci-cd-optimization.html">6. Оптимізація CI/CD</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Частина I — Основа</div>
+    <ol>
+      <li><a href="#s1">1. Що таке «нормальний пайплайн»</a></li>
+      <li><a href="#s2">2. Claude Code: встановлення і CLAUDE.md</a>
+        <ol>
+          <li><a href="#s2-claude-md">CLAUDE.md для цього бекенду</a></li>
+          <li><a href="#s2-memory">Ієрархія пам'яті</a></li>
+          <li><a href="#s2-tree">Тека .claude/</a></li>
+        </ol>
+      </li>
+      <li><a href="#s3">3. Дозволи і режими</a></li>
+      <li><a href="#s4">4. Hooks: автоматика навколо агента</a></li>
+      <li><a href="#s5">5. Skills і subagents</a></li>
+    </ol>
+    <div class="toc-group">Частина II — Щоденна робота</div>
+    <ol>
+      <li><a href="#s6">6. Щоденний цикл у Claude Code</a></li>
+      <li><a href="#s7">7. Cursor: rules, AGENTS.md, режими</a></li>
+      <li><a href="#s8">8. Claude Code vs Cursor</a></li>
+      <li><a href="#s9">9. Наскрізний приклад фічі</a></li>
+    </ol>
+    <div class="toc-group">Підсумок</div>
+    <ol>
+      <li><a href="#s10">10. Антипатерни і чекліст</a></li>
+      <li><a href="#s11">11. Задачі</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Основа</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">1</span> Що таке «нормальний пайплайн»</h2>
+      <p class="section-desc">Не «попросив — отримав код», а повторюваний цикл із перевірками, у якому агент робить механічну роботу, а людина приймає рішення в контрольних точках.</p>
+
+      <p>Найчастіший сценарій розчарування в AI-агентах виглядає так: пишемо одне довге повідомлення
+      «зроби фічу X», агент 10 хвилин щось редагує, результат компілюється, але торкається не тих
+      файлів, ламає конвенції проєкту, а тести або не запускались, або були «поправлені» під новий код.
+      Проблема не в моделі, а в процесі: ми дали задачу без розвідки, без плану, без критерію
+      «готово» і без перевірки. Той самий агент у правильному циклі дає передбачуваний результат.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 760 300" role="img" aria-label="Цикл: Explore, Plan, Implement, Verify, Review, Commit; повернення з Verify і Review назад до Implement; контрольні точки людини після Plan і Review">
+          <defs>
+            <marker id="p2-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <g font-size="13" text-anchor="middle">
+            <rect x="10" y="40" width="105" height="56" rx="10" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="62" y="64" fill="currentColor" font-weight="700">Explore</text>
+            <text x="62" y="82" fill="currentColor" font-size="11">читає код</text>
+
+            <rect x="135" y="40" width="105" height="56" rx="10" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="187" y="64" fill="var(--accent)" font-weight="700">Plan</text>
+            <text x="187" y="82" fill="currentColor" font-size="11">файли + кроки</text>
+
+            <rect x="260" y="40" width="115" height="56" rx="10" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="317" y="64" fill="currentColor" font-weight="700">Implement</text>
+            <text x="317" y="82" fill="currentColor" font-size="11">малими кроками</text>
+
+            <rect x="395" y="40" width="105" height="56" rx="10" fill="var(--good)" fill-opacity="0.12" stroke="var(--good)" stroke-width="1.3"/>
+            <text x="447" y="64" fill="var(--good)" font-weight="700">Verify</text>
+            <text x="447" y="82" fill="currentColor" font-size="11">tests · ruff · tsc</text>
+
+            <rect x="520" y="40" width="105" height="56" rx="10" fill="var(--interview)" fill-opacity="0.12" stroke="var(--interview)" stroke-width="1.3"/>
+            <text x="572" y="64" fill="var(--interview)" font-weight="700">Review</text>
+            <text x="572" y="82" fill="currentColor" font-size="11">diff очима</text>
+
+            <rect x="645" y="40" width="105" height="56" rx="10" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="697" y="64" fill="currentColor" font-weight="700">Commit / PR</text>
+            <text x="697" y="82" fill="currentColor" font-size="11">CI ще раз</text>
+          </g>
+          <g stroke="currentColor" stroke-width="1.2" fill="none">
+            <line x1="115" y1="68" x2="133" y2="68" marker-end="url(#p2-arr)"/>
+            <line x1="240" y1="68" x2="258" y2="68" marker-end="url(#p2-arr)"/>
+            <line x1="375" y1="68" x2="393" y2="68" marker-end="url(#p2-arr)"/>
+            <line x1="500" y1="68" x2="518" y2="68" marker-end="url(#p2-arr)"/>
+            <line x1="625" y1="68" x2="643" y2="68" marker-end="url(#p2-arr)"/>
+            <path d="M447,96 C447,150 317,150 317,98" stroke="var(--warn)" marker-end="url(#p2-arr)"/>
+            <path d="M572,96 C572,190 317,190 317,98" stroke="var(--warn)" stroke-dasharray="4,3" marker-end="url(#p2-arr)"/>
+          </g>
+          <text x="382" y="140" font-size="11.5" fill="var(--warn)" text-anchor="middle">тест впав → назад</text>
+          <text x="445" y="200" font-size="11.5" fill="var(--warn)" text-anchor="middle">рев'ю знайшло проблему → назад</text>
+          <g font-size="12" text-anchor="middle">
+            <circle cx="187" cy="22" r="9" fill="var(--accent)"/>
+            <text x="187" y="26" fill="#fff" font-weight="700">✋</text>
+            <circle cx="572" cy="22" r="9" fill="var(--interview)"/>
+            <text x="572" y="26" fill="#fff" font-weight="700">✋</text>
+          </g>
+          <text x="380" y="250" font-size="12.5" fill="currentColor" text-anchor="middle">✋ — контрольна точка людини: погодити план; прочитати diff перед комітом</text>
+          <text x="380" y="272" font-size="12" fill="var(--fg-muted)" text-anchor="middle">Verify робить машина (pytest, ruff, tsc, vitest), а не «агент сказав, що все працює»</text>
+        </svg>
+        <figcaption>Нормальний пайплайн: шість етапів, дві петлі повернення і дві точки, де рішення приймає людина.</figcaption>
+      </figure>
+
+      <table>
+        <tr><th>Етап</th><th>Що робить агент</th><th>Що робите ви</th><th>Артефакт</th></tr>
+        <tr><td>Explore</td><td>Читає <code>app/api/depots/router.py</code>, репозиторій, схеми, тести; нічого не редагує</td><td>Ставите питання, уточнюєте межі</td><td>Короткий звіт: які файли причетні</td></tr>
+        <tr><td>Plan</td><td>Пише план: файли, кроки, міграції, тести</td><td><b>Погоджуєте або правите план</b></td><td>План (у plan mode або в <code>PLAN.md</code>)</td></tr>
+        <tr><td>Implement</td><td>Редагує малими кроками за планом</td><td>Не втручаєтесь без потреби</td><td>Diff</td></tr>
+        <tr><td>Verify</td><td>Запускає <code>pytest</code>, <code>ruff</code>, <code>tsc</code>, <code>vitest</code></td><td>Дивитесь на вивід команд, а не на слова агента</td><td>Зелені перевірки</td></tr>
+        <tr><td>Review</td><td>Може сам переглянути diff (окремий сабагент)</td><td><b>Читаєте diff</b></td><td>Виправлення</td></tr>
+        <tr><td>Commit / PR</td><td>Пише повідомлення коміту і опис PR</td><td>Пушите, CI перевіряє ще раз</td><td>PR</td></tr>
+      </table>
+
+      <div class="callout bad">
+        <div class="ic">⛔</div>
+        <div class="body"><b>Чому one-shot промпт не працює.</b> Агент починає редагувати, ще не знаючи,
+        що в проєкті є <code>DepotRepository</code>, мультитенантність через <code>organization_id</code> і
+        квоти в <code>app/core/plans.py</code>. Він вигадує паралельну реалізацію поруч з наявною. Чим довша
+        задача без контрольних точок, тим більше рішень він ухвалює за вас, і тим дорожче їх потім
+        відкочувати.</div>
+      </div>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія для фронтендера</div>
+        Це як різниця між «накидати сторінку одним комітом у main» і нормальним флоу: задача в Jira →
+        дизайн-рев'ю макета → гілка → компонент + сторібук → тести → PR → CI → мерж. Пайплайн для агента —
+        той самий процес, тільки «молодший розробник» працює в 20 разів швидше, тому контрольні точки ще
+        важливіші.
+      </div>
+
+      <p>Решта сторінки — про те, як закласти цей цикл в інструмент, щоб не повторювати його в кожному
+      промпті: правила проєкту живуть у <code>CLAUDE.md</code>/<code>AGENTS.md</code>, перевірки — у
+      дозволах і хуках, повторювані процедури — у скілах, а незалежне рев'ю — у сабагентах.</p>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">2</span> Claude Code: встановлення, перший запуск, CLAUDE.md</h2>
+      <p class="section-desc">Claude Code — CLI-агент у терміналі (є також розширення для VS Code/JetBrains, десктоп і веб). Він працює прямо у вашому репозиторії: читає файли, запускає команди, редагує код.</p>
+
+      <h3>Встановлення</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal — варіанти встановлення (на момент написання)</span></div>
+        <pre><code># рекомендований нативний інсталятор (macOS / Linux)
+curl -fsSL "https://claude.ai/install.sh" | bash
+
+# або Homebrew: cask claude-code — стабільний канал (≈ тиждень позаду),
+# claude-code@latest — найсвіжіший; brew-версія не оновлюється сама (brew upgrade)
+brew install --cask claude-code
+
+# або npm (потрібен Node 22+)
+npm install -g @anthropic-ai/claude-code
+
+claude --version
+claude doctor          # діагностика встановлення</code></pre>
+      </div>
+      <p class="muted">Офіційна інструкція може змінюватись — звіряйтесь із docs.claude.com перед установкою на новій машині.</p>
+
+      <h3>Перший запуск у репозиторії</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal</span></div>
+        <pre><code>cd ~/Documents/personal-repo/ai-delivery-planner-backend
+claude                 # інтерактивна сесія у корені репо
+# всередині сесії:
+/init                  # агент сам читає проєкт і генерує чернетку CLAUDE.md</code></pre>
+      </div>
+      <p><code>/init</code> дає хорошу <i>чернетку</i>, але не фінальний файл: вона зазвичай задовга,
+      переказує структуру тек (яку агент і так побачить) і пропускає головне — неочевидні правила вашої
+      команди. Сприймайте її як заготовку, яку треба скоротити вдвічі й доповнити тим, що агент не може
+      вивести з коду.</p>
+
+      <h3 id="s2-claude-md">CLAUDE.md для цього бекенду</h3>
+      <p>Хороший <code>CLAUDE.md</code> — це не документація проєкту, а <b>інструкція для нового колеги в
+      перший день</b>: як запустити, як перевірити, куди класти код і чого не робити. Кожен рядок має або
+      економити агенту розвідку, або запобігати конкретній помилці. Ось реалістичний варіант для цього
+      репозиторію:</p>
+
+      <div class="codecard plain">
+        <div class="bar"><span class="path">CLAUDE.md (корінь ai-delivery-planner-backend)</span></div>
+        <pre><code># AI Delivery Planner — backend
+
+FastAPI + async SQLAlchemy + Alembic + Postgres, Redis/Celery, OR-Tools, OpenAI.
+Python 3.12, virtualenv in .venv (always use it, never system python).
+
+## Commands
+- Run API:      .venv/bin/uvicorn app.main:app --reload
+- Tests:        .venv/bin/pytest -q            (single: .venv/bin/pytest app/tests/test_x.py -k name)
+- Lint/format:  .venv/bin/ruff check . --fix &amp;&amp; .venv/bin/ruff format .
+- Migrations:   .venv/bin/alembic revision --autogenerate -m "..." ; .venv/bin/alembic upgrade head
+- Check heads:  .venv/bin/alembic heads        (must be exactly one)
+
+## Architecture (strict layering)
+app/api/&lt;domain&gt;/router.py -&gt; app/services/&lt;domain&gt;/ -&gt; app/repositories/&lt;x&gt;_repository.py -&gt; app/db/models/
+- Routers: HTTP only (validation, status codes, Depends). No SQL, no business rules.
+- Services: business rules, quotas (app/core/plans.py), OpenAI calls (app/services/ai/).
+- Repositories: all SQLAlchemy queries; always scoped by organization_id (multi-tenancy).
+- Schemas: Pydantic v2 in app/schemas/&lt;domain&gt;.py — Create / Update / Read models.
+- DI lives in app/core/dependencies.py (get_*_repository, get_current_organization).
+
+## Conventions
+- async everywhere; never call blocking I/O in a request handler (OR-Tools solver -&gt; Celery/thread).
+- New endpoint = router + schema + repository method + test in app/tests/. Follow app/api/depots/ as reference.
+- Errors: raise HTTPException in routers only; services raise domain exceptions (app/core/error_handlers.py).
+- Line length 100 (ruff). Type hints on all public functions.
+
+## Migrations
+- Never edit a migration that is already in app/db/migrations/versions/ on main — create a new one.
+- After autogenerate, READ the migration: autogenerate misses renames and server defaults.
+
+## Tests
+- Tests use aiosqlite (see app/tests/conftest.py); don't rely on Postgres-only SQL in tested paths
+  without a test-specific workaround.
+- Never weaken an existing assertion to make a test pass; fix the code or ask.
+
+## Never
+- Read or print .env, tokens, FLY_API_TOKEN, OPENAI_API_KEY.
+- git push, alembic downgrade on shared DBs, flyctl deploy — ask the human.
+- Add dependencies without saying why (pyproject.toml is the only source).</code></pre>
+      </div>
+
+      <div class="callout good">
+        <div class="ic">✅</div>
+        <div class="body"><b>Що робить цей файл хорошим:</b> точні команди з шляхом <code>.venv/bin/</code>
+        (агент не «згадує» глобальний <code>pytest</code>); жорстке правило шарів з еталоном
+        (<code>app/api/depots/</code>); заборони, які коштують дорого при порушенні (міграції, секрети, деплой);
+        пояснення <i>чому</i> там, де правило неочевидне (aiosqlite у тестах). Довжина — до ~60–100 рядків:
+        файл підвантажується в кожну сесію, тож кожен зайвий рядок — це токени і шум у кожному запиті.</div>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Чого не писати в CLAUDE.md:</b> загальних порад («пиши чистий код»), переказу
+        README, повного дерева тек, змісту, який швидко застаріває (версії залежностей, кількість ендпоінтів).
+        Застарілий CLAUDE.md гірший за відсутній: агент довіряє йому більше, ніж коду. Детальніше — у
+        <a href="04-agent-context.html">туторіалі 4 про контекст</a>.</div>
+      </div>
+
+      <h3 id="s2-memory">Ієрархія пам'яті</h3>
+      <p>Claude Code збирає інструкції з кількох рівнів. Більш специфічні доповнюють загальні:</p>
+      <table>
+        <tr><th>Рівень</th><th>Файл</th><th>Для чого</th><th>У git?</th></tr>
+        <tr><td>Користувацький</td><td><code>~/.claude/CLAUDE.md</code></td><td>Ваші особисті звички для всіх проєктів: мова відповідей, стиль комітів, «пояснюй коротко»</td><td>Ні</td></tr>
+        <tr><td>Проєктний</td><td><code>./CLAUDE.md</code></td><td>Правила репозиторію для всієї команди</td><td>Так</td></tr>
+        <tr><td>Вкладений</td><td><code>app/services/ai/CLAUDE.md</code></td><td>Правила підсистеми; підвантажується, коли агент працює з файлами цієї теки</td><td>Так</td></tr>
+        <tr><td>Імпорт</td><td><code>@docs/architecture.md</code> всередині CLAUDE.md</td><td>Підтягнути інший файл (наприклад, спільний <code>AGENTS.md</code>)</td><td>—</td></tr>
+      </table>
+
+      <div class="codecard plain">
+        <div class="bar"><span class="path">app/services/ai/CLAUDE.md — вкладені правила підсистеми</span></div>
+        <pre><code># AI services
+- All OpenAI calls go through the client wrapper in this package; never instantiate OpenAI() elsewhere.
+- Every call must increment the org's AI counter (see test_ai_quota.py) before the request.
+- Prompts live next to the service as module constants; keep them versioned in git, no f-string
+  injection of raw user input without quoting.
+- Tests mock the client; never hit the real API in app/tests/.</code></pre>
+      </div>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія для фронтендера</div>
+        Ієрархія пам'яті працює як каскад конфігів: глобальний <code>~/.npmrc</code> → <code>.npmrc</code> проєкту,
+        або <code>tsconfig.base.json</code> → <code>extends</code> у пакеті монорепо. Загальне — нагорі,
+        специфічне — ближче до коду, і специфічне виграє.
+      </div>
+
+      <h3 id="s2-tree">Тека <code>.claude/</code> у репозиторії</h3>
+      <div class="tree"><span class="d">ai-delivery-planner-backend/</span>
+├── CLAUDE.md                     <span class="c"># правила проєкту (у git)</span>
+├── <span class="d">.claude/</span>
+│   ├── settings.json             <span class="c"># спільні дозволи, хуки, env — у git</span>
+│   ├── settings.local.json       <span class="c"># ваші особисті налаштування — НЕ в git</span>
+│   ├── <span class="d">hooks/</span>
+│   │   ├── format.sh             <span class="c"># PostToolUse: ruff / prettier</span>
+│   │   └── guard.sh              <span class="c"># PreToolUse: захист міграцій і .env</span>
+│   ├── <span class="d">skills/</span>
+│   │   └── <span class="d">new-endpoint/</span>
+│   │       └── SKILL.md          <span class="c"># процедура «додати ендпоінт»</span>
+│   ├── <span class="d">agents/</span>
+│   │   ├── reviewer.md           <span class="c"># сабагент для рев'ю diff</span>
+│   │   └── test-runner.md        <span class="c"># сабагент, що ганяє і читає тести</span>
+│   └── <span class="d">commands/</span>                 <span class="c"># старіший формат слеш-команд (*.md), досі працює</span>
+└── .mcp.json                     <span class="c"># MCP-сервери проєкту (туторіал 3)</span></div>
+      <p class="filetree-note">Додайте <code>.claude/settings.local.json</code> у <code>.gitignore</code> (Claude Code зазвичай робить це сам при створенні файлу).</p>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">3</span> Дозволи і режими роботи</h2>
+      <p class="section-desc">Дозволи вирішують, що агент може робити без вашого підтвердження. Добре налаштовані дозволи — це і безпека, і швидкість: рутинні команди не смикають вас, небезпечні — завжди питають.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">.claude/settings.json — спільні правила для команди</span></div>
+        <pre><code>{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/bin/pytest:*)",
+      "Bash(.venv/bin/ruff check:*)",
+      "Bash(.venv/bin/ruff format:*)",
+      "Bash(.venv/bin/alembic heads)",
+      "Bash(.venv/bin/alembic history:*)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(.venv/bin/alembic upgrade:*)",
+      "Bash(.venv/bin/pip install:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(~/.fly/**)",
+      "Bash(flyctl:*)",
+      "Bash(.venv/bin/alembic downgrade:*)",
+      "Bash(rm -rf:*)"
+    ]
+  }
+}</code></pre>
+      </div>
+
+      <ul>
+        <li><b>allow</b> — виконується без питань. Сюди йдуть команди, які лише читають або перевіряють: тести,
+        лінтер, <code>git diff</code>. Чим більше перевірок у allow, тим охочіше агент їх запускає.</li>
+        <li><b>ask</b> — завжди питає, навіть якщо ви раніше погодились «для цієї сесії».</li>
+        <li><b>deny</b> — заборонено повністю, має пріоритет над allow. Саме тут <code>.env</code> і деплой.</li>
+        <li>Синтаксис <code>Bash(prefix:*)</code> означає «команда починається з prefix». Актуальна документація пише те саме як <code>Bash(prefix *)</code> (пробіл перед <code>*</code>), і саме цю форму зберігає діалог «don't ask again»; обидві форми рівнозначні, але <code>:*</code> працює лише в кінці шаблону. Для файлових
+        інструментів — gitignore-подібні шаблони: <code>Read(./.env)</code>, <code>Edit(app/db/migrations/**)</code>.</li>
+      </ul>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Deny на Read не робить секрети невидимими повністю.</b> Агент усе ще може
+        запустити <code>cat .env</code> через Bash, якщо Bash дозволений широко, або прочитати значення з
+        логів. Тому правило «не читати .env» дублюйте в трьох місцях: deny-дозвіл, рядок у CLAUDE.md і
+        PreToolUse-хук (розділ 4). Справжній захист — щоб у робочій копії взагалі не було продакшн-секретів.</div>
+      </div>
+
+      <h3>Режими (permission modes)</h3>
+      <table>
+        <tr><th>Режим</th><th>Поведінка</th><th>Коли</th></tr>
+        <tr><td><code>default</code></td><td>Питає перед кожним редагуванням і командою поза allow</td><td>Незнайомий код, ризикові задачі</td></tr>
+        <tr><td><code>acceptEdits</code></td><td>Редагування файлів без питань, команди — за правилами</td><td>Після погодженого плану</td></tr>
+        <tr><td><code>plan</code></td><td>Тільки читає і планує, нічого не змінює</td><td>Explore + Plan</td></tr>
+        <tr><td><code>auto</code></td><td>Без рутинних питань: перед командами й мережевими запитами їх перевіряє фоновий класифікатор</td><td>Коли режим доступний у вашому плані/налаштуваннях; деталі — у документації permission modes</td></tr>
+        <tr><td><code>dontAsk</code></td><td>Не питає, а відхиляє все, що не дозволено правилами allow</td><td>Скрипти з чітко заданим allow-списком</td></tr>
+        <tr><td><code>bypassPermissions</code></td><td>Без жодних питань</td><td>Лише в ізольованому контейнері/CI, ніколи на робочій машині з секретами</td></tr>
+      </table>
+      <p>Перемикання режимів у сесії — <kbd>Shift</kbd>+<kbd>Tab</kbd> (циклічно: звичайний → авто-редагування →
+      plan mode, далі — якщо ввімкнені — <code>bypassPermissions</code> і <code>auto</code>). Типовий ритм: починаєте задачу в <b>plan mode</b>, погоджуєте план, перемикаєтесь в
+      <b>acceptEdits</b> на реалізацію, повертаєтесь до звичайного для команд на кшталт міграцій.
+      Режим за замовчуванням можна задати в settings через <code>"permissions": {"defaultMode": "plan"}</code>
+      (значення: <code>default</code>, <code>acceptEdits</code>, <code>plan</code>, <code>auto</code>, <code>dontAsk</code>, <code>bypassPermissions</code>; у проєктному <code>.claude/settings.json</code> не діють <code>auto</code> і <code>bypassPermissions</code>).</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія для фронтендера</div>
+        Дозволи — це Content-Security-Policy для агента: whitelist того, що можна завантажувати й виконувати,
+        і явні заборони для небезпечного. Як і з CSP, «дозволити все, бо заважає» — найпоширеніша і
+        найдорожча помилка.
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">4</span> Hooks: автоматика навколо агента</h2>
+      <p class="section-desc">Хуки — це shell-команди, які Claude Code запускає сам на певних подіях. На відміну від інструкцій у CLAUDE.md (які модель може «забути»), хук виконується завжди.</p>
+
+      <table>
+        <tr><th>Подія</th><th>Коли спрацьовує</th><th>Типове застосування</th></tr>
+        <tr><td><code>PreToolUse</code></td><td>Перед викликом інструменту (Edit, Write, Bash…)</td><td>Заблокувати небезпечну дію</td></tr>
+        <tr><td><code>PostToolUse</code></td><td>Після успішного виклику</td><td>Відформатувати змінений файл, запустити швидкий лінт</td></tr>
+        <tr><td><code>UserPromptSubmit</code></td><td>Коли ви надсилаєте промпт</td><td>Додати контекст (гілка, задача), відфільтрувати секрети</td></tr>
+        <tr><td><code>Notification</code></td><td>Агент чекає вашої відповіді / дозволу</td><td>Системне сповіщення</td></tr>
+        <tr><td><code>Stop</code> / <code>SubagentStop</code></td><td>Агент (сабагент) завершив відповідь</td><td>Фінальна перевірка, звук</td></tr>
+        <tr><td><code>SessionStart</code>, <code>PreCompact</code>, <code>SessionEnd</code></td><td>Життєвий цикл сесії</td><td>Підвантажити контекст, зберегти нотатки</td></tr>
+      </table>
+      <p class="muted">Це найуживаніші події, а не повний список: на момент написання їх понад 30 (<code>PermissionRequest</code>, <code>PostToolUseFailure</code>, <code>SubagentStart</code>, <code>PostCompact</code>, <code>FileChanged</code>…). Актуальний перелік — у документації hooks.</p>
+
+      <p>Хук отримує JSON події на <b>stdin</b>. Для інструментів редагування там є <code>tool_name</code> і
+      <code>tool_input</code> (зокрема <code>tool_input.file_path</code>). Код виходу визначає наслідок:
+      <code>0</code> — все гаразд; <code>2</code> — <b>блокуюча помилка</b>: для PreToolUse виклик скасовується,
+      а текст зі stderr повертається агенту як пояснення; інші ненульові коди — неблокуюча помилка, яку бачите ви.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">.claude/settings.json — секція hooks</span></div>
+        <pre><code>{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard.sh" }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format.sh", "timeout": 30 }]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [{ "type": "command", "command": "osascript -e 'display notification \"Claude чекає на вас\" with title \"Claude Code\"'" }]
+      }
+    ]
+  }
+}</code></pre>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">.claude/hooks/format.sh — форматування після кожного редагування</span></div>
+        <pre><code>#!/usr/bin/env bash
+# PostToolUse: formats the file the agent just edited. Never blocks (always exit 0).
+set -u
+file=$(jq -r '.tool_input.file_path // empty')
+[ -z "$file" ] &amp;&amp; exit 0
+
+case "$file" in
+  *.py)
+    "$CLAUDE_PROJECT_DIR"/.venv/bin/ruff format "$file" &gt;/dev/null 2&gt;&amp;1
+    "$CLAUDE_PROJECT_DIR"/.venv/bin/ruff check --fix "$file" &gt;/dev/null 2&gt;&amp;1
+    ;;
+  *.ts|*.tsx|*.css|*.json)
+    # frontend repo: use its local prettier, not a global one
+    npx --no-install prettier --write "$file" &gt;/dev/null 2&gt;&amp;1
+    ;;
+esac
+exit 0</code></pre>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">.claude/hooks/guard.sh — захист міграцій і секретів</span></div>
+        <pre><code>#!/usr/bin/env bash
+# PreToolUse: exit 2 blocks the edit and sends stderr back to the agent as the reason.
+set -u
+file=$(jq -r '.tool_input.file_path // empty')
+[ -z "$file" ] &amp;&amp; exit 0
+rel=${file#"$CLAUDE_PROJECT_DIR"/}
+
+case "$rel" in
+  .env|.env.*)
+    echo "Editing $rel is forbidden: secrets are managed outside the repo." &gt;&amp;2
+    exit 2 ;;
+  app/db/migrations/versions/*.py)
+    # a migration already committed on main is immutable; new files are fine
+    if git -C "$CLAUDE_PROJECT_DIR" cat-file -e "origin/main:$rel" 2&gt;/dev/null; then
+      echo "$rel is already on main. Create a new migration with alembic revision instead." &gt;&amp;2
+      exit 2
+    fi ;;
+esac
+exit 0</code></pre>
+      </div>
+      <p class="muted">Не забудьте <code>chmod +x .claude/hooks/*.sh</code> і встановлений <code>jq</code> (<code>brew install jq</code>).</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Три пастки хуків.</b>
+        <br>1) <b>Повільні хуки</b> гальмують кожне редагування: не запускайте весь <code>pytest</code> у
+        PostToolUse — тільки форматування/лінт одного файлу. Повні тести — етап Verify.
+        <br>2) <b>Нескінченний Stop-хук.</b> Якщо Stop-хук змушує агента продовжити (наприклад, «тести
+        червоні — працюй далі»), перевіряйте поле <code>stop_hook_active</code> у вхідному JSON, інакше агент
+        може зациклитись.
+        <br>3) <b>Безпека.</b> Хуки виконуються з вашими правами. Хук у чужому репозиторії — це чужий
+        код на вашій машині; переглядайте <code>.claude/settings.json</code> після <code>git pull</code> так само,
+        як <code>package.json</code> scripts.</div>
+      </div>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія для фронтендера</div>
+        PostToolUse-форматер — це «format on save» у редакторі, а PreToolUse-guard — husky
+        <code>pre-commit</code>, який не пускає коміт у захищені файли. Різниця лише в тому, що «зберігає» і
+        «комітить» агент.
+      </div>
+      <p>Більше прикладів автоматизації рутини — у <a href="05-shortcuts-debugger-automation.html">туторіалі 5</a>.</p>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">5</span> Skills, слеш-команди і subagents</h2>
+      <p class="section-desc">CLAUDE.md — це те, що агент знає завжди. Skill — процедура, яку він підвантажує, коли задача підходить. Subagent — окремий «колега» зі своїм контекстом і інструментами.</p>
+
+      <h3>Skill: «додати ендпоінт» за правилами цього репо</h3>
+      <p>Skill — це тека з <code>SKILL.md</code> (і за потреби допоміжними файлами). У фронтматері —
+      <code>name</code> і <code>description</code>: саме за описом агент вирішує, коли підвантажити скіл. Тіло
+      читається тільки тоді, тож скіл може бути детальним, не засмічуючи кожну сесію. Скіл також можна
+      викликати явно: <code>/new-endpoint</code>.</p>
+
+      <div class="codecard plain">
+        <div class="bar"><span class="path">.claude/skills/new-endpoint/SKILL.md</span></div>
+        <pre><code>---
+name: new-endpoint
+description: Add a new REST endpoint to the FastAPI backend following the router → service →
+  repository → schema → test layering. Use when asked to add or extend an API endpoint.
+---
+
+# Adding an endpoint
+
+Reference implementation: app/api/depots/router.py + app/repositories/depot_repository.py
++ app/schemas/depot.py. Read them first.
+
+## Steps
+1. Schema: add Create/Update/Read models in app/schemas/&lt;domain&gt;.py (Pydantic v2,
+   `model_config = ConfigDict(from_attributes=True)` on Read models).
+2. Repository: add the query method in app/repositories/&lt;domain&gt;_repository.py.
+   Every query MUST filter by the repository's organization_id (multi-tenancy).
+3. Service (only if there is a business rule, quota or external call):
+   app/services/&lt;domain&gt;/. Quotas come from app/core/plans.py.
+4. Router: app/api/&lt;domain&gt;/router.py — thin; dependencies from app/core/dependencies.py.
+   If the router is new, register it where the other routers are included (search for
+   `include_router`).
+5. Model change? Create a migration with alembic autogenerate, then read and fix it.
+6. Tests in app/tests/test_&lt;domain&gt;*.py: happy path, 404 for another org's object,
+   validation error (422), auth required (401). Use the fixtures from conftest.py.
+
+## Done when
+- .venv/bin/pytest -q passes
+- .venv/bin/ruff check . passes
+- .venv/bin/alembic heads shows one head
+- Summary lists every file changed and any new migration.</code></pre>
+      </div>
+
+      <h3>Subagent: незалежний рев'юер</h3>
+      <p>Сабагент працює у <b>власному контекстному вікні</b>: основна сесія передає йому задачу і отримує
+      тільки підсумок. Це корисно, коли робота «брудна» (читає багато файлів, ганяє тести) або коли
+      потрібен свіжий погляд без упередження «я ж це сам написав».</p>
+
+      <div class="codecard plain">
+        <div class="bar"><span class="path">.claude/agents/reviewer.md</span></div>
+        <pre><code>---
+name: reviewer
+description: Reviews the current git diff for bugs, security and layering violations before commit.
+  Use proactively after a feature is implemented and tests pass.
+tools: Read, Grep, Glob, Bash
+model: inherit
+---
+
+You are a strict senior reviewer for a FastAPI + async SQLAlchemy codebase.
+
+1. Run `git diff main...HEAD` and `git diff` to see all changes.
+2. Check, in this order:
+   - Multi-tenancy: every new query filters by organization_id.
+   - Async: no blocking calls (requests, time.sleep, heavy CPU) inside async handlers.
+   - Races: check-then-act on counters/quotas (see docs/python-tutorials/29-race-conditions.html).
+   - Layering: no SQL in routers, no HTTPException in repositories.
+   - Tests: new behaviour has tests; no assertion was weakened.
+3. Report findings as: severity (blocker/major/minor), file:line, why, suggested fix.
+Do not edit files. If nothing is wrong, say so in one line.</code></pre>
+      </div>
+
+      <div class="codecard plain">
+        <div class="bar"><span class="path">.claude/agents/test-runner.md</span></div>
+        <pre><code>---
+name: test-runner
+description: Runs backend tests and lint, and reports only failures with the relevant traceback lines.
+tools: Bash, Read, Grep
+model: haiku
+---
+
+Run `.venv/bin/pytest -q -x` and `.venv/bin/ruff check .`.
+If everything passes, answer "all green" and the counts.
+If something fails, return for each failure: test id, the assertion or error line,
+and the 5–10 most relevant traceback lines. Do not try to fix anything.</code></pre>
+      </div>
+
+      <table>
+        <tr><th>Механізм</th><th>Коли в контексті</th><th>Найкраще для</th></tr>
+        <tr><td><code>CLAUDE.md</code></td><td>Завжди</td><td>Короткі правила, команди, заборони</td></tr>
+        <tr><td>Skill</td><td>Коли задача підходить під <code>description</code> або викликано <code>/name</code></td><td>Багатокрокові процедури: новий ендпоінт, міграція, реліз</td></tr>
+        <tr><td>Слеш-команда (<code>.claude/commands/*.md</code>)</td><td>Тільки при явному виклику</td><td>Шаблон промпту з <code>$ARGUMENTS</code>, напр. <code>/fix-issue 123</code></td></tr>
+        <tr><td>Subagent</td><td>Окремий контекст, повертає підсумок</td><td>Рев'ю, прогін тестів, широкий пошук по коду</td></tr>
+        <tr><td>Hook</td><td>Детерміновано, без участі моделі</td><td>Форматування, блокування, сповіщення</td></tr>
+      </table>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія для фронтендера</div>
+        CLAUDE.md — це глобальні стилі, skill — lazy-loaded компонент (<code>React.lazy</code>): код не
+        потрапляє в бандл, поки не знадобився. Subagent — Web Worker: окремий контекст, спілкування через
+        повідомлення, головний потік не забивається.
+      </div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · Щоденна робота</div><div class="line"></div></div>
+
+    <section id="s6">
+      <h2><span class="num">6</span> Щоденний цикл у Claude Code</h2>
+      <p class="section-desc">Інструменти налаштовані — тепер дисципліна сесії. Більшість «галюцинацій» у довгих сесіях — це переповнений або забруднений контекст.</p>
+
+      <table>
+        <tr><th>Дія</th><th>Як</th><th>Навіщо</th></tr>
+        <tr><td>Почати з плану</td><td><kbd>Shift</kbd>+<kbd>Tab</kbd> до plan mode</td><td>Агент читає код і пропонує план, нічого не змінюючи</td></tr>
+        <tr><td>Перервати</td><td><kbd>Esc</kbd></td><td>Зупинити агента, який пішов не туди, і скоригувати</td></tr>
+        <tr><td>Відкотитись</td><td><kbd>Esc</kbd> <kbd>Esc</kbd> або <code>/rewind</code></td><td>Повернутись до попереднього повідомлення (і, за вибором, до стану коду)</td></tr>
+        <tr><td>Нова задача</td><td><code>/clear</code></td><td>Чистий контекст: стара задача не «протікає» в нову</td></tr>
+        <tr><td>Довга задача</td><td><code>/compact</code> (можна з інструкцією, що зберегти)</td><td>Стиснути історію, коли контекст наповнюється</td></tr>
+        <tr><td>Подивитись, що в контексті</td><td><code>/context</code></td><td>Скільки займають CLAUDE.md, MCP-інструменти, історія</td></tr>
+        <tr><td>Повторити задачу пізніше</td><td><code>claude --continue</code> / <code>claude --resume</code></td><td>Продовжити останню або вибрати збережену сесію</td></tr>
+      </table>
+
+      <h3>Малі коміти — точки збереження</h3>
+      <p>Просіть агента комітити після кожного зеленого кроку плану («крок 2 готовий, тести зелені —
+      закомить з повідомленням»). Тоді невдалий крок 3 відкочується одним <code>git reset</code>, а не
+      розплутуванням трьох змішаних змін. <code>git commit</code> лишається в <code>ask</code>, тож ви все одно
+      бачите кожен коміт.</p>
+
+      <h3>Паралельні сесії через git worktree</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal — дві задачі паралельно без конфліктів у робочій копії</span></div>
+        <pre><code>git worktree add ../planner-depot-capacity -b feature/depot-capacity
+git worktree add ../planner-fix-quota -b fix/route-quota-race
+
+# у двох вкладках терміналу — дві незалежні сесії
+cd ../planner-depot-capacity &amp;&amp; claude
+cd ../planner-fix-quota &amp;&amp; claude
+
+# після мержу
+git worktree remove ../planner-fix-quota</code></pre>
+      </div>
+      <p>У кожному worktree потрібен свій <code>.venv</code> (або спільний через симлінк) і свій
+      <code>.env</code> — пам'ятайте про це, інакше тести впадуть «загадково».</p>
+
+      <h3>Headless-режим для скриптів</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal — неінтерактивний виклик</span></div>
+        <pre><code># одна задача, відповідь у stdout
+claude -p "Explain what app/core/plans.py enforces, in 5 bullet points"
+
+# JSON для подальшої обробки скриптом
+claude -p "List endpoints in app/api that lack tests in app/tests" --output-format json | jq -r '.result'
+
+# обмежити інструменти для цього запуску
+claude -p "Run the backend tests and summarize failures" --allowedTools "Bash(.venv/bin/pytest:*)" "Read"</code></pre>
+      </div>
+      <p>Headless-режим — основа для AI-кроків у CI (рев'ю PR, генерація changelog). Це розібрано в
+      <a href="06-ci-cd-optimization.html">туторіалі 6</a>.</p>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body"><b>Правило однієї задачі на сесію.</b> Якщо ви двічі поправили агента в одному й
+        тому самому, а він повторює помилку — не сперечайтесь третій раз. <code>/clear</code>, перепишіть
+        початковий промпт з урахуванням того, що дізнались, і почніть заново. Чистий контекст із кращим
+        промптом майже завжди швидший за довгу сесію з купою виправлень.</div>
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2><span class="num">7</span> Cursor: rules, AGENTS.md і режими</h2>
+      <p class="section-desc">Cursor — форк VS Code з вбудованим агентом. Ідеї ті самі (правила проєкту, контекст, перевірки), інші файли і UX.</p>
+
+      <h3>Project Rules: <code>.cursor/rules/*.mdc</code></h3>
+      <p>Правила — Markdown-файли з фронтматером. Три ключі визначають, коли правило потрапляє в контекст:
+      <code>description</code> (агент сам вирішує, чи релевантне), <code>globs</code> (автоматично, коли в
+      контексті файли за маскою), <code>alwaysApply</code> (завжди).</p>
+
+      <div class="codecard plain">
+        <div class="bar"><span class="path">.cursor/rules/backend.mdc (у бекенд-репо)</span></div>
+        <pre><code>---
+description: FastAPI backend layering, multi-tenancy and test rules
+globs: app/**/*.py
+alwaysApply: false
+---
+
+- Layering: app/api (HTTP only) -&gt; app/services (rules) -&gt; app/repositories (SQL) -&gt; app/db/models.
+- Every repository query filters by organization_id.
+- Reference endpoint: @app/api/depots/router.py
+- Run .venv/bin/pytest -q and .venv/bin/ruff check . before saying a task is done.
+- Never edit migrations already on main; create a new alembic revision.</code></pre>
+      </div>
+
+      <div class="codecard plain">
+        <div class="bar"><span class="path">.cursor/rules/frontend.mdc (у ai-delivery-planner-frontend)</span></div>
+        <pre><code>---
+description: React + TS conventions for the planner frontend
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+- Server state: @tanstack/react-query only (hooks in src/hooks or the feature folder); no fetching in useEffect.
+- Client state: zustand stores in src/store; keep them small and typed.
+- HTTP: the shared axios instance in src/api; never call fetch/axios directly in components.
+- Tests: vitest + @testing-library/react next to the component; run `npm test` and `npm run lint`.
+- Build must pass `npm run build` (tsc -b &amp;&amp; vite build) — type errors are failures.</code></pre>
+      </div>
+
+      <h3>AGENTS.md — одне джерело правди для обох інструментів</h3>
+      <p><code>AGENTS.md</code> — відкритий формат «README для агентів», який читають Cursor, Codex та
+      інші інструменти. Щоб правила не роз'їжджались між Claude Code і Cursor, тримайте спільне в
+      <code>AGENTS.md</code>, а в <code>CLAUDE.md</code> імпортуйте його і додавайте лише специфічне для Claude
+      Code:</p>
+      <div class="codecard plain">
+        <div class="bar"><span class="path">CLAUDE.md — тонка обгортка над AGENTS.md</span></div>
+        <pre><code>@AGENTS.md
+
+## Claude Code specifics
+- Use the `reviewer` subagent after implementation; `new-endpoint` skill for new APIs.
+- Hooks format files automatically; don't run ruff format manually after each edit.</code></pre>
+      </div>
+
+      <h3><code>.cursorignore</code></h3>
+      <div class="codecard plain">
+        <div class="bar"><span class="path">.cursorignore</span></div>
+        <pre><code>.env
+.env.*
+.venv/
+build/
+*.egg-info/
+# великий статичний сайт туторіалів — не потрібен агенту для бекенд-задач
+docs/
+interview-prep-*.html</code></pre>
+      </div>
+      <p>Файли з <code>.cursorignore</code> Cursor блокує для Agent, Tab і @-згадок. Документація прямо каже, що це
+      best-effort: термінал і MCP-інструменти агента цю заборону не враховують, тож справжні секрети в
+      робочій копії все одно не тримайте. Це і безпека, і якість: семантичний пошук не підтягує сотні КБ HTML-туторіалів замість коду.</p>
+
+      <h3>Режими Cursor</h3>
+      <table>
+        <tr><th>Режим</th><th>Що робить</th><th>Коли</th></tr>
+        <tr><td><b>Agent</b></td><td>Сам шукає файли, редагує кілька файлів, запускає команди в терміналі</td><td>Фічі, рефакторинг — наш пайплайн</td></tr>
+        <tr><td><b>Ask</b></td><td>Тільки відповідає, нічого не змінює</td><td>Explore: «як тут працює квота?»</td></tr>
+        <tr><td><b>Plan</b> (якщо доступний у вашій версії)</td><td>Складає план перед реалізацією</td><td>Етап Plan</td></tr>
+        <tr><td>Inline edit (історично <kbd>Cmd</kbd>+<kbd>K</kbd>; в актуальній таблиці шорткатів Cmd+K відкриває бокову панель — перевірте у Keyboard Shortcuts)</td><td>Правка виділеного фрагмента</td><td>Локальні зміни в одному місці</td></tr>
+        <tr><td>Tab</td><td>Автодоповнення наступних правок</td><td>Механічні повтори під час ручного кодування</td></tr>
+      </table>
+      <p>Також у Cursor є власні MCP-налаштування (<code>.cursor/mcp.json</code>, див.
+      <a href="03-mcp-servers.html">туторіал 3</a>) і AI-рев'ю PR (Bugbot, див.
+      <a href="06-ci-cd-optimization.html">туторіал 6</a>). На момент написання (листопад 2026) Cursor також
+      має хуки агента (<code>.cursor/hooks.json</code> з полями <code>version</code> і <code>hooks</code>, події на кшталт
+      <code>preToolUse</code>, <code>afterFileEdit</code>, <code>stop</code>) і кастомні slash-команди, які в новіших версіях
+      переносяться у skills. Формат змінювався між версіями, тож звіряйтесь із cursor.com/docs перед використанням.</p>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">8</span> Claude Code vs Cursor: де що сильніше</h2>
+      <p class="section-desc">Це не «або-або». Багато команд використовують обидва: Cursor для щоденного редагування, Claude Code для довших автономних задач і автоматизації.</p>
+
+      <div class="cheat">
+        <table>
+          <tr><th>Критерій</th><th>Claude Code</th><th>Cursor</th></tr>
+          <tr><td>Інтерфейс</td><td>Термінал (+ розширення IDE, десктоп, веб)</td><td>Повноцінний редактор (форк VS Code)</td></tr>
+          <tr><td>Довгі автономні задачі</td><td>Сильний: плани, сабагенти, хуки, worktrees</td><td>Добре в Agent mode, але UX розрахований на участь людини</td></tr>
+          <tr><td>Ручне редагування + підказки</td><td>Не основний сценарій</td><td>Сильний: Tab, inline edit, diff у редакторі</td></tr>
+          <tr><td>Детермінована автоматика</td><td>Hooks на багато подій, headless <code>-p</code></td><td>Є, але молодша (див. документацію вашої версії)</td></tr>
+          <tr><td>Повторювані процедури</td><td>Skills, слеш-команди, сабагенти</td><td>Rules, команди</td></tr>
+          <tr><td>CI / скрипти</td><td>Headless-режим, GitHub Action</td><td>Bugbot для рев'ю PR, background agents</td></tr>
+          <tr><td>Вибір моделі</td><td>Моделі Claude</td><td>Кілька провайдерів</td></tr>
+          <tr><td>Конфіг проєкту</td><td><code>CLAUDE.md</code>, <code>.claude/</code>, <code>.mcp.json</code></td><td><code>.cursor/rules/</code>, <code>AGENTS.md</code>, <code>.cursor/mcp.json</code></td></tr>
+        </table>
+      </div>
+
+      <h3>Як жити з обома без розсинхрону</h3>
+      <ol class="steps">
+        <li><b>Одне джерело правил:</b> <code>AGENTS.md</code>; <code>CLAUDE.md</code> імпортує його, а
+        <code>.cursor/rules/*.mdc</code> містять лише прив'язку до glob-масок і посилаються на розділи
+        <code>AGENTS.md</code>, а не копіюють їх.</li>
+        <li><b>Перевірки — у скриптах, не в промптах:</b> <code>make check</code> або <code>npm run check</code>,
+        який викликають і хук Claude Code, і правило Cursor, і CI. Тоді «готово» означає одне й те саме всюди.</li>
+        <li><b>MCP-сервери</b> описані в обох конфігах однаково; секрети — тільки через змінні оточення.</li>
+        <li><b>Рев'ю правил як коду:</b> зміни в <code>AGENTS.md</code> і <code>.claude/</code> проходять через PR,
+        як і будь-яка конфігурація.</li>
+      </ol>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">9</span> Наскрізний приклад: «місткість депо» від промпту до PR</h2>
+      <p class="section-desc">Фіча реального розміру для цього проєкту: ендпоінт, що повертає завантаженість депо (скільки доставок і маршрутів на дату проти місткості транспорту), і сторінка у фронтенді.</p>
+
+      <h3>Крок 1 — Explore (plan mode)</h3>
+      <div class="codecard plain">
+        <div class="bar"><span class="path">промпт</span></div>
+        <pre><code>I want to add a "depot capacity for a date" feature. Don't change anything yet.
+Read app/api/depots/router.py, app/repositories/depot_repository.py, route_repository.py,
+delivery_repository.py, vehicle_repository.py, app/schemas/depot.py and the related models.
+Tell me:
+1) how depots, routes, deliveries and vehicles are linked (FKs, organization scoping);
+2) where vehicle capacity is stored;
+3) which existing tests are closest to what I need.
+Answer with file:line references.</code></pre>
+      </div>
+      <p>Ви отримуєте карту коду з посиланнями й перевіряєте 2–3 з них самі. Якщо агент назвав поле, якого
+      немає, — краще виявити це зараз, а не в diff.</p>
+
+      <h3>Крок 2 — Plan</h3>
+      <div class="codecard plain">
+        <div class="bar"><span class="path">промпт</span></div>
+        <pre><code>Plan GET /depots/{depot_id}/capacity?date=YYYY-MM-DD returning
+{depot_id, date, vehicles, total_capacity, planned_deliveries, utilization}.
+Use the new-endpoint skill. Constraints: one SQL query per aggregate, scoped by organization_id;
+404 for another org's depot. No migration should be needed — confirm.
+Output: list of files to change, schema definitions, test cases. Wait for my OK.</code></pre>
+      </div>
+      <p>На цьому етапі ви правите план: наприклад, просите рахувати <code>utilization</code> на сервері, а
+      не у фронтенді, і додати тест на дату без маршрутів (ділення на нуль).</p>
+
+      <h3>Крок 3 — Implement (acceptEdits)</h3>
+      <div class="codecard plain">
+        <div class="bar"><span class="path">промпт</span></div>
+        <pre><code>Plan approved with my two changes. Implement step by step.
+After each step run .venv/bin/pytest -q on the touched test file and show me the output.
+Commit after the backend is green: "feat(depots): capacity endpoint".</code></pre>
+      </div>
+
+      <h3>Крок 4 — Verify</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">terminal — перевірки, які агент запускає сам (allow-список)</span></div>
+        <pre><code>.venv/bin/pytest -q app/tests/test_depot_capacity.py
+.venv/bin/pytest -q
+.venv/bin/ruff check .
+.venv/bin/alembic heads          # одна голова, нових міграцій немає</code></pre>
+      </div>
+
+      <h3>Крок 5 — фронтенд (у другому репо)</h3>
+      <div class="codecard plain">
+        <div class="bar"><span class="path">промпт у ai-delivery-planner-frontend</span></div>
+        <pre><code>Backend now has GET /depots/{id}/capacity?date= (response schema below).
+Add: a typed API function in src/api, a react-query hook useDepotCapacity(depotId, date),
+and a DepotCapacityCard on the depot page with a date picker and a utilization bar.
+Follow existing patterns in src/features. Add a vitest test for the hook with a mocked axios.
+Done = npm run lint, npm test, npm run build all pass.
+&lt;paste DepotCapacityRead schema&gt;</code></pre>
+      </div>
+      <p>Зверніть увагу: ми <b>вставляємо контракт</b> (схему відповіді) явно, а не просимо агента
+      «подивитись бекенд». Агент у фронтенд-репо не бачить бекенд — без контракту він вигадає поля.</p>
+
+      <h3>Крок 6 — Review і PR</h3>
+      <div class="codecard plain">
+        <div class="bar"><span class="path">промпт</span></div>
+        <pre><code>Use the reviewer subagent on the backend diff. Then summarize its findings.
+Fix blockers only; list minor ones in the PR description as follow-ups.
+Write the PR description: what, why, how to test (curl example), screenshots placeholder.</code></pre>
+      </div>
+      <p>Ви читаєте diff (особливо репозиторні запити й тести), пушите, і CI проганяє ті самі перевірки
+      ще раз. Детальний чекліст рев'ю — у <a href="../python-tutorials/30-code-review.html">туторіалі 30
+      «Code Review»</a>.</p>
+
+      <div class="metric-before-after">
+        <div class="m before"><span>One-shot «зроби фічу»</span><b>3–4 ітерації виправлень</b></div>
+        <div>→</div>
+        <div class="m after"><span>Пайплайн з планом і перевірками</span><b>1 ітерація + дрібні правки</b></div>
+      </div>
+      <p class="muted">Орієнтовне порівняння з практики, а не виміряна метрика: основна економія — у тому,
+      що помилки ловляться на етапі плану, а не в diff.</p>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Підсумок</div><div class="line"></div></div>
+
+    <section id="s10">
+      <h2><span class="num">10</span> Антипатерни і чекліст</h2>
+      <p class="section-desc">Помилки, які найчастіше перетворюють агента з прискорювача на генератор технічного боргу.</p>
+
+      <table>
+        <tr><th>Антипатерн</th><th>Чим погано</th><th>Замість цього</th></tr>
+        <tr><td>«Зроби все» одним промптом</td><td>Агент ухвалює архітектурні рішення за вас</td><td>Explore → Plan → погодження</td></tr>
+        <tr><td>CLAUDE.md на 500 рядків</td><td>Шум у кожному запиті, правила губляться</td><td>60–100 рядків + skills + вкладені CLAUDE.md</td></tr>
+        <tr><td>«Агент сказав, що тести пройшли»</td><td>Це твердження, а не факт</td><td>Вивід команди в сесії або CI</td></tr>
+        <tr><td><code>bypassPermissions</code> на робочій машині</td><td>Доступ до секретів, <code>rm</code>, деплою</td><td>Широкий allow для безпечних команд, ask/deny для решти</td></tr>
+        <tr><td>Одна сесія на весь день</td><td>Контекст забитий старими задачами</td><td><code>/clear</code> між задачами</td></tr>
+        <tr><td>Агент «полагодив» тест, змінивши assert</td><td>Тест більше нічого не перевіряє</td><td>Правило в CLAUDE.md + рев'ю diff тестів</td></tr>
+        <tr><td>Правила скопійовані в CLAUDE.md і .mdc</td><td>Розсинхрон через місяць</td><td><code>AGENTS.md</code> + імпорт</td></tr>
+        <tr><td>Важкий PostToolUse-хук (весь pytest)</td><td>Кожне редагування займає хвилину</td><td>Форматування одного файлу; тести — на Verify</td></tr>
+      </table>
+
+      <h3>Чекліст налаштування репозиторію</h3>
+      <ul class="checklist">
+        <li><code>CLAUDE.md</code> / <code>AGENTS.md</code>: команди, шари, заборони, еталонний приклад коду</li>
+        <li><code>.claude/settings.json</code>: allow для перевірок, ask для commit/push/міграцій, deny для секретів і деплою</li>
+        <li><code>.claude/settings.local.json</code> і <code>.env</code> у <code>.gitignore</code></li>
+        <li>PostToolUse-форматер і PreToolUse-guard, <code>chmod +x</code>, встановлений <code>jq</code></li>
+        <li>Skill для найчастішої процедури (новий ендпоінт / сторінка)</li>
+        <li>Сабагент-рев'юер з чеклістом під ваш стек</li>
+        <li><code>.cursor/rules/*.mdc</code> з glob-масками і <code>.cursorignore</code>, якщо команда користується Cursor</li>
+        <li>Одна команда «все перевірити», спільна для агентів і CI</li>
+      </ul>
+    </section>
+
+    <section id="s11">
+      <h2><span class="num">11</span> Задачі</h2>
+      <p class="section-desc">Спробуйте відповісти самостійно, потім розгорніть відповідь.</p>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 1</span><span class="taskdiff easy">легка</span><span class="tasktitle">Куди покласти правило?</span></div>
+        <p>Правило: «у <code>app/services/route_optimizer/</code> солвер OR-Tools не можна викликати з
+        async-хендлера напряму — тільки через Celery або <code>asyncio.to_thread</code>». Куди його записати
+        і чому?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>У <b>вкладений</b> <code>app/services/route_optimizer/CLAUDE.md</code> (і відповідно в
+          <code>.cursor/rules/</code> з glob <code>app/services/route_optimizer/**</code>). Правило стосується
+          лише цієї підсистеми, тож у кореневому файлі воно було б шумом для всіх інших задач. Коротке
+          загальне правило «no blocking I/O in handlers» можна лишити в корені.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 2</span><span class="taskdiff mid">середня</span><span class="tasktitle">Хук, який нічого не блокує</span></div>
+        <p>Ви написали PreToolUse-хук, що забороняє редагувати <code>.env</code>, але агент усе одно редагує
+        файл. У хуку <code>echo "forbidden"; exit 1</code>. Що не так?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Дві помилки. 1) Блокує тільки <b>код виходу 2</b>; <code>exit 1</code> — неблокуюча помилка, виклик
+          інструменту відбувається. 2) Пояснення має йти в <b>stderr</b> (<code>echo "..." &gt;&amp;2</code>), бо
+          саме stderr повертається агенту як причина відмови. Також перевірте <code>matcher</code>: він має
+          включати <code>Edit|Write|MultiEdit</code>.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 3</span><span class="taskdiff mid">середня</span><span class="tasktitle">Skill чи subagent?</span></div>
+        <p>Вам потрібні дві речі: (а) єдина процедура створення Alembic-міграції з перевіркою згенерованого
+        файлу; (б) прогін усіх тестів із коротким звітом лише про падіння, щоб не забивати головну сесію
+        простирадлами трейсбеків. Що з цього skill, а що subagent?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>(а) — <b>skill</b>: це інструкція «як робити», яку головний агент виконує у своєму контексті
+          (йому потрібні результати міграції для подальших кроків). (б) — <b>subagent</b>
+          (<code>test-runner</code>): шумна робота у власному контексті, назад повертається тільки стислий
+          підсумок. Критерій: чи потрібен головній сесії весь проміжний вивід.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 4</span><span class="taskdiff hard">складна</span><span class="tasktitle">Фронтенд вигадав поля</span></div>
+        <p>Агент у фронтенд-репо додав <code>useDepotCapacity</code>, але використав поле
+        <code>capacity_percent</code>, якого бекенд не повертає. TypeScript не скаржиться. Чому, і як
+        закрити цей клас помилок у пайплайні?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>TypeScript мовчить, бо тип відповіді описав сам агент — він «узгоджений» з вигаданим полем.
+          Типи захищають лише тоді, коли вони згенеровані з джерела правди. Рішення:</p>
+          <p>1) Генерувати TS-типи з OpenAPI бекенду (FastAPI віддає <code>/openapi.json</code>; інструменти
+          на кшталт <code>openapi-typescript</code>) і заборонити в правилах фронтенду писати типи API вручну.
+          2) Вставляти контракт явно в промпт (як у кроці 5). 3) Тест хука з мок-відповіддю, взятою з
+          реального прикладу бекенду. Детальніше про заземлення контексту — у
+          <a href="04-agent-context.html">туторіалі 4</a>.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 5</span><span class="taskdiff hard">складна</span><span class="tasktitle">Дозволи для нічного агента</span></div>
+        <p>Ви хочете запускати <code>claude -p</code> щоночі, щоб він шукав ендпоінти без тестів і відкривав
+        чернетку PR з тестами. Які дозволи дати і де це запускати?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Запускати не на своїй машині, а в CI-раннері або контейнері без продакшн-секретів (лише токен
+          з правом створити гілку/чернетку PR). Дозволи: Read/Edit у межах <code>app/tests/**</code>,
+          <code>Bash(.venv/bin/pytest:*)</code>, <code>git</code> для гілки й коміту; deny на редагування
+          <code>app/**</code> поза тестами, на <code>.env</code>, деплой і міграції. Результат — завжди draft PR,
+          який переглядає людина. Як вбудувати це в GitHub Actions — у
+          <a href="06-ci-cd-optimization.html">туторіалі 6</a>.</p>
+        </div></details>
+      </div>
+
+      <div class="callout info">
+        <div class="ic">📚</div>
+        <div class="body"><b>Глибше:</b> напрямки, які варто вивчити далі — <a href="01-ai-directions.html">туторіал 1</a>;
+        MCP-сервери для GitHub, Postgres, Sentry, Figma — <a href="03-mcp-servers.html">туторіал 3</a>;
+        як дати агенту контекст без галюцинацій — <a href="04-agent-context.html">туторіал 4</a>;
+        практика використання AI-асистентів на співбесіді — <a href="../js-doc/16-ai-tools.html">JS Doc 16</a>.</div>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Робота з AI · частина серії туторіалів AI Delivery Planner. Команди й ключі конфігурації актуальні на момент написання (листопад 2026) — перевіряйте документацію інструментів після оновлень.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*|\/\/[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b|\bthis\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case|const|let|var|function|interface|type|export|extends|implements|new|void|enum|typeof|instanceof|static|public|private|readonly|null|undefined)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard:not(.plain) pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+<script>
+(function(){
+  var root = document.documentElement, btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function current(){
+    var t = root.getAttribute('data-theme');
+    return t === 'light' || t === 'dark' ? t : (mq && mq.matches ? 'dark' : 'light');
+  }
+  function render(){
+    var dark = current() === 'dark';
+    btn.textContent = dark ? '☀️ Світла тема' : '🌙 Темна тема';
+    btn.setAttribute('aria-label', dark ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('docs-theme', next); }catch(e){}
+    render();
+  });
+  if(mq && mq.addEventListener) mq.addEventListener('change', render);
+  render();
+})();
+</script>
+<script src="../assets/mobile-nav.js"></script>
+</body>
+</html>

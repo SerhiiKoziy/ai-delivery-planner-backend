@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4. Контекст без галюцинацій — Робота з AI</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><rect x=%2718%27 y=%2730%27 width=%2764%27 height=%2752%27 rx=%2712%27 fill=%27white%27/><rect x=%2747%27 y=%2710%27 width=%276%27 height=%2720%27 fill=%27white%27/></svg>">
+<script>
+(function(){
+  try{ var t = localStorage.getItem('docs-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+    --fg:#e7eaf2; --fg-muted:#9aa2b4;
+    --accent:#6d9bff; --accent-soft:#1c2740;
+    --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+    --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+    --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+    --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+    --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+    --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"],
+  #tab-sysdesign:checked ~ .nav-tabbar label[for="tab-sysdesign"],
+  #tab-quantum:checked ~ .nav-tabbar label[for="tab-quantum"],
+  #tab-ai:checked ~ .nav-tabbar label[for="tab-ai"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  #tab-quantum:checked ~ .nav-links.quantum{display:flex;}
+  #tab-ai:checked ~ .nav-links.ai{display:flex;}
+  #tab-sysdesign:checked ~ .nav-links.sysdesign{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+
+  /* --- python-doc extras --- */
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider:first-child{margin-top:8px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+  .qa summary .qnum{color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700; margin-right:8px;}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  /* --- quantum-doc extras --- */
+  .res{border:1px solid var(--border); border-radius:var(--radius); background:var(--card); padding:14px 16px; margin:12px 0;}
+  .res .res-head{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:4px;}
+  .res .res-title{font-weight:700; font-size:15px;}
+  .res .res-meta{font-size:12.5px; color:var(--fg-muted);}
+  .res p{margin:6px 0 0; font-size:14.3px;}
+  .lvl{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap;}
+  .lvl.l1{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .lvl.l2{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .lvl.l3{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .lvl.type{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .timeline{border-left:2px solid var(--accent); margin:20px 0 20px 8px; padding-left:20px;}
+  .timeline .ev{position:relative; margin:0 0 18px;}
+  .timeline .ev::before{content:""; position:absolute; left:-27px; top:6px; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid var(--bg);}
+  .timeline .yr{font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; font-size:14px;}
+  .timeline .ev-t{font-weight:700;}
+  .timeline .ev p{margin:4px 0 0; font-size:14.3px; color:var(--fg-muted);}
+  .math{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:1.05em; white-space:nowrap;}
+  .math-block{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:18px; text-align:center; padding:14px; margin:14px 0; border:1px dashed var(--border); border-radius:var(--radius); background:var(--bg-soft); overflow-x:auto;}
+
+
+  /* --- system-design extras --- */
+  .say{color:var(--fg-muted); font-size:.9em; font-weight:400; font-style:normal;}
+  .steps{counter-reset:st; list-style:none; padding-left:0;}
+  .steps > li{counter-increment:st; position:relative; padding-left:38px; margin:12px 0;}
+  .steps > li::before{content:counter(st); position:absolute; left:0; top:0; width:26px; height:26px; border-radius:50%;
+    background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:13px; text-align:center; line-height:26px;}
+  .vs{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:16px 0;}
+  @media (max-width:700px){.vs{grid-template-columns:1fr;}}
+  .vs > div{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--card);}
+  .vs h4{margin:0 0 6px; font-size:15px;}
+  .vs ul{margin:6px 0 0; padding-left:18px; font-size:14.3px;}
+  /* --- ai-doc extras --- */
+  .kbd, kbd{
+    display:inline-block; font-family:"SF Mono",ui-monospace,Consolas,monospace; font-size:12px; line-height:1.2;
+    padding:2px 6px; border-radius:6px; border:1px solid var(--border); border-bottom-width:2px;
+    background:var(--bg-soft); color:var(--fg); white-space:nowrap;
+  }
+  .filetree-note{font-size:13px; color:var(--fg-muted); margin-top:-8px;}
+  .dirgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; margin:16px 0;}
+  .dir{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--card);}
+  .dir .dir-h{display:flex; align-items:center; gap:8px; font-weight:700; font-size:15px; margin-bottom:4px;}
+  .dir p{margin:4px 0 0; font-size:14px; color:var(--fg-muted);}
+  .dir .lvl{margin-left:auto;}
+  .checklist{list-style:none; padding-left:0;}
+  .checklist li{position:relative; padding-left:28px;}
+  .checklist li::before{content:"☐"; position:absolute; left:4px; top:0; color:var(--accent); font-weight:700;}
+  .metric-before-after{display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:center; margin:14px 0;}
+  .metric-before-after .m{border:1px solid var(--border); border-radius:10px; padding:10px 14px; background:var(--bg-soft); text-align:center;}
+  .metric-before-after .m b{display:block; font-size:20px;}
+  .metric-before-after .m.after b{color:var(--good);}
+  .metric-before-after .m.before b{color:var(--bad);}
+  /* --- theme switch --- */
+  :root{color-scheme:light;}
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .theme-toggle{
+    cursor:pointer; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+    background:var(--bg-soft); color:var(--fg); font:inherit; font-size:12.5px; font-weight:600;
+    transition:background .15s, border-color .15s;
+  }
+  .theme-toggle:hover{background:var(--card); border-color:var(--accent);}
+  .theme-toggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+</style>
+<link rel="stylesheet" href="../assets/mobile-nav.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="top-row">
+      <div class="brand">🤖 Робота з AI <span>· AI Delivery Planner</span></div>
+      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Темна тема</button>
+    </div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Робота з AI · контекст</div>
+  <h1>Як дати агенту нормальний контекст, щоб він не галюцинував</h1>
+  <p class="lead">Агент вигадує імпорти, поля API й прапорці конфігу не тому, що «тупий», а тому що не бачить проєкту, знає застарілі версії бібліотек і не має чим себе перевірити. Розбираємо шари контексту, шаблон задачі, прив'язку до реального коду й версій, керування сесією та автоматичне виловлювання галюцинацій — на прикладі бекенду й фронтенду AI Delivery Planner.</p>
+  <div class="pills">
+    <span class="pill">CLAUDE.md / AGENTS.md</span>
+    <span class="pill">Шаблон задачі</span>
+    <span class="pill">Grounding</span>
+    <span class="pill">Версії бібліотек</span>
+    <span class="pill">Context rot</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-sysdesign" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-quantum" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-ai" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-sysdesign" class="nav-tabbtn">🏗️ System Design</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+      <label for="tab-quantum" class="nav-tabbtn">⚛️ Квантове</label>
+      <label for="tab-ai" class="nav-tabbtn">🤖 Робота з AI</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+        <a href="../python-tutorials/30-code-review.html">30. Code Review</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. 🗄️ Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. 🗄️ Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. 🗄️ Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. 🗄️ Redis</a>
+        <a href="../python-tutorials/28-databases-by-example.html">28. 🗄️ Бази даних на прикладі</a>
+        <a href="../python-tutorials/29-race-conditions.html">29. 🗄️ Race conditions</a>
+      </nav>
+      <nav class="nav-links sysdesign">
+        <a href="../system-design/01-interview-framework.html">1. Фреймворк співбесіди</a>
+        <a href="../system-design/02-networking-entry.html">2. Мережа: DNS, CDN, LB, API</a>
+        <a href="../system-design/03-caching.html">3. Кешування углиб</a>
+        <a href="../system-design/04-databases-storage.html">4. БД I: моделі, індекси, ACID</a>
+        <a href="../system-design/05-replication-sharding.html">5. БД II: реплікація, шардинг</a>
+        <a href="../system-design/06-distributed-systems.html">6. Розподілені системи</a>
+        <a href="../system-design/07-async-messaging.html">7. Черги, Kafka, саги</a>
+        <a href="../system-design/08-reliability-scale.html">8. Надійність і rate limiting</a>
+        <a href="../system-design/09-classic-url-id-kv.html">9. Задачі I: URL, ID, KV</a>
+        <a href="../system-design/10-classic-feed-chat.html">10. Задачі II: стрічка, чат</a>
+        <a href="../system-design/11-classic-storage-video-crawler.html">11. Задачі III: файли, відео</a>
+        <a href="../system-design/12-classic-geo-booking-topk.html">12. Задачі IV: гео, бронювання</a>
+        <a href="../system-design/13-tricky-topics-qa.html">13. Трікі теми й Q&amp;A</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="../node-doc/01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="../node-doc/02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="../node-doc/03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="../node-doc/04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="../node-doc/05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="../node-doc/06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="../node-doc/07-fs-process-os.html">7. fs, process, os</a>
+        <a href="../node-doc/08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="../node-doc/09-http-networking.html">9. HTTP і мережа</a>
+        <a href="../node-doc/10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="../node-doc/11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="../node-doc/12-databases-orm.html">12. БД і ORM</a>
+        <a href="../node-doc/13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="../node-doc/14-security.html">14. Безпека Node</a>
+        <a href="../node-doc/15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="../node-doc/16-testing.html">16. Тестування</a>
+        <a href="../node-doc/17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="../node-doc/18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="../node-doc/19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="../node-doc/20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+      <nav class="nav-links quantum">
+        <a href="../quantum-doc/01-quanta-and-quantum-computing.html">1. Кванти й обчислення</a>
+        <a href="../quantum-doc/02-quantum-engineering-history.html">2. Квантова інженерія</a>
+        <a href="../quantum-doc/03-quantum-backend-python-ibm.html">3. Бекенд + IBM Quantum</a>
+        <a href="../quantum-doc/04-pet-project-quantum-routing.html">4. Пет-проєкт: маршрути</a>
+        <a href="../quantum-doc/05-quantum-engineer-roadmap.html">5. Шлях інженера: ресурси</a>
+        <a href="../quantum-doc/06-linear-algebra-vectors-matrices.html">6. Лін. алгебра I: вектори, матриці</a>
+        <a href="../quantum-doc/07-linear-algebra-eigen-tensor.html">7. Лін. алгебра II: власні, тензори</a>
+        <a href="../quantum-doc/08-complex-numbers-phase.html">8. Комплексні числа й фаза</a>
+        <a href="../quantum-doc/09-probability-shots.html">9. Ймовірності й shots</a>
+        <a href="../quantum-doc/10-numpy-statevector-simulator.html">10. NumPy: свій симулятор</a>
+        <a href="../quantum-doc/11-qiskit-circuits-aer.html">11. Qiskit I: схеми й Aer</a>
+        <a href="../quantum-doc/12-qiskit-runtime-real-qpu.html">12. Qiskit II: реальний QPU</a>
+      </nav>
+      <nav class="nav-links ai">
+        <a href="../ai-doc/01-ai-directions.html">1. Напрямки розвитку</a>
+        <a href="../ai-doc/02-pipeline-claude-code-cursor.html">2. Пайплайн: Claude Code, Cursor</a>
+        <a href="../ai-doc/03-mcp-servers.html">3. MCP-сервери</a>
+        <a href="../ai-doc/04-agent-context.html" class="active">4. Контекст без галюцинацій</a>
+        <a href="../ai-doc/05-shortcuts-debugger-automation.html">5. Шорткати, дебагер, рутина</a>
+        <a href="../ai-doc/06-ci-cd-optimization.html">6. Оптимізація CI/CD</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Чому агент вигадує</div>
+    <ol>
+      <li><a href="#s1">1. Звідки беруться галюцинації</a></li>
+      <li><a href="#s2">2. П'ять шарів контексту</a></li>
+    </ol>
+    <div class="toc-group">Що й як давати</div>
+    <ol>
+      <li><a href="#s3">3. Файли пам'яті: CLAUDE.md, AGENTS.md, rules</a>
+        <ol>
+          <li><a href="#s3-good">Добрий і поганий CLAUDE.md</a></li>
+          <li><a href="#s3-nested">Вкладені файли по модулях</a></li>
+        </ol>
+      </li>
+      <li><a href="#s4">4. Шаблон задачі</a>
+        <ol>
+          <li><a href="#s4-back">Приклад: бекенд</a></li>
+          <li><a href="#s4-front">Приклад: фронтенд</a></li>
+        </ol>
+      </li>
+      <li><a href="#s5">5. Grounding: прив'язка до реального коду</a>
+        <ol>
+          <li><a href="#s5-openapi">OpenAPI → TS-типи</a></li>
+        </ol>
+      </li>
+      <li><a href="#s6">6. Правильні версії бібліотек</a></li>
+    </ol>
+    <div class="toc-group">Сесія й перевірка</div>
+    <ol>
+      <li><a href="#s7">7. Керування контекстом сесії</a></li>
+      <li><a href="#s8">8. Як виловити галюцинацію</a></li>
+      <li><a href="#s9">9. Чекліст і задачі</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Чому агент вигадує</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">1</span> Звідки беруться галюцинації в коді</h2>
+      <p class="section-desc">Модель завжди видає <i>найправдоподібніше продовження</i>. Якщо правильної відповіді немає в контексті, правдоподібне продовження — це вигадка, яка виглядає як справжній код.</p>
+
+      <p>Коли агент пише <code>from app.services.routes import optimize_route</code>, а такого модуля
+      немає, це не «баг моделі». Це передбачуваний наслідок: у навчальних даних тисячі FastAPI-проєктів
+      з <code>services/routes.py</code>, а наш реальний код лежить у
+      <code>app/services/route_optimizer/service.py</code> і агент його ще не відкривав. Галюцинації
+      майже завжди мають одну з п'яти причин:</p>
+
+      <table>
+        <tr><th>Причина</th><th>Як виглядає в нашому репо</th><th>Що лікує</th></tr>
+        <tr><td><b>Немає контексту проєкту</b></td><td>Вигадує <code>RouteService.optimize_route()</code>, хоча є <code>optimize(self, payload: OptimizeRequest)</code></td><td>Файл пам'яті + «прочитай перед зміною»</td></tr>
+        <tr><td><b>Застарілі знання про бібліотеки</b></td><td>Пише <code>openai.ChatCompletion.create()</code> (API 0.x), а встановлено <code>openai</code> 3.x з <code>AsyncOpenAI</code></td><td>Точні версії + актуальна документація</td></tr>
+        <tr><td><b>Неоднозначна задача</b></td><td>«Додай фільтр маршрутів» — по статусу? по даті? на бекенді чи на фронті?</td><td>Шаблон задачі з критеріями приймання</td></tr>
+        <tr><td><b>Перевантажений або застарілий контекст</b></td><td>Після 3 годин сесії «пам'ятає» стару версію файлу, яку вже переписали</td><td><code>/clear</code>, <code>/compact</code>, субагенти, нотатки-передача</td></tr>
+        <tr><td><b>Немає зворотного зв'язку</b></td><td>Каже «тести проходять», хоча їх не запускав</td><td>Команда перевірки в задачі, хуки, CI</td></tr>
+      </table>
+
+      <h3>Контекстне вікно — це бюджет</h3>
+      <p>Усе, що агент «знає» про вашу задачу в конкретний момент, лежить в одному контекстному вікні.
+      Туди потрапляє не лише ваш промпт: системні інструкції інструмента, описи всіх підключених
+      інструментів і MCP-серверів, файли пам'яті, уся історія розмови, кожен прочитаний файл і кожен
+      вивід команди. Чим більше там сміття, тим гірше модель «бачить» важливе — навіть якщо до ліміту
+      ще далеко. Це явище називають <b>context rot</b>: якість відповідей падає задовго до того, як
+      вікно заповниться.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 760 300" role="img" aria-label="Контекстне вікно як смуга-бюджет: системний промпт, описи інструментів і MCP, файли пам'яті, розмова, прочитані файли й виводи команд. Внизу — та сама смуга, де 60% з'їли виводи логів і зайві MCP, а для коду задачі лишилося мало місця">
+          <defs>
+            <pattern id="c4-hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="8" stroke="var(--bad)" stroke-width="2" stroke-opacity=".5"/>
+            </pattern>
+          </defs>
+          <text x="20" y="28" font-size="13" font-weight="700" fill="currentColor">Здорова сесія</text>
+          <g font-size="11.5">
+            <rect x="20" y="40" width="70" height="46" rx="6" fill="var(--fg)" fill-opacity=".12" stroke="currentColor" stroke-opacity=".4"/>
+            <text x="55" y="60" text-anchor="middle" fill="currentColor">system</text>
+            <text x="55" y="76" text-anchor="middle" fill="currentColor">prompt</text>
+            <rect x="92" y="40" width="80" height="46" rx="6" fill="var(--info)" fill-opacity=".18" stroke="var(--info)"/>
+            <text x="132" y="60" text-anchor="middle" fill="currentColor">інструменти</text>
+            <text x="132" y="76" text-anchor="middle" fill="currentColor">+ 2 MCP</text>
+            <rect x="174" y="40" width="70" height="46" rx="6" fill="var(--interview)" fill-opacity=".18" stroke="var(--interview)"/>
+            <text x="209" y="60" text-anchor="middle" fill="currentColor">CLAUDE</text>
+            <text x="209" y="76" text-anchor="middle" fill="currentColor">.md</text>
+            <rect x="246" y="40" width="110" height="46" rx="6" fill="var(--accent)" fill-opacity=".18" stroke="var(--accent)"/>
+            <text x="301" y="60" text-anchor="middle" fill="currentColor">задача +</text>
+            <text x="301" y="76" text-anchor="middle" fill="currentColor">розмова</text>
+            <rect x="358" y="40" width="200" height="46" rx="6" fill="var(--good)" fill-opacity=".2" stroke="var(--good)"/>
+            <text x="458" y="60" text-anchor="middle" fill="currentColor">потрібні файли:</text>
+            <text x="458" y="76" text-anchor="middle" fill="currentColor">service.py, solver.py, тест</text>
+            <rect x="560" y="40" width="180" height="46" rx="6" fill="none" stroke="currentColor" stroke-dasharray="4,4" stroke-opacity=".5"/>
+            <text x="650" y="68" text-anchor="middle" fill="currentColor">вільно → місце думати</text>
+          </g>
+
+          <text x="20" y="140" font-size="13" font-weight="700" fill="var(--bad)">Сесія після 3 годин «в одному чаті»</text>
+          <g font-size="11.5">
+            <rect x="20" y="152" width="70" height="46" rx="6" fill="var(--fg)" fill-opacity=".12" stroke="currentColor" stroke-opacity=".4"/>
+            <text x="55" y="180" text-anchor="middle" fill="currentColor">system</text>
+            <rect x="92" y="152" width="150" height="46" rx="6" fill="var(--info)" fill-opacity=".18" stroke="var(--info)"/>
+            <text x="167" y="172" text-anchor="middle" fill="currentColor">інструменти</text>
+            <text x="167" y="188" text-anchor="middle" fill="currentColor">+ 9 MCP-серверів</text>
+            <rect x="244" y="152" width="90" height="46" rx="6" fill="var(--interview)" fill-opacity=".18" stroke="var(--interview)"/>
+            <text x="289" y="172" text-anchor="middle" fill="currentColor">CLAUDE.md</text>
+            <text x="289" y="188" text-anchor="middle" fill="currentColor">на 600 рядків</text>
+            <rect x="336" y="152" width="270" height="46" rx="6" fill="url(#c4-hatch)" stroke="var(--bad)"/>
+            <text x="471" y="172" text-anchor="middle" fill="currentColor">3 старі задачі, логи pytest,</text>
+            <text x="471" y="188" text-anchor="middle" fill="currentColor">стара версія service.py</text>
+            <rect x="608" y="152" width="80" height="46" rx="6" fill="var(--good)" fill-opacity=".2" stroke="var(--good)"/>
+            <text x="648" y="180" text-anchor="middle" fill="currentColor">нова задача</text>
+            <rect x="690" y="152" width="50" height="46" rx="6" fill="none" stroke="currentColor" stroke-dasharray="4,4" stroke-opacity=".5"/>
+            <text x="715" y="180" text-anchor="middle" fill="currentColor">мало</text>
+          </g>
+
+          <g font-size="12" fill="currentColor">
+            <text x="20" y="240">Сміття не просто займає місце — воно <tspan font-weight="700">конкурує за увагу</tspan>: стара версія файлу</text>
+            <text x="20" y="260">в історії може «перемогти» нову, а 9 MCP-описів підштовхують кликати не той інструмент.</text>
+            <text x="20" y="284" fill="var(--good)">Рецепт: коротка пам'ять · одна задача на сесію · субагенти для розвідки · /clear між задачами</text>
+          </g>
+        </svg>
+        <figcaption>Контекстне вікно — це бюджет уваги. Кожен підключений MCP-сервер, рядок файлу пам'яті й вивід команди витрачає його ще до того, як агент прочитав ваш код.</figcaption>
+      </figure>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія для фронтендера</div>
+        Контекстне вікно — як бюджет бандла на першому завантаженні. Ліміт формально великий, але
+        кожна зайва бібліотека «в головному чанку» погіршує метрики, навіть якщо сайт ще вантажиться.
+        Рішення ті самі: тримати в «головному чанку» (файл пам'яті) мінімум, решту підвантажувати
+        ліниво (документацію за посиланням, вкладені файли модулів), а важкі задачі виносити в окремий
+        «воркер» (субагент), який повертає лише результат.
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2><span class="num">2</span> П'ять шарів контексту</h2>
+      <p class="section-desc">Не все треба «запихати» в промпт. Добрий контекст розкладений по шарах: що завжди в пам'яті, що підтягується за потреби, а що агент дізнається сам через інструменти.</p>
+
+      <div class="dirgrid">
+        <div class="dir">
+          <div class="dir-h">1. Постійна пам'ять <span class="lvl l1">завжди</span></div>
+          <p><code>CLAUDE.md</code> (Claude Code), <code>AGENTS.md</code> (Codex, Cursor та інші),
+          <code>.cursor/rules/*.mdc</code>. Вантажиться в кожну сесію, тому має бути <b>коротким</b>:
+          команди, архітектурні межі, пастки.</p>
+        </div>
+        <div class="dir">
+          <div class="dir-h">2. Документи на вимогу <span class="lvl l2">за потреби</span></div>
+          <p><code>docs/</code>, ADR, згадки <code>@app/services/route_optimizer/solver.py</code>,
+          вкладені <code>CLAUDE.md</code> у підпапках модулів. Агент читає їх, коли працює саме з
+          цією частиною коду.</p>
+        </div>
+        <div class="dir">
+          <div class="dir-h">3. Grounding через інструменти <span class="lvl l1">завжди</span></div>
+          <p>Агент сам читає код, шукає <code>grep</code>-ом, запускає <code>pytest</code>,
+          <code>ruff</code>, <code>tsc</code>. Це найнадійніше джерело правди: код не бреше про те,
+          яка сигнатура в функції.</p>
+        </div>
+        <div class="dir">
+          <div class="dir-h">4. Актуальна зовнішня документація <span class="lvl l2">за потреби</span></div>
+          <p>Context7 MCP, <code>llms.txt</code> бібліотек, вихідний код встановленого пакета в
+          <code>.venv</code> / <code>node_modules</code>, точні версії залежностей.</p>
+        </div>
+        <div class="dir">
+          <div class="dir-h">5. Специфікація задачі <span class="lvl l1">кожна задача</span></div>
+          <p>Мета, файли, обмеження, критерії приймання, команда перевірки, що <i>не</i> робити.
+          Це єдиний шар, який ви пишете щоразу заново.</p>
+        </div>
+      </div>
+
+      <p>Типова помилка — намагатися вирішити все першим шаром: «запишу в CLAUDE.md усю архітектуру,
+      всі ендпоінти й всі правила». Файл роздувається до сотень рядків, з'їдає бюджет у кожній сесії, а
+      половина інформації застаріває через місяць. Правило: <b>що агент може дізнатися сам через
+      інструменти (шар 3) — не пишіть у пам'ять</b>. Структуру папок він побачить <code>ls</code>,
+      сигнатуру функції — прочитавши файл. У пам'ять ідуть лише речі, які <i>не видно з коду</i>: як
+      запускати, чого не робити, які неочевидні домовленості.</p>
+
+      <div class="callout info">
+        <div class="ic">🧭</div>
+        <div class="body"><b>Перевірка «а чи це видно з коду?»</b> Перед тим як додати рядок у файл
+        пам'яті, спитайте: чи міг би новий розробник дізнатися це за 2 хвилини, відкривши репозиторій?
+        Якщо так — рядок зайвий. «Шари: api → services → repositories» видно з дерева папок, але
+        «у <code>api/</code> не можна імпортувати репозиторії напряму, лише через сервіси» — вже
+        домовленість, і її варто записати.</div>
+      </div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · Що й як давати</div><div class="line"></div></div>
+
+    <section id="s3">
+      <h2><span class="num">3</span> Файли пам'яті: CLAUDE.md, AGENTS.md, Cursor rules</h2>
+      <p class="section-desc">Постійна пам'ять проєкту — як README, але для агента: не «що це за продукт», а «як тут працювати й де легко помилитися».</p>
+
+      <table>
+        <tr><th>Інструмент</th><th>Файл</th><th>Особливості</th></tr>
+        <tr><td>Claude Code</td><td><code>CLAUDE.md</code> у корені, <code>~/.claude/CLAUDE.md</code> (особисті), <code>CLAUDE.md</code> у підпапках</td><td>Імпорт інших файлів через <code>@path/to/file.md</code>; <code>/init</code> генерує чернетку; <code>/memory</code> відкриває на редагування; вкладені файли підтягуються, коли агент працює з файлами в тій папці</td></tr>
+        <tr><td>Cursor</td><td><code>.cursor/rules/*.mdc</code>, також читає <code>AGENTS.md</code></td><td>Frontmatter <code>description</code>, <code>globs</code>, <code>alwaysApply</code>: правило може вмикатися лише для <code>src/**/*.tsx</code></td></tr>
+        <tr><td>Codex, інші агенти</td><td><code>AGENTS.md</code></td><td>Відкритий формат, який читає дедалі більше інструментів; можна тримати один <code>AGENTS.md</code> і в <code>CLAUDE.md</code> написати <code>@AGENTS.md</code></td></tr>
+      </table>
+
+      <h3>Що класти в пам'ять, а що ні</h3>
+      <div class="vs">
+        <div>
+          <h4>✅ Класти</h4>
+          <ul>
+            <li>Команди: як запустити тести, лінтер, міграції, dev-сервер</li>
+            <li>Архітектурні межі й заборони («не імпортувати репозиторії в <code>api/</code>»)</li>
+            <li>Неочевидні пастки (<code>bcrypt&lt;4.0</code> закріплений не випадково)</li>
+            <li>Конвенції, які лінтер не ловить (назви, формат помилок API)</li>
+            <li>«Уроки»: помилки, які агент уже робив і не має повторювати</li>
+            <li>Посилання на документи шару 2 замість їхнього вмісту</li>
+          </ul>
+        </div>
+        <div>
+          <h4>❌ Не класти</h4>
+          <ul>
+            <li>Дерево папок і список усіх файлів</li>
+            <li>Опис кожного ендпоінта (є <code>/openapi.json</code>)</li>
+            <li>Загальні поради («пиши чистий код», «використовуй типи»)</li>
+            <li>Те, що ловить ruff / eslint / tsc</li>
+            <li>Секрети, токени, URL продакшн-бази</li>
+            <li>Історію проєкту й плани на квартал</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3 id="s3-good">Поганий і добрий CLAUDE.md для цього бекенду</h3>
+      <div class="vs">
+        <div>
+          <h4>❌ Роздутий і загальний</h4>
+          <div class="codecard plain"><div class="bar"><span class="path">CLAUDE.md (погано)</span></div>
+<pre><code># AI Delivery Planner Backend
+
+This is a backend for delivery planning. It uses FastAPI,
+which is a modern Python web framework. We care about
+clean code and best practices.
+
+## Structure
+app/
+  api/ - API routes
+    ai/ - AI routes
+    auth/ - auth routes
+    ... (ще 60 рядків дерева)
+
+## Endpoints
+POST /routes/optimize - optimizes routes
+GET /routes/{id} - gets a route
+... (ще 40 ендпоінтів)
+
+## Guidelines
+- Write clean, readable code
+- Use type hints
+- Write tests
+- Follow PEP 8</code></pre></div>
+        </div>
+        <div>
+          <h4>✅ Короткий і про пастки</h4>
+          <div class="codecard plain"><div class="bar"><span class="path">CLAUDE.md (добре)</span></div>
+<pre><code># AI Delivery Planner — backend
+
+## Commands
+- Tests: `.venv/bin/pytest app/tests -q`
+- One test: `.venv/bin/pytest app/tests/test_ai_quota.py -k name`
+- Lint: `.venv/bin/ruff check . &amp;&amp; .venv/bin/ruff format --check .`
+- New migration: `alembic revision --autogenerate -m "..."`
+
+## Architecture rules
+- Layers: app/api → app/services → app/repositories.
+  api/ never imports repositories or models directly.
+- Every query is tenant-scoped: use TenantScopedRepository
+  (app/repositories/base.py), never raw select() in services.
+- OpenAI calls only via app/services/ai/client.py
+  (create_structured_completion, strict JSON schema).
+
+## Gotchas
+- Deps in pyproject are unpinned: check installed versions
+  with `.venv/bin/pip list` before using a library API.
+- bcrypt&lt;4.0 is pinned on purpose (passlib compatibility).
+- OR-Tools solve is CPU-bound and sync: do not call it
+  directly inside an async endpoint.
+
+## Lessons learned
+- Do not edit applied Alembic migrations; add a new one.</code></pre></div>
+        </div>
+      </div>
+
+      <p>Ліва версія займає багато токенів і майже нічого не дає: дерево агент побачить сам, ендпоінти є
+      в OpenAPI, а поради «пиши чистий код» не змінюють поведінку моделі. Права версія — ~30 рядків, і
+      кожен з них <b>запобігає конкретній помилці</b>: неправильній команді тестів, витоку даних між
+      організаціями, виклику OpenAI в обхід обгортки, використанню API не тієї версії.</p>
+
+      <div class="callout good">
+        <div class="ic">🔁</div>
+        <div class="body"><b>Секція «Lessons learned» — найцінніша.</b> Щоразу, коли агент робить
+        помилку, яку ви виправили вручну (редагує застосовану міграцію, кличе солвер з async-коду,
+        забуває <code>organization_id</code>), додайте один рядок. Через місяць файл містить саме ті
+        пастки, на які агент реально наступає у <i>вашому</i> проєкті. Можна просто сказати агенту:
+        «додай у CLAUDE.md правило, щоб ти більше так не робив».</div>
+      </div>
+
+      <h3 id="s3-nested">Вкладені файли по модулях</h3>
+      <p>Знання, потрібні лише в одній частині коду, виносьте у вкладений файл поруч із нею. Claude Code
+      підтягує <code>CLAUDE.md</code> з підпапки, коли агент починає працювати з файлами в ній, тож
+      деталі OR-Tools не витрачають бюджет під час роботи над авторизацією.</p>
+
+      <div class="codecard plain"><div class="bar"><span class="path">app/services/route_optimizer/CLAUDE.md</span></div>
+<pre><code># Route optimizer (OR-Tools)
+
+- Pipeline: builder.py (RoutingProblem) → solver.py (RouteSolver)
+  → mapper.py (OR-Tools Assignment → our Route/RouteStop).
+- Time is in minutes from the start of the horizon (HORIZON_MINUTES in
+  models.py). Convert with _time_to_minutes in service.py; never pass
+  datetime objects into the solver.
+- All constraints live in constraints.py (apply_*). Add a new constraint
+  there, not inside RouteSolver.build_model.
+- solve() is synchronous and can take seconds: callers in async code
+  must offload it (see service.py _build_and_solve).
+- Tests: app/tests/test_route_*.py build small RoutingProblem fixtures;
+  do not hit the real distance API in tests.</code></pre></div>
+
+      <p>Для фронтенду в Cursor той самий принцип — правило з <code>globs</code>, яке вмикається лише для
+      файлів фіч:</p>
+
+      <div class="codecard plain"><div class="bar"><span class="path">ai-delivery-planner-frontend/.cursor/rules/features.mdc</span></div>
+<pre><code>---
+description: Conventions for feature folders (api hooks, types, components)
+globs: src/features/**/*.ts,src/features/**/*.tsx
+alwaysApply: false
+---
+- Each feature has api/ (react-query hooks), types.ts, components/.
+- HTTP only through apiClient from src/api/client.ts (adds the token,
+  logs out on 401). Never create a new axios instance.
+- Server state lives in react-query (v5: useQuery({ queryKey, queryFn })),
+  client state in zustand stores in src/store. Do not copy server data
+  into zustand.
+- Query keys: [feature, ...params], e.g. ['routes', routeId].</code></pre></div>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія для фронтендера</div>
+        Кореневий файл пам'яті — це <code>index.css</code> з глобальними токенами: маленький і
+        завантажується завжди. Вкладені файли модулів — CSS Modules поруч із компонентом: їхні правила
+        діють лише там, де вони потрібні, і не «протікають» на решту застосунку.
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2><span class="num">4</span> Шаблон задачі: шість полів</h2>
+      <p class="section-desc">Більшість «галюцинацій» насправді — правдоподібна відповідь на недовизначене питання. Чіткий шаблон прибирає простір для вигадок.</p>
+
+      <div class="codecard plain"><div class="bar"><span class="path">шаблон задачі для агента</span></div>
+<pre><code>## Мета
+Що має змінитися для користувача або системи (1–2 речення).
+
+## Контекст
+Файли, з яких почати: шлях:рядок, схожий існуючий код як зразок,
+посилання на issue / документ.
+
+## Обмеження
+Що не можна змінювати, які бібліотеки й версії, архітектурні правила.
+
+## Критерії приймання
+Перелік перевірюваних умов: «ендпоінт повертає 404, якщо…», «тест X є».
+
+## Перевірка
+Точні команди, які агент має запустити сам, і очікуваний результат.
+
+## Поза межами
+Що НЕ робити в цій задачі (рефакторинг сусідніх модулів, нові залежності).</code></pre></div>
+
+      <p>Не обов'язково щоразу писати всі заголовки. Але кожне поле закриває свою дірку:
+      <b>контекст</b> не дає вигадати структуру, <b>обмеження</b> — притягнути нову бібліотеку,
+      <b>критерії</b> — «зробити щось схоже», <b>перевірка</b> — заявити про успіх без запуску, а
+      <b>поза межами</b> — переписати півпроєкту «заодно».</p>
+
+      <h3 id="s4-back">Приклад: задача на бекенді</h3>
+      <div class="vs">
+        <div>
+          <h4>❌ Як зазвичай пишуть</h4>
+          <div class="codecard plain"><div class="bar"><span class="path">промпт</span></div>
+<pre><code>Додай фільтр маршрутів по статусу в API</code></pre></div>
+          <p class="muted">Агент вигадає: де лежить роутер (може створити новий файл), як називається
+          поле (<code>state</code>? <code>route_status</code>?), які статуси існують, чи потрібна
+          пагінація, чи врахувати <code>organization_id</code>. Кожне припущення — місце для помилки.</p>
+        </div>
+        <div>
+          <h4>✅ З шаблоном</h4>
+          <div class="codecard plain"><div class="bar"><span class="path">промпт</span></div>
+<pre><code>Мета: GET /routes приймає необов'язковий ?status=
+і повертає лише маршрути з цим статусом.
+
+Контекст: роутер app/api/routes/router.py,
+репозиторій app/repositories/route_repository.py
+(TenantScopedRepository), модель app/db/models/route.py
+(status: String(50), default "planned").
+Зразок: подивись, як будують select() інші методи в
+app/repositories/delivery_repository.py.
+
+Обмеження: фільтр у репозиторії, не в роутері;
+запит лишається tenant-scoped; без нових залежностей.
+
+Критерії: без параметра поведінка не змінюється;
+невідомий статус → порожній список, не 500;
+тест на обидва випадки в app/tests.
+
+Перевірка: .venv/bin/pytest app/tests -q
+і .venv/bin/ruff check . — обидва зелені.
+
+Поза межами: не змінюй схеми відповіді й фронтенд.
+Спочатку покажи план, потім код.</code></pre></div>
+        </div>
+      </div>
+
+      <h3 id="s4-front">Приклад: задача на фронтенді</h3>
+      <div class="vs">
+        <div>
+          <h4>❌ Як зазвичай пишуть</h4>
+          <div class="codecard plain"><div class="bar"><span class="path">промпт</span></div>
+<pre><code>Зроби фільтр статусу на сторінці маршрутів</code></pre></div>
+          <p class="muted">Типовий результат: новий <code>axios.create()</code> поруч з існуючим клієнтом,
+          <code>useQuery(['routes'], fn)</code> у синтаксисі react-query v3/v4 (у v5 лише об'єктна
+          форма), статуси, захардкоджені «з голови», дані маршрутів, скопійовані в zustand.</p>
+        </div>
+        <div>
+          <h4>✅ З шаблоном</h4>
+          <div class="codecard plain"><div class="bar"><span class="path">промпт</span></div>
+<pre><code>Мета: на сторінці маршрутів select "Статус"
+фільтрує список через новий бекенд-параметр ?status=.
+
+Контекст: хук src/features/routes/api/useRoutes.ts,
+типи src/features/routes/types.ts, клієнт src/api/client.ts.
+Версії: @tanstack/react-query 5.101, zustand 4.5, axios 1.18
+(див. package.json та node_modules).
+
+Обмеження: тільки apiClient; queryKey ['routes', { status }];
+стан фільтра — useState або search params, не zustand;
+список статусів візьми з бекенду (модель Route), не вигадуй.
+
+Критерії: зміна select робить новий запит; порожній
+select = без параметра; npm run lint і npm test зелені.
+
+Перевірка: npm run lint &amp;&amp; npx tsc -b &amp;&amp; npm test
+
+Поза межами: не чіпай інші фічі й стилі сторінки.</code></pre></div>
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>«Покажи план, потім код»</b> — найдешевший захист від галюцинацій. План
+        на 10 рядків ви перевіряєте за 30 секунд: якщо там написано «створю
+        <code>app/services/route_filter.py</code>», ви одразу бачите, що агент не зрозумів архітектуру,
+        і виправляєте його <i>до</i> того, як він напише 200 рядків. У Claude Code для цього є режим
+        планування (перемикається <kbd>Shift</kbd>+<kbd>Tab</kbd>), у Cursor — режим Plan / Ask.</div>
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">5</span> Grounding: прив'язка до реального коду</h2>
+      <p class="section-desc">Grounding — це змусити агента спиратися на факти з репозиторію й інструментів, а не на «як зазвичай буває».</p>
+
+      <h3>Сім прийомів, які реально працюють</h3>
+      <ol class="steps">
+        <li><b>«Прочитай X і Y, перш ніж редагувати».</b> Явно назвіть файли-джерела правди: модель,
+        схему, існуючий зразок. Агент, який прочитав <code>app/db/models/route.py</code>, не вигадає
+        поле <code>route_status</code>.</li>
+        <li><b>План перед кодом.</b> Див. попередній розділ: дешева перевірка розуміння.</li>
+        <li><b>Вимагайте посилань <code>файл:рядок</code>.</b> «Для кожного твердження про поточну
+        поведінку вкажи файл і рядок». Вигадане твердження без посилання одразу видно, а з посиланням
+        — легко перевірити кліком.</li>
+        <li><b>Дозвольте сказати «не знаю».</b> Додайте: «Якщо чогось не можеш знайти в коді — скажи
+        прямо або спитай, не вгадуй». Без цього модель схильна заповнювати прогалини.</li>
+        <li><b>Типізовані контракти.</b> Генеруйте TS-типи з OpenAPI бекенду (нижче), Pydantic-схеми
+        тримайте як єдине джерело правди. Тип, який не збігається з реальністю, ламає <code>tsc</code>,
+        а не продакшн.</li>
+        <li><b>Тести спочатку.</b> «Спершу напиши тест, який відтворює баг, запусти, переконайся, що він
+        червоний, потім виправ». Тест — об'єктивний арбітр, з яким не посперечаєшся.</li>
+        <li><b>Маленькі диффи й самоперевірка.</b> Одна зміна — одна перевірка. Агент сам запускає
+        команду з поля «Перевірка» і показує вивід, а не переказує його.</li>
+      </ol>
+
+      <div class="codecard plain"><div class="bar"><span class="path">фрагмент промпту: grounding-інструкції</span></div>
+<pre><code>Перед зміною прочитай app/services/route_optimizer/service.py
+і app/tests/test_ai_replan.py.
+Кожне твердження про те, як код працює зараз, підкріплюй посиланням файл:рядок.
+Якщо функції чи поля не існує — так і скажи, не створюй його мовчки.
+Після змін запусти .venv/bin/pytest app/tests -q і встав останні 20 рядків виводу.</code></pre></div>
+
+      <h3 id="s5-openapi">OpenAPI → TS-типи: фронтенд більше не вигадує поля</h3>
+      <p>Зараз у фронтенді типи написані руками: <code>src/features/routes/types.ts</code> містить
+      <code>interface Route { id: string; driver_id: string | null; … }</code>. Агент, який додає нове поле,
+      може «знати», що воно називається <code>driverId</code>, і TypeScript не заперечить — бо тип теж
+      написаний вручну. FastAPI вже генерує повну схему на <code>/openapi.json</code>, тож типи можна
+      отримувати з неї автоматично.</p>
+
+      <div class="codecard"><div class="bar"><span class="path">ai-delivery-planner-frontend — генерація типів</span></div>
+<pre><code># бекенд запущений локально на 8000
+npm i -D openapi-typescript
+npx openapi-typescript "http://localhost:8000/openapi.json" -o src/api/schema.d.ts
+
+# package.json → "scripts"
+#   "gen:api": "openapi-typescript http://localhost:8000/openapi.json -o src/api/schema.d.ts"</code></pre></div>
+
+      <div class="codecard"><div class="bar"><span class="path">src/features/routes/types.ts — типи з схеми</span></div>
+<pre><code>import type { components } from '../../api/schema';
+
+// RouteRead / RouteStopRead — Pydantic-класи з app/schemas/route.py
+export type Route = components['schemas']['RouteRead'];
+export type RouteStop = components['schemas']['RouteStopRead'];</code></pre></div>
+
+      <p>Назви схем — це імена Pydantic-класів (<code>RouteRead</code>, <code>RouteStopRead</code> у <code>app/schemas/route.py</code>); решта — в
+      <code>app/schemas</code>. Після переходу будь-яке вигадане
+      поле дає помилку <code>tsc</code> одразу, а не <code>undefined</code> в UI. А в задачі агенту
+      достатньо написати: «типи бери тільки з <code>src/api/schema.d.ts</code>; якщо поля там немає —
+      спершу додай його в Pydantic-схему на бекенді».</p>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія для фронтендера</div>
+        Grounding для агента — те саме, що TypeScript для вас. Без типів ви пишете
+        <code>user.adress</code> і дізнаєтесь про помилку в проді; з типами редактор підкреслює її
+        одразу. Агент без доступу до коду й тестів пише «без типів»: правдоподібно, але неперевірено.
+      </div>
+    </section>
+
+    <section id="s6">
+      <h2><span class="num">6</span> Правильні версії бібліотек</h2>
+      <p class="section-desc">Знання моделі зафіксовані на момент навчання, а бібліотеки змінюють API щокварталу. Якщо не сказати агенту версію, він напише код для «середньої» версії зі своїх даних.</p>
+
+      <h3>Ризик у цьому репо: незакріплені залежності</h3>
+      <p>У <code>pyproject.toml</code> бекенду залежності вказані без версій: <code>"fastapi"</code>,
+      <code>"sqlalchemy[asyncio]"</code>, <code>"openai"</code>, <code>"ortools"</code>… Закріплені лише
+      <code>bcrypt&lt;4.0</code> і <code>ruff==0.15.22</code>. Тобто «яка версія SQLAlchemy у проєкті»
+      залежить від того, коли саме ви робили <code>pip install</code>. Агент цього не знає й не може
+      дізнатися з <code>pyproject.toml</code>.</p>
+
+      <div class="codecard plain"><div class="bar"><span class="path">.venv/bin/pip list — що реально встановлено (на момент написання, листопад 2026)</span></div>
+<pre><code>alembic       1.20.0
+asyncpg       0.32.0
+celery        5.6.3
+fastapi       0.156.8
+httpx         0.28.1
+openai        3.35.1
+ortools       9.15.6755
+pydantic      2.14.1
+redis         8.1.0
+SQLAlchemy    2.1.5</code></pre></div>
+
+      <p>Класичні пастки через версії: <code>openai.ChatCompletion.create</code> (API 0.x) замість
+      <code>AsyncOpenAI().chat.completions.create</code>; <code>session.query(Route)</code> зі стилю
+      SQLAlchemy 1.x замість <code>select(Route)</code>; <code>class Config:</code> з Pydantic v1 замість
+      <code>model_config</code>; <code>useQuery(['routes'], fn)</code> замість об'єктної форми react-query
+      v5. Усе це — «правильний» код, просто для іншої версії.</p>
+
+      <h3>Як дати агенту версії</h3>
+      <ol class="steps">
+        <li><b>Закріпіть версії в репо.</b> Lock-файл (<code>uv lock</code> / <code>pip-compile</code>
+        для Python, <code>package-lock.json</code> уже є у фронтенді) — тоді агент читає точні версії з
+        файлу, а не вгадує. Це корисно й без AI: відтворювані збірки.</li>
+        <li><b>Скажіть явно в задачі або в CLAUDE.md:</b> «SQLAlchemy 2.x async API (select, AsyncSession),
+        Pydantic v2, react-query v5». Короткий рядок рятує від цілого класу помилок.</li>
+        <li><b>Дайте команду, щоб агент перевірив сам:</b> <code>.venv/bin/pip list</code>,
+        <code>.venv/bin/pip show openai</code>, <code>npm ls @tanstack/react-query</code>.</li>
+        <li><b>Актуальна документація через MCP.</b> Context7 віддає документацію конкретної версії
+        бібліотеки прямо в контекст («use context7» у промпті). Деталі підключення — у
+        <a href="03-mcp-servers.html">туторіалі про MCP</a>.</li>
+        <li><b><code>llms.txt</code>.</b> Багато бібліотек публікують <code>/llms.txt</code> — стислу
+        документацію для LLM. Дайте агенту URL замість того, щоб він покладався на пам'ять.</li>
+        <li><b>Вихідний код встановленого пакета — остаточна правда.</b> «Відкрий
+        <code>.venv/lib/python3.12/site-packages/openai/resources/chat/completions</code> і перевір
+        сигнатуру». Те саме для <code>node_modules/@tanstack/react-query/build</code> і
+        <code>.d.ts</code>-файлів.</li>
+      </ol>
+
+      <div class="codecard plain"><div class="bar"><span class="path">рядок у CLAUDE.md, що закриває цілий клас помилок</span></div>
+<pre><code>## Library versions (check `.venv/bin/pip list` / `npm ls` if unsure)
+- SQLAlchemy 2.x async: select(), AsyncSession; never session.query()
+- Pydantic v2: model_config, field_validator; never class Config
+- openai 3.x: AsyncOpenAI via app/services/ai/client.py
+- Frontend: react-query v5 object syntax, zustand 4, axios via apiClient</code></pre></div>
+
+      <div class="callout interview">
+        <div class="ic">💼</div>
+        <div class="body"><span class="tag">Як пояснити на співбесіді</span>
+        «Модель має knowledge cutoff, а бібліотеки — semver. Я даю агенту три джерела правди: lock-файл з
+        точними версіями, актуальну документацію через MCP і вихідний код встановленого пакета. І
+        перевіряю результат типами та тестами, бо API іншої версії найчастіше падає саме там».</div>
+      </div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина III · Сесія й перевірка</div><div class="line"></div></div>
+
+    <section id="s7">
+      <h2><span class="num">7</span> Керування контекстом сесії</h2>
+      <p class="section-desc">Навіть ідеальний CLAUDE.md не врятує сесію, яка три години збирала логи, старі версії файлів і три різні задачі.</p>
+
+      <table>
+        <tr><th>Прийом</th><th>Коли</th><th>Як (Claude Code)</th></tr>
+        <tr><td><b>Одна задача — одна сесія</b></td><td>Почали нову, не пов'язану задачу</td><td><code>/clear</code> — очищає історію, файл пам'яті підтягнеться знову</td></tr>
+        <tr><td><b>Стиснення з фокусом</b></td><td>Довга задача, контекст розрісся, але історія ще потрібна</td><td><code>/compact зберегти план, змінені файли й відкриті питання; викинути логи тестів</code></td></tr>
+        <tr><td><b>Подивитися бюджет</b></td><td>Відповіді погіршились, не зрозуміло чому</td><td><code>/context</code> — показує, що займає вікно (інструменти, MCP, пам'ять, повідомлення)</td></tr>
+        <tr><td><b>Субагенти для розвідки</b></td><td>Треба перерити багато файлів, щоб знайти одне місце</td><td>«Використай субагента, щоб знайти всі місця, де рахується квота; поверни лише список файл:рядок»</td></tr>
+        <tr><td><b>Нотатки-передача</b></td><td>Задача на кілька сесій або днів</td><td>Агент веде <code>PLAN.md</code> / <code>progress.md</code>; нова сесія починається з «прочитай PLAN.md»</td></tr>
+        <tr><td><b>Відкат</b></td><td>Агент пішов не туди</td><td>Чекпоінти: <kbd>Esc</kbd> <kbd>Esc</kbd> або <code>/rewind</code>, щоб повернутися до попереднього кроку; плюс git</td></tr>
+      </table>
+
+      <p>Субагент — найнедооціненіший прийом. Розвідка («знайди, де…», «як влаштований модуль…») читає
+      десятки файлів, і всі вони осідають у контексті. Субагент робить це у <i>своєму</i> вікні й
+      повертає основній сесії лише висновок на 15 рядків. Основний контекст лишається чистим для
+      самої зміни.</p>
+
+      <div class="codecard plain"><div class="bar"><span class="path">PLAN.md — нотатки для наступної сесії</span></div>
+<pre><code># Route status filter
+
+## Done
+- [x] RouteRepository.list(status=...) + test (app/tests/test_route_filter.py)
+- [x] GET /routes?status= in app/api/routes/router.py
+
+## Next
+- [ ] Frontend: select in RoutesPage, queryKey ['routes', { status }]
+
+## Decisions
+- Unknown status returns [] (not 422): frontend sends free text from URL.
+
+## Open questions
+- Should "cancelled" routes be hidden by default? Ask before changing.</code></pre></div>
+
+      <div class="callout bad">
+        <div class="ic">🚫</div>
+        <div class="body"><b>Антипатерн «вічний чат».</b> Одна сесія на весь день: зранку баг у квотах,
+        після обіду фронтенд, увечері CI. До вечора в контексті три старі версії
+        <code>router.py</code>, 2000 рядків логів pytest і рішення, від яких ви відмовились. Агент
+        починає «згадувати» скасовані рішення. Лікування — <code>/clear</code> між задачами й
+        <code>PLAN.md</code> для того, що треба пам'ятати.</div>
+      </div>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія для фронтендера</div>
+        Довга сесія — як SPA, яку не перезавантажували тиждень: у сторі накопичилися застарілі дані,
+        кеш react-query тримає старі відповіді, і поведінка стає дивною. <code>/clear</code> — це
+        hard reload, <code>/compact</code> — <code>queryClient.removeQueries()</code> для неважливого
+        з збереженням потрібного, а <code>PLAN.md</code> — <code>localStorage</code>, який переживає
+        перезавантаження.
+      </div>
+    </section>
+
+    <section id="s8">
+      <h2><span class="num">8</span> Як виловити галюцинацію</h2>
+      <p class="section-desc">Галюцинацій не буде нуль. Мета — щоб кожна ловилася машиною за секунди, а не вами в проді.</p>
+
+      <h3>Типові симптоми</h3>
+      <table>
+        <tr><th>Симптом</th><th>Приклад</th><th>Хто ловить</th></tr>
+        <tr><td>Неіснуючий імпорт</td><td><code>from app.services.routes import optimize_route</code></td><td><code>ruff</code> (F401/помилка імпорту), pytest при зборі тестів, <code>tsc</code></td></tr>
+        <tr><td>Неправильна сигнатура</td><td><code>await service.optimize(delivery_ids)</code> замість <code>OptimizeRequest</code></td><td>mypy / pyright, <code>tsc</code>, тести</td></tr>
+        <tr><td>Вигаданий ключ конфігу</td><td>Неіснуючий параметр у <code>fly.toml</code> або налаштуваннях інструмента</td><td>Валідація схеми, запуск команди, документація</td></tr>
+        <tr><td>Вигадане поле API</td><td><code>route.driverName</code></td><td>Згенеровані з OpenAPI типи + <code>tsc</code></td></tr>
+        <tr><td>Фейковий «тести проходять»</td><td>«Всі тести зелені» без виводу команди</td><td>Вимога вставити вивід; хуки; CI</td></tr>
+        <tr><td>Тест, що нічого не перевіряє</td><td>Тест з моком, який повертає очікуване значення, або без <code>assert</code></td><td>Рев'ю тестів, мутаційне мислення: «чи впаде тест, якщо зламати код?»</td></tr>
+      </table>
+
+      <h3>Автоматичні сітки</h3>
+      <p>Найкраще, коли перевірка запускається <b>без вашого прохання</b>. У Claude Code це хук після
+      кожного редагування; у CI — обов'язкові перевірки PR. Мінімальний набір для цих двох репо:</p>
+
+      <div class="codecard"><div class="bar"><span class="path">швидкі перевірки, які агент має запускати сам</span></div>
+<pre><code># бекенд
+.venv/bin/ruff check .                      # невикористані/неіснуючі імпорти, помилки
+.venv/bin/python -c "import app.main"        # чи взагалі імпортується застосунок
+.venv/bin/pytest app/tests -q -x             # тести, зупинка на першій помилці
+
+# фронтенд
+npx tsc -b                                   # вигадані поля й сигнатури
+npm run lint
+npm test</code></pre></div>
+
+      <p>Як налаштувати хук, що запускає <code>ruff</code> після кожної правки <code>.py</code>-файлу, —
+      у <a href="05-shortcuts-debugger-automation.html">туторіалі 5</a>; як зробити це обов'язковим
+      у PR — у <a href="06-ci-cd-optimization.html">туторіалі 6</a>.</p>
+
+      <h3>Що робити, коли агент галюцинує</h3>
+      <div class="vs">
+        <div>
+          <h4>❌ Сперечатися</h4>
+          <div class="codecard plain"><div class="bar"><span class="path">промпт</span></div>
+<pre><code>Ні, це неправильно, такої функції немає. Подумай ще раз.</code></pre></div>
+          <p class="muted">Модель «вибачиться» й запропонує іншу правдоподібну вигадку: нового факту в
+          контексті не з'явилося.</p>
+        </div>
+        <div>
+          <h4>✅ Дати факт</h4>
+          <div class="codecard plain"><div class="bar"><span class="path">промпт</span></div>
+<pre><code>pytest падає:
+ImportError: cannot import name 'optimize_route'
+from 'app.services.route_optimizer.service'
+
+Відкрий service.py і подивись, які методи реально є
+в RouteOptimizerService. Використай існуючий метод.</code></pre></div>
+          <p class="muted">Вивід помилки й вказівка, де шукати правду, замінюють вигадку фактом.</p>
+        </div>
+      </div>
+
+      <div class="callout info">
+        <div class="ic">🔎</div>
+        <div class="body"><b>Чекліст рев'ю коду від агента</b> (детальніше — у
+        <a href="../python-tutorials/30-code-review.html">туторіалі Code Review</a>): кожен новий імпорт
+        існує? кожен виклик бібліотеки — API встановленої версії? нові поля є в моделі/схемі? тест падає,
+        якщо прибрати фікс? запит лишився tenant-scoped? агент не додав залежність без дозволу?</div>
+      </div>
+    </section>
+
+    <section id="s9">
+      <h2><span class="num">9</span> Чекліст і задачі</h2>
+      <p class="section-desc">Збережіть як памʼятку: якщо агент почав вигадувати, пройдіться по списку зверху вниз.</p>
+
+      <ul class="checklist">
+        <li>Файл пам'яті ≤ ~100 рядків, лише команди, межі, пастки й «уроки»</li>
+        <li>Знання модулів — у вкладених файлах або правилах з <code>globs</code></li>
+        <li>У задачі є мета, файли-зразки, обмеження, критерії, команда перевірки, «поза межами»</li>
+        <li>Агент спершу показав план і посилання <code>файл:рядок</code></li>
+        <li>Версії бібліотек відомі агенту (lock-файл, рядок у пам'яті, <code>pip list</code>)</li>
+        <li>Типи фронтенду згенеровані з OpenAPI, а не написані руками</li>
+        <li>Перевірки (ruff, tsc, тести) запускаються автоматично, вивід показано</li>
+        <li>Нова задача — <code>/clear</code>; довга задача — <code>PLAN.md</code></li>
+        <li>Розвідка — через субагента, а не в основній сесії</li>
+        <li>Галюцинацію виправляю фактом (вивід помилки, файл, документ), а не суперечкою</li>
+      </ul>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 1</span><span class="taskdiff easy">легко</span><span class="tasktitle">Перепишіть поганий промпт</span></div>
+        <p>Промпт: «Зроби, щоб AI-чат пам'ятав попередні повідомлення». Перепишіть його за шаблоном із
+        розділу 4 для цього бекенду.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Спершу з'ясуйте факти самі або попросіть агента знайти: у репо вже є
+          <code>app/repositories/chat_message_repository.py</code> і <code>app/services/ai/chat.py</code>,
+          тож, можливо, історія вже зберігається, і задача — лише передавати її в запит до моделі.</p>
+          <div class="codecard plain"><div class="bar"><span class="path">промпт</span></div>
+<pre><code>Мета: відповідь AI-чату враховує останні N=10 повідомлень користувача
+в цій організації.
+Контекст: app/services/ai/chat.py, app/repositories/chat_message_repository.py,
+app/services/ai/client.py, тест app/tests/test_ai_chat.py.
+Спершу перевір і скажи (з файл:рядок), чи історія вже зберігається.
+Обмеження: виклик OpenAI лише через client.py; історія tenant-scoped;
+N — константа в chat.py, не новий env.
+Критерії: у messages для моделі потрапляють попередні повідомлення
+в хронологічному порядку; тест з моком клієнта це перевіряє.
+Перевірка: .venv/bin/pytest app/tests/test_ai_chat.py -q &amp;&amp; .venv/bin/ruff check .
+Поза межами: стрімінг, зміна схем API, фронтенд.
+Спочатку план.</code></pre></div>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 2</span><span class="taskdiff mid">середньо</span><span class="tasktitle">Схудніть CLAUDE.md</span></div>
+        <p>Ваш CLAUDE.md — 400 рядків: дерево папок, опис 45 ендпоінтів, розділ «Best practices» і три
+        корисні правила десь посередині. Що з ним зробити?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><b>Видалити:</b> дерево (агент бачить <code>ls</code>), опис ендпоінтів (є
+          <code>/openapi.json</code>), загальні «best practices» (не змінюють поведінку).</p>
+          <p><b>Залишити й підняти нагору:</b> команди запуску тестів/лінтера/міграцій, три корисні
+          правила, пастки з версіями.</p>
+          <p><b>Перенести:</b> знання про конкретні модулі — у вкладені <code>CLAUDE.md</code>
+          (<code>app/services/route_optimizer/</code>, <code>app/services/ai/</code>); довгі документи —
+          у <code>docs/</code> з посиланням <code>@docs/…</code> лише там, де потрібно.</p>
+          <p><b>Додати:</b> секцію «Lessons learned» і поповнювати її після кожної помилки агента.
+          Ціль — до ~100 рядків, перевірте через <code>/context</code>, скільки токенів займала пам'ять
+          до і після.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 3</span><span class="taskdiff mid">середньо</span><span class="tasktitle">Діагностуйте галюцинацію</span></div>
+        <p>Агент додав у <code>app/services/ai/explainer.py</code>:</p>
+        <div class="codecard"><div class="bar"><span class="path">код від агента</span></div>
+<pre><code>import openai
+
+response = openai.ChatCompletion.create(
+    model="gpt-4o",
+    messages=messages,
+)
+text = response["choices"][0]["message"]["content"]</code></pre></div>
+        <p>Тести з моками проходять. Що не так і яка причина галюцинації?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><b>Що не так:</b> це API бібліотеки <code>openai</code> 0.x. У проєкті встановлено 3.x, де
+          <code>openai.ChatCompletion</code> не існує; правильний шлях — <code>AsyncOpenAI</code> через
+          <code>get_openai_client()</code> і <code>create_structured_completion</code> з
+          <code>app/services/ai/client.py</code>. Ще й синхронний виклик всередині async-коду.</p>
+          <p><b>Причина:</b> застарілі знання + немає версії в контексті + тест мокає сам модуль
+          <code>openai</code>, тож реальний API не перевіряється (фейковий «зелений» тест).</p>
+          <p><b>Лікування:</b> рядок у CLAUDE.md «openai 3.x: тільки через app/services/ai/client.py»;
+          у задачі — «подивись, як викликає модель <code>planner.py</code>»; у тестах мокати нашу
+          обгортку, а не бібліотеку; швидка перевірка
+          <code>.venv/bin/python -c "import app.services.ai.explainer"</code> плюс pyright/mypy
+          виловили б неіснуючий атрибут.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Задача 4</span><span class="taskdiff hard">складно</span><span class="tasktitle">Спроєктуйте контекст для довгої задачі</span></div>
+        <p>Задача на 3 дні: перенести виклик OR-Tools солвера з HTTP-запиту в Celery-задачу з
+        опитуванням статусу на фронтенді. Як організувати контекст, щоб агент не загубився на другий
+        день?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <ol>
+            <li><b>День 0, окрема сесія-розвідка</b> (або субагент): «знайди, як зараз викликається
+            солвер (service.py, router), як налаштований Celery (app/workers), як фронтенд чекає
+            результат (useOptimizeRoutes.ts); поверни звіт файл:рядок». Звіт зберегти в
+            <code>PLAN.md</code>.</li>
+            <li><b>План у PLAN.md</b>: кроки (модель статусу задачі + міграція → Celery task → ендпоінти
+            202 + GET статусу → фронтенд-поллінг), рішення, відкриті питання. Ви його рев'юїте до коду.</li>
+            <li><b>Вкладений CLAUDE.md</b> у <code>app/workers/</code>: як запускати воркер локально,
+            що задачі мають бути ідемпотентні, як тестувати (eager mode).</li>
+            <li><b>Кожен крок — нова сесія</b>: <code>/clear</code>, «прочитай PLAN.md, виконай крок 2»,
+            команда перевірки для кроку, оновлення PLAN.md наприкінці.</li>
+            <li><b>Контракти фіксуються першими</b>: Pydantic-схеми відповіді 202/статусу → регенерація
+            TS-типів з OpenAPI → фронтенд не може вигадати поля статусу.</li>
+            <li><b>Версії</b>: <code>celery</code> 5.6, <code>redis</code> 8.1 з <code>pip list</code>
+            у PLAN.md, щоб агент не тягнув API старих версій.</li>
+          </ol>
+        </div></details>
+      </div>
+
+      <div class="callout fun">
+        <div class="ic">📚</div>
+        <div class="body"><b>Глибше:</b> <a href="01-ai-directions.html">1. Напрямки розвитку</a> —
+        де context engineering серед інших навичок; <a href="02-pipeline-claude-code-cursor.html">2.
+        Пайплайн</a> — повна структура <code>.claude/</code> і <code>.cursor/</code>;
+        <a href="03-mcp-servers.html">3. MCP-сервери</a> — Context7 і доступ до документації;
+        <a href="05-shortcuts-debugger-automation.html">5. Автоматизація</a> — хуки з ruff/tsc після
+        правок; <a href="06-ci-cd-optimization.html">6. CI/CD</a> — обов'язкові перевірки PR.</div>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Робота з AI · частина серії туторіалів AI Delivery Planner. Пов'язане: <a href="02-pipeline-claude-code-cursor.html">2. Пайплайн</a> · <a href="03-mcp-servers.html">3. MCP-сервери</a> · <a href="../python-tutorials/30-code-review.html">Code Review</a>.
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*|\/\/[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b|\bthis\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case|const|let|var|function|interface|type|export|extends|implements|new|void|enum|typeof|instanceof|static|public|private|readonly|null|undefined)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard:not(.plain) pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+<script>
+(function(){
+  var root = document.documentElement, btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function current(){
+    var t = root.getAttribute('data-theme');
+    return t === 'light' || t === 'dark' ? t : (mq && mq.matches ? 'dark' : 'light');
+  }
+  function render(){
+    var dark = current() === 'dark';
+    btn.textContent = dark ? '☀️ Світла тема' : '🌙 Темна тема';
+    btn.setAttribute('aria-label', dark ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('docs-theme', next); }catch(e){}
+    render();
+  });
+  if(mq && mq.addEventListener) mq.addEventListener('change', render);
+  render();
+})();
+</script>
+<script src="../assets/mobile-nav.js"></script>
+</body>
+</html>

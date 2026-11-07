@@ -1,0 +1,1898 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>5. Шорткати, дебагер, рутина — Робота з AI</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><rect x=%2718%27 y=%2730%27 width=%2764%27 height=%2752%27 rx=%2712%27 fill=%27white%27/><rect x=%2747%27 y=%2710%27 width=%276%27 height=%2720%27 fill=%27white%27/></svg>">
+<script>
+(function(){
+  try{ var t = localStorage.getItem('docs-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --notes:#7c3aed; --notes-bg:#f5f0ff; --notes-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+    --fg:#e7eaf2; --fg-muted:#9aa2b4;
+    --accent:#6d9bff; --accent-soft:#1c2740;
+    --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+    --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+    --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+    --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+    --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+    --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    --notes:#c4a6ff; --notes-bg:#241a35; --notes-border:#4b3570;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--interview); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"],
+  #tab-sysdesign:checked ~ .nav-tabbar label[for="tab-sysdesign"],
+  #tab-quantum:checked ~ .nav-tabbar label[for="tab-quantum"],
+  #tab-ai:checked ~ .nav-tabbar label[for="tab-ai"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  #tab-quantum:checked ~ .nav-links.quantum{display:flex;}
+  #tab-ai:checked ~ .nav-links.ai{display:flex;}
+  #tab-sysdesign:checked ~ .nav-links.sysdesign{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .badge{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:999px;
+    text-transform:uppercase; letter-spacing:.03em;
+  }
+  .badge.good{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .badge.bad{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+
+  .fe-analogy{
+    border-left:3px solid var(--accent); background:var(--accent-soft); border-radius:0 var(--radius) var(--radius) 0;
+    padding:12px 16px; margin:16px 0; font-size:14.5px;
+  }
+  .fe-analogy .tag{font-weight:700; color:var(--accent); font-size:12px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;}
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.8px;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:8px; vertical-align:middle;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  /* Nesting (matryoshka) diagram */
+  .nest{border:2px solid var(--border); border-radius:16px; padding:30px 20px 20px; position:relative; margin:0;}
+  .nest .tag{
+    position:absolute; top:-11px; left:16px; background:var(--bg); padding:0 8px;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .nest p{margin:0; color:var(--fg-muted); font-size:13.8px;}
+  .nest.level1{border-color:var(--accent); margin:20px 0;}
+  .nest.level1 > .tag{color:var(--accent);}
+  .nest.level2{border-color:var(--fun); margin-top:16px;}
+  .nest.level2 > .tag{color:var(--fun);}
+  .nest.level3{border-color:var(--interview); margin-top:16px; background:var(--bg-soft);}
+  .nest.level3 > .tag{color:var(--interview);}
+
+  /* Flashcards for term memorization */
+  .flashgrid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin:16px 0;}
+  .flashcard{border:1px solid var(--border); border-radius:12px; padding:16px 18px; background:var(--card);}
+  .flashcard .fc-num{
+    display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--interview-bg);
+    color:var(--interview); font-size:12px; font-weight:700; text-align:center; line-height:22px; margin-bottom:8px;
+  }
+  .flashcard .term{font-weight:700; font-size:15.5px; margin-bottom:6px;}
+  .flashcard .def{font-size:13.6px; color:var(--fg); margin-bottom:10px;}
+  .flashcard .mnemo{font-size:13px; color:var(--fg-muted); font-style:italic; border-top:1px dashed var(--border); padding-top:9px;}
+  .flashcard .mnemo b{color:var(--fun); font-style:normal;}
+
+  .rule-box{
+    border:1px dashed var(--interview-border); background:var(--interview-bg); border-radius:var(--radius);
+    padding:16px 18px; margin:18px 0; font-size:14.8px;
+  }
+  .rule-box b{color:var(--interview);}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- node-doc extras --- */
+  .tree{
+    background:var(--code-bg); color:var(--code-fg); border-radius:var(--radius); padding:18px 20px;
+    font-size:13px; overflow:auto; border:1px solid var(--border);
+    white-space:pre; line-height:1.5;
+  }
+  .tree .d{color:#7fb0ff;} .tree .c{color:#7c8494;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  @media (max-width:700px){.grid2{grid-template-columns:1fr;}}
+
+  .flow{display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0;}
+  .flow .step{
+    border:1px solid var(--border); background:var(--bg-soft); border-radius:10px;
+    padding:10px 14px; font-size:13.5px; font-weight:600;
+  }
+  .flow .arrow{color:var(--fg-muted); font-size:16px;}
+  article a{color:var(--accent); text-underline-offset:2px;}
+  article a:hover{text-decoration-thickness:2px;}
+
+  .tag{
+    flex-shrink:0; display:inline-block; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:999px; white-space:nowrap;
+  }
+  .tag.recurring{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .tag.gap{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .tag.rising{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .tag.strength{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .tag.notes{background:var(--notes-bg); color:var(--notes); border:1px solid var(--notes-border);}
+  .task{margin:22px 0;}
+  .task .task-head{display:flex; align-items:center; gap:8px; margin-bottom:8px;}
+  .task .tasknum{color:var(--accent); font-weight:700; font-size:13px; flex-shrink:0;}
+  .task .taskdiff{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    flex-shrink:0;
+  }
+  .task .taskdiff.easy{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .task .taskdiff.mid{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .task .taskdiff.hard{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .task .tasktitle{font-weight:600; font-size:14.5px;}
+  details.answer{
+    border:1px solid var(--border); border-radius:10px; margin-top:2px; background:var(--bg-soft);
+    overflow:hidden;
+  }
+  details.answer summary{
+    cursor:pointer; padding:10px 14px; font-weight:600; font-size:13.5px; color:var(--accent);
+    list-style:none; user-select:none;
+  }
+  details.answer summary::-webkit-details-marker{display:none;}
+  details.answer summary::before{content:"▸ Показати відповідь"; }
+  details.answer[open] summary::before{content:"▾ Відповідь"; }
+  details.answer .a-body{
+    padding:0 14px 14px; border-top:1px solid var(--border); padding-top:12px;
+    font-size:14px; color:var(--fg);
+  }
+  details.answer .a-body p{margin:8px 0;}
+  details.answer .a-body .out{
+    font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;
+    background:var(--code-bg); color:var(--code-fg); padding:8px 12px; border-radius:8px;
+    display:block; margin:8px 0; white-space:pre; font-size:13px;
+  }
+  .topic-head{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
+  .topic-head h2{font-size:21px; margin:0; letter-spacing:-.01em;}
+  .decision{
+    border:1px solid var(--border); border-left:4px solid var(--accent); border-radius:var(--radius);
+    background:var(--bg-soft); padding:16px 18px; margin:20px 0;
+  }
+  .decision-title{font-weight:700; font-size:15px; margin-bottom:4px;}
+  .decision table{margin:10px 0; background:var(--card); border-radius:8px;}
+  .decision p{margin:10px 0; font-size:15px;}
+  tr.chosen td{background:var(--good-bg);}
+  tr.chosen td:first-child{color:var(--good);}
+  .remember{
+    border:1px dashed var(--warn-border); background:var(--warn-bg); color:var(--fg);
+    border-radius:var(--radius); padding:12px 16px; margin:18px 0 0; font-size:15px;
+  }
+  .remember b{color:var(--warn);}
+  .callout .body a{color:inherit; font-weight:600; text-decoration:underline;}
+  article table{display:block; overflow-x:auto;}
+  @media (min-width:700px){ article table{display:table;} }
+
+  /* --- python-doc extras --- */
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider:first-child{margin-top:8px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+  .qa summary .qnum{color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700; margin-right:8px;}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  /* --- quantum-doc extras --- */
+  .res{border:1px solid var(--border); border-radius:var(--radius); background:var(--card); padding:14px 16px; margin:12px 0;}
+  .res .res-head{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:4px;}
+  .res .res-title{font-weight:700; font-size:15px;}
+  .res .res-meta{font-size:12.5px; color:var(--fg-muted);}
+  .res p{margin:6px 0 0; font-size:14.3px;}
+  .lvl{display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap;}
+  .lvl.l1{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+  .lvl.l2{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn-border);}
+  .lvl.l3{background:var(--bad-bg); color:var(--bad); border:1px solid var(--bad-border);}
+  .lvl.type{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .timeline{border-left:2px solid var(--accent); margin:20px 0 20px 8px; padding-left:20px;}
+  .timeline .ev{position:relative; margin:0 0 18px;}
+  .timeline .ev::before{content:""; position:absolute; left:-27px; top:6px; width:12px; height:12px; border-radius:50%; background:var(--accent); border:2px solid var(--bg);}
+  .timeline .yr{font-weight:800; color:var(--accent); font-variant-numeric:tabular-nums; font-size:14px;}
+  .timeline .ev-t{font-weight:700;}
+  .timeline .ev p{margin:4px 0 0; font-size:14.3px; color:var(--fg-muted);}
+  .math{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:1.05em; white-space:nowrap;}
+  .math-block{font-family:"Cambria Math","STIX Two Math","Latin Modern Math",Georgia,serif; font-size:18px; text-align:center; padding:14px; margin:14px 0; border:1px dashed var(--border); border-radius:var(--radius); background:var(--bg-soft); overflow-x:auto;}
+
+
+  /* --- system-design extras --- */
+  .say{color:var(--fg-muted); font-size:.9em; font-weight:400; font-style:normal;}
+  .steps{counter-reset:st; list-style:none; padding-left:0;}
+  .steps > li{counter-increment:st; position:relative; padding-left:38px; margin:12px 0;}
+  .steps > li::before{content:counter(st); position:absolute; left:0; top:0; width:26px; height:26px; border-radius:50%;
+    background:var(--accent-soft); color:var(--accent); font-weight:700; font-size:13px; text-align:center; line-height:26px;}
+  .vs{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:16px 0;}
+  @media (max-width:700px){.vs{grid-template-columns:1fr;}}
+  .vs > div{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--card);}
+  .vs h4{margin:0 0 6px; font-size:15px;}
+  .vs ul{margin:6px 0 0; padding-left:18px; font-size:14.3px;}
+  /* --- ai-doc extras --- */
+  .kbd, kbd{
+    display:inline-block; font-family:"SF Mono",ui-monospace,Consolas,monospace; font-size:12px; line-height:1.2;
+    padding:2px 6px; border-radius:6px; border:1px solid var(--border); border-bottom-width:2px;
+    background:var(--bg-soft); color:var(--fg); white-space:nowrap;
+  }
+  .filetree-note{font-size:13px; color:var(--fg-muted); margin-top:-8px;}
+  .dirgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; margin:16px 0;}
+  .dir{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--card);}
+  .dir .dir-h{display:flex; align-items:center; gap:8px; font-weight:700; font-size:15px; margin-bottom:4px;}
+  .dir p{margin:4px 0 0; font-size:14px; color:var(--fg-muted);}
+  .dir .lvl{margin-left:auto;}
+  .checklist{list-style:none; padding-left:0;}
+  .checklist li{position:relative; padding-left:28px;}
+  .checklist li::before{content:"☐"; position:absolute; left:4px; top:0; color:var(--accent); font-weight:700;}
+  .metric-before-after{display:grid; grid-template-columns:1fr auto 1fr; gap:10px; align-items:center; margin:14px 0;}
+  .metric-before-after .m{border:1px solid var(--border); border-radius:10px; padding:10px 14px; background:var(--bg-soft); text-align:center;}
+  .metric-before-after .m b{display:block; font-size:20px;}
+  .metric-before-after .m.after b{color:var(--good);}
+  .metric-before-after .m.before b{color:var(--bad);}
+  /* --- theme switch --- */
+  :root{color-scheme:light;}
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .theme-toggle{
+    cursor:pointer; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+    background:var(--bg-soft); color:var(--fg); font:inherit; font-size:12.5px; font-weight:600;
+    transition:background .15s, border-color .15s;
+  }
+  .theme-toggle:hover{background:var(--card); border-color:var(--accent);}
+  .theme-toggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+</style>
+<link rel="stylesheet" href="../assets/mobile-nav.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="top-row">
+      <div class="brand">🤖 Робота з AI <span>· AI Delivery Planner</span></div>
+      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Темна тема</button>
+    </div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="kicker">Робота з AI · продуктивність</div>
+  <h1>Шорткати, дебагер, чистка сміття й автоматизація рутини</h1>
+  <p class="lead">AI пише код швидше за нас, тож вузьким місцем стає все навколо: як швидко ми навігуємо, ставимо брейкпоінт, перевіряємо гіпотезу, прибираємо мертвий код і запускаємо однакові команди. Тут лише те, що реально налаштовується за вечір, з конфігами під цей FastAPI-бекенд і Vite-фронтенд.</p>
+  <div class="pills">
+    <span class="pill">Claude Code · Cursor · JetBrains</span>
+    <span class="pill">launch.json під FastAPI і Vite</span>
+    <span class="pill">ruff · vulture · deptry · knip</span>
+    <span class="pill">Makefile · pre-commit · hooks</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-sysdesign" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-quantum" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-ai" class="tab-radio" checked>
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-sysdesign" class="nav-tabbtn">🏗️ System Design</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+      <label for="tab-quantum" class="nav-tabbtn">⚛️ Квантове</label>
+      <label for="tab-ai" class="nav-tabbtn">🤖 Робота з AI</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="../python-tutorials/00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="../python-tutorials/01-architecture.html">1. Архітектура</a>
+        <a href="../python-tutorials/02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="../python-tutorials/03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="../python-tutorials/04-python-types.html">4. Типи</a>
+        <a href="../python-tutorials/05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="../python-tutorials/06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="../python-tutorials/07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="../python-tutorials/08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="../python-tutorials/09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="../python-tutorials/10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="../python-tutorials/11-logging.html">11. Логування</a>
+        <a href="../python-tutorials/12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="../python-tutorials/13-design-patterns.html">13. Патерни</a>
+        <a href="../python-tutorials/14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="../python-tutorials/15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="../python-tutorials/16-pydantic.html">16. Pydantic</a>
+        <a href="../python-tutorials/21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="../python-tutorials/22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="../python-tutorials/23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="../python-tutorials/24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="../python-tutorials/25-system-design.html">25. Системний дизайн</a>
+        <a href="../python-tutorials/26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="../python-tutorials/27-kubernetes.html">27. Kubernetes</a>
+        <a href="../python-tutorials/30-code-review.html">30. Code Review</a>
+        <a href="../python-tutorials/17-databases-fundamentals.html">17. 🗄️ Бази даних: основи</a>
+        <a href="../python-tutorials/18-databases-interview-qa.html">18. 🗄️ Бази даних: Q&amp;A</a>
+        <a href="../python-tutorials/19-postgres-storage-and-memory.html">19. 🗄️ Postgres storage &amp; пам'ять</a>
+        <a href="../python-tutorials/20-redis.html">20. 🗄️ Redis</a>
+        <a href="../python-tutorials/28-databases-by-example.html">28. 🗄️ Бази даних на прикладі</a>
+        <a href="../python-tutorials/29-race-conditions.html">29. 🗄️ Race conditions</a>
+      </nav>
+      <nav class="nav-links sysdesign">
+        <a href="../system-design/01-interview-framework.html">1. Фреймворк співбесіди</a>
+        <a href="../system-design/02-networking-entry.html">2. Мережа: DNS, CDN, LB, API</a>
+        <a href="../system-design/03-caching.html">3. Кешування углиб</a>
+        <a href="../system-design/04-databases-storage.html">4. БД I: моделі, індекси, ACID</a>
+        <a href="../system-design/05-replication-sharding.html">5. БД II: реплікація, шардинг</a>
+        <a href="../system-design/06-distributed-systems.html">6. Розподілені системи</a>
+        <a href="../system-design/07-async-messaging.html">7. Черги, Kafka, саги</a>
+        <a href="../system-design/08-reliability-scale.html">8. Надійність і rate limiting</a>
+        <a href="../system-design/09-classic-url-id-kv.html">9. Задачі I: URL, ID, KV</a>
+        <a href="../system-design/10-classic-feed-chat.html">10. Задачі II: стрічка, чат</a>
+        <a href="../system-design/11-classic-storage-video-crawler.html">11. Задачі III: файли, відео</a>
+        <a href="../system-design/12-classic-geo-booking-topk.html">12. Задачі IV: гео, бронювання</a>
+        <a href="../system-design/13-tricky-topics-qa.html">13. Трікі теми й Q&amp;A</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="../node-doc/01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="../node-doc/02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="../node-doc/03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="../node-doc/04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="../node-doc/05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="../node-doc/06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="../node-doc/07-fs-process-os.html">7. fs, process, os</a>
+        <a href="../node-doc/08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="../node-doc/09-http-networking.html">9. HTTP і мережа</a>
+        <a href="../node-doc/10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="../node-doc/11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="../node-doc/12-databases-orm.html">12. БД і ORM</a>
+        <a href="../node-doc/13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="../node-doc/14-security.html">14. Безпека Node</a>
+        <a href="../node-doc/15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="../node-doc/16-testing.html">16. Тестування</a>
+        <a href="../node-doc/17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="../node-doc/18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="../node-doc/19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="../node-doc/20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+      <nav class="nav-links quantum">
+        <a href="../quantum-doc/01-quanta-and-quantum-computing.html">1. Кванти й обчислення</a>
+        <a href="../quantum-doc/02-quantum-engineering-history.html">2. Квантова інженерія</a>
+        <a href="../quantum-doc/03-quantum-backend-python-ibm.html">3. Бекенд + IBM Quantum</a>
+        <a href="../quantum-doc/04-pet-project-quantum-routing.html">4. Пет-проєкт: маршрути</a>
+        <a href="../quantum-doc/05-quantum-engineer-roadmap.html">5. Шлях інженера: ресурси</a>
+        <a href="../quantum-doc/06-linear-algebra-vectors-matrices.html">6. Лін. алгебра I: вектори, матриці</a>
+        <a href="../quantum-doc/07-linear-algebra-eigen-tensor.html">7. Лін. алгебра II: власні, тензори</a>
+        <a href="../quantum-doc/08-complex-numbers-phase.html">8. Комплексні числа й фаза</a>
+        <a href="../quantum-doc/09-probability-shots.html">9. Ймовірності й shots</a>
+        <a href="../quantum-doc/10-numpy-statevector-simulator.html">10. NumPy: свій симулятор</a>
+        <a href="../quantum-doc/11-qiskit-circuits-aer.html">11. Qiskit I: схеми й Aer</a>
+        <a href="../quantum-doc/12-qiskit-runtime-real-qpu.html">12. Qiskit II: реальний QPU</a>
+      </nav>
+      <nav class="nav-links ai">
+        <a href="../ai-doc/01-ai-directions.html">1. Напрямки розвитку</a>
+        <a href="../ai-doc/02-pipeline-claude-code-cursor.html">2. Пайплайн: Claude Code, Cursor</a>
+        <a href="../ai-doc/03-mcp-servers.html">3. MCP-сервери</a>
+        <a href="../ai-doc/04-agent-context.html">4. Контекст без галюцинацій</a>
+        <a href="../ai-doc/05-shortcuts-debugger-automation.html" class="active">5. Шорткати, дебагер, рутина</a>
+        <a href="../ai-doc/06-ci-cd-optimization.html">6. Оптимізація CI/CD</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <div class="toc-group">Швидкість рук</div>
+    <ol>
+      <li><a href="#s1">1. Шорткати, що окупаються</a>
+        <ol>
+          <li><a href="#s1-cc">Claude Code</a></li>
+          <li><a href="#s1-cursor">Cursor / VS Code</a></li>
+          <li><a href="#s1-jb">JetBrains</a></li>
+          <li><a href="#s1-shell">Shell і git</a></li>
+        </ol>
+      </li>
+    </ol>
+    <div class="toc-group">Дебаг</div>
+    <ol>
+      <li><a href="#s2">2. Дебагер під цей стек</a>
+        <ol>
+          <li><a href="#s2-fastapi">FastAPI через debugpy</a></li>
+          <li><a href="#s2-tests">pytest і Celery</a></li>
+          <li><a href="#s2-docker">Attach до Docker</a></li>
+          <li><a href="#s2-fe">Vite, Chrome, vitest</a></li>
+          <li><a href="#s2-jb">PyCharm / WebStorm</a></li>
+          <li><a href="#s2-tricks">breakpoint(), logpoints</a></li>
+        </ol>
+      </li>
+      <li><a href="#s3">3. Дебаг у парі з AI</a></li>
+    </ol>
+    <div class="toc-group">Гігієна</div>
+    <ol>
+      <li><a href="#s4">4. Вичищаємо сміття</a>
+        <ol>
+          <li><a href="#s4-py">Python: ruff, vulture, deptry</a></li>
+          <li><a href="#s4-ts">TS: knip, tsconfig, eslint</a></li>
+          <li><a href="#s4-repo">Репозиторій: реальні знахідки</a></li>
+        </ol>
+      </li>
+      <li><a href="#s5">5. Автоматизація рутини</a>
+        <ol>
+          <li><a href="#s5-make">Makefile і npm scripts</a></li>
+          <li><a href="#s5-hooks">pre-commit, husky, lint-staged</a></li>
+          <li><a href="#s5-ai">Claude hooks, skills, claude -p</a></li>
+          <li><a href="#s5-not">Що не автоматизувати</a></li>
+        </ol>
+      </li>
+    </ol>
+    <div class="toc-group">Практика</div>
+    <ol>
+      <li><a href="#s6">6. Чекліст і завдання</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина I · Швидкість рук</div><div class="line"></div></div>
+
+    <section id="s1">
+      <h2><span class="num">1</span> Шорткати, що окупаються</h2>
+      <p class="section-desc">Коли агент генерує код за секунди, ваш час іде на навігацію, рев'ю диффів і перевірку. Тут не «всі шорткати світу», а ті 10–15, які дають найбільше за день.</p>
+
+      <p>Принцип вибору простий: шорткат вартий заучування, якщо дію ви робите
+      <b>десятки разів на день</b> і зараз тягнетеся за мишкою. Для роботи з AI це насамперед:
+      перервати агента, відкотити його крок, перемкнути режим (план ↔ виконання), швидко
+      згадати файл у промпті, прийняти чи відхилити дифф, стрибнути до місця помилки й
+      запустити тест під курсором.</p>
+
+      <div class="callout warn">
+        <div class="ic">⚠️</div>
+        <div class="body"><b>Усі комбінації нижче — для macOS і стандартних keymap.</b> Вони
+        відрізняються між версіями, keymap (наприклад, «VS Code keymap» у JetBrains) і терміналами.
+        Якщо комбінація не спрацювала, знайдіть дію за назвою через палітру команд. Стан
+        <i>на момент написання (листопад 2026)</i>.</div>
+      </div>
+
+      <h3 id="s1-cc">Claude Code (термінал)</h3>
+      <table>
+        <tr><th>Клавіші / префікс</th><th>Що робить</th><th>Коли рятує</th></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Перериває поточну відповідь або виклик інструмента; зроблене до цього лишається</td><td>Агент пішов не туди: зупинити й скерувати, не чекаючи кінця</td></tr>
+        <tr><td><kbd>Esc</kbd> <kbd>Esc</kbd></td><td>З текстом у полі — очищає чернетку; з порожнім полем — відкриває меню <b>rewind</b> (повернення до попереднього повідомлення/чекпоінта)</td><td>Відкотити невдалий крок разом з правками коду</td></tr>
+        <tr><td><kbd>Shift</kbd>+<kbd>Tab</kbd></td><td>Циклічно перемикає режими дозволів: default (Manual) → acceptEdits → plan → …</td><td>Спершу <b>plan mode</b>: агент лише читає й пропонує план, нічого не редагує</td></tr>
+        <tr><td><code>@</code></td><td>Автодоповнення шляху до файлу в промпті</td><td>Дати точний контекст: <code>@app/services/route_optimizer/constraints.py</code></td></tr>
+        <tr><td><code>!</code> на початку</td><td>Shell-режим: команда виконується одразу, вивід потрапляє в сесію</td><td><code>! pytest app/tests/test_ai_quota.py -x</code> — і агент бачить реальний вивід</td></tr>
+        <tr><td><code>/</code> на початку</td><td>Команди й skills: <code>/compact</code>, <code>/clear</code>, <code>/keybindings</code>, власні skills</td><td>Скинути контекст між задачами, викликати свій сценарій</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>G</kbd></td><td>Відкрити промпт у зовнішньому редакторі (<code>$EDITOR</code>)</td><td>Довгий промпт із кодом/логами зручніше писати у vim/VS Code</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>O</kbd></td><td>Transcript viewer: детальні виклики інструментів</td><td>Подивитися, <i>що саме</i> агент прочитав і запустив</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>B</kbd></td><td>Відправити довгу команду/агента у фон</td><td><code>npm run dev</code> чи довгі тести не блокують сесію (у tmux — двічі)</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>R</kbd></td><td>Пошук по історії промптів</td><td>Повторити вдалий промпт із минулого тижня</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>J</kbd> або <kbd>\</kbd>+<kbd>Enter</kbd></td><td>Новий рядок без відправки (у iTerm2/Ghostty/Warp/Apple Terminal працює й <kbd>Shift</kbd>+<kbd>Enter</kbd>)</td><td>Багаторядкові промпти</td></tr>
+        <tr><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>Сховати чернетку промпта й повернути її пізніше</td><td>Почали писати, але треба спершу щось швидко спитати</td></tr>
+        <tr><td><kbd>Option</kbd>+<kbd>P</kbd></td><td>Змінити модель, не втрачаючи введений текст (потрібен «Option as Meta» у терміналі)</td><td>Дешевша модель для механічних задач</td></tr>
+        <tr><td><code>?</code> у порожньому полі</td><td>Панель зі всіма шорткатами вашої версії</td><td>Перевірити, що змінилося після оновлення</td></tr>
+      </table>
+
+      <p>Власні прив'язки живуть у <code>~/.claude/keybindings.json</code> — команда
+      <code>/keybindings</code> створює або відкриває цей файл, зміни підхоплюються без
+      перезапуску. Формат — масив блоків «контекст → клавіша → дія». Корисний трюк: дія
+      <code>command:&lt;name&gt;</code> запускає slash-команду, тобто можна повісити
+      <code>/compact</code> на одну комбінацію.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">~/.claude/keybindings.json</span></div>
+        <pre><code>{
+  "$schema": "https://www.schemastore.org/claude-code-keybindings.json",
+  "bindings": [
+    {
+      "context": "Chat",
+      "bindings": {
+        "meta+g": "command:compact",
+        "ctrl+e": "chat:externalEditor"
+      }
+    },
+    {
+      "context": "Confirmation",
+      "bindings": {
+        "y": "confirm:yes",
+        "n": "confirm:no"
+      }
+    }
+  ]
+}</code></pre>
+      </div>
+      <p class="muted"><code>Ctrl+C</code>, <code>Ctrl+D</code> та ще кілька комбінацій
+      зарезервовані й не перепризначаються. Якщо прив'язка «мовчить», запустіть
+      <code>claude --debug</code>: попередження про помилки в keybindings пишуться в debug-лог.</p>
+
+      <h3 id="s1-cursor">Cursor і VS Code</h3>
+      <p>Cursor — форк VS Code, тож усі базові шорткати VS Code працюють і там. AI-шорткати
+      Cursor змінюються від релізу до релізу, тому перевіряйте в
+      <i>Cursor Settings → Keyboard Shortcuts</i>. Ось ті, що варто знати:</p>
+      <table>
+        <tr><th>Клавіші</th><th>Де</th><th>Дія</th></tr>
+        <tr><td><kbd>Cmd</kbd>+<kbd>K</kbd> (у редакторі з виділенням)</td><td>Cursor</td><td>Inline edit: інструкція для виділеного фрагмента, дифф просто в файлі. В актуальній таблиці шорткатів Cursor <kbd>Cmd</kbd>+<kbd>K</kbd> (як і <kbd>Cmd</kbd>+<kbd>L</kbd>) відкриває бокову панель / додає виділення в новий чат, а окремої дії inline edit там не описано — перевірте прив'язку в Keyboard Shortcuts</td></tr>
+        <tr><td><kbd>Cmd</kbd>+<kbd>I</kbd> / <kbd>Cmd</kbd>+<kbd>L</kbd></td><td>Cursor</td><td>Відкрити/сховати бокову панель агента (чат)</td></tr>
+        <tr><td><kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd></td><td>Cursor</td><td>Додати виділення в чат як контекст</td></tr>
+        <tr><td><kbd>Cmd</kbd>+<kbd>N</kbd></td><td>Cursor (панель агента)</td><td>Новий чат — дешевше, ніж тягнути старий контекст</td></tr>
+        <tr><td><kbd>Shift</kbd>+<kbd>Tab</kbd> / <kbd>Cmd</kbd>+<kbd>.</kbd></td><td>Cursor</td><td>Перемкнути режим агента / відкрити меню режимів</td></tr>
+        <tr><td><kbd>Cmd</kbd>+<kbd>Enter</kbd> / <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>⌫</kbd></td><td>Cursor</td><td>Прийняти всі / відхилити всі запропоновані зміни</td></tr>
+        <tr><td><kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd></td><td>обидва</td><td>Палітра команд — «шукай дію за назвою»</td></tr>
+        <tr><td><kbd>Cmd</kbd>+<kbd>P</kbd></td><td>обидва</td><td>Швидко відкрити файл; <code>@</code> — символ у файлі, <code>:</code> — рядок</td></tr>
+        <tr><td><kbd>F12</kbd> / <kbd>F2</kbd></td><td>обидва</td><td>Go to Definition / Rename Symbol (безпечний рефакторинг, а не пошук-заміна)</td></tr>
+        <tr><td><kbd>Cmd</kbd>+<kbd>.</kbd> (у редакторі)</td><td>VS Code</td><td>Quick Fix: імпорт, виправлення лінтера</td></tr>
+        <tr><td><kbd>F5</kbd>, <kbd>F9</kbd>, <kbd>F10</kbd>, <kbd>F11</kbd>, <kbd>Shift</kbd>+<kbd>F11</kbd></td><td>обидва</td><td>Старт дебагу, брейкпоінт, step over, step into, step out</td></tr>
+      </table>
+
+      <p>Найкорисніше налаштування — <b>одна комбінація на «тест під курсором»</b>. У VS Code
+      і Cursor це пара файлів: задача в <code>tasks.json</code> і прив'язка в
+      <code>keybindings.json</code> (відкривається через <i>Preferences: Open Keyboard Shortcuts
+      (JSON)</i>).</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">ai-delivery-planner-backend/.vscode/tasks.json</span></div>
+        <pre><code>{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "pytest: current file",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/pytest",
+      "args": ["${file}", "-x", "-q"],
+      "group": "test",
+      "presentation": { "reveal": "always", "clear": true }
+    },
+    {
+      "label": "pytest: last failed",
+      "type": "shell",
+      "command": "${workspaceFolder}/.venv/bin/pytest",
+      "args": ["--lf", "-x", "-q"],
+      "group": "test"
+    }
+  ]
+}</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">keybindings.json (користувацький)</span></div>
+        <pre><code>[
+  {
+    "key": "ctrl+alt+t",
+    "command": "workbench.action.tasks.runTask",
+    "args": "pytest: current file"
+  },
+  {
+    "key": "ctrl+alt+l",
+    "command": "workbench.action.tasks.runTask",
+    "args": "pytest: last failed"
+  }
+]</code></pre>
+      </div>
+      <p class="muted">Зверніть увагу: у бекенді <code>.vscode/</code> зараз у
+      <code>.gitignore</code>. Якщо хочете ділитися <code>tasks.json</code>/<code>launch.json</code>
+      з командою, замініть рядок на <code>.vscode/*</code> + <code>!.vscode/launch.json</code> +
+      <code>!.vscode/tasks.json</code> — тоді особисті <code>settings.json</code> не потраплять у git.</p>
+
+      <h3 id="s1-jb">JetBrains (WebStorm, PyCharm)</h3>
+      <p>Для фронтенду у вас WebStorm, а для Python у JetBrains-світі потрібен PyCharm (або
+      IntelliJ IDEA Ultimate з Python-плагіном). Каталог <code>.idea/</code> у бекенді показує,
+      що проєкт уже відкривали в JetBrains IDE. Keymap «macOS» за замовчуванням:</p>
+      <table>
+        <tr><th>Дія</th><th>macOS</th><th>Навіщо при роботі з AI</th></tr>
+        <tr><td>Search Everywhere</td><td><kbd>Shift</kbd> <kbd>Shift</kbd></td><td>Знайти файл/клас/дію, яку щойно згадав агент</td></tr>
+        <tr><td>Find Action</td><td><kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd></td><td>Будь-яка дія за назвою — головний «рятівник» для забутих шорткатів</td></tr>
+        <tr><td>Recent Files / Recent Locations</td><td><kbd>Cmd</kbd>+<kbd>E</kbd> / <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></td><td>Швидко пройти по файлах, які агент змінив</td></tr>
+        <tr><td>Go to Declaration</td><td><kbd>Cmd</kbd>+<kbd>B</kbd> (або Cmd+клік)</td><td>Перевірити, що функція, яку «згадав» агент, взагалі існує</td></tr>
+        <tr><td>Find Usages</td><td><kbd>Option</kbd>+<kbd>F7</kbd></td><td>Оцінити радіус змін перед тим, як приймати рефакторинг</td></tr>
+        <tr><td>Rename</td><td><kbd>Shift</kbd>+<kbd>F6</kbd></td><td>Перейменування через AST — надійніше, ніж просити агента «замінити скрізь»</td></tr>
+        <tr><td>Extract Method / Variable</td><td><kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>M</kbd> / <kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>V</kbd></td><td>Дрібний рефакторинг швидше руками, ніж промптом</td></tr>
+        <tr><td>Refactor This</td><td><kbd>Ctrl</kbd>+<kbd>T</kbd></td><td>Меню всіх доступних рефакторингів для символу під курсором</td></tr>
+        <tr><td>Reformat Code</td><td><kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>L</kbd></td><td>Привести згенероване до стилю (краще — ruff/prettier як File Watcher або on save)</td></tr>
+        <tr><td>Optimize Imports</td><td><kbd>Ctrl</kbd>+<kbd>Option</kbd>+<kbd>O</kbd></td><td>Прибрати імпорти, які лишив агент</td></tr>
+        <tr><td>Show Intention Actions</td><td><kbd>Option</kbd>+<kbd>Enter</kbd></td><td>Quick-fix для підсвіченої проблеми</td></tr>
+        <tr><td>Run / Debug поточної конфігурації</td><td><kbd>Ctrl</kbd>+<kbd>R</kbd> / <kbd>Ctrl</kbd>+<kbd>D</kbd></td><td>Перезапуск тесту чи сервера одним рухом</td></tr>
+        <tr><td>Toggle Breakpoint</td><td><kbd>Cmd</kbd>+<kbd>F8</kbd></td><td>Підтвердити гіпотезу агента до правки</td></tr>
+        <tr><td>Step Over / Into / Resume</td><td><kbd>F8</kbd> / <kbd>F7</kbd> / <kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>R</kbd></td><td>Пройти підозрілу гілку</td></tr>
+        <tr><td>Evaluate Expression</td><td><kbd>Option</kbd>+<kbd>F8</kbd></td><td>Порахувати вираз у зупиненому фреймі (наприклад, <code>len(routes)</code>)</td></tr>
+      </table>
+
+      <div class="callout good">
+        <div class="ic">🎯</div>
+        <div class="body"><b>Як реально вивчити:</b> плагін <b>Key Promoter X</b> (JetBrains
+        Marketplace) показує спливаюче вікно щоразу, коли ви клікаєте мишкою по дії, що має
+        шорткат, і рахує, скільки разів ви це зробили. Тиждень із ним — і топ-10 ваших
+        дій переходять у м'язову пам'ять. Додайте по одному шорткату на день, а не таблицю за раз.</div>
+      </div>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія для фронтендера</div>
+        Шорткати — як мемоізація в React: кожна окрема економія мізерна (пів секунди), але
+        дія повторюється сотні разів за день, і без неї «ре-рендериться» ваша увага — рука
+        йде до мишки, погляд з коду на меню, контекст у голові втрачається.
+      </div>
+
+      <h3 id="s1-shell">Shell і git: аліаси під цей репозиторій</h3>
+      <p>Агент часто сам запускає команди, але ви їх запускаєте ще частіше. Короткі функції в
+      <code>~/.zshrc</code> прибирають «а як там правильно викликати alembic» і дають агенту
+      ті ж самі назви, якщо ви пропишете їх у CLAUDE.md (про це — у
+      <a href="04-agent-context.html">туторіалі 4</a>).</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">~/.zshrc — фрагмент</span></div>
+        <pre><code># перейти в бекенд і активувати venv
+be() {
+  cd ~/Documents/personal-repo/ai-delivery-planner-backend &amp;&amp; source .venv/bin/activate
+}
+fe() { cd ~/Documents/personal-repo/ai-delivery-planner-frontend; }
+
+# API без --reload зручніше для дебагу; з reload для щоденної роботи
+api()  { uvicorn app.main:app --reload --port "${1:-8000}"; }
+wrk()  { celery -A app.workers.celery_app:celery_app worker -P solo --loglevel=INFO; }
+
+# тести: усі / останні впалі / за ключовим словом
+t()    { pytest -q "$@"; }
+tl()   { pytest --lf -x -q; }
+tk()   { pytest -q -k "$1"; }
+
+# alembic
+am()   { alembic revision --autogenerate -m "$*"; }
+alias aup='alembic upgrade head'
+alias adown='alembic downgrade -1'</code></pre>
+      </div>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">git-аліаси (виконати один раз)</span></div>
+        <pre><code>git config --global alias.st "status -sb"
+git config --global alias.lg "log --oneline --graph --decorate -20"
+git config --global alias.undo "reset --soft HEAD~1"   # скасувати коміт, зміни лишаються staged
+git config --global alias.amend "commit --amend --no-edit"
+git config --global alias.wip "commit -am wip --no-verify"
+
+# які гілки вже злиті в main (лише показ, нічого не видаляє)
+git branch --merged main</code></pre>
+      </div>
+
+      <p><b>Опційно, але дуже приємно:</b> <code>fzf</code> (нечіткий пошук: історія команд по
+      <kbd>Ctrl</kbd>+<kbd>R</kbd>, файли по <kbd>Ctrl</kbd>+<kbd>T</kbd>) і <code>zoxide</code>
+      (<code>z backend</code> замість довгого <code>cd</code>). Обидва ставляться через
+      <code>brew install fzf zoxide</code>, а в <code>~/.zshrc</code> додаються рядки
+      <code>source &lt;(fzf --zsh)</code> (для fzf 0.48+) та <code>eval "$(zoxide init zsh)"</code>.</p>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина II · Дебаг</div><div class="line"></div></div>
+
+    <section id="s2">
+      <h2><span class="num">2</span> Дебагер під цей стек</h2>
+      <p class="section-desc">Агент пропонує гіпотези, але брейкпоінт показує правду. Налаштовуємо дебаг для FastAPI, pytest, Celery, процесу в Docker і для Vite-фронтенду — один раз і в репозиторії.</p>
+
+      <p>Чому дебагер важливіший саме в епоху AI: агент «вгадує» з тексту коду, а баги часто
+      живуть у <i>даних під час виконання</i> — що реально прийшло в запиті, що повернув
+      SQLAlchemy, у якому стані сесія. Одна зупинка на брейкпоінті замінює п'ять ітерацій
+      «додай print, перезапусти, вставив вивід агенту».</p>
+
+      <h3 id="s2-fastapi">FastAPI через debugpy (VS Code / Cursor)</h3>
+      <p>Потрібне розширення <b>Python Debugger</b> (Microsoft), воно додає тип конфігурації
+      <code>debugpy</code>. Запускаємо uvicorn як модуль — ровно так, як у
+      <code>app/main.py</code>: <code>uvicorn app.main:app</code>.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">ai-delivery-planner-backend/.vscode/launch.json</span></div>
+        <pre><code>{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "API: uvicorn (debug)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      // без --reload: брейкпоінти спрацьовують стабільно
+      "args": ["app.main:app", "--port", "8000"],
+      "envFile": "${workspaceFolder}/.env",
+      "justMyCode": false,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "pytest: current file",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["${file}", "-x", "-q"],
+      "envFile": "${workspaceFolder}/.env",
+      "justMyCode": false
+    },
+    {
+      "name": "Celery worker (solo)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "celery",
+      "args": ["-A", "app.workers.celery_app:celery_app", "worker", "-P", "solo", "--loglevel=INFO"],
+      "envFile": "${workspaceFolder}/.env",
+      "justMyCode": false
+    },
+    {
+      "name": "Attach: API in Docker (5678)",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": { "host": "localhost", "port": 5678 },
+      "pathMappings": [
+        { "localRoot": "${workspaceFolder}", "remoteRoot": "/code" }
+      ],
+      "justMyCode": false
+    }
+  ]
+}</code></pre>
+      </div>
+
+      <ul>
+        <li><b><code>envFile</code></b> підтягує <code>DATABASE_URL</code>, <code>REDIS_URL</code>,
+        <code>JWT_SECRET</code>, <code>OPENAI_API_KEY</code> з <code>.env</code> (ключі з
+        <code>.env.example</code>), без них <code>get_settings()</code> впаде на старті.</li>
+        <li><b><code>justMyCode: false</code></b> дозволяє зайти всередину FastAPI, Starlette чи
+        SQLAlchemy. Для щоденного дебагу можна лишити <code>true</code>, щоб step into не
+        провалювався в бібліотеки.</li>
+        <li><b>Чому без <code>--reload</code>.</b> З reload uvicorn запускає процес-наглядач, який
+        стежить за файлами, і окремий дочірній процес із вашим застосунком, а при кожній зміні
+        файлу вбиває дочірній і стартує новий. Дебагер мусить перепідключатися до кожного нового
+        процесу. Залежно від версії й налаштувань це працює нестабільно: брейкпоінти «зникають»
+        після збереження файлу. Для дебагу — окрема конфігурація без reload, для щоденної
+        роботи — <code>api</code> з reload у терміналі.</li>
+      </ul>
+
+      <h3 id="s2-tests">pytest і Celery</h3>
+      <p>У проєкті <code>asyncio_mode = "auto"</code>, тож async-тести дебажаться так само, як
+      синхронні: брейкпоінт усередині <code>async def test_...</code> зупиняє виконання в
+      event loop, і змінні фрейму доступні. Найзручніший шлях — вкладка <b>Testing</b> у VS Code/
+      Cursor: після налаштування pytest біля кожного тесту з'являється «Debug Test». Конфіг
+      «pytest: current file» вище корисний, коли потрібні свої аргументи (<code>-x</code>,
+      <code>-k</code>, <code>--lf</code>).</p>
+
+      <p>Celery за замовчуванням запускає воркер-процеси через prefork-пул, і брейкпоінт у
+      задачі з <code>app/workers/tasks.py</code> зловити важко: задача виконується в дочірньому
+      процесі. <b><code>-P solo</code></b> виконує задачі в тому ж процесі, послідовно, тож
+      дебагер бачить усе. У проді так не запускають, а для дебагу — саме воно.</p>
+
+      <div class="callout info">
+        <div class="ic">💡</div>
+        <div class="body"><b>Ще швидше для задач Celery:</b> викликати функцію задачі напряму
+        в тесті (<code>my_task.run(...)</code> або просто як звичайну функцію), без брокера.
+        Логіку дебажите в pytest, а Celery-конфіг перевіряєте окремо.</div>
+      </div>
+
+      <h3 id="s2-docker">Attach до процесу в Docker</h3>
+      <p>Коли баг відтворюється лише в контейнері (інші версії бібліотек, інші змінні
+      оточення), підключаємося до процесу всередині. <code>Dockerfile</code> бекенду
+      копіює код у <code>/code</code> (<code>WORKDIR /code</code>), тому
+      <code>remoteRoot</code> у конфігу вище — саме <code>/code</code>.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">термінал — локальний дебаг-запуск образу</span></div>
+        <pre><code># debugpy ставимо лише для дебаг-запуску, у прод-образ він не потрапляє
+docker build -t planner-api .
+docker run --rm -it --env-file .env -p 8000:8000 -p 5678:5678 planner-api \
+  sh -c "pip install debugpy &amp;&amp; python -m debugpy --listen 0.0.0.0:5678 --wait-for-client \
+         -m uvicorn app.main:app --host 0.0.0.0 --port 8000"</code></pre>
+      </div>
+      <ul>
+        <li><code>--listen 0.0.0.0:5678</code> — слухати не лише localhost контейнера, інакше
+        хост не достукається.</li>
+        <li><code>--wait-for-client</code> — застосунок не стартує, доки ви не натиснете
+        «Attach: API in Docker». Так брейкпоінти в коді старту теж спрацюють.</li>
+        <li><b>Порт 5678 — тільки локально.</b> Відкритий debugpy-порт означає виконання
+        довільного коду, тому ніколи не публікуйте його в <code>fly.toml</code> чи на сервері.</li>
+        <li>Якщо брейкпоінти «сірі» (unverified), майже завжди винні <code>pathMappings</code>:
+        шлях у контейнері не збігається з локальним.</li>
+      </ul>
+
+      <h3 id="s2-fe">Фронтенд: Vite + Chrome, vitest</h3>
+      <p>Vite у dev-режимі віддає source maps за замовчуванням, тож брейкпоінти ставляться
+      просто в <code>.tsx</code>. Порт 5173 зафіксований у <code>vite.config.ts</code>.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">ai-delivery-planner-frontend/.vscode/launch.json</span></div>
+        <pre><code>{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Vite + Chrome",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}"
+    },
+    {
+      "name": "vitest: current file",
+      "type": "node",
+      "request": "launch",
+      "autoAttachChildProcesses": true,
+      "skipFiles": ["&lt;node_internals&gt;/**", "**/node_modules/**"],
+      "program": "${workspaceRoot}/node_modules/vitest/vitest.mjs",
+      "args": ["run", "${relativeFile}"],
+      "smartStep": true,
+      "console": "integratedTerminal"
+    }
+  ]
+}</code></pre>
+      </div>
+      <p>Спершу запустіть <code>npm run dev</code>, потім «Vite + Chrome»: VS Code відкриє окремий
+      Chrome-профіль і підключиться до нього. Для vitest є альтернатива без IDE:
+      <code>npx vitest --inspect-brk --no-file-parallelism</code> і підключення з
+      <code>chrome://inspect</code>. Конфіг для vitest — з офіційної документації Vitest
+      (розділ Debugging); якщо після оновлення Vitest шлях до <code>vitest.mjs</code> зміниться,
+      звіртеся з нею.</p>
+
+      <h3 id="s2-jb">PyCharm і WebStorm</h3>
+      <div class="vs">
+        <div>
+          <h4>PyCharm (бекенд)</h4>
+          <ul>
+            <li><b>Run Configuration → Python</b>: замість «Script path» оберіть <b>Module name</b>
+            = <code>uvicorn</code>, Parameters = <code>app.main:app --port 8000</code>, у
+            «Paths to .env files» вкажіть <code>.env</code>. У Professional є готовий шаблон
+            FastAPI.</li>
+            <li><b>pytest</b>: зелена стрілка біля тесту → <i>Debug</i>. Interpreter — <code>.venv</code>.</li>
+            <li><b>Celery</b>: та сама Python-конфігурація з Module name <code>celery</code> і
+            параметрами <code>-A app.workers.celery_app:celery_app worker -P solo</code>.</li>
+            <li><b>Процес, що вже біжить</b>: <i>Run → Attach to Process…</i> показує локальні
+            Python-процеси. Для контейнера в Professional є Docker-інтерпретатор або
+            Python Debug Server.</li>
+          </ul>
+        </div>
+        <div>
+          <h4>WebStorm (фронтенд)</h4>
+          <ul>
+            <li><b>npm-конфігурація</b> для <code>dev</code> + <b>JavaScript Debug</b> з URL
+            <code>http://localhost:5173</code>. WebStorm також пропонує Debug, якщо Cmd+Shift+клікнути
+            URL у терміналі dev-сервера.</li>
+            <li><b>Vitest</b>: WebStorm розпізнає <code>vitest.config.ts</code>, біля тестів з'являються
+            іконки Run/Debug.</li>
+            <li><b>Conditional breakpoint</b>: правий клік на брейкпоінті → Condition. Для logpoint
+            вимкніть «Suspend» і ввімкніть «Evaluate and log».</li>
+          </ul>
+        </div>
+      </div>
+
+      <h3 id="s2-tricks">breakpoint(), PYTHONBREAKPOINT, conditional і logpoints</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">python — дебаг без IDE</span></div>
+        <pre><code>async def assign_routes(deliveries, vehicles):
+    plan = await solver.solve(deliveries, vehicles)
+    if not plan.routes:
+        breakpoint()   # зупинка в pdb саме тут; у VS Code/PyCharm-сесії — в IDE-дебагері
+    return plan
+
+# PYTHONBREAKPOINT=0 pytest      -&gt; усі breakpoint() ігноруються (страховка в CI)
+# pytest --pdb                   -&gt; pdb відкривається в місці падіння тесту
+# pytest --trace -k test_quota   -&gt; зупинка на початку кожного вибраного тесту</code></pre>
+      </div>
+      <ul>
+        <li><b>Conditional breakpoint</b> (VS Code: правий клік на полях → <i>Add Conditional
+        Breakpoint</i>): умова <code>delivery.id == 4821</code> чи «Hit Count» = 100. Ідеально
+        для циклу з тисячею доставок, де падає одна.</li>
+        <li><b>Logpoint</b> («Log Message» у тому ж меню): <code>route={route.id} load={load}</code>
+        друкує значення без зупинки й без правки коду. Нічого не треба потім «прибирати з
+        print'ів» — і агенту не треба генерувати тимчасові логи.</li>
+        <li><b>Ruff ловить забуті <code>print</code></b> (правило T201) — див. розділ 4. Забутий
+        <code>breakpoint()</code> ловить правило T100 (той самий плагін <code>flake8-debugger</code>
+        у ruff).</li>
+      </ul>
+    </section>
+
+    <section id="s3">
+      <h2><span class="num">3</span> Дебаг у парі з AI: цикл, що не дає галюцинувати</h2>
+      <p class="section-desc">Агент сильний у генерації гіпотез і слабкий у знанні рантайму. Тому гіпотези — від нього, підтвердження — від тесту й дебагера.</p>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 760 300" role="img" aria-label="Цикл дебагу з AI: відтворити, мінімальний падаючий тест, контекст агенту, гіпотези, підтвердити брейкпоінтом, фікс, регресійний тест, коміт; якщо гіпотеза не підтвердилась — повернення до гіпотез">
+          <defs>
+            <marker id="dbg-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+          <g font-size="12.5" text-anchor="middle">
+            <rect x="15" y="30" width="160" height="58" rx="10" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="95" y="55" fill="currentColor">1. Відтворити</text>
+            <text x="95" y="73" fill="currentColor" font-size="11" opacity=".75">кроки, дані, середовище</text>
+
+            <rect x="205" y="30" width="160" height="58" rx="10" fill="none" stroke="currentColor" stroke-width="1.3"/>
+            <text x="285" y="55" fill="currentColor">2. Падаючий тест</text>
+            <text x="285" y="73" fill="currentColor" font-size="11" opacity=".75">мінімальний, червоний</text>
+
+            <rect x="395" y="30" width="160" height="58" rx="10" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="475" y="55" fill="var(--accent)">3. Контекст агенту</text>
+            <text x="475" y="73" fill="currentColor" font-size="11" opacity=".75">traceback, логи, @файли</text>
+
+            <rect x="585" y="30" width="160" height="58" rx="10" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="665" y="55" fill="var(--accent)">4. Гіпотези</text>
+            <text x="665" y="73" fill="currentColor" font-size="11" opacity=".75">2–3, з перевіркою кожної</text>
+
+            <rect x="585" y="200" width="160" height="58" rx="10" fill="none" stroke="var(--good)" stroke-width="1.6"/>
+            <text x="665" y="225" fill="currentColor">5. Підтвердити</text>
+            <text x="665" y="243" fill="currentColor" font-size="11" opacity=".75">брейкпоінт / logpoint</text>
+
+            <rect x="395" y="200" width="160" height="58" rx="10" fill="var(--accent)" fill-opacity="0.12" stroke="var(--accent)" stroke-width="1.3"/>
+            <text x="475" y="225" fill="var(--accent)">6. Фікс</text>
+            <text x="475" y="243" fill="currentColor" font-size="11" opacity=".75">мінімальний дифф</text>
+
+            <rect x="205" y="200" width="160" height="58" rx="10" fill="none" stroke="var(--good)" stroke-width="1.6"/>
+            <text x="285" y="225" fill="currentColor">7. Тест зелений</text>
+            <text x="285" y="243" fill="currentColor" font-size="11" opacity=".75">+ весь набір, ruff</text>
+
+            <rect x="15" y="200" width="160" height="58" rx="10" fill="var(--fg)" fill-opacity="0.06" stroke="currentColor" stroke-width="1.3"/>
+            <text x="95" y="225" fill="currentColor">8. Коміт + PR</text>
+            <text x="95" y="243" fill="currentColor" font-size="11" opacity=".75">тест лишається назавжди</text>
+          </g>
+          <g stroke="currentColor" stroke-width="1.2" fill="none">
+            <line x1="175" y1="59" x2="203" y2="59" marker-end="url(#dbg-arr)"/>
+            <line x1="365" y1="59" x2="393" y2="59" marker-end="url(#dbg-arr)"/>
+            <line x1="555" y1="59" x2="583" y2="59" marker-end="url(#dbg-arr)"/>
+            <line x1="690" y1="88" x2="690" y2="198" marker-end="url(#dbg-arr)"/>
+            <line x1="585" y1="229" x2="557" y2="229" marker-end="url(#dbg-arr)"/>
+            <line x1="395" y1="229" x2="367" y2="229" marker-end="url(#dbg-arr)"/>
+            <line x1="205" y1="229" x2="177" y2="229" marker-end="url(#dbg-arr)"/>
+            <path d="M640,198 C610,150 610,130 640,90" stroke="var(--bad)" stroke-dasharray="4,3" marker-end="url(#dbg-arr)"/>
+          </g>
+          <text x="560" y="148" font-size="11" fill="var(--bad)" text-anchor="middle">не підтвердилась —</text>
+          <text x="560" y="162" font-size="11" fill="var(--bad)" text-anchor="middle">назад до гіпотез</text>
+          <text x="700" y="148" font-size="11" fill="currentColor" text-anchor="start">так</text>
+        </svg>
+        <figcaption>Агент (синє) генерує й правит; тест і дебагер (зелене) — джерело правди. Фікс без підтвердженої гіпотези — це вгадування, навіть якщо тест став зеленим.</figcaption>
+      </figure>
+
+      <p>Ключ — у кроці 2. Падаючий тест перетворює розмите «щось не так з квотою» на
+      перевірну умову, яку агент може запускати сам. Це той самий принцип, що й у
+      <a href="04-agent-context.html">туторіалі 4</a>: тести — найкращий спосіб заземлити агента
+      в реальності.</p>
+
+      <div class="codecard plain">
+        <div class="bar"><span class="path">промпт-шаблон для кроку 3–4</span></div>
+        <pre><code>Падає тест @app/tests/test_ai_quota.py::test_quota_exceeded_returns_429.
+
+Вивід pytest (повністю):
+&lt;вставити traceback&gt;
+
+Що я вже перевірив:
+- у БД для org_id=1 used=5, limit=5 (дивився в psql)
+- падає лише якщо два запити йдуть паралельно
+
+Завдання:
+1. Дай 2–3 гіпотези з посиланням на конкретні файли й рядки.
+2. Для кожної — як її підтвердити (який брейкпоінт/лог, яке значення очікуємо).
+3. Код НЕ змінюй, доки я не підтверджу гіпотезу.</code></pre>
+      </div>
+
+      <div class="callout bad">
+        <div class="ic">🚫</div>
+        <div class="body"><b>Антипатерн «пофікси, щоб тест пройшов».</b> Без обмежень агент
+        цілком може «полагодити» тест: послабити assert, додати <code>try/except: pass</code> чи
+        замокати саме те, що зламано. Пишіть явно: «тест не змінювати», а в рев'ю дивіться на
+        дифф тестів окремо.</div>
+      </div>
+
+      <div class="callout info">
+        <div class="ic">🧭</div>
+        <div class="body"><b>Що давати агенту як контекст:</b> повний traceback (не
+        переказ), команду, якою відтворюється, версії (<code>pip freeze | grep -i sqlalchemy</code>),
+        релевантний фрагмент логів з таймстемпами, і що <i>вже</i> виключено. Для продових
+        помилок — подія з Sentry через MCP (див. <a href="03-mcp-servers.html">туторіал 3</a>), а не
+        скріншот.</div>
+      </div>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина III · Гігієна коду й репозиторію</div><div class="line"></div></div>
+
+    <section id="s4">
+      <h2><span class="num">4</span> Вичищаємо сміття</h2>
+      <p class="section-desc">Мертвий код — це шум у контексті агента: він читає невикористані функції, вважає їх актуальними й копіює їхні патерни. Чистий репозиторій — це дешевші й точніші відповіді.</p>
+
+      <div class="dirgrid">
+        <div class="dir"><div class="dir-h">🧹 Імпорти, змінні, print <span class="lvl l1">легко</span></div><p>ruff з <code>--fix</code> прибирає автоматично; правила F401, F841, T201.</p></div>
+        <div class="dir"><div class="dir-h">💀 Мертві функції й експорти <span class="lvl l2">середньо</span></div><p>vulture (Python), knip (TS). Багато хибних спрацювань — потрібна людина.</p></div>
+        <div class="dir"><div class="dir-h">📦 Зайві залежності <span class="lvl l2">середньо</span></div><p>deptry, knip. Видалення пакета — це ризик, перевіряйте збірку й тести.</p></div>
+        <div class="dir"><div class="dir-h">🗂️ Згенеровані файли в git <span class="lvl l3">підступно</span></div><p>Вони не заважають, доки один із них не почне перекривати джерело. Див. знахідку у фронтенді нижче.</p></div>
+      </div>
+
+      <h3 id="s4-py">Python: ruff, vulture, deptry</h3>
+      <p>У бекенді вже стоїть <code>ruff==0.15.22</code>, але <code>pyproject.toml</code> задає лише
+      <code>line-length</code> і <code>target-version</code>, тож працює набір правил за
+      замовчуванням (E4, E7, E9, F). Розширимо його правилами, які ловлять саме «сміття»:</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">pyproject.toml — розширений ruff</span></div>
+        <pre><code>[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+extend-select = [
+  "I",      # isort: порядок імпортів
+  "B",      # flake8-bugbear: типові баги
+  "UP",     # pyupgrade: сучасний синтаксис 3.12
+  "SIM",    # спрощення умов
+  "ARG",    # невикористані аргументи
+  "ERA",    # закоментований код
+  "T10",    # забутий breakpoint()
+  "T20",    # забутий print()
+  "RUF",    # власні правила ruff
+]
+
+[tool.ruff.lint.per-file-ignores]
+# фікстури в тестах часто потрібні лише заради side-effect (моки)
+"app/tests/**" = ["ARG001", "T20"]</code></pre>
+      </div>
+
+      <p>Реальний прогін по <code>app/</code> лише з правилами «сміття» (без змін у коді) дав таке:</p>
+      <div class="codecard plain">
+        <div class="bar"><span class="path">$ .venv/bin/ruff check app --select F401,F841,ERA001,ARG001,T201 --statistics</span></div>
+        <pre><code>25	ARG001	unused-function-argument
+ 1	ERA001	commented-out-code
+Found 26 errors.</code></pre>
+      </div>
+      <p>Невикористаних імпортів і змінних немає — базові правила вже тримають порядок.
+      Цікавіше розібрати ARG001: частина спрацювань — <b>хибні</b>.</p>
+      <div class="codecard plain">
+        <div class="bar"><span class="path">$ ruff check app --select ARG001 --output-format concise (фрагмент)</span></div>
+        <pre><code>app/core/error_handlers.py:52:9: ARG001 Unused function argument: `request`
+app/core/error_handlers.py:80:57: ARG001 Unused function argument: `exc`
+app/services/route_optimizer/constraints.py:13:35: ARG001 Unused function argument: `routing`
+app/tests/test_ai_replan.py:89:34: ARG001 Unused function argument: `mock_geocode`</code></pre>
+      </div>
+      <ul>
+        <li><b><code>error_handlers.py</code></b> — exception handlers FastAPI мусять приймати
+        <code>(request, exc)</code>, навіть якщо щось не використовують. Видаляти аргумент не
+        можна; правильна відповідь — перейменувати в <code>_request</code> (FastAPI викликає
+        обробник позиційно) або додати <code># noqa: ARG001</code>.</li>
+        <li><b><code>constraints.py</code></b> — варто подивитися: можливо, сигнатура лишилась
+        від старого API OR-Tools, і аргумент справді зайвий.</li>
+        <li><b>Тести</b> — фікстура <code>mock_geocode</code> у параметрах вмикає мок, навіть
+        якщо тіло тесту до неї не звертається. Звідси <code>per-file-ignores</code> для тестів.</li>
+        <li><b>ERA001</b> у <code>app/tests/test_route_replan.py:256</code> — закоментований код.
+        Або видалити, або перетворити на нормальний коментар із поясненням «чому».</li>
+      </ul>
+
+      <div class="callout warn">
+        <div class="ic">🤖</div>
+        <div class="body"><b>Чому це важливо для AI.</b> Попросіть агента «прибери всі
+        попередження ruff» — і він радо видалить <code>request</code> з exception handler. Тоді
+        впаде рантайм, а не лінтер. Чистку робимо так: ruff показує, людина вирішує, що з цього
+        шум, і фіксує рішення в конфігу (<code>per-file-ignores</code>), щоб наступного разу ні
+        людина, ні агент не наступили на те саме.</div>
+      </div>
+
+      <p><b>vulture</b> шукає мертвий код — функції, класи, атрибути, на які ніхто не
+      посилається. Для FastAPI він шумить: ендпоінти викликає фреймворк через декоратор, а не
+      ваш код. Тому починайте з високого порогу впевненості:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">термінал</span></div>
+        <pre><code>pip install vulture deptry   # у .venv, як dev-залежності
+
+vulture app --min-confidence 80
+# формат виводу:
+# app/services/foo.py:12: unused import 'os' (90% confidence)
+# app/services/bar.py:40: unused function 'legacy_score' (60% confidence)
+
+# знайдене, але потрібне (pydantic-валідатори, Celery-задачі тощо) — у whitelist:
+vulture app --make-whitelist &gt; vulture_whitelist.py
+vulture app vulture_whitelist.py --min-confidence 60</code></pre>
+      </div>
+
+      <p><b>deptry</b> звіряє залежності з <code>pyproject.toml</code> із реальними імпортами:
+      DEP001 — імпортується, але не оголошено; DEP002 — оголошено, але не імпортується; DEP003 —
+      використовується транзитивна залежність; DEP004 — dev-залежність використовується в
+      прод-коді. Що він скаже про цей бекенд, можна передбачити простим grep по імпортах:</p>
+      <table>
+        <tr><th>Пакет у <code>dependencies</code></th><th>Прямих імпортів у <code>app/</code></th><th>Висновок</th></tr>
+        <tr><td><code>pandas</code></td><td>0</td><td><b>Реальний кандидат на видалення.</b> Перевірте, що його не тягне імпортер Excel (<code>openpyxl</code> імпортується в 1 файлі), прогоніть тести імпорту</td></tr>
+        <tr><td><code>uvicorn</code></td><td>0</td><td>Хибне спрацювання: це сервер, запускається командою</td></tr>
+        <tr><td><code>asyncpg</code></td><td>0</td><td>Хибне: драйвер підтягує SQLAlchemy з <code>DATABASE_URL</code></td></tr>
+        <tr><td><code>redis</code></td><td>0</td><td>Хибне: транспорт для Celery (<code>REDIS_URL</code>)</td></tr>
+        <tr><td><code>python-multipart</code></td><td>0</td><td>Хибне: FastAPI потребує його для <code>Form</code>/<code>UploadFile</code></td></tr>
+        <tr><td><code>bcrypt&lt;4.0</code></td><td>0</td><td>Хибне: пін для сумісності з <code>passlib</code> (той імпортується)</td></tr>
+      </table>
+      <div class="codecard">
+        <div class="bar"><span class="path">pyproject.toml — фіксуємо рішення для deptry</span></div>
+        <pre><code>[tool.deptry.per_rule_ignores]
+DEP002 = ["uvicorn", "asyncpg", "redis", "python-multipart", "bcrypt"]</code></pre>
+      </div>
+
+      <h3 id="s4-ts">TypeScript: knip, tsconfig, eslint</h3>
+      <p>У фронтенді <code>tsconfig.json</code> уже має <code>"noUnusedLocals": true</code> і
+      <code>"noUnusedParameters": true</code>, тож невикористані локальні змінні ловить сам
+      <code>tsc</code>. Але TypeScript не бачить <b>експортів, які ніхто не імпортує</b>, і файлів,
+      до яких немає жодного шляху з <code>main.tsx</code>. Це зона <b>knip</b>.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">термінал — ai-delivery-planner-frontend</span></div>
+        <pre><code>npm i -D knip
+npx knip
+# Секції звіту:
+# Unused files (3)            src/components/OldMap.tsx ...
+# Unused dependencies (1)     zustand            package.json
+# Unused exports (5)          formatEta  src/utils/time.ts:12:14
+# Unused exported types (2)   RouteDTO   src/types/api.ts:8:13
+
+npx knip --fix --fix-type exports,types   # прибрати лише export-ключові слова
+</code></pre>
+      </div>
+      <p class="muted">Приклади рядків вище ілюструють <i>формат</i> звіту, а не реальний стан
+      вашого фронтенду: knip у ньому ще не встановлено. Knip сам розпізнає Vite, Vitest і ESLint
+      як плагіни; якщо точки входу визначаться неправильно, додайте <code>knip.json</code> з
+      <code>"entry": ["src/main.tsx"]</code> і <code>"project": ["src/**/*.{ts,tsx}"]</code>.</p>
+      <p>В ESLint 9 (flat config) варто додати правило
+      <code>@typescript-eslint/no-unused-vars</code> з <code>argsIgnorePattern: "^_"</code> —
+      тоді <code>_event</code> стає явним сигналом «не використовую навмисно» і для людей, і
+      для агентів, і узгоджується з <code>noUnusedParameters</code>.</p>
+
+      <h3 id="s4-repo">Репозиторій: що знайшлося в цих двох проєктах</h3>
+      <div class="callout bad">
+        <div class="ic">🐞</div>
+        <div class="body"><b>Знахідка №1 (фронтенд): згенерований <code>vite.config.js</code>
+        лежить у git поруч із <code>vite.config.ts</code> і перекриває його.</b>
+        <code>npm run build</code> = <code>tsc -b &amp;&amp; vite build</code>, а
+        <code>tsconfig.node.json</code> має <code>"composite": true</code> без
+        <code>noEmit</code>. Тому <code>tsc -b</code> генерує <code>vite.config.js</code>,
+        <code>vite.config.d.ts</code> і <code>*.tsbuildinfo</code>, і всі четверо закомічені.
+        Підступ: Vite шукає конфіг у порядку <code>vite.config.js</code> →
+        <code>.mjs</code> → <code>.ts</code> (перевірено в <code>node_modules/vite/dist/node/constants.js</code>,
+        Vite 5.4). Тобто <code>npm run dev</code> бере <b>старий скомпільований .js</b>, і
+        правка в <code>vite.config.ts</code> не діє до наступного білду. Для агента це
+        класична пастка: він правильно змінить <code>.ts</code>, а нічого не зміниться.</div>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">фронтенд — виправлення (виконувати свідомо, з окремим комітом)</span></div>
+        <pre><code># 1. перестати комітити артефакти
+cat &gt;&gt; .gitignore &lt;&lt;'EOF'
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+EOF
+git rm --cached vite.config.js vite.config.d.ts tsconfig.tsbuildinfo tsconfig.node.tsbuildinfo
+
+# 2. щоб tsc -b не генерував їх поруч із кодом — як у свіжому шаблоні create-vite:
+#    у tsconfig.node.json прибрати "composite", додати "noEmit": true і
+#    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo"
+#    після цього обов'язково: npm run build &amp;&amp; npm run dev</code></pre>
+      </div>
+
+      <div class="callout warn">
+        <div class="ic">🧨</div>
+        <div class="body"><b>Знахідка №2 (бекенд): <code>git clean -X</code> видалить
+        <code>.env</code> і <code>.venv</code>.</b> Сухий прогін
+        <code>git clean -ndX</code> у бекенді показує 41 шлях, і серед перших:
+        <code>.env</code>, <code>.idea/</code>, <code>.venv/</code> — вони теж в
+        <code>.gitignore</code>, а <code>-X</code> видаляє <i>все</i> ігнороване. Без
+        <code>-n</code> ви втратите секрети, віртуальне оточення й налаштування IDE.</div>
+      </div>
+      <div class="codecard plain">
+        <div class="bar"><span class="path">$ git clean -ndX -- app (сухий прогін, нічого не видаляє)</span></div>
+        <pre><code>Було б видалено app/.DS_Store
+Було б видалено app/api/quantum/
+Було б видалено app/api/territories/
+Було б видалено app/quantum_ledger/
+Було б видалено app/services/territory/
+Було б видалено app/__pycache__/
+… ще ~30 каталогів __pycache__</code></pre>
+      </div>
+      <p>Каталоги <code>app/api/quantum/</code>, <code>app/api/territories/</code>,
+      <code>app/quantum_ledger/</code>, <code>app/services/territory/</code> на гілці
+      <code>docs</code> містять <b>лише <code>__pycache__</code></b>. Це «привиди», що лишилися
+      після перемикання з <code>feature/quantum-territory-planning</code>: git прибрав
+      відстежувані <code>.py</code>, а ігнорований кеш лишився. Нешкідливо для Python, але
+      агент, який робить <code>ls app/api</code>, побачить модулі, яких на цій гілці немає.
+      Безпечна чистка — точкова:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">безпечні команди чистки</span></div>
+        <pre><code># лише байткод Python (спершу подивитися, потім видаляти)
+find app -type d -name __pycache__ -prune -print
+find app -type d -name __pycache__ -prune -exec rm -rf {} +
+
+# git clean, але тільки для конкретних шляхів, і спершу з -n
+git clean -ndX -- app build ai_delivery_planner_backend.egg-info
+git clean -fdX -- app build ai_delivery_planner_backend.egg-info
+
+# .DS_Store по всьому репо
+find . -name .DS_Store -not -path "./.venv/*" -delete
+
+# злиті гілки: зараз у бекенді `git branch --merged main` показує лише main —
+# видаляти нічого. Коли з'являться:
+git branch --merged main | grep -vE '^\*| main$| docs$' | xargs git branch -d
+git fetch --prune   # прибрати посилання на видалені віддалені гілки
+
+# Docker: спершу подивитися, скільки займає
+docker system df
+docker image prune          # лише "висячі" образи
+docker builder prune        # кеш збірки</code></pre>
+      </div>
+      <p class="muted">Ще дрібниці: <code>build/</code> (836 КБ) і
+      <code>ai_delivery_planner_backend.egg-info/</code> з'являються від <code>pip install .</code>
+      (не editable), вони вже в <code>.gitignore</code>, тож це питання місця, а не чистоти git.
+      У <code>.idea/</code> лежать два модульні файли (<code>…backend.iml</code> і
+      <code>…backend@1.iml</code>) — ознака повторного імпорту проєкту в IDE; якщо PyCharm
+      поводиться дивно з інтерпретатором, почніть звідси.</p>
+    </section>
+
+    <section id="s5">
+      <h2><span class="num">5</span> Автоматизація рутини</h2>
+      <p class="section-desc">Мета — щоб кожна повторювана дія мала одну коротку назву, однакову для вас, CI й агента. Тоді агента не треба вчити, «як тут запускаються тести».</p>
+
+      <h3 id="s5-make">Makefile для бекенду і npm scripts для фронтенду</h3>
+      <p>Makefile є на кожному Mac без встановлення. Альтернатива —
+      <code>just</code> (<code>brew install just</code>), з приємнішим синтаксисом, але це ще одна
+      залежність. Важливо: рецепти в Makefile відступаються <b>табами</b>, не пробілами.</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">ai-delivery-planner-backend/Makefile</span></div>
+        <pre><code>.PHONY: dev worker test test-last lint fmt migrate revision check clean
+
+BIN := .venv/bin
+
+dev:            ## API з автоперезавантаженням
+	$(BIN)/uvicorn app.main:app --reload --port 8000
+
+worker:         ## Celery-воркер в одному процесі (зручно дебажити)
+	$(BIN)/celery -A app.workers.celery_app:celery_app worker -P solo --loglevel=INFO
+
+test:
+	$(BIN)/pytest -q
+
+test-last:      ## лише тести, що впали минулого разу
+	$(BIN)/pytest --lf -x -q
+
+lint:
+	$(BIN)/ruff check .
+	$(BIN)/ruff format --check .
+
+fmt:
+	$(BIN)/ruff format .
+	$(BIN)/ruff check --fix .
+
+migrate:
+	$(BIN)/alembic upgrade head
+
+revision:       ## make revision m="add territories table"
+	$(BIN)/alembic revision --autogenerate -m "$(m)"
+
+check: lint test ## те саме, що CI
+
+clean:
+	find app -type d -name __pycache__ -prune -exec rm -rf {} +
+	rm -rf build *.egg-info .pytest_cache .ruff_cache</code></pre>
+      </div>
+      <p>Додайте в CLAUDE.md один рядок: «перевірка перед завершенням — <code>make check</code>».
+      Агент почне закінчувати задачі прогоном, а не словами «має працювати».</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">ai-delivery-planner-frontend/package.json — scripts</span></div>
+        <pre><code>{
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b &amp;&amp; vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "knip": "knip",
+    "check": "npm run typecheck &amp;&amp; npm run lint &amp;&amp; npm run test",
+    "prepare": "husky"
+  }
+}</code></pre>
+      </div>
+      <p class="muted"><code>typecheck</code> працює без генерації файлів, бо в
+      <code>tsconfig.json</code> уже стоїть <code>"noEmit": true</code>. Зараз CI фронтенду
+      запускає <code>lint</code> і <code>build</code>, але не <code>test</code> — про це в
+      <a href="06-ci-cd-optimization.html">туторіалі 6</a>.</p>
+
+      <h3 id="s5-hooks">pre-commit (бекенд), husky + lint-staged (фронтенд)</h3>
+      <div class="codecard">
+        <div class="bar"><span class="path">ai-delivery-planner-backend/.pre-commit-config.yaml</span></div>
+        <pre><code>repos:
+  - repo: "https://github.com/astral-sh/ruff-pre-commit"
+    rev: v0.15.22            # та сама версія, що стоїть у .venv; тримайте їх у синхроні
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+  - repo: "https://github.com/pre-commit/pre-commit-hooks"
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: detect-private-key</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">термінал</span></div>
+        <pre><code>pip install pre-commit
+pre-commit install            # ставить git-хук .git/hooks/pre-commit
+pre-commit run --all-files    # перший прогін по всьому репо
+pre-commit autoupdate         # оновити rev до свіжих тегів</code></pre>
+      </div>
+      <p class="muted">Назви хуків і теги змінюються: <code>ruff-check</code> — новіша назва
+      хука (раніше просто <code>ruff</code>). Якщо <code>pre-commit run</code> скаже, що id не
+      знайдено, звірте з README <code>ruff-pre-commit</code>; <code>pre-commit autoupdate</code>
+      підставить актуальні теги.</p>
+
+      <div class="codecard">
+        <div class="bar"><span class="path">фронтенд — husky v9 + lint-staged</span></div>
+        <pre><code>npm i -D husky lint-staged
+npx husky init                 # створює .husky/pre-commit і script "prepare": "husky"
+echo "npx lint-staged" &gt; .husky/pre-commit</code></pre>
+      </div>
+      <div class="codecard">
+        <div class="bar"><span class="path">package.json — конфіг lint-staged</span></div>
+        <pre><code>{
+  "lint-staged": {
+    "*.{ts,tsx}": ["eslint --fix --max-warnings=0", "prettier --write"],
+    "*.{css,json,md}": "prettier --write"
+  }
+}</code></pre>
+      </div>
+      <div class="callout info">
+        <div class="ic">⏱️</div>
+        <div class="body"><b>Хук має бути швидким (&lt;5 с), інакше його обходять через
+        <code>--no-verify</code>.</b> Тому в pre-commit лише форматування й лінт змінених
+        файлів. <code>tsc</code> по окремих файлах не запускається (він ігнорує tsconfig, коли
+        отримує список файлів) — повний <code>npm run typecheck</code> і тести ставте в
+        <code>pre-push</code> або залиште CI.</div>
+      </div>
+
+      <div class="fe-analogy">
+        <div class="tag">Аналогія для фронтендера</div>
+        pre-commit хуки — це як <code>beforeEach</code> у тестах для вашого git: однакова
+        підготовка перед кожною дією. А Makefile/npm scripts — це «публічний API» репозиторію:
+        внутрішні команди можуть змінитися, а <code>make check</code> лишається тим самим
+        контрактом для людей, CI й агентів.
+      </div>
+
+      <h3 id="s5-ai">Claude Code hooks, skills і <code>claude -p</code></h3>
+      <p>Детально hooks, skills і субагенти розібрані в
+      <a href="02-pipeline-claude-code-cursor.html">туторіалі 2</a>. Тут два хуки, які окупаються
+      з першого дня:</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">ai-delivery-planner-backend/.claude/settings.json</span></div>
+        <pre><code>{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | grep -E '\\.py$' | xargs -I{} sh -c '\"$CLAUDE_PROJECT_DIR\"/.venv/bin/ruff format {} &amp;&amp; \"$CLAUDE_PROJECT_DIR\"/.venv/bin/ruff check --fix {}' || true"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "osascript -e 'display notification \"Claude чекає на відповідь\" with title \"Claude Code\"'"
+          }
+        ]
+      }
+    ]
+  }
+}</code></pre>
+      </div>
+      <ul>
+        <li><b>PostToolUse</b> після кожного <code>Edit</code>/<code>Write</code> отримує в stdin JSON
+        з <code>tool_input.file_path</code>; ми форматуємо лише <code>.py</code>-файли.
+        <code>$CLAUDE_PROJECT_DIR</code> — корінь проєкту. Наслідок: агенту не треба витрачати
+        токени й кроки на «а тепер відформатуй».</li>
+        <li><b>Notification</b> — системне сповіщення macOS, коли Claude чекає дозволу чи
+        простоює. Можна перемикатися на інше вікно, не перевіряючи термінал щохвилини.</li>
+        <li>Потрібен <code>jq</code> (<code>brew install jq</code>). Перевіряйте хук вручну:
+        <code>echo '{"tool_input":{"file_path":"app/main.py"}}' | &lt;команда&gt;</code>.</li>
+      </ul>
+
+      <p><b>Рутинні промпти — у skills.</b> Якщо ви втретє пишете «склади опис PR за диффом у
+      форматі: Що / Навіщо / Як перевірити», це має бути skill
+      (<code>.claude/skills/pr-description/SKILL.md</code>) або Cursor-команда. Кандидати:
+      опис PR, changelog за тегами, commit message у вашому стилі, «додай міграцію Alembic і
+      тест на неї», «оновити типи фронтенду за OpenAPI бекенду».</p>
+
+      <p><b>Headless-режим</b> <code>claude -p</code> вбудовує агента в скрипти. Прапорці
+      нижче — з офіційної документації (headless / CLI reference):</p>
+      <div class="codecard">
+        <div class="bar"><span class="path">scripts/ai.sh — приклади</span></div>
+        <pre><code># commit message за staged-змінами (дифф подаємо через stdin — Bash-дозволи не потрібні)
+git diff --staged | claude -p "Write a concise conventional commit message for this diff. Output only the message."
+
+# changelog між тегами
+git log --oneline v0.1.0..HEAD | claude -p "Group these commits into a user-facing changelog in Ukrainian."
+
+# рев'ю диффу як JSON для подальшої обробки
+git diff main | claude -p "Review for bugs and security issues. List file:line and issue." \
+  --output-format json | jq -r '.result'
+
+# детермінований запуск у CI: без локальних hooks/MCP/CLAUDE.md, лише дозволені інструменти
+claude --bare -p "Run the test suite and summarize failures" --allowedTools "Read,Bash(pytest *)"</code></pre>
+      </div>
+      <p class="muted"><code>--bare</code> пропускає авто-завантаження hooks, skills, MCP і
+      CLAUDE.md і потребує <code>ANTHROPIC_API_KEY</code> у середовищі. Він рекомендований для
+      скриптів і CI, бо результат не залежить від того, що лежить у вашому <code>~/.claude</code>.</p>
+
+      <h3 id="s5-not">Що НЕ варто автоматизувати</h3>
+      <ul>
+        <li><b>Деструктивне без сухого прогону:</b> <code>git clean -fdX</code>,
+        <code>docker system prune -a</code>, <code>alembic downgrade</code> на спільній БД,
+        видалення гілок. Автоматизуйте показ (<code>-n</code>, <code>df</code>,
+        <code>--merged</code>), а не видалення.</li>
+        <li><b>Деплой з локальної машини агентом.</b> <code>flyctl deploy</code> уже робить CI на
+        push у <code>main</code>; давати агенту <code>FLY_API_TOKEN</code> немає сенсу.</li>
+        <li><b>Автокоміти й автопуш від агента</b> без вашого перегляду диффу.</li>
+        <li><b>Рідкісне й нестабільне.</b> Якщо дія буває раз на квартал і щоразу трохи інакша,
+        скрипт застаріє раніше, ніж окупиться. Краще чекліст у README.</li>
+        <li><b>Повільні хуки.</b> Хук на 40 секунд обходять через <code>--no-verify</code>, і
+        тоді ви не маєте навіть швидких перевірок.</li>
+      </ul>
+    </section>
+
+    <div class="part-divider"><div class="line"></div><div class="label">Частина IV · Практика</div><div class="line"></div></div>
+
+    <section id="s6">
+      <h2><span class="num">6</span> Чекліст і завдання</h2>
+      <p class="section-desc">Мінімальний набір, який варто мати в обох репозиторіях. Кожен пункт — від 5 до 30 хвилин.</p>
+
+      <ul class="checklist">
+        <li>Топ-5 шорткатів Claude Code: <kbd>Esc</kbd>, <kbd>Esc</kbd><kbd>Esc</kbd>, <kbd>Shift</kbd>+<kbd>Tab</kbd>, <code>@</code>, <code>!</code></li>
+        <li>Key Promoter X у WebStorm/PyCharm на тиждень</li>
+        <li><code>.vscode/launch.json</code> або run-конфігурації: API без reload, pytest, Celery <code>-P solo</code>, Vite + Chrome</li>
+        <li>Перевірено, що брейкпоінт в async-ендпоінті й в async-тесті спрацьовує</li>
+        <li>Ruff розширено правилами ARG, ERA, T10, T20 з <code>per-file-ignores</code> для тестів</li>
+        <li>deptry з ignore-списком; вирішено долю <code>pandas</code></li>
+        <li>У фронтенді прибрано згенеровані <code>vite.config.js</code>, <code>*.d.ts</code>, <code>*.tsbuildinfo</code> з git</li>
+        <li><code>Makefile</code> / npm <code>check</code> і рядок про них у CLAUDE.md</li>
+        <li>pre-commit (бекенд) і husky + lint-staged (фронтенд), кожен &lt;5 с</li>
+        <li>Claude Code hook: автоформат після правок + сповіщення</li>
+      </ul>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Завдання 1</span><span class="taskdiff easy">легко</span><span class="tasktitle">Правка у vite.config.ts «не діє»</span></div>
+        <p>Ви (або агент) змінили порт у <code>vite.config.ts</code> з 5173 на 3000, запустили
+        <code>npm run dev</code> — сервер усе одно на 5173. Чому, і як виправити назавжди?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>Vite шукає конфіг у порядку <code>vite.config.js</code> → <code>.mjs</code> → <code>.ts</code>.
+          У репозиторії лежить закомічений <code>vite.config.js</code>, згенерований
+          <code>tsc -b</code> під час минулого білду, і Vite бере саме його.</p>
+          <p>Швидко: <code>npm run build</code> перегенерує <code>.js</code>. Назавжди: додати
+          <code>vite.config.js</code>, <code>vite.config.d.ts</code>, <code>*.tsbuildinfo</code> у
+          <code>.gitignore</code>, зробити <code>git rm --cached</code> і налаштувати
+          <code>tsconfig.node.json</code> так, щоб <code>tsc -b</code> нічого не емітив поруч із
+          кодом (<code>noEmit</code> + <code>tsBuildInfoFile</code> у
+          <code>node_modules/.tmp</code>).</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Завдання 2</span><span class="taskdiff mid">середньо</span><span class="tasktitle">Брейкпоінт «зникає» після збереження файлу</span></div>
+        <p>Ви запускаєте API у VS Code конфігурацією з <code>"args": ["app.main:app", "--reload"]</code>.
+        Перший запит зупиняється на брейкпоінті, а після правки файлу — вже ні. Поясніть механіку
+        й дайте два варіанти рішення.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>З <code>--reload</code> uvicorn запускає процес-наглядач і окремий дочірній процес із
+          застосунком. Після правки файлу дочірній процес вбивається й стартує новий, а дебагер
+          мусить перепідключитися до нового процесу — це працює нестабільно, і брейкпоінти
+          перестають спрацьовувати.</p>
+          <p>Рішення: (1) окрема дебаг-конфігурація без <code>--reload</code> (як у
+          <code>launch.json</code> вище) і перезапуск <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>F5</kbd>
+          після правок; (2) для щоденної роботи — reload у терміналі, а дебагер підключати
+          тільки під конкретну задачу.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Завдання 3</span><span class="taskdiff mid">середньо</span><span class="tasktitle">Агент «пофіксив» ARG001</span></div>
+        <p>Ви попросили агента «прибери всі попередження ruff ARG001». Він видалив параметр
+        <code>request</code> з обробника в <code>app/core/error_handlers.py</code>. Лінтер зелений,
+        тести модулів зелені. Що зламається і як запобігти на майбутнє?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>FastAPI/Starlette викликають exception handler як <code>handler(request, exc)</code>.
+          Обробник з одним параметром впаде з <code>TypeError</code> у момент першої помилки,
+          тобто саме тоді, коли потрібна гарна відповідь клієнту. Юніт-тести, які не
+          провокують цей виняток через HTTP, цього не побачать.</p>
+          <p>Запобігти: перейменувати в <code>_request</code> або <code>noqa</code>, зафіксувати
+          в CLAUDE.md правило «не змінювати сигнатури колбеків фреймворку», і мати тест, що
+          через <code>TestClient</code>/<code>httpx.AsyncClient</code> провокує цю помилку й
+          перевіряє формат відповіді.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Завдання 4</span><span class="taskdiff easy">легко</span><span class="tasktitle">git clean: -n, -X, -x</span></div>
+        <p>Чим відрізняються <code>git clean -ndX</code>, <code>git clean -fdX</code> і
+        <code>git clean -fdx</code>? Що з цього можна запускати в бекенді без ризику?</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p><code>-n</code> — сухий прогін (лише показ). <code>-f</code> — справді видалити.
+          <code>-d</code> — включно з каталогами. <code>-X</code> — лише <i>ігноровані</i> файли;
+          <code>-x</code> — ігноровані <i>і</i> невідстежувані (тобто й ваші нові, ще не додані файли).</p>
+          <p>Без ризику — тільки <code>-ndX</code>. <code>-fdX</code> без шляхів видалить
+          <code>.env</code>, <code>.venv/</code> і <code>.idea/</code>; <code>-fdx</code> ще й
+          незакомічену роботу. Безпечно — <code>-fdX</code> з явними шляхами
+          (<code>-- app build *.egg-info</code>) після перегляду <code>-n</code>.</p>
+        </div></details>
+      </div>
+
+      <div class="task">
+        <div class="task-head"><span class="tasknum">Завдання 5</span><span class="taskdiff hard">складно</span><span class="tasktitle">Дебаг Celery-задачі в контейнері</span></div>
+        <p>Задача з <code>app/workers/tasks.py</code> падає лише в Docker. Опишіть мінімальні
+        кроки, щоб зупинитися на брейкпоінті всередині задачі, не змінюючи прод-образ.</p>
+        <details class="answer"><summary></summary><div class="a-body">
+          <p>1. Запустити контейнер з тим самим образом, але іншою командою:
+          <code>pip install debugpy &amp;&amp; python -m debugpy --listen 0.0.0.0:5678 --wait-for-client
+          -m celery -A app.workers.celery_app:celery_app worker -P solo --loglevel=INFO</code>,
+          з <code>-p 5678:5678</code> і <code>--env-file .env</code>.</p>
+          <p>2. <code>-P solo</code> обов'язковий: з prefork задача виконується в дочірньому
+          процесі, до якого debugpy не підключений.</p>
+          <p>3. Attach-конфігурація з <code>pathMappings</code>
+          <code>${workspaceFolder}</code> → <code>/code</code> (з <code>WORKDIR</code> у Dockerfile).</p>
+          <p>4. Відправити задачу (з API чи <code>celery call</code>) і дочекатися зупинки. Порт
+          5678 — лише локально, ніколи в <code>fly.toml</code>.</p>
+        </div></details>
+      </div>
+
+      <div class="callout interview">
+        <div class="ic">🔗</div>
+        <div class="body"><span class="tag">Глибше</span>
+        Hooks, skills і субагенти — <a href="02-pipeline-claude-code-cursor.html">туторіал 2</a>.
+        Sentry, GitHub і Playwright як MCP для дебагу — <a href="03-mcp-servers.html">туторіал 3</a>.
+        CLAUDE.md і команди як контекст — <a href="04-agent-context.html">туторіал 4</a>.
+        Ті самі <code>make check</code> / <code>npm run check</code> у CI з кешами —
+        <a href="06-ci-cd-optimization.html">туторіал 6</a>. Загальна карта навичок —
+        <a href="01-ai-directions.html">туторіал 1</a>.</div>
+      </div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Робота з AI · частина серії туторіалів AI Delivery Planner. 
+</footer>
+
+<script>
+(function(){
+  function esc(s){
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  var RE = /(#[^\n]*|\/\/[^\n]*)|('''[\s\S]*?'''|"""[\s\S]*?""")|([rRbBfFuU]{0,2}(?:'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`))|(\b\d[\d_]*\.?[\d_]*(?:[eE][+-]?\d+)?[jJ]?\b)|(@[A-Za-z_][\w.]*)|(\bdef\s+)([A-Za-z_]\w*)|(\bclass\s+)([A-Za-z_]\w*)|(\bself\b|\bcls\b|\bthis\b)|(\b(?:def|class|return|if|elif|else|for|while|break|continue|pass|import|from|as|with|try|except|finally|raise|yield|async|await|lambda|global|nonlocal|del|assert|in|is|not|and|or|True|False|None|match|case|const|let|var|function|interface|type|export|extends|implements|new|void|enum|typeof|instanceof|static|public|private|readonly|null|undefined)\b)/g;
+  function hl(text){
+    var out = '', last = 0, m;
+    RE.lastIndex = 0;
+    while((m = RE.exec(text))){
+      if(m.index > last) out += esc(text.slice(last, m.index));
+      if(m[1] !== undefined) out += '<span class="tok-com">'+esc(m[1])+'</span>';
+      else if(m[2] !== undefined) out += '<span class="tok-str">'+esc(m[2])+'</span>';
+      else if(m[3] !== undefined) out += '<span class="tok-str">'+esc(m[3])+'</span>';
+      else if(m[4] !== undefined) out += '<span class="tok-num">'+esc(m[4])+'</span>';
+      else if(m[5] !== undefined) out += '<span class="tok-deco">'+esc(m[5])+'</span>';
+      else if(m[6] !== undefined) out += '<span class="tok-kw">'+esc(m[6])+'</span><span class="tok-def">'+esc(m[7])+'</span>';
+      else if(m[8] !== undefined) out += '<span class="tok-kw">'+esc(m[8])+'</span><span class="tok-def">'+esc(m[9])+'</span>';
+      else if(m[10] !== undefined) out += '<span class="tok-self">'+esc(m[10])+'</span>';
+      else if(m[11] !== undefined) out += '<span class="tok-kw">'+esc(m[11])+'</span>';
+      last = RE.lastIndex;
+    }
+    out += esc(text.slice(last));
+    return out;
+  }
+  var blocks = document.querySelectorAll('.codecard:not(.plain) pre code');
+  for(var i=0;i<blocks.length;i++){
+    blocks[i].innerHTML = hl(blocks[i].textContent);
+  }
+})();
+</script>
+<script>
+(function(){
+  var root = document.documentElement, btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function current(){
+    var t = root.getAttribute('data-theme');
+    return t === 'light' || t === 'dark' ? t : (mq && mq.matches ? 'dark' : 'light');
+  }
+  function render(){
+    var dark = current() === 'dark';
+    btn.textContent = dark ? '☀️ Світла тема' : '🌙 Темна тема';
+    btn.setAttribute('aria-label', dark ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('docs-theme', next); }catch(e){}
+    render();
+  });
+  if(mq && mq.addEventListener) mq.addEventListener('change', render);
+  render();
+})();
+</script>
+<script src="../assets/mobile-nav.js"></script>
+</body>
+</html>
