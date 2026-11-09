@@ -1,5 +1,5 @@
-"""Tests for the in-memory per-IP rate limiter guarding /auth/register and
-/auth/login. Uses its own `raw_client` fixture (only `get_db` overridden,
+"""Tests for the in-memory per-IP rate limiter guarding /auth/register,
+/auth/login and /auth/forgot-password. Uses its own `raw_client` fixture (only `get_db` overridden,
 NOT the no-op rate-limit override that `client`/`unauthenticated_client`
 apply in conftest.py) so the real limiting logic runs end-to-end."""
 
@@ -80,4 +80,15 @@ def test_rate_limit_windows_are_scoped_independently_per_ip(raw_client: TestClie
         json={"email": "still.same.ip@example.com", "password": "password-123"},
         headers={"X-Forwarded-For": "198.51.100.7"},
     )
+    assert blocked.status_code == 429
+
+
+def test_forgot_password_is_rate_limited_per_ip(raw_client: TestClient) -> None:
+    for _ in range(5):
+        response = raw_client.post(
+            "/api/v1/auth/forgot-password", json={"email": "someone@example.com"}
+        )
+        assert response.status_code == 200, response.text
+
+    blocked = raw_client.post("/api/v1/auth/forgot-password", json={"email": "someone@example.com"})
     assert blocked.status_code == 429

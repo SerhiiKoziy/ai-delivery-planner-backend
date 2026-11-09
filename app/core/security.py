@@ -1,5 +1,7 @@
 """Password hashing and JWT creation/verification."""
 
+import hashlib
+import hmac
 from datetime import UTC, datetime, timedelta
 
 from jose import JWTError, jwt
@@ -25,9 +27,16 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def _create_token(subject: str, token_type: str, expires_delta: timedelta) -> str:
+# Short on purpose: a reset link is a password-equivalent sitting in an inbox.
+PASSWORD_RESET_TOKEN_TTL = timedelta(minutes=30)
+
+
+def _create_token(
+    subject: str, token_type: str, expires_delta: timedelta, extra_claims: dict | None = None
+) -> str:
     now = datetime.now(UTC)
     claims = {"sub": subject, "type": token_type, "iat": now, "exp": now + expires_delta}
+    claims.update(extra_claims or {})
     return jwt.encode(claims, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
@@ -47,6 +56,32 @@ def create_email_verification_token(subject: str, expires_delta: timedelta | Non
     """Create a signed JWT for confirming a new account's email address."""
     delta = expires_delta or timedelta(hours=24)
     return _create_token(subject, "email_verification", delta)
+
+
+def password_fingerprint(hashed_password: str) -> str:
+    """Short digest of the stored password hash, embedded in reset tokens.
+
+    Changing the password changes the hash, so every reset link issued before
+    the change stops working: links are effectively single-use without a
+    token table."""
+    return hashlib.sha256(hashed_password.encode()).hexdigest()[:16]
+
+
+def create_password_reset_token(
+    subject: str, hashed_password: str, expires_delta: timedelta | None = None
+) -> str:
+    """Create a signed JWT that lets the holder set a new password once."""
+    return _create_token(
+        subject,
+        "password_reset",
+        expires_delta or PASSWORD_RESET_TOKEN_TTL,
+        {"pwd": password_fingerprint(hashed_password)},
+    )
+
+
+def password_reset_token_matches(claims: dict, hashed_password: str) -> bool:
+    """True if a reset token was issued for the user's *current* password."""
+    return hmac.compare_digest(str(claims.get("pwd", "")), password_fingerprint(hashed_password))
 
 
 def decode_token(token: str) -> dict:

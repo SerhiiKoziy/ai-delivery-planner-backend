@@ -1,27 +1,34 @@
 """Auth API routes.
 
-Handles user registration, login, and JWT refresh. Business logic lives in
-core.security / a future auth service — this module only wires HTTP.
+Handles user registration, login, JWT refresh and the forgot/reset password
+flow. Business logic lives in core.security / a future auth service — this
+module only wires HTTP.
 """
 
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 
 from app.core.dependencies import (
     get_current_user,
     get_organization_repository,
     get_user_repository,
 )
-from app.core.rate_limiting import login_rate_limiter, register_rate_limiter
+from app.core.rate_limiting import (
+    forgot_password_rate_limiter,
+    login_rate_limiter,
+    register_rate_limiter,
+)
 from app.core.security import (
     InvalidTokenError,
     create_access_token,
     create_email_verification_token,
+    create_password_reset_token,
     create_refresh_token,
     decode_token,
     hash_password,
+    password_reset_token_matches,
     verify_password,
 )
 from app.db.models.user import User
@@ -30,13 +37,16 @@ from app.repositories.user_repository import UserRepository
 from app.schemas.auth import (
     CurrentUserRead,
     EmailVerificationRequest,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
     RefreshRequest,
     RegisterResponse,
+    ResetPasswordRequest,
     Token,
     UserCreate,
     UserLogin,
 )
-from app.services.notifications.email import send_verification_email
+from app.services.notifications.email import send_password_reset_email, send_verification_email
 
 router = APIRouter(tags=["auth"])
 
@@ -148,6 +158,68 @@ async def login(
             detail="Please verify your email before logging in",
         )
 
+    return _issue_tokens(user.id)
+
+
+@router.post(
+    "/forgot-password",
+    response_model=ForgotPasswordResponse,
+    dependencies=[Depends(forgot_password_rate_limiter)],
+)
+async def forgot_password(
+    payload: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    user_repo: UserRepository = Depends(get_user_repository),
+) -> ForgotPasswordResponse:
+    """Email a password-reset link if the address belongs to an account.
+
+    The response is identical either way, and the email goes out in the
+    background, so neither the body nor the response time tells a caller
+    whether the email is registered."""
+    user = await user_repo.get_by_email(payload.email)
+    if user is not None:
+        token = create_password_reset_token(str(user.id), user.hashed_password)
+        background_tasks.add_task(send_password_reset_email, user.email, token)
+    return ForgotPasswordResponse()
+
+
+@router.post("/reset-password", response_model=Token)
+async def reset_password(
+    payload: ResetPasswordRequest,
+    user_repo: UserRepository = Depends(get_user_repository),
+) -> Token:
+    """Redeem a reset token: set the new password and log the user in.
+
+    The token only works for the password it was issued against, so it's
+    single-use. Following the emailed link also proves the inbox is real,
+    so an unverified account becomes verified here."""
+    invalid_token_error = HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail="This password reset link is invalid or has expired",
+    )
+    try:
+        claims = decode_token(payload.token)
+    except InvalidTokenError as exc:
+        raise invalid_token_error from exc
+
+    if claims.get("type") != "password_reset":
+        raise invalid_token_error
+
+    try:
+        user_id = uuid.UUID(claims["sub"])
+    except (KeyError, ValueError) as exc:
+        raise invalid_token_error from exc
+
+    user = await user_repo.get(user_id)
+    if user is None or not password_reset_token_matches(claims, user.hashed_password):
+        raise invalid_token_error
+
+    user = await user_repo.update(
+        user.id,
+        hashed_password=hash_password(payload.new_password),
+        is_verified=True,
+        updated_at=datetime.now(UTC),
+    )
     return _issue_tokens(user.id)
 
 

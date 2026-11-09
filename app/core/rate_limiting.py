@@ -63,3 +63,9 @@ register_rate_limiter = rate_limit_by_ip("register", max_requests=5, window_seco
 # Login: generous enough for real retry/typo behavior, tight enough to slow
 # down credential-stuffing / brute-force attempts against a single IP.
 login_rate_limiter = rate_limit_by_ip("login", max_requests=20, window_seconds=60)
+
+# Forgot password: each call may send an email, so keep it as tight as
+# registration — enough for "didn't arrive, send again" a few times.
+forgot_password_rate_limiter = rate_limit_by_ip(
+    "forgot_password", max_requests=5, window_seconds=3600
+)

@@ -39,6 +39,22 @@ class EmailVerificationRequest(BaseModel):
     token: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    """Same answer whether or not the email is registered, so the endpoint
+    can't be used to find out who has an account."""
+
+    message: str = "If an account with this email exists, we've sent a password reset link."
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(min_length=8, max_length=128)
+
+
 class CurrentUserRead(BaseModel):
     """GET /auth/me — who is logged in and what they may see (role)."""
 

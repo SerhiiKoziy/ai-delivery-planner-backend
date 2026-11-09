@@ -20,7 +20,11 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.config import get_settings
 from app.core.dependencies import get_ai_model, get_current_user, get_db
-from app.core.rate_limiting import login_rate_limiter, register_rate_limiter
+from app.core.rate_limiting import (
+    forgot_password_rate_limiter,
+    login_rate_limiter,
+    register_rate_limiter,
+)
 from app.core.roles import UserRole
 from app.core.security import hash_password
 from app.db.models.base import Base
@@ -145,6 +149,7 @@ def client(db_session, test_user: User) -> TestClient:
     # process-lifetime in-memory window.
     app.dependency_overrides[register_rate_limiter] = _no_op
     app.dependency_overrides[login_rate_limiter] = _no_op
+    app.dependency_overrides[forgot_password_rate_limiter] = _no_op
     try:
         yield TestClient(app)
     finally:
@@ -152,6 +157,7 @@ def client(db_session, test_user: User) -> TestClient:
         app.dependency_overrides.pop(get_current_user, None)
         app.dependency_overrides.pop(register_rate_limiter, None)
         app.dependency_overrides.pop(login_rate_limiter, None)
+        app.dependency_overrides.pop(forgot_password_rate_limiter, None)
 
 
 @pytest.fixture
@@ -172,12 +178,14 @@ def unauthenticated_client(db_session) -> TestClient:
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[register_rate_limiter] = _no_op
     app.dependency_overrides[login_rate_limiter] = _no_op
+    app.dependency_overrides[forgot_password_rate_limiter] = _no_op
     try:
         yield TestClient(app)
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(register_rate_limiter, None)
         app.dependency_overrides.pop(login_rate_limiter, None)
+        app.dependency_overrides.pop(forgot_password_rate_limiter, None)
 
 
 # ---------------------------------------------------------------------------
