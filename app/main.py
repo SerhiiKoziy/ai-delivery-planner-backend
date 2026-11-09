@@ -22,9 +22,9 @@ from app.api.territories.router import router as territories_router
 from app.api.vehicles.router import router as vehicles_router
 from app.core.config import get_settings
 from app.core.dependencies import (
-    get_current_user,
     get_ibm_runtime_service_factory,
     get_quantum_ledger,
+    require_admin,
 )
 from app.core.error_handlers import register_exception_handlers
 from app.quantum_ledger import build_ledger_router
@@ -61,11 +61,11 @@ def create_app() -> FastAPI:
     app.include_router(organizations_router, prefix=f"{API_V1_PREFIX}/organizations")
     app.include_router(territories_router, prefix=f"{API_V1_PREFIX}/territories")
     # Ledger before the generic quantum router so /quantum/ledger/* isn't
-    # shadowed; visible to every logged-in user for now (admin-only later).
+    # shadowed; admin-only, like the rest of the quantum API.
     app.include_router(
         build_ledger_router(get_quantum_ledger, get_ibm_runtime_service_factory),
         prefix=f"{API_V1_PREFIX}/quantum/ledger",
-        dependencies=[Depends(get_current_user)],
+        dependencies=[Depends(require_admin)],
     )
     app.include_router(quantum_router, prefix=f"{API_V1_PREFIX}/quantum")
 

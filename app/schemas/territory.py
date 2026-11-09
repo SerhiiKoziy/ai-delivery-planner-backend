@@ -13,7 +13,8 @@ class TerritoryPlanRequest(BaseModel):
     delivery_ids: list[uuid.UUID] = Field(min_length=1)
     # One zone per vehicle, in this order: zone i belongs to vehicle_ids[i].
     vehicle_ids: list[uuid.UUID] = Field(min_length=1, max_length=32)
-    solver: TerritorySolver = "quantum_simulator"
+    # Classical by default: the quantum solvers are admin-only.
+    solver: TerritorySolver = "classical"
     balance_by: Literal["stops", "weight"] = "stops"
     # Penalty strength of "zones carry equal load" vs "keep neighbours together".
     balance_weight: float = Field(default=4.0, gt=0, le=100)

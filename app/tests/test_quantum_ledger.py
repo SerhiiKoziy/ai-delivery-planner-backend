@@ -19,6 +19,10 @@ from app.services.territory.providers import (
 )
 from app.tests.test_territories_api import _plan, mock_geocode, scenario  # noqa: F401
 
+# The quantum API and solvers are admin-only; these tests exercise them as an admin
+# (non-admin access is covered in test_roles.py).
+pytestmark = pytest.mark.usefixtures("as_admin")
+
 needs_qiskit = pytest.mark.skipif(not qiskit_available(), reason="quantum extra not installed")
 LEDGER_DIR = pathlib.Path(__file__).resolve().parents[1] / "quantum_ledger"
 

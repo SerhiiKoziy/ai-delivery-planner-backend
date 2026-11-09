@@ -1,8 +1,8 @@
 """Quantum lab API routes: what was sent to which quantum backend, when, how
 long each phase took and how good the answer was.
 
-Visible to every authenticated user of the organization for now; gate it
-behind an admin role once roles exist.
+Admin-only (UserRole.ADMIN): the quantum features are experimental and
+hidden from regular users.
 """
 
 import uuid
@@ -11,13 +11,13 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.config import get_settings
-from app.core.dependencies import get_current_user, get_quantum_run_repository
+from app.core.dependencies import get_quantum_run_repository, require_admin
 from app.repositories.quantum_run_repository import QuantumRunRepository
 from app.schemas.quantum import QuantumRunDetail, QuantumRunRead, QuantumSummary
 from app.services.territory.metrics import summarize_runs
 from app.services.territory.service import available_solvers
 
-router = APIRouter(tags=["quantum"], dependencies=[Depends(get_current_user)])
+router = APIRouter(tags=["quantum"], dependencies=[Depends(require_admin)])
 
 
 @router.get("/runs", response_model=list[QuantumRunRead])

@@ -21,6 +21,7 @@ from sqlalchemy.pool import StaticPool
 from app.core.config import get_settings
 from app.core.dependencies import get_ai_model, get_current_user, get_db
 from app.core.rate_limiting import login_rate_limiter, register_rate_limiter
+from app.core.roles import UserRole
 from app.core.security import hash_password
 from app.db.models.base import Base
 from app.db.models.delivery import DeliveryPriority
@@ -88,6 +89,12 @@ async def test_user(db_session: AsyncSession, test_organization: Organization) -
         created_at=now,
         updated_at=now,
     )
+
+
+@pytest_asyncio.fixture
+async def as_admin(db_session: AsyncSession, test_user: User) -> User:
+    """Promote `test_user` to ADMIN, for tests of the admin-only quantum features."""
+    return await UserRepository(db_session).update(test_user.id, role=UserRole.ADMIN)
 
 
 @pytest_asyncio.fixture

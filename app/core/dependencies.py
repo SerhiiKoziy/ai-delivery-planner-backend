@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.plans import PLAN_AI_CALL_LIMITS, PLAN_API_REQUEST_LIMITS, PLAN_ROUTE_LIMITS
+from app.core.roles import UserRole
 from app.core.security import InvalidTokenError, decode_token
 from app.quantum_ledger import QuantumLedger
 from app.db.models.organization import Organization
@@ -85,6 +86,17 @@ async def get_current_user(
     if user is None:
         raise credentials_error
     return user
+
+
+async def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    """Let only ADMIN users through; everyone else gets 403 (they are
+    authenticated, just not allowed)."""
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin role required",
+        )
+    return current_user
 
 
 async def get_current_organization(

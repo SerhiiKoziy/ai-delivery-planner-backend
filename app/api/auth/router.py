@@ -9,7 +9,11 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core.dependencies import get_organization_repository, get_user_repository
+from app.core.dependencies import (
+    get_current_user,
+    get_organization_repository,
+    get_user_repository,
+)
 from app.core.rate_limiting import login_rate_limiter, register_rate_limiter
 from app.core.security import (
     InvalidTokenError,
@@ -20,9 +24,11 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
+from app.db.models.user import User
 from app.repositories.organization_repository import OrganizationRepository
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import (
+    CurrentUserRead,
     EmailVerificationRequest,
     RefreshRequest,
     RegisterResponse,
@@ -143,6 +149,19 @@ async def login(
         )
 
     return _issue_tokens(user.id)
+
+
+@router.get("/me", response_model=CurrentUserRead)
+async def me(current_user: User = Depends(get_current_user)) -> CurrentUserRead:
+    """Return the logged-in user, including their role, so the frontend can
+    decide which features (e.g. the admin-only quantum ones) to show."""
+    return CurrentUserRead(
+        id=str(current_user.id),
+        email=current_user.email,
+        organization_id=str(current_user.organization_id),
+        role=current_user.role,
+        is_verified=current_user.is_verified,
+    )
 
 
 @router.post("/refresh", response_model=Token)

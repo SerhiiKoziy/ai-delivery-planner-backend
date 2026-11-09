@@ -13,6 +13,10 @@ from app.repositories.territory_plan_repository import TerritoryPlanRepository
 from app.services.geocoding.client import GoogleGeocodingClient
 from app.services.territory.providers import NumpyStatevectorProvider, qiskit_available
 
+# The quantum API and solvers are admin-only; these tests exercise them as an admin
+# (non-admin access is covered in test_roles.py).
+pytestmark = pytest.mark.usefixtures("as_admin")
+
 DEPOT_LAT, DEPOT_LNG = 50.4501, 30.5234
 
 # Two neighbourhoods ~6 km apart, 4 stops each.

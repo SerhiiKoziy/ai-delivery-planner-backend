@@ -3,12 +3,13 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Uuid, func, true
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Uuid, func, true
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.roles import DEFAULT_USER_ROLE, UserRole
 from app.db.models.base import Base
 
-# TODO: full schema (roles, relationships)
+# TODO: full schema (relationships)
 
 
 class User(Base):
@@ -23,6 +24,18 @@ class User(Base):
     # rows that already existed before this column was added, grandfathering
     # them in rather than locking out every pre-existing account.
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default=true())
+    # Stored by `.value` ("user"/"admin"), like Organization.subscription_plan.
+    role: Mapped[UserRole] = mapped_column(
+        Enum(
+            UserRole,
+            native_enum=False,
+            length=20,
+            validate_strings=True,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
+        default=DEFAULT_USER_ROLE,
+        server_default=DEFAULT_USER_ROLE.value,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(UTC),

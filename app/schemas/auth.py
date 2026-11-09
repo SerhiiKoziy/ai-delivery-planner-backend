@@ -1,6 +1,8 @@
 """Auth request/response schemas."""
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+from app.core.roles import UserRole
 
 
 class UserCreate(BaseModel):
@@ -35,3 +37,15 @@ class RegisterResponse(BaseModel):
 
 class EmailVerificationRequest(BaseModel):
     token: str
+
+
+class CurrentUserRead(BaseModel):
+    """GET /auth/me — who is logged in and what they may see (role)."""
+
+    id: str
+    email: EmailStr
+    organization_id: str = Field(alias="organizationId")
+    role: UserRole
+    is_verified: bool = Field(alias="isVerified")
+
+    model_config = ConfigDict(populate_by_name=True)

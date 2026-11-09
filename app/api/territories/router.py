@@ -8,13 +8,15 @@ IBM_QUANTUM_TIMEOUT_SECONDS with a classical fallback.
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.core.dependencies import (
     get_current_user,
     get_territory_plan_repository,
     get_territory_service,
 )
+from app.core.roles import UserRole
+from app.db.models.user import User
 from app.repositories.territory_plan_repository import TerritoryPlanRepository
 from app.schemas.territory import TerritoryPlanRead, TerritoryPlanRequest
 from app.services.territory.service import SolverUnavailableError, TerritoryService
@@ -25,9 +27,17 @@ router = APIRouter(tags=["territories"], dependencies=[Depends(get_current_user)
 @router.post("/plans", response_model=TerritoryPlanRead)
 async def create_territory_plan(
     payload: TerritoryPlanRequest,
+    current_user: User = Depends(get_current_user),
     service: TerritoryService = Depends(get_territory_service),
 ) -> TerritoryPlanRead:
-    """(Re)calculate zones: one zone per vehicle, balanced by stops or weight."""
+    """(Re)calculate zones: one zone per vehicle, balanced by stops or weight.
+
+    Everyone may use the classical solver; the quantum ones are admin-only."""
+    if payload.solver != "classical" and current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Quantum solvers require the admin role",
+        )
     try:
         plan = await service.create_plan(payload)
     except SolverUnavailableError as exc:
