@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>31. FastAPI углиб — AI Delivery Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<script>
+(function(){
+  try{ var t = localStorage.getItem('docs-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+    --fg:#e7eaf2; --fg-muted:#9aa2b4;
+    --accent:#6d9bff; --accent-soft:#1c2740;
+    --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+    --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+    --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+    --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+    --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+    --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--accent); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent-soft);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"],
+  #tab-sysdesign:checked ~ .nav-tabbar label[for="tab-sysdesign"],
+  #tab-quantum:checked ~ .nav-tabbar label[for="tab-quantum"],
+  #tab-ai:checked ~ .nav-tabbar label[for="tab-ai"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  #tab-quantum:checked ~ .nav-links.quantum{display:flex;}
+  #tab-ai:checked ~ .nav-links.ai{display:flex;}
+  #tab-sysdesign:checked ~ .nav-links.sysdesign{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:12px 0 4px;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.9px; display:flex; align-items:baseline; gap:10px;
+  }
+  .qa summary .qnum{
+    color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700;
+    flex-shrink:0;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 18px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .a p{margin:8px 0; color:var(--fg-muted);}
+  .qa .a p:first-child{margin-top:0;}
+  .qa .checks{
+    margin-top:10px; padding:10px 12px; border-radius:9px; background:var(--interview-bg);
+    border:1px solid var(--interview-border); font-size:13.2px; color:var(--interview);
+  }
+  .qa .checks b{color:var(--interview);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:2px; vertical-align:middle; flex-shrink:0;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .qa .difficulty.sys{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+
+  .cat-head{
+    display:flex; align-items:center; gap:12px; margin-bottom:4px;
+  }
+  .cat-letter{
+    width:34px; height:34px; border-radius:10px; background:var(--accent-soft); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;
+  }
+
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- theme switch --- */
+  :root{color-scheme:light;}
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .theme-toggle{
+    cursor:pointer; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+    background:var(--bg-soft); color:var(--fg); font:inherit; font-size:12.5px; font-weight:600;
+    transition:background .15s, border-color .15s;
+  }
+  .theme-toggle:hover{background:var(--card); border-color:var(--accent);}
+  .theme-toggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+  /* --- tutorial 28: databases by example --- */
+  :root{ --pg:#336791; --mongo:#13aa52; --redis:#d82c20; --cass:#1287b1; --ch:#b38f00; --es:#d63f86; --neo:#3d72b0; }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --pg:#6fa3d6; --mongo:#4fd18a; --redis:#ff7a6e; --cass:#5cc3e8; --ch:#f0cf4a; --es:#ff8cc3; --neo:#86b2ec; }
+  }
+  :root[data-theme="dark"]{ --pg:#6fa3d6; --mongo:#4fd18a; --redis:#ff7a6e; --cass:#5cc3e8; --ch:#f0cf4a; --es:#ff8cc3; --neo:#86b2ec; }
+  .content-center > article{max-width:820px;}
+  article h4{font-size:15.5px; margin:20px 0 6px;}
+  .tablewrap{overflow-x:auto; margin:16px 0;}
+  .tablewrap table{margin:0;}
+  td.c{text-align:center; white-space:nowrap;}
+  .y{color:var(--good); font-weight:700;} .m{color:var(--warn); font-weight:700;} .n{color:var(--bad); font-weight:700;}
+  .callout.fe{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .verdict{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0;}
+  @media (max-width:640px){ .verdict{grid-template-columns:1fr;} }
+  .verdict > div{border-radius:var(--radius); padding:12px 14px; border:1px solid; font-size:14.3px;}
+  .verdict .win{background:var(--good-bg); border-color:var(--good-border);}
+  .verdict .lose{background:var(--bad-bg); border-color:var(--bad-border);}
+  .verdict .t{font-weight:700; display:block; margin-bottom:4px;}
+  .verdict .win .t{color:var(--good);} .verdict .lose .t{color:var(--bad);}
+  .verdict ul{margin:4px 0 0; padding-left:18px;} .verdict li{margin:3px 0;}
+  .dbhead{display:flex; align-items:center; gap:12px; margin-bottom:4px;}
+  .dbbadge{width:38px; height:38px; border-radius:10px; color:#fff; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px;}
+  .qlist{list-style:none; padding:0;}
+  .qlist li{border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin:8px 0; background:var(--card);}
+  .qlist li b.q{color:var(--accent); margin-right:6px;}
+  figure.db{margin:20px 0;}
+  figure.db svg{width:100%; height:auto; display:block; border:1px solid var(--border); border-radius:var(--radius); background:var(--card);}
+  figure.db figcaption{font-size:13px; color:var(--fg-muted); text-align:center; margin-top:6px;}
+  figure.db svg text{fill:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  figure.db svg .mut{fill:var(--fg-muted);}
+  figure.db svg .box{fill:var(--bg-soft); stroke:var(--border); stroke-width:1.5;}
+  figure.db svg .ln{stroke:var(--fg-muted); stroke-width:1.4; fill:none;}
+  figure.db svg .ar{fill:var(--fg-muted);}
+  figure.db svg .mono{font-family:"SF Mono",ui-monospace,Menlo,monospace;}
+  .task{border:1px solid var(--interview-border); background:var(--interview-bg); border-radius:var(--radius); padding:14px 16px; margin:16px 0;}
+  .task .tt{font-weight:700; color:var(--interview);}
+  details.ans{border:1px solid var(--border); border-radius:10px; background:var(--card); margin:10px 0 0;}
+  details.ans summary{cursor:pointer; padding:10px 14px; font-weight:600; font-size:14.5px;}
+  details.ans .a{padding:4px 16px 14px; border-top:1px solid var(--border); font-size:14.5px;}
+  .deeper{font-size:13.5px; color:var(--fg-muted); margin-top:8px;}
+  .deeper a{color:var(--accent);}
+
+  /* --- tutorial 30: code review --- */
+  .sev{display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; padding:1px 7px; border-radius:999px; border:1px solid; margin-right:4px; vertical-align:1px; white-space:nowrap;}
+  .sev.crit{background:var(--bad-bg); color:var(--bad); border-color:var(--bad-border);}
+  .sev.high{background:var(--warn-bg); color:var(--warn); border-color:var(--warn-border);}
+  .sev.med{background:var(--info-bg); color:var(--info); border-color:var(--info-border);}
+  .sev.low{background:var(--bg-soft); color:var(--fg-muted); border-color:var(--border);}
+  .lvlbadge{font-size:12px; font-weight:700; padding:2px 10px; border-radius:999px; border:1px solid var(--border); color:var(--fg-muted); background:var(--bg-soft); white-space:normal;}
+  .lvlbadge.l1{color:var(--good); border-color:var(--good-border); background:var(--good-bg);}
+  .lvlbadge.l2{color:var(--info); border-color:var(--info-border); background:var(--info-bg);}
+  .lvlbadge.l3, .lvlbadge.l4{color:var(--warn); border-color:var(--warn-border); background:var(--warn-bg);}
+  .lvlbadge.l5{color:var(--bad); border-color:var(--bad-border); background:var(--bad-bg);}
+  article h2 .lvlbadge{margin-left:4px;}
+  article h2{flex-wrap:wrap;}
+  .codecard.bad{border-color:var(--bad-border);}
+  .codecard.good{border-color:var(--good-border);}
+  .codecard.bad .bar .path{color:#ff9b8f;}
+  .codecard.good .bar .path{color:#7fe0a5;}
+  details.issues{border:1px solid var(--border); border-radius:10px; background:var(--card); margin:12px 0 16px;}
+  details.issues > summary{cursor:pointer; padding:11px 14px; font-weight:600; font-size:14.5px;}
+  details.issues > .a{padding:6px 16px 14px; border-top:1px solid var(--border); font-size:14.5px;}
+  .issue-list{padding-left:20px;}
+  .issue-list li{margin:8px 0;}
+
+  /* --- JetBrains New UI "Dark" scheme (WebStorm / PyCharm 2023+ default); tokens from Pygments --- */
+  .codecard:has(pre.jb){background:#1E1F22; border-color:#393B40;}
+  .codecard.bad:has(pre.jb){box-shadow:inset 3px 0 0 #F75464;}
+  .codecard.good:has(pre.jb){box-shadow:inset 3px 0 0 #5FB865;}
+  .codecard:has(pre.jb) .bar{background:#2B2D30; border-bottom:1px solid #1E1F22;}
+  .codecard:has(pre.jb) .bar .path{color:#DFE1E5; font-family:"JetBrains Mono","SF Mono",ui-monospace,Menlo,monospace; font-size:12.5px;}
+  pre.jb{counter-reset:jbln; padding:12px 16px 12px 0 !important; background:#1E1F22;}
+  pre.jb code{color:#BCBEC4; font-family:"JetBrains Mono","SF Mono",ui-monospace,Menlo,Consolas,monospace; font-size:13px; line-height:1.6;}
+  /* Pygments' short classes (.n, .m) collide with page classes like .n{font-weight:700} */
+  pre.jb code span{font-weight:400; font-style:normal;}
+  pre.jb .jb-ln{counter-increment:jbln; user-select:none; -webkit-user-select:none;}
+  pre.jb .jb-ln::before{
+    content:counter(jbln); display:inline-block; width:3.2em; padding-right:1.2em; margin-right:.6em; text-align:right;
+    color:#4B5059; background:#1E1F22;
+  }
+  /* keywords, word operators (and/or/not/in/is), string prefixes, escapes, f-string braces */
+  pre.jb .k, pre.jb .kn, pre.jb .kc, pre.jb .kd, pre.jb .kr, pre.jb .kp, pre.jb .ow,
+  pre.jb .sa, pre.jb .se, pre.jb .si{color:#CF8E6D;}
+  pre.jb .s, pre.jb .s1, pre.jb .s2, pre.jb .sb, pre.jb .sc, pre.jb .sh, pre.jb .sx, pre.jb .sr{color:#6AAB73;}
+  pre.jb .sd{color:#5F826B; font-style:italic;}
+  pre.jb .m, pre.jb .mi, pre.jb .mf, pre.jb .mh, pre.jb .mo, pre.jb .mb{color:#2AACB8;}
+  pre.jb .c, pre.jb .c1, pre.jb .cm, pre.jb .ch, pre.jb .cs{color:#7A7E85;}
+  pre.jb .nf{color:#56A8F5;}
+  pre.jb .fm{color:#B200B2;}
+  pre.jb .nd{color:#B3AE60;}
+  pre.jb .nb, pre.jb .ne{color:#8888C6;}
+  pre.jb .bp{color:#94558D;}
+  pre.jb .nc, pre.jb .nn, pre.jb .n, pre.jb .nv, pre.jb .o, pre.jb .p, pre.jb .w{color:#BCBEC4;}
+  pre.jb .err{color:#F75464; background:none;}
+</style>
+<link rel="stylesheet" href="../assets/mobile-nav.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="top-row">
+      <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Темна тема</button>
+    </div>
+  </div>
+</header>
+
+
+<div class="hero">
+  <div class="kicker">Туторіал 31 · Python &amp; FastAPI backend engineering</div>
+  <h1>FastAPI углиб: що відбувається між запитом і відповіддю</h1>
+  <p class="lead">
+    Співбесіда з теми «Python and FastAPI backend engineering» рідко питає «як написати ендпоінт». Питають, <b>як він виконується</b>: де event loop, а де threadpool, коли закривається сесія з <code>yield</code>-залежності, чому <code>BaseHTTPMiddleware</code> повільніший за ASGI-middleware, куди подіти фонову роботу і скільки воркерів запускати. Кожну тему прив'язано до коду цього репозиторію, з тим, що в ньому зроблено добре і що варто покращити. Наприкінці — 20 питань співбесіди, задачі та шпаргалка.
+  </p>
+  <div class="pills">
+    <span class="pill">🔄 Життєвий цикл запиту</span>
+    <span class="pill">🧵 async def vs def</span>
+    <span class="pill">💉 DI углиб</span>
+    <span class="pill">🧅 Middleware</span>
+    <span class="pill">⏱️ Фонові задачі</span>
+    <span class="pill">🧪 Тести</span>
+    <span class="pill">🚀 Продуктивність</span>
+    <span class="pill">🎯 20 питань</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-sysdesign" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-quantum" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-ai" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-sysdesign" class="nav-tabbtn">🏗️ System Design</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+      <label for="tab-quantum" class="nav-tabbtn">⚛️ Квантове</label>
+      <label for="tab-ai" class="nav-tabbtn">🤖 Робота з AI</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-python-types.html">4. Типи</a>
+        <a href="05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="11-logging.html">11. Логування</a>
+        <a href="12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="13-design-patterns.html">13. Патерни</a>
+        <a href="14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="16-pydantic.html">16. Pydantic</a>
+        <a href="21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="25-system-design.html">25. Системний дизайн</a>
+        <a href="26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="27-kubernetes.html">27. Kubernetes</a>
+        <a href="30-code-review.html">30. Code Review</a>
+        <a href="31-fastapi-deep-dive.html" class="active">31. FastAPI углиб</a>
+        <a href="17-databases-fundamentals.html">17. 🗄️ Бази даних: основи</a>
+        <a href="18-databases-interview-qa.html">18. 🗄️ Бази даних: Q&amp;A</a>
+        <a href="19-postgres-storage-and-memory.html">19. 🗄️ Postgres storage &amp; пам'ять</a>
+        <a href="20-redis.html">20. 🗄️ Redis</a>
+        <a href="28-databases-by-example.html">28. 🗄️ Бази даних на прикладі</a>
+        <a href="29-race-conditions.html">29. 🗄️ Race conditions</a>
+        <a href="32-postgres-performance.html">32. 🗄️ Postgres: продуктивність</a>
+      </nav>
+      <nav class="nav-links sysdesign">
+        <a href="../system-design/01-interview-framework.html">1. Фреймворк співбесіди</a>
+        <a href="../system-design/02-networking-entry.html">2. Мережа: DNS, CDN, LB, API</a>
+        <a href="../system-design/03-caching.html">3. Кешування углиб</a>
+        <a href="../system-design/04-databases-storage.html">4. БД I: моделі, індекси, ACID</a>
+        <a href="../system-design/05-replication-sharding.html">5. БД II: реплікація, шардинг</a>
+        <a href="../system-design/06-distributed-systems.html">6. Розподілені системи</a>
+        <a href="../system-design/07-async-messaging.html">7. Черги, Kafka, саги</a>
+        <a href="../system-design/08-reliability-scale.html">8. Надійність і rate limiting</a>
+        <a href="../system-design/09-classic-url-id-kv.html">9. Задачі I: URL, ID, KV</a>
+        <a href="../system-design/10-classic-feed-chat.html">10. Задачі II: стрічка, чат</a>
+        <a href="../system-design/11-classic-storage-video-crawler.html">11. Задачі III: файли, відео</a>
+        <a href="../system-design/12-classic-geo-booking-topk.html">12. Задачі IV: гео, бронювання</a>
+        <a href="../system-design/13-tricky-topics-qa.html">13. Трікі теми й Q&amp;A</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="../node-doc/01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="../node-doc/02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="../node-doc/03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="../node-doc/04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="../node-doc/05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="../node-doc/06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="../node-doc/07-fs-process-os.html">7. fs, process, os</a>
+        <a href="../node-doc/08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="../node-doc/09-http-networking.html">9. HTTP і мережа</a>
+        <a href="../node-doc/10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="../node-doc/11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="../node-doc/12-databases-orm.html">12. БД і ORM</a>
+        <a href="../node-doc/13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="../node-doc/14-security.html">14. Безпека Node</a>
+        <a href="../node-doc/15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="../node-doc/16-testing.html">16. Тестування</a>
+        <a href="../node-doc/17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="../node-doc/18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="../node-doc/19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="../node-doc/20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+      <nav class="nav-links quantum">
+        <a href="../quantum-doc/01-quanta-and-quantum-computing.html">1. Кванти й обчислення</a>
+        <a href="../quantum-doc/02-quantum-engineering-history.html">2. Квантова інженерія</a>
+        <a href="../quantum-doc/03-quantum-backend-python-ibm.html">3. Бекенд + IBM Quantum</a>
+        <a href="../quantum-doc/04-pet-project-quantum-routing.html">4. Пет-проєкт: маршрути</a>
+        <a href="../quantum-doc/05-quantum-engineer-roadmap.html">5. Шлях інженера: ресурси</a>
+        <a href="../quantum-doc/06-linear-algebra-vectors-matrices.html">6. Лін. алгебра I: вектори, матриці</a>
+        <a href="../quantum-doc/07-linear-algebra-eigen-tensor.html">7. Лін. алгебра II: власні, тензори</a>
+        <a href="../quantum-doc/08-complex-numbers-phase.html">8. Комплексні числа й фаза</a>
+        <a href="../quantum-doc/09-probability-shots.html">9. Ймовірності й shots</a>
+        <a href="../quantum-doc/10-numpy-statevector-simulator.html">10. NumPy: свій симулятор</a>
+        <a href="../quantum-doc/11-qiskit-circuits-aer.html">11. Qiskit I: схеми й Aer</a>
+        <a href="../quantum-doc/12-qiskit-runtime-real-qpu.html">12. Qiskit II: реальний QPU</a>
+      </nav>
+      <nav class="nav-links ai">
+        <a href="../ai-doc/01-ai-directions.html">1. Напрямки розвитку</a>
+        <a href="../ai-doc/02-pipeline-claude-code-cursor.html">2. Пайплайн: Claude Code, Cursor</a>
+        <a href="../ai-doc/03-mcp-servers.html">3. MCP-сервери</a>
+        <a href="../ai-doc/04-agent-context.html">4. Контекст без галюцинацій</a>
+        <a href="../ai-doc/05-shortcuts-debugger-automation.html">5. Шорткати, дебагер, рутина</a>
+        <a href="../ai-doc/06-ci-cd-optimization.html">6. Оптимізація CI/CD</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s0">0. З чого зроблений FastAPI</a></li>
+      <li><a href="#s1">1. Життєвий цикл запиту</a></li>
+      <li><a href="#s2">2. async def vs def</a></li>
+      <li><a href="#s3">3. Dependency Injection углиб</a></li>
+      <li><a href="#s4">4. Валідація й серіалізація</a></li>
+      <li><a href="#s5">5. Помилки й exception handlers</a></li>
+      <li><a href="#s6">6. Lifespan: старт і зупинка</a></li>
+      <li><a href="#s7">7. Middleware</a></li>
+      <li><a href="#s8">8. Фонова робота</a></li>
+      <li><a href="#s9">9. Streaming, SSE, WebSocket</a></li>
+      <li><a href="#s10">10. Безпека в FastAPI</a></li>
+      <li><a href="#s11">11. Тестування</a></li>
+      <li><a href="#s12">12. Продуктивність і деплой</a></li>
+      <li><a href="#s13">13. Структура великого проєкту</a></li>
+      <li><a href="#qa">14. 20 питань співбесіди</a></li>
+      <li><a href="#tasks">15. Задачі</a></li>
+      <li><a href="#cheat">16. Шпаргалка</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <!-- ============ 0 ============ -->
+    <section id="s0">
+      <h2><span class="num">00</span>З чого зроблений FastAPI</h2>
+      <p class="section-desc">Перше питання співбесіди часто звучить як «що таке FastAPI». Добра відповідь — у три шари, а не «швидкий фреймворк».</p>
+      <figure class="db">
+        <svg viewBox="0 0 820 250" role="img" aria-label="Шари FastAPI: Uvicorn, Starlette, FastAPI, Pydantic">
+          <g font-size="13">
+            <rect x="20" y="20" width="780" height="44" rx="10" class="box"/>
+            <text x="40" y="47" font-weight="700">Uvicorn</text><text x="160" y="47" class="mut">ASGI-сервер: сокети, HTTP-парсинг (httptools), event loop (uvloop), воркери</text>
+            <rect x="20" y="76" width="780" height="44" rx="10" class="box"/>
+            <text x="40" y="103" font-weight="700">Starlette</text><text x="160" y="103" class="mut">ASGI-тулкіт: Request/Response, роутинг, middleware, WebSocket, BackgroundTasks, TestClient</text>
+            <rect x="20" y="132" width="780" height="44" rx="10" class="box" style="stroke:var(--accent)"/>
+            <text x="40" y="159" font-weight="700" style="fill:var(--accent)">FastAPI</text><text x="160" y="159" class="mut">DI-система (Depends), читання type hints, OpenAPI/Swagger, response_model</text>
+            <rect x="20" y="188" width="780" height="44" rx="10" class="box"/>
+            <text x="40" y="215" font-weight="700">Pydantic v2</text><text x="160" y="215" class="mut">валідація входу і серіалізація виходу; ядро pydantic-core написане на Rust</text>
+          </g>
+        </svg>
+        <figcaption>FastAPI — тонкий шар над Starlette. «Швидкість» в основному дають uvicorn/uvloop і pydantic-core, а не сам FastAPI.</figcaption>
+      </figure>
+      <div class="callout fe"><div class="ic">⚛️</div><div class="body"><span class="tag">Аналогія з фронтенду</span><br>
+        Starlette — як React (рендер і події), FastAPI — як Next.js поверх нього (конвенції, роутинг, DX), Pydantic — як
+        zod, тільки схема одночасно стає і валідацією, і TypeScript-типом, і OpenAPI-документацією.</div></div>
+      <p>Головна ідея FastAPI: <b>сигнатура функції — це контракт</b>. Анотації типів параметрів кажуть фреймворку,
+      звідки брати дані (path, query, body, header, залежність), як їх валідувати і що показати в Swagger. Тому
+      майже все в цьому туторіалі зводиться до питання «що FastAPI робить з сигнатурою під час старту і під час запиту».</p>
+      <ul>
+        <li><b>Під час старту</b> (<code>include_router</code>, декоратор <code>@router.get</code>): FastAPI один раз
+          аналізує сигнатуру, будує дерево залежностей (<code>Dependant</code>) і Pydantic-моделі для валідації. Це
+          дорого, але робиться один раз.</li>
+        <li><b>Під час запиту</b>: проходить по готовому дереву, розв'язує залежності, валідує, викликає хендлер,
+          серіалізує відповідь.</li>
+      </ul>
+    </section>
+
+    <!-- ============ 1 ============ -->
+    <section id="s1">
+      <h2><span class="num">01</span>Життєвий цикл запиту</h2>
+      <p class="section-desc">Що відбувається від TCP-пакета до JSON у відповіді. На цій схемі тримаються майже всі наступні розділи.</p>
+      <figure class="db">
+        <svg viewBox="0 0 820 470" role="img" aria-label="Життєвий цикл запиту у FastAPI">
+          <defs><marker id="lc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ar"/></marker></defs>
+          <g font-size="12.5">
+            <rect x="20" y="16" width="250" height="36" rx="8" class="box"/><text x="145" y="39" text-anchor="middle">1. Uvicorn: сокет → ASGI scope</text>
+            <rect x="20" y="70" width="250" height="36" rx="8" class="box"/><text x="145" y="93" text-anchor="middle">2. Middleware (зовнішні → внутрішні)</text>
+            <rect x="20" y="124" width="250" height="36" rx="8" class="box"/><text x="145" y="147" text-anchor="middle">3. Router: пошук маршруту</text>
+            <rect x="20" y="178" width="250" height="36" rx="8" class="box" style="stroke:var(--accent)"/><text x="145" y="201" text-anchor="middle">4. Розв'язання залежностей</text>
+            <rect x="20" y="232" width="250" height="36" rx="8" class="box"/><text x="145" y="255" text-anchor="middle">5. Валідація path/query/body</text>
+            <rect x="20" y="286" width="250" height="36" rx="8" class="box" style="stroke:var(--accent)"/><text x="145" y="309" text-anchor="middle">6. Виклик хендлера</text>
+            <rect x="20" y="340" width="250" height="36" rx="8" class="box"/><text x="145" y="363" text-anchor="middle">7. response_model → JSON</text>
+            <rect x="20" y="394" width="250" height="36" rx="8" class="box"/><text x="145" y="417" text-anchor="middle">8. Відповідь назад через middleware</text>
+            <path d="M145 52 V68 M145 106 V122 M145 160 V176 M145 214 V230 M145 268 V284 M145 322 V338 M145 376 V392" class="ln" marker-end="url(#lc)"/>
+            <text x="300" y="93" class="mut">CORS, GZip, власні: request-id, таймінги</text>
+            <text x="300" y="147" class="mut">немає маршруту → 404, не той метод → 405</text>
+            <text x="300" y="193" class="mut">get_db (відкриває сесію) → get_current_user → сервіс</text>
+            <text x="300" y="209" class="mut">кожна залежність — один раз на запит (кеш)</text>
+            <text x="300" y="255" class="mut">помилка → RequestValidationError → 422</text>
+            <text x="300" y="301" class="mut">async def — у event loop; def — у threadpool</text>
+            <text x="300" y="317" class="mut">HTTPException → handler → JSON з detail</text>
+            <text x="300" y="363" class="mut">фільтрація полів, model_dump у pydantic-core</text>
+            <text x="300" y="417" class="mut">далі: BackgroundTasks, потім teardown yield-залежностей*</text>
+            <text x="300" y="455" class="mut" font-size="11.5">* точний момент teardown змінювався між версіями FastAPI — див. розділ 3</text>
+          </g>
+        </svg>
+        <figcaption>Цикл одного запиту. Синім виділено два кроки, де найчастіше ховаються проблеми продуктивності.</figcaption>
+      </figure>
+      <p>Як це виглядає на реальному ендпоінті цього проєкту:</p>
+<div class="codecard"><div class="bar"><span class="path">app/api/deliveries/router.py (main)</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="n">router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">(</span><span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">"deliveries"</span><span class="p">],</span> <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">get_current_user</span><span class="p">)])</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/</span><span class="si">{delivery_id}</span><span class="s2">"</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">DeliveryRead</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_delivery</span><span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">delivery_id</span><span class="p">:</span> <span class="n">uuid</span><span class="o">.</span><span class="n">UUID</span><span class="p">,</span>                                    <span class="c1"># 5. path-параметр, валідується як UUID</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">service</span><span class="p">:</span> <span class="n">DeliveryService</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_delivery_service</span><span class="p">),</span>  <span class="c1"># 4. дерево залежностей</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DeliveryRead</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">delivery</span> <span class="o">=</span> <span class="k">await</span> <span class="n">service</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">delivery_id</span><span class="p">)</span>                  <span class="c1"># 6. хендлер</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">if</span> <span class="n">delivery</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">"Delivery not found"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">DeliveryRead</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">delivery</span><span class="p">)</span>               <span class="c1"># 7. серіалізація</span></code></pre></div>
+      <p>Дерево залежностей тут таке: <code>get_delivery_service</code> → <code>get_delivery_repository</code> →
+      <code>get_db</code>, а також <code>get_current_user</code> на рівні роутера, який теж використовує
+      <code>get_db</code>. Сесія <code>get_db</code> при цьому створюється <b>один раз</b>: FastAPI кешує результат
+      залежності в межах запиту.</p>
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><span class="tag">Як відповісти на співбесіді</span><br>
+        «Uvicorn приймає з'єднання і віддає ASGI-скоуп у застосунок. Запит проходить стек middleware, роутер
+        знаходить маршрут, FastAPI розв'язує дерево залежностей (з кешуванням на запит), валідує параметри Pydantic'ом,
+        викликає хендлер: async — в event loop, sync — у threadpool. Результат фільтрується через response_model,
+        серіалізується, і відповідь іде назад через middleware. Після цього виконуються background tasks і закриваються
+        ресурси yield-залежностей.»</div></div>
+    </section>
+
+    <!-- ============ 2 ============ -->
+    <section id="s2">
+      <h2><span class="num">02</span>async def vs def: event loop і threadpool</h2>
+      <p class="section-desc">Найпопулярніше питання по FastAPI. Помилка тут — найчастіша причина «сервіс тормозить під навантаженням».</p>
+      <figure class="db">
+        <svg viewBox="0 0 820 260" role="img" aria-label="Event loop і threadpool">
+          <g font-size="12.5">
+            <rect x="20" y="20" width="380" height="220" rx="12" class="box"/>
+            <text x="210" y="44" text-anchor="middle" font-weight="700">Event loop (1 потік)</text>
+            <rect x="40" y="60" width="340" height="30" rx="6" class="box" style="stroke:var(--good)"/><text x="210" y="80" text-anchor="middle">async def handler: await db… → віддав керування</text>
+            <rect x="40" y="98" width="340" height="30" rx="6" class="box" style="stroke:var(--good)"/><text x="210" y="118" text-anchor="middle">async def handler: await httpx… → віддав керування</text>
+            <rect x="40" y="136" width="340" height="30" rx="6" class="box" style="stroke:var(--bad)"/><text x="210" y="156" text-anchor="middle" style="fill:var(--bad)">async def + time.sleep / requests / CPU</text>
+            <text x="210" y="190" text-anchor="middle" class="mut">❌ блокує ВСІ запити процесу</text>
+            <text x="210" y="210" text-anchor="middle" class="mut">поки не завершиться</text>
+            <rect x="420" y="20" width="380" height="220" rx="12" class="box"/>
+            <text x="610" y="44" text-anchor="middle" font-weight="700">Threadpool (anyio, 40 потоків)</text>
+            <rect x="440" y="60" width="340" height="30" rx="6" class="box"/><text x="610" y="80" text-anchor="middle">def handler: блокуючий код — ок</text>
+            <rect x="440" y="98" width="340" height="30" rx="6" class="box"/><text x="610" y="118" text-anchor="middle">def-залежності теж ідуть сюди</text>
+            <rect x="440" y="136" width="340" height="30" rx="6" class="box"/><text x="610" y="156" text-anchor="middle">asyncio.to_thread(solver) — як у проєкті</text>
+            <text x="610" y="190" text-anchor="middle" class="mut">⚠️ 41-й одночасний sync-запит чекає</text>
+            <text x="610" y="210" text-anchor="middle" class="mut">CPU-робота все одно під GIL</text>
+          </g>
+        </svg>
+        <figcaption>FastAPI сам вирішує, куди відправити функцію, дивлячись лише на те, чи вона <code>async def</code>.</figcaption>
+      </figure>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Що всередині</th><th>Як оголосити</th><th>Чому</th></tr></thead>
+        <tbody>
+          <tr><td>Тільки async-бібліотеки (asyncpg, httpx.AsyncClient, redis.asyncio)</td><td><code>async def</code></td><td>Найдешевше: немає перемикання потоків</td></tr>
+          <tr><td>Синхронна бібліотека (requests, psycopg2, boto3, pandas)</td><td><code>def</code></td><td>FastAPI сам винесе в threadpool</td></tr>
+          <tr><td>Здебільшого async, але один блокуючий виклик</td><td><code>async def</code> + <code>await asyncio.to_thread(fn)</code></td><td>Блокуюча частина — в потоці, решта — в loop</td></tr>
+          <tr><td>Важкий CPU (OR-Tools, numpy на хвилини)</td><td>Celery / ProcessPool</td><td>Потік не обходить GIL і з'їдає слот threadpool</td></tr>
+        </tbody>
+      </table></div>
+      <p>У проєкті солвер маршрутів OR-Tools — синхронний і CPU-важкий, тому його викликають через
+      <code>asyncio.to_thread</code> (детально — <a href="21-route-optimization-or-tools.html">туторіал 21, розділ 08</a>):</p>
+<div class="codecard good"><div class="bar"><span class="path">app/services/route_optimizer/service.py (спрощено)</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span>    <span class="c1"># OR-Tools blocks for seconds: the solve runs in a worker thread, so the</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="c1"># event loop keeps serving other requests while the solver searches.</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncio</span><span class="o">.</span><span class="n">to_thread</span><span class="p">(</span><span class="n">_build_and_solve</span><span class="p">,</span> <span class="n">solver</span><span class="p">)</span></code></pre></div>
+      <p>А ось класична помилка, яку дають на code review:</p>
+<div class="codecard bad"><div class="bar"><span class="path">❌ блокує event loop</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/geocode"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">geocode</span><span class="p">(</span><span class="n">address</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">resp</span> <span class="o">=</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">GEOCODE_URL</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">"address"</span><span class="p">:</span> <span class="n">address</span><span class="p">})</span>  <span class="c1"># синхронний HTTP у async def</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span></code></pre></div>
+<div class="codecard good"><div class="bar"><span class="path">✅ два правильні варіанти</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/geocode"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">def</span><span class="w"> </span><span class="nf">geocode</span><span class="p">(</span><span class="n">address</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>                       <span class="c1"># варіант 1: просто def → threadpool</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">requests</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">GEOCODE_URL</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">"address"</span><span class="p">:</span> <span class="n">address</span><span class="p">},</span> <span class="n">timeout</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span><span class="o">.</span><span class="n">json</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/geocode"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">geocode</span><span class="p">(</span><span class="n">address</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">http</span><span class="p">:</span> <span class="n">HttpClient</span><span class="p">):</span>  <span class="c1"># варіант 2: async-клієнт (один на застосунок)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">resp</span> <span class="o">=</span> <span class="k">await</span> <span class="n">http</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">GEOCODE_URL</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">{</span><span class="s2">"address"</span><span class="p">:</span> <span class="n">address</span><span class="p">})</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">resp</span><span class="o">.</span><span class="n">json</span><span class="p">()</span></code></pre></div>
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body"><span class="tag">Тонкі моменти</span><br>
+        <b>1.</b> Ліміт threadpool за замовчуванням — 40 потоків (anyio <code>CapacityLimiter</code>). Його ділять
+        sync-ендпоінти, sync-залежності, <code>UploadFile</code>-операції і sync background tasks.
+        <b>2.</b> <code>asyncio.to_thread</code> використовує <i>інший</i> пул — default executor asyncio
+        (<code>min(32, cpu + 4)</code> потоків). <b>3.</b> Знайти блокування допомагає
+        <code>PYTHONASYNCIODEBUG=1</code> або <code>loop.slow_callback_duration</code>: asyncio тоді логує
+        колбеки, що тримали loop довше 100 мс.</div></div>
+      <p class="deeper">Глибше: <a href="06-gil-and-concurrency.html">6 · GIL і конкурентність</a>, <a href="02-async-and-security.html">2 · Async у FastAPI-запиті</a>, <a href="30-code-review.html">30 · 12 async-пасток</a>.</p>
+    </section>
+
+    <!-- ============ 3 ============ -->
+    <section id="s3">
+      <h2><span class="num">03</span>Dependency Injection углиб</h2>
+      <p class="section-desc"><code>Depends</code> — серце FastAPI. Тут перевіряють, чи розумієш ти дерево, кеш, <code>yield</code> і overrides.</p>
+
+      <h3>3.1 Дерево і кеш на запит</h3>
+      <p>Залежність — будь-який callable. Її параметри FastAPI розв'язує так само, як параметри ендпоінта: вони можуть
+      бути query, header або іншими залежностями. Виходить дерево, і <b>кожен вузол обчислюється один раз на запит</b>
+      (<code>use_cache=True</code> за замовчуванням). Тому <code>get_current_user</code> і репозиторії в проєкті
+      отримують <i>одну й ту саму</i> сесію.</p>
+<div class="codecard"><div class="bar"><span class="path">app/core/dependencies.py (main)</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_db</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">AsyncGenerator</span><span class="p">[</span><span class="n">AsyncSession</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">async</span> <span class="k">for</span> <span class="n">session</span> <span class="ow">in</span> <span class="n">get_session</span><span class="p">():</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">yield</span> <span class="n">session</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">def</span><span class="w"> </span><span class="nf">get_user_repository</span><span class="p">(</span><span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_db</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="n">UserRepository</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">UserRepository</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_current_user</span><span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">token</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">oauth2_scheme</span><span class="p">),</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">user_repo</span><span class="p">:</span> <span class="n">UserRepository</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_user_repository</span><span class="p">),</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">User</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="o">...</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">require_admin</span><span class="p">(</span><span class="n">user</span><span class="p">:</span> <span class="n">User</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_current_user</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="n">User</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">if</span> <span class="n">user</span><span class="o">.</span><span class="n">role</span> <span class="o">!=</span> <span class="n">UserRole</span><span class="o">.</span><span class="n">ADMIN</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">"Admin role required"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">user</span></code></pre></div>
+      <div class="callout info"><div class="ic">💡</div><div class="body"><span class="tag">Коли потрібен Depends(..., use_cache=False)</span><br>
+        Рідко: коли залежність має повертати свіже значення щоразу, коли її згадано в дереві (наприклад, генератор
+        унікального ID). Для сесії БД кеш — саме те, що треба: інакше в одному запиті було б кілька транзакцій.</div></div>
+
+      <h3>3.2 Залежності з yield: ресурс і його закриття</h3>
+      <p>Код до <code>yield</code> — це «setup», після нього — «teardown». Це аналог контекстного менеджера, і
+      FastAPI гарантує teardown навіть після помилки в хендлері. Якщо обернути <code>yield</code> у
+      <code>try/except</code>, виняток із хендлера прилетить у залежність (так роблять rollback).</p>
+<div class="codecard good"><div class="bar"><span class="path">✅ сесія з транзакцією на запит (покращений варіант)</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">get_db</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">AsyncGenerator</span><span class="p">[</span><span class="n">AsyncSession</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">async</span> <span class="k">with</span> <span class="n">AsyncSessionLocal</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">try</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">yield</span> <span class="n">session</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>       <span class="c1"># хендлер відпрацював без помилок</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">rollback</span><span class="p">()</span>     <span class="c1"># будь-яка помилка → відкат</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">raise</span>                        <span class="c1"># обов'язково прокинути далі</span></code></pre></div>
+      <p>У цьому проєкті commit робить репозиторій (<code>BaseRepository.create</code> викликає
+      <code>session.commit()</code>), а <code>get_db</code> тільки закриває сесію. Простіше, але кілька записів в
+      одному запиті не атомарні: якщо другий упаде, перший уже закомічено. «Unit of Work на запит» з прикладу вище —
+      типова відповідь на питання «як зробити атомарний ендпоінт».</p>
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body"><span class="tag">Пастка: yield-залежність і BackgroundTasks</span><br>
+        Момент виконання teardown змінювався між версіями: до 0.106 він ішов <i>після</i> відправки відповіді (і
+        background tasks могли користуватися сесією), у 0.106 його перенесли <i>до</i> відправки, а в нових версіях
+        з'явився явний вибір (<code>Depends(..., scope=...)</code>). Практичне правило, яке працює в усіх версіях:
+        <b>не передавай request-scoped сесію у фонову задачу, а відкривай у задачі нову</b>
+        (<code>async with AsyncSessionLocal() as s:</code>).</div></div>
+
+      <h3>3.3 Annotated: менше повторів</h3>
+      <p>Сучасний стиль, який рекомендує документація FastAPI: оголосити залежність один раз як тип.</p>
+<div class="codecard good"><div class="bar"><span class="path">app/core/deps_types.py (пропозиція)</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Annotated</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">DbSession</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">AsyncSession</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_db</span><span class="p">)]</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">CurrentUser</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">User</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_current_user</span><span class="p">)]</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">AdminUser</span> <span class="o">=</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">User</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">require_admin</span><span class="p">)]</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/me"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">me</span><span class="p">(</span><span class="n">user</span><span class="p">:</span> <span class="n">CurrentUser</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CurrentUserRead</span><span class="p">:</span>   <span class="c1"># без "= Depends(...)" у кожному ендпоінті</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">CurrentUserRead</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">user</span><span class="p">)</span></code></pre></div>
+
+      <h3>3.4 Залежності на рівні роутера і застосунку</h3>
+      <p>Коли результат залежності не потрібен, а потрібен тільки побічний ефект (перевірка доступу, rate limit),
+      її вішають на роутер. Так у проєкті закрито всі квантові ендпоінти:</p>
+<div class="codecard"><div class="bar"><span class="path">app/main.py (main)</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">build_ledger_router</span><span class="p">(</span><span class="n">get_quantum_ledger</span><span class="p">,</span> <span class="n">get_ibm_runtime_service_factory</span><span class="p">),</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">prefix</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">API_V1_PREFIX</span><span class="si">}</span><span class="s2">/quantum/ledger"</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">require_admin</span><span class="p">)],</span>   <span class="c1"># кожен маршрут роутера — тільки для адміна</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="p">)</span></code></pre></div>
+
+      <h3>3.5 Класи як залежності і параметризовані залежності</h3>
+<div class="codecard"><div class="bar"><span class="path">приклад: фабрика залежностей</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">class</span><span class="w"> </span><span class="nc">Pagination</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">Query</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="n">le</span><span class="o">=</span><span class="mi">200</span><span class="p">),</span> <span class="n">cursor</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="bp">self</span><span class="o">.</span><span class="n">limit</span> <span class="o">=</span> <span class="n">limit</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="bp">self</span><span class="o">.</span><span class="n">cursor</span> <span class="o">=</span> <span class="n">cursor</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">def</span><span class="w"> </span><span class="nf">require_role</span><span class="p">(</span><span class="n">role</span><span class="p">:</span> <span class="n">UserRole</span><span class="p">):</span>                 <span class="c1"># фабрика → нова залежність на кожну роль</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">checker</span><span class="p">(</span><span class="n">user</span><span class="p">:</span> <span class="n">CurrentUser</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">User</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">if</span> <span class="n">user</span><span class="o">.</span><span class="n">role</span> <span class="o">!=</span> <span class="n">role</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="mi">403</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">role</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2"> role required"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">return</span> <span class="n">user</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">checker</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/deliveries"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_deliveries</span><span class="p">(</span><span class="n">page</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Pagination</span><span class="p">,</span> <span class="n">Depends</span><span class="p">()],</span>
+<span class="jb-ln" aria-hidden="true"></span>                          <span class="n">_</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">User</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">require_role</span><span class="p">(</span><span class="n">UserRole</span><span class="o">.</span><span class="n">ADMIN</span><span class="p">))]):</span> <span class="o">...</span></code></pre></div>
+
+      <h3>3.6 dependency_overrides — головна причина, чому DI окупається</h3>
+      <p>У тестах будь-яку залежність можна підмінити, не чіпаючи код ендпоінтів. Саме так
+      <code>conftest.py</code> проєкту підставляє SQLite і тестового користувача (див. розділ 11).</p>
+    </section>
+
+    <!-- ============ 4 ============ -->
+    <section id="s4">
+      <h2><span class="num">04</span>Валідація й серіалізація</h2>
+      <p class="section-desc">Pydantic працює двічі: на вході (запит → модель) і на виході (результат → JSON).</p>
+      <h3>4.1 Звідки береться параметр</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Оголошення</th><th>Джерело</th></tr></thead>
+        <tbody>
+          <tr><td><code>delivery_id: uuid.UUID</code>, є в шляху <code>/{delivery_id}</code></td><td>path</td></tr>
+          <tr><td><code>limit: int = 50</code> (скалярний тип)</td><td>query</td></tr>
+          <tr><td><code>payload: DeliveryCreate</code> (Pydantic-модель)</td><td>JSON body</td></tr>
+          <tr><td><code>Header()</code>, <code>Cookie()</code>, <code>Form()</code>, <code>File()</code>/<code>UploadFile</code></td><td>явно вказане</td></tr>
+          <tr><td><code>Depends(...)</code></td><td>результат залежності</td></tr>
+        </tbody>
+      </table></div>
+      <h3>4.2 response_model — фільтр безпеки, а не тільки документація</h3>
+      <p>Хендлер може повернути ORM-об'єкт <code>User</code> з <code>hashed_password</code>. Якщо
+      <code>response_model=CurrentUserRead</code>, у JSON потраплять лише поля схеми. Без нього легко злити хеш
+      пароля або внутрішні поля.</p>
+<div class="codecard"><div class="bar"><span class="path">app/schemas/auth.py (main, спрощено)</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">class</span><span class="w"> </span><span class="nc">CurrentUserRead</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">model_config</span> <span class="o">=</span> <span class="n">ConfigDict</span><span class="p">(</span><span class="n">from_attributes</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">populate_by_name</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="nb">id</span><span class="p">:</span> <span class="n">uuid</span><span class="o">.</span><span class="n">UUID</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">email</span><span class="p">:</span> <span class="n">EmailStr</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">organization_id</span><span class="p">:</span> <span class="n">uuid</span><span class="o">.</span><span class="n">UUID</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">serialization_alias</span><span class="o">=</span><span class="s2">"organizationId"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">role</span><span class="p">:</span> <span class="n">UserRole</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">is_verified</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">Field</span><span class="p">(</span><span class="n">serialization_alias</span><span class="o">=</span><span class="s2">"isVerified"</span><span class="p">)</span></code></pre></div>
+      <ul>
+        <li><b>Анотація повернення</b> <code>-&gt; DeliveryRead</code> у нових FastAPI працює як
+          <code>response_model</code>.</li>
+        <li><code>response_model_exclude_unset=True</code> корисний для PATCH-відповідей.</li>
+        <li><b>Повернення <code>Response</code> напряму</b> (<code>JSONResponse</code>, <code>ORJSONResponse</code>)
+          пропускає валідацію і фільтрацію. Це швидше, але й небезпечніше.</li>
+      </ul>
+      <h3>4.3 Вартість серіалізації</h3>
+      <p>На великих списках (тисячі доставок) серіалізація стає помітною. Що допомагає:</p>
+      <ol>
+        <li>Пагінація: не віддавати 10 000 рядків одним запитом (<a href="32-postgres-performance.html">туторіал 32, розділ 07</a>).</li>
+        <li>Повертати модель один раз: в проєкті <code>[DeliveryRead.model_validate(d) for d in deliveries]</code>,
+          а потім FastAPI ще раз валідує список через <code>response_model</code>. Подвійна робота — відомий
+          компроміс; у гарячих ендпоінтах повертають ORM-об'єкти і дають FastAPI зробити валідацію один раз.</li>
+        <li><code>TypeAdapter(list[DeliveryRead])</code> + <code>dump_json</code> для ручної швидкої серіалізації.</li>
+      </ol>
+      <p class="deeper">Глибше: <a href="16-pydantic.html">16 · Pydantic</a>, <a href="15-serialization-and-numbers.html">15 · Серіалізація</a>.</p>
+    </section>
+
+    <!-- ============ 5 ============ -->
+    <section id="s5">
+      <h2><span class="num">05</span>Помилки й exception handlers</h2>
+      <p class="section-desc">Один формат помилок для всього API — ознака зрілого бекенду.</p>
+      <p>За замовчуванням FastAPI повертає: <code>HTTPException</code> → <code>{"detail": "..."}</code>;
+      помилка валідації → 422 зі <i>списком</i> помилок; неперехоплений виняток → 500 з plain-text тілом. У проєкті
+      все це вирівняно в <code>app/core/error_handlers.py</code>:</p>
+<div class="codecard"><div class="bar"><span class="path">app/core/error_handlers.py (main, фрагмент)</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">def</span><span class="w"> </span><span class="nf">register_exception_handlers</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">FastAPI</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="nd">@app</span><span class="o">.</span><span class="n">exception_handler</span><span class="p">(</span><span class="n">RequestValidationError</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_validation_error</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">exc</span><span class="p">:</span> <span class="n">RequestValidationError</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">JSONResponse</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">HTTP_422_UNPROCESSABLE_CONTENT</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">"detail"</span><span class="p">:</span> <span class="n">_validation_error_message</span><span class="p">(</span><span class="n">exc</span><span class="p">)},</span>  <span class="c1"># список → один рядок для UI</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="nd">@app</span><span class="o">.</span><span class="n">exception_handler</span><span class="p">(</span><span class="n">QuotaExceededError</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">handle_quota_exceeded</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">exc</span><span class="p">:</span> <span class="n">QuotaExceededError</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">JSONResponse</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="o">...</span></code></pre></div>
+      <ul>
+        <li><b>Доменні винятки</b> (<code>QuotaExceededError</code>) кидає сервісний шар, який нічого не знає про
+          HTTP, а мапінг у статус-код живе в одному місці.</li>
+        <li><b>Handler для <code>Exception</code></b> ловить усе інше: логує зі стеком
+          (<code>logger.exception</code>), а клієнту віддає загальне «Internal error» без внутрішніх деталей.</li>
+        <li><b>Хендлер для Starlette <code>HTTPException</code></b> (а не тільки FastAPI-шного) перехоплює також
+          404/405 від роутера.</li>
+      </ul>
+      <p class="deeper">Глибше: <a href="07-generators-iterators-exceptions.html">7 · Власні ієрархії винятків</a>.</p>
+    </section>
+
+    <!-- ============ 6 ============ -->
+    <section id="s6">
+      <h2><span class="num">06</span>Lifespan: старт і зупинка застосунку</h2>
+      <p class="section-desc">Де створювати пули, клієнти і моделі так, щоб вони жили весь час роботи процесу і коректно закривались.</p>
+<div class="codecard good"><div class="bar"><span class="path">app/main.py (пропозиція)</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="nd">@asynccontextmanager</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">lifespan</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">FastAPI</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="c1"># startup: один HTTP-клієнт із пулом з'єднань на весь процес</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">app</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">http</span> <span class="o">=</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="n">httpx</span><span class="o">.</span><span class="n">Timeout</span><span class="p">(</span><span class="mf">10.0</span><span class="p">))</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">yield</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="c1"># shutdown: закрити сокети і пул БД, щоб деплой не обривав з'єднання</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">await</span> <span class="n">app</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">http</span><span class="o">.</span><span class="n">aclose</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">await</span> <span class="n">engine</span><span class="o">.</span><span class="n">dispose</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">APP_NAME</span><span class="p">,</span> <span class="n">lifespan</span><span class="o">=</span><span class="n">lifespan</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">def</span><span class="w"> </span><span class="nf">get_http</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">httpx</span><span class="o">.</span><span class="n">AsyncClient</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">http</span></code></pre></div>
+      <ul>
+        <li><code>@app.on_event("startup")</code> застарів; новий спосіб — <code>lifespan</code>.</li>
+        <li>Створювати <code>httpx.AsyncClient()</code> <b>у кожному запиті</b> — антипатерн: щоразу новий TCP+TLS
+          handshake і жодного переюзу з'єднань.</li>
+        <li>У проєкті engine створюється на рівні модуля (<code>app/db/session.py</code>). Це працює, але без
+          <code>engine.dispose()</code> на shutdown з'єднання обриваються «на льоту» під час деплою.</li>
+        <li>Lifespan виконується <b>у кожному воркері</b> окремо. 4 воркери — це 4 пули БД.</li>
+      </ul>
+    </section>
+
+    <!-- ============ 7 ============ -->
+    <section id="s7">
+      <h2><span class="num">07</span>Middleware</h2>
+      <p class="section-desc">Цибуля навколо застосунку: кожен шар бачить запит до і відповідь після.</p>
+      <figure class="db">
+        <svg viewBox="0 0 820 220" role="img" aria-label="Порядок middleware">
+          <g font-size="12.5">
+            <rect x="20" y="20" width="780" height="180" rx="14" class="box"/>
+            <text x="40" y="44" font-weight="700">add_middleware(RequestId) — додано останнім → зовнішній шар</text>
+            <rect x="60" y="58" width="700" height="130" rx="12" class="box"/>
+            <text x="80" y="82" font-weight="700">add_middleware(CORSMiddleware)</text>
+            <rect x="100" y="96" width="620" height="80" rx="10" class="box" style="stroke:var(--accent)"/>
+            <text x="410" y="130" text-anchor="middle" font-weight="700" style="fill:var(--accent)">ExceptionMiddleware → Router → ендпоінт</text>
+            <text x="410" y="152" text-anchor="middle" class="mut">запит іде всередину, відповідь — назовні в зворотному порядку</text>
+          </g>
+        </svg>
+        <figcaption>Кожен виклик <code>add_middleware</code> загортає попередній стек, тому останній доданий виконується першим.</figcaption>
+      </figure>
+      <h3>BaseHTTPMiddleware vs чистий ASGI</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th></th><th><code>@app.middleware("http")</code> / BaseHTTPMiddleware</th><th>Чистий ASGI-middleware</th></tr></thead>
+        <tbody>
+          <tr><td>Простота</td><td>✅ <code>request → call_next → response</code></td><td>Треба розуміти scope/receive/send</td></tr>
+          <tr><td>Продуктивність</td><td>Помітний оверхед (додаткові таски, проміжні об'єкти)</td><td>Мінімальний</td></tr>
+          <tr><td>Streaming / SSE</td><td>Історично ламав або буферизував</td><td>Працює природно</td></tr>
+          <tr><td>Коли брати</td><td>Логи, хедери, прототип</td><td>Бібліотеки, гарячий шлях, стрімінг</td></tr>
+        </tbody>
+      </table></div>
+<div class="codecard good"><div class="bar"><span class="path">✅ чистий ASGI: request-id + час обробки</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">class</span><span class="w"> </span><span class="nc">RequestIdMiddleware</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">app</span><span class="p">:</span> <span class="n">ASGIApp</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">app</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">scope</span><span class="p">:</span> <span class="n">Scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">:</span> <span class="n">Receive</span><span class="p">,</span> <span class="n">send</span><span class="p">:</span> <span class="n">Send</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">if</span> <span class="n">scope</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">"http"</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">return</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">request_id</span> <span class="o">=</span> <span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">()</span><span class="o">.</span><span class="n">hex</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">token</span> <span class="o">=</span> <span class="n">request_id_var</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">request_id</span><span class="p">)</span>       <span class="c1"># contextvar → потрапляє в усі логи запиту</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">started</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">send_wrapper</span><span class="p">(</span><span class="n">message</span><span class="p">:</span> <span class="n">Message</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">if</span> <span class="n">message</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"http.response.start"</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="n">headers</span> <span class="o">=</span> <span class="n">MutableHeaders</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="n">message</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="n">headers</span><span class="p">[</span><span class="s2">"X-Request-ID"</span><span class="p">]</span> <span class="o">=</span> <span class="n">request_id</span>
+<span class="jb-ln" aria-hidden="true"></span>                <span class="n">headers</span><span class="p">[</span><span class="s2">"Server-Timing"</span><span class="p">]</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"app;dur=</span><span class="si">{</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">started</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">1000</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">"</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">await</span> <span class="n">send</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">try</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">receive</span><span class="p">,</span> <span class="n">send_wrapper</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">finally</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">request_id_var</span><span class="o">.</span><span class="n">reset</span><span class="p">(</span><span class="n">token</span><span class="p">)</span></code></pre></div>
+      <p>CORS у проєкті налаштований явним списком джерел (<code>settings.CORS_ORIGINS</code>), а не <code>"*"</code>:
+      разом з <code>allow_credentials=True</code> зірочка недопустима (<a href="02-async-and-security.html">туторіал 2</a>).</p>
+      <p class="deeper">Глибше: <a href="10-wsgi-asgi.html">10 · Middleware WSGI vs ASGI</a>, <a href="11-logging.html">11 · Correlation ID</a>.</p>
+    </section>
+
+    <!-- ============ 8 ============ -->
+    <section id="s8">
+      <h2><span class="num">08</span>Фонова робота: BackgroundTasks, create_task, Celery</h2>
+      <p class="section-desc">Питання «куди винести відправку email / важкий розрахунок» — майже обов'язкове.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Інструмент</th><th>Де виконується</th><th>Переживе рестарт?</th><th>Коли</th></tr></thead>
+        <tbody>
+          <tr><td><code>BackgroundTasks</code></td><td>Той самий процес, після відправки відповіді</td><td class="n">Ні</td><td>Короткі «fire-and-forget»: email, вебхук, аудит</td></tr>
+          <tr><td><code>asyncio.create_task</code></td><td>Той самий event loop, паралельно з відповіддю</td><td class="n">Ні</td><td>Рідко; треба тримати посилання на task і обробляти помилки</td></tr>
+          <tr><td>Celery / arq / RQ</td><td>Окремий воркер-процес через брокер (Redis)</td><td class="y">Так (ack, ретраї)</td><td>Довго, важко, важливо: оптимізація, імпорт, звіти</td></tr>
+        </tbody>
+      </table></div>
+      <p>У проєкті лист для скидання пароля надсилається через <code>BackgroundTasks</code>: користувач отримує
+      відповідь одразу, а SMTP-латентність не впливає ні на час відповіді, ні на те, чи можна за часом відповіді
+      вгадати, що акаунт існує.</p>
+<div class="codecard"><div class="bar"><span class="path">app/api/auth/router.py (main, спрощено)</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="nd">@router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/forgot-password"</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="n">ForgotPasswordResponse</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span>             <span class="n">dependencies</span><span class="o">=</span><span class="p">[</span><span class="n">Depends</span><span class="p">(</span><span class="n">forgot_password_rate_limiter</span><span class="p">)])</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">forgot_password</span><span class="p">(</span><span class="n">payload</span><span class="p">:</span> <span class="n">ForgotPasswordRequest</span><span class="p">,</span> <span class="n">background_tasks</span><span class="p">:</span> <span class="n">BackgroundTasks</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span>                          <span class="n">user_repo</span><span class="p">:</span> <span class="n">UserRepository</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_user_repository</span><span class="p">)):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="n">user_repo</span><span class="o">.</span><span class="n">get_by_email</span><span class="p">(</span><span class="n">payload</span><span class="o">.</span><span class="n">email</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">if</span> <span class="n">user</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">token</span> <span class="o">=</span> <span class="n">create_password_reset_token</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">user</span><span class="o">.</span><span class="n">id</span><span class="p">),</span> <span class="n">user</span><span class="o">.</span><span class="n">hashed_password</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">background_tasks</span><span class="o">.</span><span class="n">add_task</span><span class="p">(</span><span class="n">send_password_reset_email</span><span class="p">,</span> <span class="n">user</span><span class="o">.</span><span class="n">email</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">ForgotPasswordResponse</span><span class="p">()</span>   <span class="c1"># однакова відповідь: немає account enumeration</span></code></pre></div>
+<div class="codecard bad"><div class="bar"><span class="path">❌ create_task без посилання</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="nd">@router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">"/routes/optimize"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">optimize</span><span class="p">(</span><span class="o">...</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">asyncio</span><span class="o">.</span><span class="n">create_task</span><span class="p">(</span><span class="n">run_optimization</span><span class="p">(</span><span class="n">plan_id</span><span class="p">))</span>   <span class="c1"># task може зібрати GC, а виняток ніхто не побачить</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="p">{</span><span class="s2">"status"</span><span class="p">:</span> <span class="s2">"queued"</span><span class="p">}</span></code></pre></div>
+      <div class="callout info"><div class="ic">💡</div><div class="body"><span class="tag">Правило вибору</span><br>
+        Якщо втрата задачі при деплої або падінні процесу <b>неприйнятна</b>, якщо задача довша за кілька секунд або
+        її треба ретраїти — це черга (Celery у проєкті вже підключений, <a href="03-scaling.html">туторіал 3</a>).
+        Усе інше — <code>BackgroundTasks</code>.</div></div>
+    </section>
+
+    <!-- ============ 9 ============ -->
+    <section id="s9">
+      <h2><span class="num">09</span>Streaming, SSE, WebSocket</h2>
+      <p class="section-desc">Коли відповідь не вміщується в один JSON або має приходити поступово.</p>
+<div class="codecard good"><div class="bar"><span class="path">StreamingResponse: експорт CSV без завантаження всього в пам'ять</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/deliveries/export.csv"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">export_csv</span><span class="p">(</span><span class="n">session</span><span class="p">:</span> <span class="n">DbSession</span><span class="p">,</span> <span class="n">user</span><span class="p">:</span> <span class="n">CurrentUser</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">StreamingResponse</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">rows</span><span class="p">():</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">yield</span> <span class="s2">"id,customer,address</span><span class="se">\n</span><span class="s2">"</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">stmt</span> <span class="o">=</span> <span class="n">select</span><span class="p">(</span><span class="n">Delivery</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Delivery</span><span class="o">.</span><span class="n">organization_id</span> <span class="o">==</span> <span class="n">user</span><span class="o">.</span><span class="n">organization_id</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">stream_scalars</span><span class="p">(</span><span class="n">stmt</span><span class="o">.</span><span class="n">execution_options</span><span class="p">(</span><span class="n">yield_per</span><span class="o">=</span><span class="mi">500</span><span class="p">))</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">async</span> <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="n">result</span><span class="p">:</span>                 <span class="c1"># серверний курсор: по 500 рядків</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="k">yield</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">d</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">d</span><span class="o">.</span><span class="n">customer_name</span><span class="si">}</span><span class="s2">,</span><span class="si">{</span><span class="n">d</span><span class="o">.</span><span class="n">address</span><span class="si">}</span><span class="se">\n</span><span class="s2">"</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">StreamingResponse</span><span class="p">(</span><span class="n">rows</span><span class="p">(),</span> <span class="n">media_type</span><span class="o">=</span><span class="s2">"text/csv"</span><span class="p">)</span></code></pre></div>
+      <ul>
+        <li><b>SSE</b> (<code>text/event-stream</code>) — односпрямований потік від сервера: прогрес оптимізації
+          маршрутів, токени LLM. Простіше за WebSocket, працює поверх звичайного HTTP і сам перепідключається в
+          браузері (<code>EventSource</code>).</li>
+        <li><b>WebSocket</b> (<code>@router.websocket</code>) — двосторонній канал: чат, live-трекінг водія.
+          Залежності працюють, але <code>HTTPException</code> — ні; закривають через
+          <code>websocket.close(code=1008)</code>.</li>
+        <li>На кількох інстансах для розсилки подій потрібен спільний брокер (Redis Pub/Sub,
+          <a href="20-redis.html">туторіал 20</a>).</li>
+      </ul>
+    </section>
+
+    <!-- ============ 10 ============ -->
+    <section id="s10">
+      <h2><span class="num">10</span>Безпека в FastAPI</h2>
+      <p class="section-desc">Що з безпеки дає сам фреймворк, а що доводиться робити руками.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Задача</th><th>Як у проєкті</th></tr></thead>
+        <tbody>
+          <tr><td>Дістати bearer-токен</td><td><code>OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")</code>; кнопка Authorize у Swagger</td></tr>
+          <tr><td>Автентифікація</td><td>JWT access/refresh з полем <code>type</code>; bcrypt для паролів</td></tr>
+          <tr><td>Авторизація (ролі)</td><td><code>require_admin</code> на роутері квантових ендпоінтів</td></tr>
+          <tr><td>Ізоляція тенантів (IDOR)</td><td><code>TenantScopedRepository</code>: <code>organization_id</code> з токена, а не з запиту</td></tr>
+          <tr><td>Rate limiting</td><td>Залежності <code>login_rate_limiter</code>, <code>forgot_password_rate_limiter</code></td></tr>
+          <tr><td>Скидання пароля</td><td>одноразовий JWT з відбитком хешу пароля (<code>pwd</code>), TTL 30 хв</td></tr>
+          <tr><td>Не злити зайве</td><td><code>response_model</code> + загальний handler для 500</td></tr>
+        </tbody>
+      </table></div>
+      <p class="deeper">Глибше: <a href="02-async-and-security.html">2 · Безпека</a>, <a href="22-multi-tenancy-saas.html">22 · Multi-tenancy</a>.</p>
+    </section>
+
+    <!-- ============ 11 ============ -->
+    <section id="s11">
+      <h2><span class="num">11</span>Тестування</h2>
+      <p class="section-desc">FastAPI тестують через ASGI напряму, без справжнього сервера і мережі.</p>
+<div class="codecard"><div class="bar"><span class="path">app/tests/conftest.py (main, спрощено)</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">def</span><span class="w"> </span><span class="nf">client</span><span class="p">(</span><span class="n">db_session</span><span class="p">,</span> <span class="n">test_user</span><span class="p">:</span> <span class="n">User</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TestClient</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_override_get_db</span><span class="p">():</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">yield</span> <span class="n">db_session</span>                     <span class="c1"># SQLite in-memory замість Postgres</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_override_get_current_user</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">User</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">return</span> <span class="n">test_user</span>                     <span class="c1"># без справжнього JWT</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">app</span><span class="o">.</span><span class="n">dependency_overrides</span><span class="p">[</span><span class="n">get_db</span><span class="p">]</span> <span class="o">=</span> <span class="n">_override_get_db</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">app</span><span class="o">.</span><span class="n">dependency_overrides</span><span class="p">[</span><span class="n">get_current_user</span><span class="p">]</span> <span class="o">=</span> <span class="n">_override_get_current_user</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">try</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">yield</span> <span class="n">TestClient</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">finally</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">app</span><span class="o">.</span><span class="n">dependency_overrides</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">get_db</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">app</span><span class="o">.</span><span class="n">dependency_overrides</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">get_current_user</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></code></pre></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th></th><th><code>TestClient</code></th><th><code>httpx.AsyncClient(transport=ASGITransport(app))</code></th></tr></thead>
+        <tbody>
+          <tr><td>Тести</td><td>синхронні</td><td><code>async def</code> + pytest-asyncio</td></tr>
+          <tr><td>Event loop</td><td>свій, в окремому потоці (anyio portal)</td><td>той самий, що й у тесті</td></tr>
+          <tr><td>Lifespan</td><td>тільки в <code>with TestClient(app) as c:</code></td><td>не запускає; потрібен <code>asgi-lifespan</code></td></tr>
+          <tr><td>Пастка</td><td>async-фікстура з іншого loop → «attached to a different loop»</td><td>—</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body"><span class="tag">Чесно про SQLite у тестах</span><br>
+        Швидко, але це не Postgres: немає <code>SELECT … FOR UPDATE</code>, інша поведінка типів і транзакцій,
+        немає частина індексів. Для запитів, де важлива семантика Postgres (локи, <code>ON CONFLICT</code>, JSONB),
+        потрібні інтеграційні тести на справжньому Postgres (testcontainers або сервіс у CI).</div></div>
+      <p class="deeper">Глибше: <a href="23-testing-cicd-monitoring-cloud.html">23 · Тести, CI/CD</a>.</p>
+    </section>
+
+    <!-- ============ 12 ============ -->
+    <section id="s12">
+      <h2><span class="num">12</span>Продуктивність і деплой</h2>
+      <p class="section-desc">Скільки воркерів, як рахувати з'єднання до БД і що профілювати першим.</p>
+      <h3>12.1 Воркери</h3>
+      <ul>
+        <li>Один процес Uvicorn = один event loop = одне ядро для Python-коду (GIL). Щоб використати N ядер, запускають
+          N процесів: <code>uvicorn --workers N</code> або gunicorn з uvicorn-воркерами.</li>
+        <li>Стартова формула для I/O-bound API: <b>воркерів ≈ кількість ядер</b> (не <code>2×CPU+1</code>, як для
+          sync WSGI, бо async-воркер і так тримає тисячі з'єднань).</li>
+        <li>У Kubernetes частіше <b>1 воркер на под</b> і масштабування подами: простіше лімітувати пам'ять і бачити
+          метрики (<a href="27-kubernetes.html">туторіал 27</a>).</li>
+        <li>У проєкті: Fly <code>shared-cpu-1x</code>, 512 MB, один процес <code>uvicorn app.main:app</code>.
+          Для такого розміру це правильно; масштабування — машинами Fly.</li>
+      </ul>
+      <h3>12.2 Арифметика з'єднань</h3>
+      <div class="callout bad"><div class="ic">🧮</div><div class="body"><span class="tag">Класична аварія</span><br>
+        3 машини × 4 воркери × (<code>pool_size</code> 5 + <code>max_overflow</code> 10) = до <b>180 з'єднань</b>,
+        а в Postgres <code>max_connections=100</code>. Під піком нові запити отримують
+        «too many connections». Рішення: зменшити пул, поставити PgBouncer, порахувати бюджет
+        (<a href="32-postgres-performance.html">туторіал 32, розділ 08</a>).</div></div>
+      <h3>12.3 Чек-лист швидкості</h3>
+      <ol>
+        <li><b>Спочатку виміряй</b>: p95/p99 latency по ендпоінтах, кількість SQL-запитів на запит (APM, Sentry,
+          <a href="26-sentry-monitoring.html">туторіал 26</a>). Профайлер на живому процесі — <code>py-spy</code>.</li>
+        <li>Найчастіший винуватець — <b>база</b>: N+1, відсутній індекс, OFFSET-пагінація, довгі транзакції.</li>
+        <li>Далі — <b>блокування event loop</b> (розділ 2) і зовнішні API без таймаутів.</li>
+        <li>Потім — серіалізація великих відповідей (розділ 4) і кешування (Redis, HTTP <code>ETag</code>/<code>Cache-Control</code>).</li>
+        <li><code>uvicorn[standard]</code> вже підтягує <code>uvloop</code> і <code>httptools</code> (так і є в проєкті).</li>
+      </ol>
+    </section>
+
+    <!-- ============ 13 ============ -->
+    <section id="s13">
+      <h2><span class="num">13</span>Структура великого проєкту</h2>
+      <p class="section-desc">Як FastAPI-код не перетворюється на один <code>main.py</code> на 3000 рядків.</p>
+      <ul>
+        <li><b>Шари:</b> <code>api/</code> (тонкі роутери) → <code>services/</code> (бізнес-логіка) →
+          <code>repositories/</code> (SQL) → <code>db/models</code>. Схеми — окремо в <code>schemas/</code>
+          (<a href="01-architecture.html">туторіал 1</a>).</li>
+        <li><b>Роутер на домен</b> з <code>APIRouter(tags=[...])</code>, підключений з префіксом
+          <code>/api/v1/...</code> — версіонування на рівні шляху.</li>
+        <li><b>Конфіг</b> через <code>pydantic-settings</code> + <code>@lru_cache get_settings()</code>: один об'єкт
+          на процес і легка підміна в тестах.</li>
+        <li><b>App factory</b> <code>create_app()</code> (як у проєкті) — можна зібрати застосунок з іншими
+          налаштуваннями для тестів.</li>
+        <li><b>Не тягнути FastAPI в сервіси</b>: сервіс кидає доменний виняток, а не <code>HTTPException</code> —
+          тоді його можна викликати з Celery-задачі чи CLI-скрипта (як <code>app/scripts/set_user_role.py</code>).</li>
+      </ul>
+    </section>
+
+    <!-- ============ QA ============ -->
+    <section id="qa">
+      <h2><span class="num">14</span>20 питань співбесіди</h2>
+      <p class="section-desc">Спочатку відповідай уголос, потім відкривай.</p>
+
+      <details class="qa"><summary><span class="qnum">01</span>Чим FastAPI відрізняється від Flask і Django REST Framework?</summary><div class="a">
+        <p>FastAPI — ASGI (async з коробки), валідація і документація генеруються з type hints через Pydantic, DI вбудований.
+        Flask — WSGI, мінімалістичний, валідація і DI — сторонніми бібліотеками. DRF — частина Django: ORM, адмінка,
+        серіалізатори, багато «батарейок», async обмежений. Вибір: FastAPI — API-сервіси і I/O-heavy; Django — продукт
+        з адмінкою і великою кількістю CRUD.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">02</span>Що буде, якщо в <code>async def</code> ендпоінті викликати <code>time.sleep(5)</code>?</summary><div class="a">
+        <p>Event loop процесу зупиниться на 5 секунд: усі інші запити цього воркера чекають, навіть health-check.
+        Рішення: <code>await asyncio.sleep</code>, async-бібліотека, <code>def</code>-ендпоінт або
+        <code>asyncio.to_thread</code>.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">03</span>Чому <code>def</code>-ендпоінт не блокує сервер, а <code>async def</code> із блокуючим кодом — блокує?</summary><div class="a">
+        <p>FastAPI виконує <code>def</code>-ендпоінти в threadpool (anyio, 40 потоків), тож loop вільний.
+        <code>async def</code> виконується прямо в loop: усе, що всередині не <code>await</code>, займає його
+        повністю.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">04</span>Скільки разів виконається залежність, яку використовують три інші залежності в одному запиті?</summary><div class="a">
+        <p>Один раз: результат кешується на запит (<code>use_cache=True</code>). Між запитами кешу немає. Вимкнути
+        можна через <code>Depends(dep, use_cache=False)</code>.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">05</span>Як зробити, щоб усі записи в межах одного запиту були атомарні?</summary><div class="a">
+        <p>Сесія-на-запит у yield-залежності: commit після <code>yield</code>, rollback у <code>except</code>.
+        Репозиторії не комітять самі, лише <code>flush</code>. Зовнішні виклики (HTTP, email) — після commit або
+        через outbox, щоб не тримати транзакцію відкритою.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">06</span>Навіщо <code>response_model</code>, якщо є анотація повернення?</summary><div class="a">
+        <p>Анотація повернення в нових версіях і є response_model. Явний параметр потрібен, коли хендлер повертає
+        інший тип (ORM-об'єкт, dict), а у відповіді має бути схема, або для опцій
+        <code>response_model_exclude_unset</code> тощо. Головне — фільтрація полів (не злити
+        <code>hashed_password</code>).</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">07</span>Чим 422 відрізняється від 400, і як змінити формат помилок валідації?</summary><div class="a">
+        <p>422 — запит синтаксично коректний, але не проходить валідацію схеми; 400 — загальна «погана заявка»
+        (часто бізнес-правило). Формат змінюють власним handler'ом на <code>RequestValidationError</code>, як у
+        <code>app/core/error_handlers.py</code>.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">08</span>Де ініціалізувати пул БД або HTTP-клієнт?</summary><div class="a">
+        <p>У <code>lifespan</code> (або на рівні модуля, але тоді з закриттям на shutdown). Не в запиті. Пам'ятати, що
+        lifespan виконується в кожному воркер-процесі окремо.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">09</span>BackgroundTasks vs Celery?</summary><div class="a">
+        <p>BackgroundTasks — у тому ж процесі після відповіді, без ретраїв і без гарантій при рестарті. Celery — окремі
+        воркери, брокер, ретраї, розклад, моніторинг. Email-підтвердження — BackgroundTasks; оптимізація 500 точок —
+        Celery.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">10</span>Чому <code>BaseHTTPMiddleware</code> вважають повільним і проблемним?</summary><div class="a">
+        <p>Він обгортає виклик у додаткові таски і стріми, що дає оверхед і історично проблеми зі streaming та
+        contextvars. Для гарячого шляху пишуть чисте ASGI-middleware (<code>__call__(scope, receive, send)</code>).</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">11</span>У якому порядку виконуються middleware?</summary><div class="a">
+        <p>Останній доданий через <code>add_middleware</code> — зовнішній: він першим бачить запит і останнім —
+        відповідь.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">12</span>Як протестувати ендпоінт без справжньої БД та авторизації?</summary><div class="a">
+        <p><code>app.dependency_overrides[get_db] = ...</code>, <code>[get_current_user] = ...</code>; потім
+        <code>TestClient</code> або <code>httpx.AsyncClient(transport=ASGITransport(app=app))</code>. Не забути
+        прибрати overrides після тесту.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">13</span>Скільки воркерів Uvicorn ставити і чому не <code>2×CPU+1</code>?</summary><div class="a">
+        <p>Формула <code>2×CPU+1</code> — для sync-воркерів, які блокуються на I/O. Async-воркер обслуговує багато
+        запитів одночасно, тож старт — ≈ кількість ядер, далі за метриками (CPU, latency, пам'ять). І порахувати
+        з'єднання до БД: воркери × пул.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">14</span>Як віддати файл на 2 ГБ або CSV на мільйон рядків?</summary><div class="a">
+        <p><code>FileResponse</code> для файлу з диска; <code>StreamingResponse</code> з async-генератором і серверним
+        курсором (<code>stream_scalars</code> + <code>yield_per</code>) для даних з БД. Краще — згенерувати у фоні,
+        покласти в S3 і віддати presigned URL.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">15</span>Чим <code>Depends</code> відрізняється від <code>Security</code>?</summary><div class="a">
+        <p><code>Security</code> — це <code>Depends</code> з параметром <code>scopes</code>: OAuth2-скоупи потрапляють
+        у <code>SecurityScopes</code> і в OpenAPI. Для простих ролей, як у проєкті, досить <code>Depends</code>.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">16</span>Як обмежити розмір завантажуваного файлу?</summary><div class="a">
+        <p>На рівні проксі (<code>client_max_body_size</code> у nginx, ліміти платформи) і в коді: читати
+        <code>UploadFile</code> частинами й обривати після ліміту, перевіряти <code>Content-Length</code>.
+        <code>await file.read()</code> без ліміту, як в імпорті доставок, тримає весь файл у пам'яті.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">17</span>Чому на кількох воркерах in-memory rate limiter не працює?</summary><div class="a">
+        <p>Кожен процес має свій лічильник: з 4 воркерами ліміт фактично ×4, а з кількома машинами — ще більше.
+        Потрібне спільне сховище: атомарний <code>INCR</code> + TTL у Redis (<a href="20-redis.html">туторіал 20</a>).</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">18</span>Як зробити ідемпотентний POST (повторна відправка форми / ретрай клієнта)?</summary><div class="a">
+        <p>Клієнт шле заголовок <code>Idempotency-Key</code>; сервер зберігає ключ з результатом (унікальний індекс у
+        БД або Redis <code>SET NX</code>) і на повтор повертає той самий результат
+        (<a href="29-race-conditions.html">туторіал 29, розділ C</a>).</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">19</span>Як версіонувати API?</summary><div class="a">
+        <p>Найпоширеніше — префікс шляху (<code>/api/v1</code>, як у проєкті) з окремими роутерами на версію; рідше —
+        заголовок або media type. Головне — не ламати контракт у межах версії, deprecate через
+        <code>deprecated=True</code> в OpenAPI.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">20</span>Що б ти покращив у FastAPI-частині цього проєкту?</summary><div class="a">
+        <p>(1) <code>lifespan</code> з <code>engine.dispose()</code> і спільним <code>httpx.AsyncClient</code>;
+        (2) Unit of Work на запит замість commit у репозиторії; (3) пагінація на <code>GET /deliveries</code>;
+        (4) <code>Annotated</code>-аліаси залежностей; (5) rate limiter у Redis для кількох машин; (6) request-id
+        middleware і JSON-логи; (7) інтеграційні тести на Postgres поруч із SQLite.</p></div></details>
+    </section>
+
+    <!-- ============ tasks ============ -->
+    <section id="tasks">
+      <h2><span class="num">15</span>Задачі</h2>
+      <p class="section-desc">Спершу подумай, потім відкривай розв'язок.</p>
+
+      <div class="task"><div class="tt">Задача 1. Чому health-check падає під навантаженням?</div>
+<div class="codecard"><div class="bar"><span class="path">app/api/reports/router.py</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/reports/pdf"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">build_pdf</span><span class="p">(</span><span class="n">route_id</span><span class="p">:</span> <span class="n">uuid</span><span class="o">.</span><span class="n">UUID</span><span class="p">,</span> <span class="n">service</span><span class="p">:</span> <span class="n">RouteServiceDep</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">route</span> <span class="o">=</span> <span class="k">await</span> <span class="n">service</span><span class="o">.</span><span class="n">get_route_with_stops</span><span class="p">(</span><span class="n">route_id</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">pdf_bytes</span> <span class="o">=</span> <span class="n">render_pdf</span><span class="p">(</span><span class="n">route</span><span class="p">)</span>            <span class="c1"># reportlab, ~3 с CPU</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">Response</span><span class="p">(</span><span class="n">pdf_bytes</span><span class="p">,</span> <span class="n">media_type</span><span class="o">=</span><span class="s2">"application/pdf"</span><span class="p">)</span></code></pre></div>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <p><code>render_pdf</code> — синхронна CPU-робота всередині <code>async def</code>. На 3 секунди loop
+          заблокований, і <code>/health</code> не відповідає (у Fly таймаут 5 с, і два паралельні PDF уже валять
+          перевірку). Виправлення: <code>pdf_bytes = await asyncio.to_thread(render_pdf, route)</code>, а при
+          частих звітах — Celery і посилання на готовий файл.</p></div></details>
+      </div>
+
+      <div class="task"><div class="tt">Задача 2. Знайди проблему з транзакціями</div>
+<div class="codecard"><div class="bar"><span class="path">app/services/routes/service.py</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">assign_driver</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">route_id</span><span class="p">,</span> <span class="n">driver_id</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">route</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">routes</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">route_id</span><span class="p">,</span> <span class="n">driver_id</span><span class="o">=</span><span class="n">driver_id</span><span class="p">)</span>    <span class="c1"># commit всередині</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">drivers</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">driver_id</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="s2">"on_route"</span><span class="p">)</span>            <span class="c1"># commit всередині</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">notifier</span><span class="o">.</span><span class="n">send_sms</span><span class="p">(</span><span class="n">driver_id</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"New route </span><span class="si">{</span><span class="n">route_id</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>   <span class="c1"># зовнішній виклик</span></code></pre></div>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <ol>
+            <li>Два окремі commit'и: якщо другий упаде, маршрут призначено, а водій не в статусі
+              <code>on_route</code>. Потрібна одна транзакція (UoW у <code>get_db</code> або
+              <code>async with session.begin():</code>).</li>
+            <li>SMS всередині обробки запиту: повільний провайдер затримує відповідь, а при помилці SMS дані вже
+              збережено. Краще <code>BackgroundTasks</code> або outbox + Celery після commit.</li>
+          </ol></div></details>
+      </div>
+
+      <div class="task"><div class="tt">Задача 3. Що не так із цим middleware?</div>
+<div class="codecard"><div class="bar"><span class="path">app/main.py</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="nd">@app</span><span class="o">.</span><span class="n">middleware</span><span class="p">(</span><span class="s2">"http"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">log_body</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">call_next</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">body</span> <span class="o">=</span> <span class="k">await</span> <span class="n">request</span><span class="o">.</span><span class="n">body</span><span class="p">()</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"request </span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">body</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="k">await</span> <span class="n">call_next</span><span class="p">(</span><span class="n">request</span><span class="p">)</span></code></pre></div>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <ul>
+            <li>Логування тіла запиту — витік PII і паролів (<code>/auth/login</code>, <code>/reset-password</code>).</li>
+            <li>Весь body читається в пам'ять для кожного запиту, включно із завантаженням Excel.</li>
+            <li><code>BaseHTTPMiddleware</code> на кожен запит — зайвий оверхед; для логів краще чисте ASGI-middleware,
+              яке логує метод, шлях, статус, тривалість і request-id.</li>
+          </ul></div></details>
+      </div>
+
+      <div class="task"><div class="tt">Задача 4. Порахуй з'єднання</div>
+        <p>2 машини Fly, на кожній <code>uvicorn --workers 3</code>, плюс 2 Celery-воркери з concurrency 4.
+        SQLAlchemy з налаштуваннями за замовчуванням. У Postgres <code>max_connections=100</code>, з них 3
+        зарезервовано для суперкористувача. Чи вистачить?</p>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <p>API: 2 × 3 = 6 процесів × (5 + 10) = до 90. Celery (prefork): 2 × 4 = 8 процесів, у кожному свій engine:
+          до 8 × 15 = 120. Разом до 210 при доступних 97 — під піком не вистачить. Рішення:
+          <code>pool_size=5, max_overflow=0</code> для API, <code>NullPool</code> або пул 1–2 у Celery, а при рості —
+          PgBouncer у transaction mode (тоді <code>statement_cache_size=0</code>, як уже зроблено в
+          <code>app/db/session.py</code>).</p></div></details>
+      </div>
+    </section>
+
+    <!-- ============ cheat ============ -->
+    <section id="cheat">
+      <h2><span class="num">16</span>Шпаргалка</h2>
+      <div class="cheat"><table>
+        <thead><tr><th>Тема</th><th>Запам'ятати</th></tr></thead>
+        <tbody>
+          <tr><td>Стек</td><td>Uvicorn (сервер) → Starlette (ASGI) → FastAPI (DI, OpenAPI) → Pydantic (валідація)</td></tr>
+          <tr><td>async def</td><td>у loop; блокуюче всередині — блокує всіх</td></tr>
+          <tr><td>def</td><td>у threadpool (40 потоків), безпечно для sync-бібліотек</td></tr>
+          <tr><td>Depends</td><td>дерево, кеш на запит, yield = setup/teardown, overrides у тестах</td></tr>
+          <tr><td>response_model</td><td>фільтр полів + серіалізація; Response напряму — без валідації</td></tr>
+          <tr><td>Помилки</td><td>доменні винятки в сервісах, мапінг у handlers, один формат <code>detail</code></td></tr>
+          <tr><td>lifespan</td><td>клієнти й пули на процес; закривати на shutdown</td></tr>
+          <tr><td>Middleware</td><td>останній доданий — зовнішній; ASGI швидше за BaseHTTPMiddleware</td></tr>
+          <tr><td>Фон</td><td>BackgroundTasks — коротке; Celery — довге, важливе, з ретраями</td></tr>
+          <tr><td>Тести</td><td>dependency_overrides; TestClient або AsyncClient + ASGITransport</td></tr>
+          <tr><td>Воркери</td><td>≈ ядер; з'єднання = процеси × (pool_size + max_overflow)</td></tr>
+          <tr><td>Повільно?</td><td>виміряй → БД (N+1, індекси) → блокування loop → серіалізація → кеш</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Поведінка описана для FastAPI 0.11x / Starlette 0.4x / Pydantic v2 / Python 3.12. Код «з репозиторію» взято з гілки <code>main</code> <code>ai-delivery-planner-backend</code>; «покращені» варіанти — пропозиції, яких у репозиторії поки немає. Пов'язане: <a href="02-async-and-security.html">2 · Async &amp; безпека</a>, <a href="10-wsgi-asgi.html">10 · WSGI vs ASGI</a>, <a href="16-pydantic.html">16 · Pydantic</a>, <a href="32-postgres-performance.html">32 · Postgres: продуктивність</a>.
+</footer>
+
+<script>
+(function(){
+  var root = document.documentElement, btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function current(){
+    var t = root.getAttribute('data-theme');
+    return t === 'light' || t === 'dark' ? t : (mq && mq.matches ? 'dark' : 'light');
+  }
+  function render(){
+    var dark = current() === 'dark';
+    btn.textContent = dark ? '☀️ Світла тема' : '🌙 Темна тема';
+    btn.setAttribute('aria-label', dark ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('docs-theme', next); }catch(e){}
+    render();
+  });
+  if(mq && mq.addEventListener) mq.addEventListener('change', render);
+  render();
+})();
+</script>
+<script src="../assets/mobile-nav.js"></script>
+</body>
+</html>
+

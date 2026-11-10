@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>32. Postgres: продуктивність запитів — AI Delivery Planner</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27><polygon points=%2750,8 92,50 50,92 8,50%27 fill=%27white%27/></svg>">
+<script>
+(function(){
+  try{ var t = localStorage.getItem('docs-theme'); if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --bg:#ffffff; --bg-soft:#f6f7f9; --card:#ffffff; --border:#e3e6ea;
+    --fg:#1a1d23; --fg-muted:#5b6270;
+    --accent:#2f6feb; --accent-soft:#eaf1ff;
+    --code-bg:#1e2230; --code-fg:#e7eaf2; --code-muted:#8b93a7;
+    --good:#1a7f4b; --good-bg:#e8f7ee; --good-border:#b6e3c6;
+    --bad:#c0392b; --bad-bg:#fdecea; --bad-border:#f3c2bb;
+    --warn:#9a6700; --warn-bg:#fff6e5; --warn-border:#f0dca3;
+    --info:#2f6feb; --info-bg:#eaf1ff; --info-border:#c6dafc;
+    --fun:#0f8a8a; --fun-bg:#e6f7f7; --fun-border:#bfe8e8;
+    --interview:#7c3aed; --interview-bg:#f5f0ff; --interview-border:#ddd0fa;
+    --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+      --fg:#e7eaf2; --fg-muted:#9aa2b4;
+      --accent:#6d9bff; --accent-soft:#1c2740;
+      --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+      --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+      --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+      --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+      --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+      --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+      --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14161b; --bg-soft:#1b1e25; --card:#1b1e25; --border:#2b2f3a;
+    --fg:#e7eaf2; --fg-muted:#9aa2b4;
+    --accent:#6d9bff; --accent-soft:#1c2740;
+    --code-bg:#0e1016; --code-fg:#e7eaf2; --code-muted:#7c8494;
+    --good:#5fd08d; --good-bg:#12261c; --good-border:#255c3c;
+    --bad:#ff8a7a; --bad-bg:#301716; --bad-border:#6b2a25;
+    --warn:#f0c25a; --warn-bg:#2c2411; --warn-border:#5c4a1c;
+    --info:#7fb0ff; --info-bg:#131f33; --info-border:#28416b;
+    --fun:#5fd6d6; --fun-bg:#0f2626; --fun-border:#1f4d4d;
+    --interview:#c4a6ff; --interview-bg:#241a35; --interview-border:#4b3570;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; font-size:16px;
+  }
+  code, pre, .mono{font-family:"SF Mono",ui-monospace,"Fira Code",Consolas,"Cascadia Code",monospace;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--border);
+  }
+  .top-inner{
+    max-width:1180px; margin:0 auto; padding:14px 24px;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .brand{font-weight:700; font-size:15px; white-space:nowrap;}
+  .brand span{color:var(--accent);}
+
+  .toptabs{display:flex; flex-direction:column; gap:8px;}
+  .toptabs input.tab-radio{display:none;}
+  .tab-bar{display:flex; gap:8px; flex-wrap:wrap;}
+  .tab-btn{
+    cursor:pointer; user-select:none; padding:6px 14px; border-radius:999px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--bg-soft);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .tab-btn:hover{background:var(--card);}
+  #tab-project:checked ~ .tab-bar label[for="tab-project"],
+  #tab-interview:checked ~ .tab-bar label[for="tab-interview"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .tab-links{display:none; gap:6px; flex-wrap:wrap;}
+  #tab-project:checked ~ .tab-links.proj{display:flex;}
+  #tab-interview:checked ~ .tab-links.interview{display:flex;}
+  .tab-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:7px 12px; border-radius:999px; border:1px solid transparent;
+  }
+  .tab-links a:hover{background:var(--bg-soft); color:var(--fg);}
+  .tab-links a.active{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-soft); font-weight:600;}
+
+  .hero{max-width:1180px; margin:0 auto; padding:46px 24px 18px;}
+  .hero .kicker{
+    color:var(--accent); font-weight:700; font-size:13px; letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .hero h1{font-size:34px; margin:8px 0 10px; letter-spacing:-.02em;}
+  .hero p.lead{color:var(--fg-muted); font-size:17px; max-width:780px; margin:0;}
+  .hero .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;}
+  .hero .pill{
+    font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:999px;
+    background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent-soft);
+  }
+
+  .layout{
+    max-width:1440px; margin:0 auto; padding:20px 24px 100px;
+    display:flex; align-items:flex-start; gap:24px;
+  }
+  .nav-sidebar, aside.toc{flex-shrink:0;}
+  .nav-sidebar{width:180px;}
+  aside.toc{width:230px;}
+  .content-center{flex:1; min-width:0; display:flex; justify-content:center;}
+  .content-center > article{width:100%; max-width:760px;}
+  @media (max-width:900px){ .layout{flex-direction:column;}
+    .nav-sidebar, aside.toc{width:100%; position:static;}
+    .content-center{display:block;} }
+
+  .nav-sidebar{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:14px; display:flex; flex-direction:column; gap:4px;
+  }
+  .nav-sidebar input.tab-radio{display:none;}
+  .nav-tabbar{display:flex; flex-direction:column; gap:6px; margin-bottom:6px;}
+  .nav-tabbtn{
+    cursor:pointer; user-select:none; text-align:left; padding:8px 12px; border-radius:9px;
+    font-size:12.5px; font-weight:700; letter-spacing:.01em; color:var(--fg-muted);
+    border:1px solid var(--border); background:var(--card);
+    transition:background .15s, color .15s, border-color .15s;
+  }
+  .nav-tabbtn:hover{background:var(--bg);}
+  #tab-project:checked ~ .nav-tabbar label[for="tab-project"],
+  #tab-interview:checked ~ .nav-tabbar label[for="tab-interview"],
+  #tab-jsdoc:checked ~ .nav-tabbar label[for="tab-jsdoc"],
+  #tab-node:checked ~ .nav-tabbar label[for="tab-node"],
+  #tab-sysdesign:checked ~ .nav-tabbar label[for="tab-sysdesign"],
+  #tab-quantum:checked ~ .nav-tabbar label[for="tab-quantum"],
+  #tab-ai:checked ~ .nav-tabbar label[for="tab-ai"]{
+    background:var(--accent); color:#fff; border-color:var(--accent);
+  }
+  .nav-links{display:none; flex-direction:column; gap:2px;}
+  #tab-project:checked ~ .nav-links.proj{display:flex;}
+  #tab-interview:checked ~ .nav-links.interview{display:flex;}
+  #tab-jsdoc:checked ~ .nav-links.jsdoc{display:flex;}
+  #tab-node:checked ~ .nav-links.node{display:flex;}
+  #tab-quantum:checked ~ .nav-links.quantum{display:flex;}
+  #tab-ai:checked ~ .nav-links.ai{display:flex;}
+  #tab-sysdesign:checked ~ .nav-links.sysdesign{display:flex;}
+  .nav-links a{
+    text-decoration:none; color:var(--fg-muted); font-size:13px;
+    padding:6px 10px; border-radius:7px; line-height:1.3;
+  }
+  .nav-links a:hover{background:var(--card); color:var(--fg);}
+  .nav-links a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+
+  aside.toc{
+    position:sticky; top:74px; max-height:calc(100vh - 100px); overflow:auto;
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--bg-soft);
+    padding:16px;
+  }
+  aside.toc .toc-title{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted); font-weight:700; margin-bottom:10px;}
+  aside.toc ol{list-style:none; margin:0; padding:0;}
+  aside.toc li{margin:0 0 4px;}
+  aside.toc a{
+    display:block; text-decoration:none; color:var(--fg-muted); font-size:13.5px;
+    padding:6px 8px; border-radius:8px; line-height:1.35;
+  }
+  aside.toc a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-group{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; margin:14px 0 4px; padding:0 8px;}
+  aside.toc .toc-group:first-child{margin-top:0;}
+  aside.toc .toc-nav{list-style:none; margin:0 0 4px; padding:0;}
+  aside.toc .toc-nav li{margin:0 0 2px;}
+  aside.toc .toc-nav a{display:block; text-decoration:none; color:var(--fg-muted); font-size:13px; padding:5px 8px; border-radius:7px; line-height:1.3;}
+  aside.toc .toc-nav a:hover{background:var(--card); color:var(--fg);}
+  aside.toc .toc-nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+  aside.toc .toc-divider{height:1px; background:var(--border); margin:16px 0;}
+  aside.toc .toc-count{
+    float:right; font-size:11px; color:var(--fg-muted); background:var(--card);
+    border-radius:999px; padding:1px 6px; border:1px solid var(--border);
+  }
+
+  article section{margin-bottom:52px; scroll-margin-top:80px;}
+  article h2{
+    font-size:23px; margin:0 0 6px; display:flex; align-items:baseline; gap:10px;
+    letter-spacing:-.01em;
+  }
+  article h2 .num{color:var(--accent); font-variant-numeric:tabular-nums; font-size:16px;}
+  article h3{font-size:17px; margin:26px 0 8px;}
+  article p{color:var(--fg); margin:10px 0;}
+  article p.muted{color:var(--fg-muted);}
+  article ul, article ol{padding-left:22px;}
+  article li{margin:6px 0;}
+  .section-desc{color:var(--fg-muted); margin-top:2px; margin-bottom:18px;}
+
+  .card{
+    border:1px solid var(--border); border-radius:var(--radius); background:var(--card);
+    padding:18px 20px; margin:16px 0;
+  }
+
+  .codecard{
+    border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:12px 0 4px;
+    background:var(--code-bg);
+  }
+  .codecard .bar{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    padding:8px 14px; background:color-mix(in srgb, var(--code-bg) 80%, black 6%);
+    border-bottom:1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  }
+  .codecard .bar .path{color:var(--code-muted); font-size:12.5px;}
+  .codecard pre{margin:0; padding:16px; overflow:auto;}
+  .codecard code{color:var(--code-fg); font-size:13px; white-space:pre;}
+  .codecard code .tok-kw{color:#cc7832;}
+  .codecard code .tok-str{color:#6a8759;}
+  .codecard code .tok-num{color:#6897bb;}
+  .codecard code .tok-com{color:#7f7f7f; font-style:italic;}
+  .codecard code .tok-deco{color:#bbb529;}
+  .codecard code .tok-def{color:#ffc66d;}
+  .codecard code .tok-self{color:#c792ea;}
+  .cmt{color:#7c8494;}
+  .out{color:#f0c25a;}
+
+  .callout{
+    border-radius:var(--radius); border:1px solid; padding:14px 16px; margin:16px 0;
+    display:flex; gap:12px; align-items:flex-start; font-size:14.5px;
+  }
+  .callout .ic{font-size:17px; line-height:1.4;}
+  .callout.good{background:var(--good-bg); border-color:var(--good-border); color:var(--good);}
+  .callout.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad);}
+  .callout.warn{background:var(--warn-bg); border-color:var(--warn-border); color:var(--warn);}
+  .callout.info{background:var(--info-bg); border-color:var(--info-border); color:var(--info);}
+  .callout.fun{background:var(--fun-bg); border-color:var(--fun-border); color:var(--fun);}
+  .callout.interview{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .callout .body{color:var(--fg);}
+  .callout .body b{color:inherit;}
+  .callout .body .tag{
+    display:inline-block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    margin-bottom:4px;
+  }
+
+  table{width:100%; border-collapse:collapse; margin:16px 0; font-size:14px;}
+  th, td{text-align:left; padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top;}
+  th{color:var(--fg-muted); font-weight:600; font-size:12.5px; text-transform:uppercase; letter-spacing:.03em;}
+  tr:last-child td{border-bottom:none;}
+
+  .cheat{border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin:16px 0;}
+  .cheat table{margin:0;}
+  .cheat th{background:var(--bg-soft);}
+
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:18px 0;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; background:var(--bg-soft);}
+  .stat .k{font-size:12px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em;}
+  .stat .v{font-size:20px; font-weight:700; margin-top:4px;}
+
+  .part-divider{display:flex; align-items:center; gap:14px; margin:64px 0 40px;}
+  .part-divider .line{flex:1; height:1px; background:var(--border);}
+  .part-divider .label{
+    font-size:12.5px; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--accent); white-space:nowrap;
+  }
+
+  /* Q&A accordion */
+  .qa{border:1px solid var(--border); border-radius:12px; margin:10px 0; overflow:hidden; background:var(--card);}
+  .qa summary{
+    cursor:pointer; padding:14px 46px 14px 16px; font-weight:600; list-style:none;
+    position:relative; font-size:14.9px; display:flex; align-items:baseline; gap:10px;
+  }
+  .qa summary .qnum{
+    color:var(--accent); font-variant-numeric:tabular-nums; font-size:13px; font-weight:700;
+    flex-shrink:0;
+  }
+  .qa summary::-webkit-details-marker{display:none;}
+  .qa summary::after{
+    content:"+"; color:var(--fg-muted); font-size:19px; position:absolute; right:16px; top:50%;
+    transform:translateY(-56%); font-weight:400;
+  }
+  .qa[open] summary::after{content:"–";}
+  .qa summary:hover{background:var(--bg-soft);}
+  .qa .a{padding:0 16px 18px 16px; color:var(--fg-muted); font-size:14.3px; border-top:1px solid var(--border); padding-top:12px;}
+  .qa .a b{color:var(--fg);}
+  .qa .a code{color:var(--fg);}
+  .qa .a p{margin:8px 0; color:var(--fg-muted);}
+  .qa .a p:first-child{margin-top:0;}
+  .qa .checks{
+    margin-top:10px; padding:10px 12px; border-radius:9px; background:var(--interview-bg);
+    border:1px solid var(--interview-border); font-size:13.2px; color:var(--interview);
+  }
+  .qa .checks b{color:var(--interview);}
+  .qa .difficulty{
+    display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:999px;
+    margin-right:2px; vertical-align:middle; flex-shrink:0;
+  }
+  .qa .difficulty.trick{background:var(--interview-bg); color:var(--interview); border:1px solid var(--interview-border);}
+  .qa .difficulty.core{background:var(--info-bg); color:var(--info); border:1px solid var(--info-border);}
+  .qa .difficulty.adv{background:var(--fun-bg); color:var(--fun); border:1px solid var(--fun-border);}
+  .qa .difficulty.sys{background:var(--good-bg); color:var(--good); border:1px solid var(--good-border);}
+
+  .cat-head{
+    display:flex; align-items:center; gap:12px; margin-bottom:4px;
+  }
+  .cat-letter{
+    width:34px; height:34px; border-radius:10px; background:var(--accent-soft); color:var(--accent);
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; flex-shrink:0;
+  }
+
+  .legend{display:flex; gap:10px; flex-wrap:wrap; margin:14px 0 6px;}
+  .legend span{font-size:12.5px; color:var(--fg-muted); display:flex; align-items:center; gap:6px;}
+  .legend .dot{width:9px; height:9px; border-radius:50%;}
+
+  figure.diagram{
+    margin:20px 0; padding:20px 20px 16px; border:1px solid var(--border); border-radius:var(--radius);
+    background:var(--bg-soft);
+  }
+  figure.diagram svg{display:block; width:100%; height:auto; max-width:720px; margin:0 auto; color:var(--fg);}
+  figure.diagram svg text{font-family:inherit;}
+  figure.diagram figcaption{
+    margin-top:12px; font-size:13px; color:var(--fg-muted); text-align:center; line-height:1.5;
+  }
+
+  footer.page{
+    max-width:1180px; margin:0 auto; padding:20px 24px 60px; color:var(--fg-muted); font-size:13.5px;
+    border-top:1px solid var(--border); margin-top:20px; padding-top:24px;
+  }
+  footer.page a{color:var(--accent); text-decoration:none;}
+
+  /* --- theme switch --- */
+  :root{color-scheme:light;}
+  .top-row{display:flex; align-items:center; justify-content:space-between; gap:12px;}
+  .theme-toggle{
+    cursor:pointer; flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:6px 12px; border-radius:999px; border:1px solid var(--border);
+    background:var(--bg-soft); color:var(--fg); font:inherit; font-size:12.5px; font-weight:600;
+    transition:background .15s, border-color .15s;
+  }
+  .theme-toggle:hover{background:var(--card); border-color:var(--accent);}
+  .theme-toggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+
+  /* --- tutorial 28: databases by example --- */
+  :root{ --pg:#336791; --mongo:#13aa52; --redis:#d82c20; --cass:#1287b1; --ch:#b38f00; --es:#d63f86; --neo:#3d72b0; }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){ --pg:#6fa3d6; --mongo:#4fd18a; --redis:#ff7a6e; --cass:#5cc3e8; --ch:#f0cf4a; --es:#ff8cc3; --neo:#86b2ec; }
+  }
+  :root[data-theme="dark"]{ --pg:#6fa3d6; --mongo:#4fd18a; --redis:#ff7a6e; --cass:#5cc3e8; --ch:#f0cf4a; --es:#ff8cc3; --neo:#86b2ec; }
+  .content-center > article{max-width:820px;}
+  article h4{font-size:15.5px; margin:20px 0 6px;}
+  .tablewrap{overflow-x:auto; margin:16px 0;}
+  .tablewrap table{margin:0;}
+  td.c{text-align:center; white-space:nowrap;}
+  .y{color:var(--good); font-weight:700;} .m{color:var(--warn); font-weight:700;} .n{color:var(--bad); font-weight:700;}
+  .callout.fe{background:var(--interview-bg); border-color:var(--interview-border); color:var(--interview);}
+  .verdict{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0;}
+  @media (max-width:640px){ .verdict{grid-template-columns:1fr;} }
+  .verdict > div{border-radius:var(--radius); padding:12px 14px; border:1px solid; font-size:14.3px;}
+  .verdict .win{background:var(--good-bg); border-color:var(--good-border);}
+  .verdict .lose{background:var(--bad-bg); border-color:var(--bad-border);}
+  .verdict .t{font-weight:700; display:block; margin-bottom:4px;}
+  .verdict .win .t{color:var(--good);} .verdict .lose .t{color:var(--bad);}
+  .verdict ul{margin:4px 0 0; padding-left:18px;} .verdict li{margin:3px 0;}
+  .dbhead{display:flex; align-items:center; gap:12px; margin-bottom:4px;}
+  .dbbadge{width:38px; height:38px; border-radius:10px; color:#fff; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px;}
+  .qlist{list-style:none; padding:0;}
+  .qlist li{border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin:8px 0; background:var(--card);}
+  .qlist li b.q{color:var(--accent); margin-right:6px;}
+  figure.db{margin:20px 0;}
+  figure.db svg{width:100%; height:auto; display:block; border:1px solid var(--border); border-radius:var(--radius); background:var(--card);}
+  figure.db figcaption{font-size:13px; color:var(--fg-muted); text-align:center; margin-top:6px;}
+  figure.db svg text{fill:var(--fg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+  figure.db svg .mut{fill:var(--fg-muted);}
+  figure.db svg .box{fill:var(--bg-soft); stroke:var(--border); stroke-width:1.5;}
+  figure.db svg .ln{stroke:var(--fg-muted); stroke-width:1.4; fill:none;}
+  figure.db svg .ar{fill:var(--fg-muted);}
+  figure.db svg .mono{font-family:"SF Mono",ui-monospace,Menlo,monospace;}
+  .task{border:1px solid var(--interview-border); background:var(--interview-bg); border-radius:var(--radius); padding:14px 16px; margin:16px 0;}
+  .task .tt{font-weight:700; color:var(--interview);}
+  details.ans{border:1px solid var(--border); border-radius:10px; background:var(--card); margin:10px 0 0;}
+  details.ans summary{cursor:pointer; padding:10px 14px; font-weight:600; font-size:14.5px;}
+  details.ans .a{padding:4px 16px 14px; border-top:1px solid var(--border); font-size:14.5px;}
+  .deeper{font-size:13.5px; color:var(--fg-muted); margin-top:8px;}
+  .deeper a{color:var(--accent);}
+
+  /* --- tutorial 30: code review --- */
+  .sev{display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; padding:1px 7px; border-radius:999px; border:1px solid; margin-right:4px; vertical-align:1px; white-space:nowrap;}
+  .sev.crit{background:var(--bad-bg); color:var(--bad); border-color:var(--bad-border);}
+  .sev.high{background:var(--warn-bg); color:var(--warn); border-color:var(--warn-border);}
+  .sev.med{background:var(--info-bg); color:var(--info); border-color:var(--info-border);}
+  .sev.low{background:var(--bg-soft); color:var(--fg-muted); border-color:var(--border);}
+  .lvlbadge{font-size:12px; font-weight:700; padding:2px 10px; border-radius:999px; border:1px solid var(--border); color:var(--fg-muted); background:var(--bg-soft); white-space:normal;}
+  .lvlbadge.l1{color:var(--good); border-color:var(--good-border); background:var(--good-bg);}
+  .lvlbadge.l2{color:var(--info); border-color:var(--info-border); background:var(--info-bg);}
+  .lvlbadge.l3, .lvlbadge.l4{color:var(--warn); border-color:var(--warn-border); background:var(--warn-bg);}
+  .lvlbadge.l5{color:var(--bad); border-color:var(--bad-border); background:var(--bad-bg);}
+  article h2 .lvlbadge{margin-left:4px;}
+  article h2{flex-wrap:wrap;}
+  .codecard.bad{border-color:var(--bad-border);}
+  .codecard.good{border-color:var(--good-border);}
+  .codecard.bad .bar .path{color:#ff9b8f;}
+  .codecard.good .bar .path{color:#7fe0a5;}
+  details.issues{border:1px solid var(--border); border-radius:10px; background:var(--card); margin:12px 0 16px;}
+  details.issues > summary{cursor:pointer; padding:11px 14px; font-weight:600; font-size:14.5px;}
+  details.issues > .a{padding:6px 16px 14px; border-top:1px solid var(--border); font-size:14.5px;}
+  .issue-list{padding-left:20px;}
+  .issue-list li{margin:8px 0;}
+
+  /* --- JetBrains New UI "Dark" scheme (WebStorm / PyCharm 2023+ default); tokens from Pygments --- */
+  .codecard:has(pre.jb){background:#1E1F22; border-color:#393B40;}
+  .codecard.bad:has(pre.jb){box-shadow:inset 3px 0 0 #F75464;}
+  .codecard.good:has(pre.jb){box-shadow:inset 3px 0 0 #5FB865;}
+  .codecard:has(pre.jb) .bar{background:#2B2D30; border-bottom:1px solid #1E1F22;}
+  .codecard:has(pre.jb) .bar .path{color:#DFE1E5; font-family:"JetBrains Mono","SF Mono",ui-monospace,Menlo,monospace; font-size:12.5px;}
+  pre.jb{counter-reset:jbln; padding:12px 16px 12px 0 !important; background:#1E1F22;}
+  pre.jb code{color:#BCBEC4; font-family:"JetBrains Mono","SF Mono",ui-monospace,Menlo,Consolas,monospace; font-size:13px; line-height:1.6;}
+  /* Pygments' short classes (.n, .m) collide with page classes like .n{font-weight:700} */
+  pre.jb code span{font-weight:400; font-style:normal;}
+  pre.jb .jb-ln{counter-increment:jbln; user-select:none; -webkit-user-select:none;}
+  pre.jb .jb-ln::before{
+    content:counter(jbln); display:inline-block; width:3.2em; padding-right:1.2em; margin-right:.6em; text-align:right;
+    color:#4B5059; background:#1E1F22;
+  }
+  /* keywords, word operators (and/or/not/in/is), string prefixes, escapes, f-string braces */
+  pre.jb .k, pre.jb .kn, pre.jb .kc, pre.jb .kd, pre.jb .kr, pre.jb .kp, pre.jb .ow,
+  pre.jb .sa, pre.jb .se, pre.jb .si{color:#CF8E6D;}
+  pre.jb .s, pre.jb .s1, pre.jb .s2, pre.jb .sb, pre.jb .sc, pre.jb .sh, pre.jb .sx, pre.jb .sr{color:#6AAB73;}
+  pre.jb .sd{color:#5F826B; font-style:italic;}
+  pre.jb .m, pre.jb .mi, pre.jb .mf, pre.jb .mh, pre.jb .mo, pre.jb .mb{color:#2AACB8;}
+  pre.jb .c, pre.jb .c1, pre.jb .cm, pre.jb .ch, pre.jb .cs{color:#7A7E85;}
+  pre.jb .nf{color:#56A8F5;}
+  pre.jb .fm{color:#B200B2;}
+  pre.jb .nd{color:#B3AE60;}
+  pre.jb .nb, pre.jb .ne{color:#8888C6;}
+  pre.jb .bp{color:#94558D;}
+  pre.jb .nc, pre.jb .nn, pre.jb .n, pre.jb .nv, pre.jb .o, pre.jb .p, pre.jb .w{color:#BCBEC4;}
+  pre.jb .err{color:#F75464; background:none;}
+</style>
+<link rel="stylesheet" href="../assets/mobile-nav.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="top-row">
+      <div class="brand">🐍 Python для фронтендера <span>· AI Delivery Planner backend</span></div>
+      <button type="button" class="theme-toggle" id="theme-toggle">🌙 Темна тема</button>
+    </div>
+  </div>
+</header>
+
+
+<div class="hero">
+  <div class="kicker">Туторіал 32 · PostgreSQL and data performance</div>
+  <h1>PostgreSQL і продуктивність даних: від EXPLAIN до пулу з'єднань</h1>
+  <p class="lead">
+    Друга тема співбесіди — «PostgreSQL and data performance». Тут питають не «що таке індекс», а <b>«запит повільний — що ти робиш»</b>: читаєш план, бачиш Seq Scan і хибну оцінку рядків, обираєш правильний індекс (B-tree, GIN, BRIN, частковий, покривний), прибираєш N+1, переводиш пагінацію з OFFSET на keyset, рахуєш пул з'єднань і накочуєш індекс на живу таблицю без простою. Усе — на реальній схемі цього проєкту, де вже є що оптимізувати.
+  </p>
+  <div class="pills">
+    <span class="pill">🔍 EXPLAIN ANALYZE</span>
+    <span class="pill">🌳 Типи індексів</span>
+    <span class="pill">🧬 N+1 і ORM</span>
+    <span class="pill">📄 Keyset-пагінація</span>
+    <span class="pill">🔌 Пули й PgBouncer</span>
+    <span class="pill">🚧 Міграції без простою</span>
+    <span class="pill">📊 pg_stat_statements</span>
+    <span class="pill">🎯 20 питань</span>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="nav-sidebar">
+    <input type="radio" name="topgroup" id="tab-project" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-interview" class="tab-radio" checked>
+    <input type="radio" name="topgroup" id="tab-sysdesign" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-jsdoc" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-node" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-quantum" class="tab-radio">
+    <input type="radio" name="topgroup" id="tab-ai" class="tab-radio">
+    <div class="nav-tabbar">
+      <label for="tab-project" class="nav-tabbtn">📁 Про проєкт</label>
+      <label for="tab-interview" class="nav-tabbtn">🐍 Python Doc</label>
+      <label for="tab-sysdesign" class="nav-tabbtn">🏗️ System Design</label>
+      <label for="tab-jsdoc" class="nav-tabbtn">📚 JS Doc</label>
+      <label for="tab-node" class="nav-tabbtn">🟢 Node.js</label>
+      <label for="tab-quantum" class="nav-tabbtn">⚛️ Квантове</label>
+      <label for="tab-ai" class="nav-tabbtn">🤖 Робота з AI</label>
+    </div>
+      <nav class="nav-links proj">
+        <a href="00-backend-from-scratch.html">0. Бекенд з нуля: гайд</a>
+        <a href="01-architecture.html">1. Архітектура</a>
+        <a href="02-async-and-security.html">2. Async &amp; Безпека</a>
+        <a href="03-scaling.html">3. Масштабування</a>
+      </nav>
+      <nav class="nav-links interview">
+        <a href="04-python-types.html">4. Типи</a>
+        <a href="05-classes-decorators-syntax.html">5. Класи &amp; цукор</a>
+        <a href="06-gil-and-concurrency.html">6. GIL &amp; Конкурентність</a>
+        <a href="07-generators-iterators-exceptions.html">7. Генератори &amp; Винятки</a>
+        <a href="08-stdlib-utilities.html">8. Утиліти stdlib</a>
+        <a href="09-memory-management.html">9. Пам'ять &amp; GC</a>
+        <a href="10-wsgi-asgi.html">10. WSGI vs ASGI</a>
+        <a href="11-logging.html">11. Логування</a>
+        <a href="12-packaging-and-dependencies.html">12. Пакування</a>
+        <a href="13-design-patterns.html">13. Патерни</a>
+        <a href="14-oop-and-solid.html">14. ООП &amp; SOLID</a>
+        <a href="15-serialization-and-numbers.html">15. Серіалізація &amp; числа</a>
+        <a href="16-pydantic.html">16. Pydantic</a>
+        <a href="21-route-optimization-or-tools.html">21. OR-Tools &amp; VRP</a>
+        <a href="22-multi-tenancy-saas.html">22. Multi-tenancy</a>
+        <a href="23-testing-cicd-monitoring-cloud.html">23. Тести, CI/CD, моніторинг</a>
+        <a href="24-senior-interview-qa.html">24. 74 питання Senior</a>
+        <a href="25-system-design.html">25. Системний дизайн</a>
+        <a href="26-sentry-monitoring.html">26. Sentry: моніторинг</a>
+        <a href="27-kubernetes.html">27. Kubernetes</a>
+        <a href="30-code-review.html">30. Code Review</a>
+        <a href="31-fastapi-deep-dive.html">31. FastAPI углиб</a>
+        <a href="17-databases-fundamentals.html">17. 🗄️ Бази даних: основи</a>
+        <a href="18-databases-interview-qa.html">18. 🗄️ Бази даних: Q&amp;A</a>
+        <a href="19-postgres-storage-and-memory.html">19. 🗄️ Postgres storage &amp; пам'ять</a>
+        <a href="20-redis.html">20. 🗄️ Redis</a>
+        <a href="28-databases-by-example.html">28. 🗄️ Бази даних на прикладі</a>
+        <a href="29-race-conditions.html">29. 🗄️ Race conditions</a>
+        <a href="32-postgres-performance.html" class="active">32. 🗄️ Postgres: продуктивність</a>
+      </nav>
+      <nav class="nav-links sysdesign">
+        <a href="../system-design/01-interview-framework.html">1. Фреймворк співбесіди</a>
+        <a href="../system-design/02-networking-entry.html">2. Мережа: DNS, CDN, LB, API</a>
+        <a href="../system-design/03-caching.html">3. Кешування углиб</a>
+        <a href="../system-design/04-databases-storage.html">4. БД I: моделі, індекси, ACID</a>
+        <a href="../system-design/05-replication-sharding.html">5. БД II: реплікація, шардинг</a>
+        <a href="../system-design/06-distributed-systems.html">6. Розподілені системи</a>
+        <a href="../system-design/07-async-messaging.html">7. Черги, Kafka, саги</a>
+        <a href="../system-design/08-reliability-scale.html">8. Надійність і rate limiting</a>
+        <a href="../system-design/09-classic-url-id-kv.html">9. Задачі I: URL, ID, KV</a>
+        <a href="../system-design/10-classic-feed-chat.html">10. Задачі II: стрічка, чат</a>
+        <a href="../system-design/11-classic-storage-video-crawler.html">11. Задачі III: файли, відео</a>
+        <a href="../system-design/12-classic-geo-booking-topk.html">12. Задачі IV: гео, бронювання</a>
+        <a href="../system-design/13-tricky-topics-qa.html">13. Трікі теми й Q&amp;A</a>
+      </nav>
+      <nav class="nav-links jsdoc">
+        <a href="../js-doc/00-methodology.html">0. Методологія</a>
+        <a href="../js-doc/01-core-js-engine.html">1. Core JS та рушій</a>
+        <a href="../js-doc/02-this.html">2. this</a>
+        <a href="../js-doc/03-typescript-essentials.html">3. TypeScript essentials</a>
+        <a href="../js-doc/04-algorithms-patterns.html">4. Алгоритми й патерни</a>
+        <a href="../js-doc/05-browser-internals.html">5. Браузер зсередини</a>
+        <a href="../js-doc/06-frontend-security.html">6. Безпека фронтенду</a>
+        <a href="../js-doc/07-http-anatomy.html">7. HTTP: анатомія запитів</a>
+        <a href="../js-doc/08-data-realtime.html">8. Дані й реальний час</a>
+        <a href="../js-doc/09-react-deep-dive.html">9. React углиб</a>
+        <a href="../js-doc/10-nextjs-architecture.html">10. Next.js та архітектура</a>
+        <a href="../js-doc/11-nextjs-interview-qa.html">11. Next.js: Q&amp;A</a>
+        <a href="../js-doc/12-frontend-caching-fundamentals.html">12. Caching: основи</a>
+        <a href="../js-doc/13-frontend-caching-libraries.html">13. Caching: бібліотеки</a>
+        <a href="../js-doc/14-frontend-caching-advanced.html">14. Caching: просунуті теми</a>
+        <a href="../js-doc/15-testing-cicd-cloud.html">15. Тести, CI/CD, хмара</a>
+        <a href="../js-doc/16-ai-tools.html">16. AI-інструменти</a>
+        <a href="../js-doc/17-design-patterns.html">17. Патерни проєктування</a>
+      </nav>
+      <nav class="nav-links node">
+        <a href="../node-doc/01-node-architecture.html">1. Архітектура Node.js</a>
+        <a href="../node-doc/02-event-loop-deep-dive.html">2. Event loop детально</a>
+        <a href="../node-doc/03-async-patterns.html">3. Асинхронні патерни</a>
+        <a href="../node-doc/04-modules-cjs-esm.html">4. Модулі: CJS vs ESM</a>
+        <a href="../node-doc/05-npm-packages.html">5. npm, pnpm, yarn</a>
+        <a href="../node-doc/06-events-streams-buffers.html">6. Events, Streams, Buffer</a>
+        <a href="../node-doc/07-fs-process-os.html">7. fs, process, os</a>
+        <a href="../node-doc/08-concurrency-scaling.html">8. Workers, cluster, масштаб</a>
+        <a href="../node-doc/09-http-networking.html">9. HTTP і мережа</a>
+        <a href="../node-doc/10-frameworks-comparison.html">10. Фреймворки: огляд</a>
+        <a href="../node-doc/11-nestjs-architecture.html">11. NestJS і архітектура</a>
+        <a href="../node-doc/12-databases-orm.html">12. БД і ORM</a>
+        <a href="../node-doc/13-typescript-validation-config.html">13. TS, валідація, конфіг</a>
+        <a href="../node-doc/14-security.html">14. Безпека Node</a>
+        <a href="../node-doc/15-performance-memory.html">15. Продуктивність і пам'ять</a>
+        <a href="../node-doc/16-testing.html">16. Тестування</a>
+        <a href="../node-doc/17-production-observability.html">17. Продакшн і моніторинг</a>
+        <a href="../node-doc/18-realtime-queues.html">18. Real-time і черги</a>
+        <a href="../node-doc/19-runtimes-serverless.html">19. Deno, Bun, serverless</a>
+        <a href="../node-doc/20-senior-interview-qa.html">20. Питання Senior Node</a>
+      </nav>
+      <nav class="nav-links quantum">
+        <a href="../quantum-doc/01-quanta-and-quantum-computing.html">1. Кванти й обчислення</a>
+        <a href="../quantum-doc/02-quantum-engineering-history.html">2. Квантова інженерія</a>
+        <a href="../quantum-doc/03-quantum-backend-python-ibm.html">3. Бекенд + IBM Quantum</a>
+        <a href="../quantum-doc/04-pet-project-quantum-routing.html">4. Пет-проєкт: маршрути</a>
+        <a href="../quantum-doc/05-quantum-engineer-roadmap.html">5. Шлях інженера: ресурси</a>
+        <a href="../quantum-doc/06-linear-algebra-vectors-matrices.html">6. Лін. алгебра I: вектори, матриці</a>
+        <a href="../quantum-doc/07-linear-algebra-eigen-tensor.html">7. Лін. алгебра II: власні, тензори</a>
+        <a href="../quantum-doc/08-complex-numbers-phase.html">8. Комплексні числа й фаза</a>
+        <a href="../quantum-doc/09-probability-shots.html">9. Ймовірності й shots</a>
+        <a href="../quantum-doc/10-numpy-statevector-simulator.html">10. NumPy: свій симулятор</a>
+        <a href="../quantum-doc/11-qiskit-circuits-aer.html">11. Qiskit I: схеми й Aer</a>
+        <a href="../quantum-doc/12-qiskit-runtime-real-qpu.html">12. Qiskit II: реальний QPU</a>
+      </nav>
+      <nav class="nav-links ai">
+        <a href="../ai-doc/01-ai-directions.html">1. Напрямки розвитку</a>
+        <a href="../ai-doc/02-pipeline-claude-code-cursor.html">2. Пайплайн: Claude Code, Cursor</a>
+        <a href="../ai-doc/03-mcp-servers.html">3. MCP-сервери</a>
+        <a href="../ai-doc/04-agent-context.html">4. Контекст без галюцинацій</a>
+        <a href="../ai-doc/05-shortcuts-debugger-automation.html">5. Шорткати, дебагер, рутина</a>
+        <a href="../ai-doc/06-ci-cd-optimization.html">6. Оптимізація CI/CD</a>
+      </nav>
+  </aside>
+
+  <aside class="toc">
+    <div class="toc-title">На цій сторінці</div>
+    <ol>
+      <li><a href="#s0">0. Куди йде час запиту</a></li>
+      <li><a href="#s1">1. EXPLAIN ANALYZE: читаємо план</a></li>
+      <li><a href="#s2">2. Статистика планувальника</a></li>
+      <li><a href="#s3">3. Типи індексів</a></li>
+      <li><a href="#s4">4. Як проєктувати індекс</a></li>
+      <li><a href="#s5">5. Запити, що ламають індекси</a></li>
+      <li><a href="#s6">6. ORM: N+1 і bulk-операції</a></li>
+      <li><a href="#s7">7. Пагінація: OFFSET vs keyset</a></li>
+      <li><a href="#s8">8. Пул з'єднань і PgBouncer</a></li>
+      <li><a href="#s9">9. Транзакції, блокування, таймаути</a></li>
+      <li><a href="#s10">10. Міграції без простою</a></li>
+      <li><a href="#s11">11. Моніторинг і діагностика</a></li>
+      <li><a href="#s12">12. Великі таблиці</a></li>
+      <li><a href="#s13">13. Аудит цього проєкту</a></li>
+      <li><a href="#qa">14. 20 питань співбесіди</a></li>
+      <li><a href="#tasks">15. Задачі</a></li>
+      <li><a href="#cheat">16. Шпаргалка</a></li>
+    </ol>
+  </aside>
+
+  <div class="content-center">
+    <article>
+
+    <!-- ============ 0 ============ -->
+    <section id="s0">
+      <h2><span class="num">00</span>Куди йде час запиту</h2>
+      <p class="section-desc">Перш ніж оптимізувати, треба знати, яка частина шляху повільна. Найчастіше це зовсім не сам SQL.</p>
+      <figure class="db">
+        <svg viewBox="0 0 820 230" role="img" aria-label="Шлях запиту від FastAPI до Postgres">
+          <defs><marker id="pp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ar"/></marker></defs>
+          <g font-size="12.5">
+            <rect x="10" y="30" width="140" height="56" rx="10" class="box"/><text x="80" y="54" text-anchor="middle" font-weight="700">FastAPI</text><text x="80" y="72" text-anchor="middle" class="mut">ORM, серіалізація</text>
+            <rect x="180" y="30" width="140" height="56" rx="10" class="box"/><text x="250" y="54" text-anchor="middle" font-weight="700">Пул з'єднань</text><text x="250" y="72" text-anchor="middle" class="mut">очікування слота</text>
+            <rect x="350" y="30" width="140" height="56" rx="10" class="box"/><text x="420" y="54" text-anchor="middle" font-weight="700">Мережа</text><text x="420" y="72" text-anchor="middle" class="mut">round-trip ×N</text>
+            <rect x="520" y="30" width="140" height="56" rx="10" class="box"/><text x="590" y="54" text-anchor="middle" font-weight="700">Planner</text><text x="590" y="72" text-anchor="middle" class="mut">вибір плану</text>
+            <rect x="690" y="30" width="120" height="56" rx="10" class="box" style="stroke:var(--accent)"/><text x="750" y="54" text-anchor="middle" font-weight="700">Executor</text><text x="750" y="72" text-anchor="middle" class="mut">I/O, CPU, локи</text>
+            <path d="M150 58 H178 M320 58 H348 M490 58 H518 M660 58 H688" class="ln" marker-end="url(#pp)"/>
+            <text x="80" y="118" text-anchor="middle" class="mut">N+1, гідратація</text><text x="80" y="136" text-anchor="middle" class="mut">тисяч об'єктів</text>
+            <text x="250" y="118" text-anchor="middle" class="mut">пул вичерпано →</text><text x="250" y="136" text-anchor="middle" class="mut">чекаємо 30 с</text>
+            <text x="420" y="118" text-anchor="middle" class="mut">0.5 мс × 300 запитів</text><text x="420" y="136" text-anchor="middle" class="mut">= 150 мс</text>
+            <text x="590" y="118" text-anchor="middle" class="mut">хибна оцінка рядків</text><text x="590" y="136" text-anchor="middle" class="mut">→ поганий план</text>
+            <text x="750" y="118" text-anchor="middle" class="mut">Seq Scan, сорт</text><text x="750" y="136" text-anchor="middle" class="mut">на диск, чекання локу</text>
+            <text x="410" y="190" text-anchor="middle" font-weight="700">EXPLAIN ANALYZE бачить тільки останні дві коробки.</text>
+            <text x="410" y="210" text-anchor="middle" class="mut">Перші три видно лише в APM / логах застосунку / pg_stat_activity.</text>
+          </g>
+        </svg>
+        <figcaption>«База тормозить» може означати п'ять різних проблем. Спершу знайди, де саме губиться час.</figcaption>
+      </figure>
+      <div class="callout interview"><div class="ic">🎯</div><div class="body"><span class="tag">Відповідь на «ендпоінт повільний, що робиш?»</span><br>
+        1) Дивлюся APM / логи: скільки SQL-запитів на HTTP-запит і скільки часу в БД, а скільки в Python.
+        2) Якщо запитів багато — N+1, лікую eager loading або батчами. 3) Якщо один запит повільний — беру його з
+        <code>pg_stat_statements</code> і запускаю <code>EXPLAIN (ANALYZE, BUFFERS)</code>. 4) Дивлюся на Seq Scan
+        по великій таблиці, розбіжність estimated/actual rows, сорт на диск. 5) Лікую індексом, переписом запиту або
+        оновленням статистики. 6) Перевіряю, що не стало гірше на записі.</div></div>
+    </section>
+
+    <!-- ============ 1 ============ -->
+    <section id="s1">
+      <h2><span class="num">01</span>EXPLAIN ANALYZE: читаємо план</h2>
+      <p class="section-desc">Головний інструмент. На співбесіді часто дають план і просять сказати, що не так.</p>
+      <ul>
+        <li><code>EXPLAIN</code> — тільки план з <i>оцінками</i>, запит не виконується.</li>
+        <li><code>EXPLAIN ANALYZE</code> — виконує запит і показує <i>фактичні</i> час і рядки.
+          Для <code>UPDATE/DELETE</code> загортай у <code>BEGIN; … ROLLBACK;</code>.</li>
+        <li><code>BUFFERS</code> — скільки сторінок по 8 КБ прочитано з кешу (<code>shared hit</code>) і з диска
+          (<code>read</code>). Часто показовіше за час.</li>
+      </ul>
+      <p>Реальний запит проєкту: <code>TenantScopedRepository.list()</code> — «усі доставки організації, новіші
+      першими». Ось як він виглядає на 200 000 рядків <b>без індексу</b> на <code>organization_id</code> (а в
+      проєкті його зараз немає):</p>
+<div class="codecard"><div class="bar"><span class="path">psql</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">EXPLAIN</span><span class="w"> </span><span class="p">(</span><span class="k">ANALYZE</span><span class="p">,</span><span class="w"> </span><span class="n">BUFFERS</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">deliveries</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">WHERE</span><span class="w"> </span><span class="n">organization_id</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'5f0c…'</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">created_at</span><span class="w"> </span><span class="k">DESC</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">LIMIT</span><span class="w"> </span><span class="mi">50</span><span class="p">;</span></code></pre></div>
+<div class="codecard bad"><div class="bar"><span class="path">❌ план без індексу</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span>Limit  (cost=6106.43..6106.55 rows=50 width=214) (actual time=41.20..41.21 rows=50 loops=1)
+<span class="jb-ln" aria-hidden="true"></span>  Buffers: shared hit=3612
+<span class="jb-ln" aria-hidden="true"></span>  -&gt;  Sort  (cost=6106.43..6118.93 rows=5000 width=214) (actual time=41.19..41.20 rows=50 loops=1)
+<span class="jb-ln" aria-hidden="true"></span>        Sort Key: created_at DESC
+<span class="jb-ln" aria-hidden="true"></span>        Sort Method: top-N heapsort  Memory: 39kB
+<span class="jb-ln" aria-hidden="true"></span>        -&gt;  Seq Scan on deliveries  (cost=0.00..5940.00 rows=5000 width=214) (actual time=0.02..39.60 rows=5000 loops=1)
+<span class="jb-ln" aria-hidden="true"></span>              Filter: (organization_id = '5f0c…'::uuid)
+<span class="jb-ln" aria-hidden="true"></span>              Rows Removed by Filter: 195000
+<span class="jb-ln" aria-hidden="true"></span>Planning Time: 0.11 ms
+<span class="jb-ln" aria-hidden="true"></span>Execution Time: 41.25 ms</code></pre></div>
+      <h3>Як читати</h3>
+      <ol>
+        <li><b>Знизу вгору, зсередини назовні</b>: дочірні вузли виконуються першими. Тут: Seq Scan → Sort → Limit.</li>
+        <li><code>cost=startup..total</code> — умовні одиниці планувальника, не мілісекунди. Порівнюй їх тільки між
+          планами одного запиту.</li>
+        <li><code>rows=5000</code> (оцінка) проти <code>actual … rows=5000</code> — тут оцінка точна. Розбіжність у
+          10–100× — головна причина поганих планів (розділ 2).</li>
+        <li><code>Rows Removed by Filter: 195000</code> — прочитали 200 000 рядків, щоб віддати 5 000. Це і є сигнал
+          «потрібен індекс».</li>
+        <li><code>loops=N</code> — вузол виконався N разів (усередині Nested Loop). Фактичний час = time × loops.</li>
+      </ol>
+<div class="codecard good"><div class="bar"><span class="path">виправлення</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">CONCURRENTLY</span><span class="w"> </span><span class="n">ix_deliveries_org_created</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">deliveries</span><span class="w"> </span><span class="p">(</span><span class="n">organization_id</span><span class="p">,</span><span class="w"> </span><span class="n">created_at</span><span class="w"> </span><span class="k">DESC</span><span class="p">);</span></code></pre></div>
+<div class="codecard good"><div class="bar"><span class="path">✅ план з індексом</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span>Limit  (cost=0.42..19.86 rows=50 width=214) (actual time=0.03..0.11 rows=50 loops=1)
+<span class="jb-ln" aria-hidden="true"></span>  Buffers: shared hit=53
+<span class="jb-ln" aria-hidden="true"></span>  -&gt;  Index Scan using ix_deliveries_org_created on deliveries  (cost=0.42..1944.42 rows=5000 width=214) (actual time=0.03..0.10 rows=50 loops=1)
+<span class="jb-ln" aria-hidden="true"></span>        Index Cond: (organization_id = '5f0c…'::uuid)
+<span class="jb-ln" aria-hidden="true"></span>Planning Time: 0.15 ms
+<span class="jb-ln" aria-hidden="true"></span>Execution Time: 0.13 ms</code></pre></div>
+      <p>Сорт зник: індекс уже впорядкований за <code>created_at DESC</code> в межах організації, тож Postgres
+      читає перші 50 записів індексу і зупиняється. 3612 сторінок → 53, 41 мс → 0.13 мс.</p>
+
+      <h3>Словник вузлів</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Вузол</th><th>Що робить</th><th>Коли добре / погано</th></tr></thead>
+        <tbody>
+          <tr><td><b>Seq Scan</b></td><td>читає всю таблицю</td><td>ок для маленьких таблиць або коли треба &gt;5–10% рядків; погано — велика таблиця + вибірковий фільтр</td></tr>
+          <tr><td><b>Index Scan</b></td><td>індекс → кожен рядок з heap</td><td>мало рядків; дає порядок для ORDER BY</td></tr>
+          <tr><td><b>Index Only Scan</b></td><td>усі потрібні колонки є в індексі, heap не читається</td><td>найкраще; залежить від visibility map (VACUUM)</td></tr>
+          <tr><td><b>Bitmap Index/Heap Scan</b></td><td>збирає бітмапу сторінок з індексу(ів), читає heap по порядку</td><td>середня вибірковість; комбінує індекси через BitmapAnd/Or</td></tr>
+          <tr><td><b>Nested Loop</b></td><td>для кожного рядка зовнішнього — пошук у внутрішньому</td><td>малий зовнішній набір + індекс на внутрішньому; катастрофа при хибній оцінці</td></tr>
+          <tr><td><b>Hash Join</b></td><td>хеш-таблиця з меншого набору</td><td>великі набори з рівністю; може піти на диск, якщо не вистачає <code>work_mem</code></td></tr>
+          <tr><td><b>Merge Join</b></td><td>зливає два відсортовані потоки</td><td>обидві сторони вже відсортовані (індекси)</td></tr>
+          <tr><td><b>Sort</b></td><td>сортування</td><td><code>Sort Method: external merge Disk</code> — не вистачило <code>work_mem</code></td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout fe"><div class="ic">⚛️</div><div class="body"><span class="tag">Аналогія з фронтенду</span><br>
+        EXPLAIN ANALYZE — це вкладка Performance у DevTools для SQL: дерево викликів з часом кожного вузла. Seq Scan
+        по великій таблиці — як <code>array.filter</code> по 200 000 елементів на кожен рендер замість
+        <code>Map</code> за ключем.</div></div>
+    </section>
+
+    <!-- ============ 2 ============ -->
+    <section id="s2">
+      <h2><span class="num">02</span>Статистика планувальника</h2>
+      <p class="section-desc">Planner вибирає план за оцінками кількості рядків. Хибна статистика → хибний план, навіть якщо індекси правильні.</p>
+      <ul>
+        <li><code>ANALYZE table</code> (і autovacuum) збирає вибірку: частку NULL, кількість різних значень
+          (<code>n_distinct</code>), найчастіші значення і гістограму. Дивитися — у <code>pg_stats</code>.</li>
+        <li><b>Після масового імпорту</b> (у проєкті — імпорт Excel на тисячі доставок) статистика застаріла, доки
+          не відпрацює autovacuum. Явний <code>ANALYZE deliveries</code> після великого імпорту — нормальна практика.</li>
+        <li><b>Корельовані колонки</b>: planner вважає умови незалежними. <code>city = 'Kyiv' AND region = 'Kyiv
+          oblast'</code> він оцінить як добуток вибірковостей і сильно занизить кількість рядків. Лікується через
+          <code>CREATE STATISTICS … (dependencies) ON city, region FROM …</code>.</li>
+        <li><b>Перекошені дані</b> (одна організація має 90% доставок): для неї Seq Scan правильний, для решти —
+          Index Scan. Postgres це враховує через most common values, якщо статистики достатньо
+          (<code>ALTER TABLE … ALTER COLUMN … SET STATISTICS 1000</code>).</li>
+      </ul>
+      <div class="callout warn"><div class="ic">⚠️</div><div class="body"><span class="tag">Типовий симптом</span><br>
+        У плані <code>Nested Loop (rows=1) (actual rows=48000 loops=1)</code>: planner думав, що рядок буде один, обрав
+        вкладений цикл, а рядків 48 000, і кожен з них — окремий пошук. Спочатку <code>ANALYZE</code>, потім розширена
+        статистика, і тільки потім переписування запиту.</div></div>
+    </section>
+
+    <!-- ============ 3 ============ -->
+    <section id="s3">
+      <h2><span class="num">03</span>Типи індексів у Postgres</h2>
+      <p class="section-desc">«Який індекс для якого запиту» — улюблене питання. B-tree покриває 90% випадків, але решта 10% якраз і перевіряють.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Тип</th><th>Оператори</th><th>Приклад з домену доставок</th></tr></thead>
+        <tbody>
+          <tr><td><b>B-tree</b> (за замовчуванням)</td><td><code>= &lt; &gt; BETWEEN IN</code>, <code>ORDER BY</code>, <code>LIKE 'abc%'</code>*</td><td><code>(organization_id, created_at DESC)</code>, <code>users.email</code> (unique)</td></tr>
+          <tr><td><b>Hash</b></td><td>тільки <code>=</code></td><td>рідко виправданий: B-tree робить те саме і більше</td></tr>
+          <tr><td><b>GIN</b></td><td><code>@&gt;</code> <code>?</code> для JSONB, масиви, повнотекстовий <code>@@</code>, триграми <code>%</code> <code>ILIKE '%x%'</code></td><td>пошук доставки за частиною адреси (<code>pg_trgm</code>), фільтр по JSONB-атрибутах</td></tr>
+          <tr><td><b>GiST</b></td><td>геометрія, діапазони, «найближчий» (<code>&lt;-&gt;</code>), exclusion constraints</td><td>PostGIS: доставки в радіусі 5 км від депо; заборона перетину часових вікон</td></tr>
+          <tr><td><b>SP-GiST</b></td><td>просторове розбиття (quad-tree, префікси)</td><td>точки, IP-діапазони</td></tr>
+          <tr><td><b>BRIN</b></td><td>діапазони по блоках (min/max)</td><td>журнал подій GPS на мільярди рядків, що пишеться за часом: індекс у кілобайтах</td></tr>
+        </tbody>
+      </table></div>
+      <p class="muted">* <code>LIKE 'abc%'</code> через B-tree працює з колацією <code>C</code> або з <code>text_pattern_ops</code>.</p>
+<div class="codecard"><div class="bar"><span class="path">приклади</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="c1">-- пошук за підрядком адреси: без цього ILIKE '%хрещатик%' — завжди Seq Scan</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">CREATE</span><span class="w"> </span><span class="n">EXTENSION</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="n">pg_trgm</span><span class="p">;</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">CONCURRENTLY</span><span class="w"> </span><span class="n">ix_deliveries_address_trgm</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">deliveries</span><span class="w"> </span><span class="k">USING</span><span class="w"> </span><span class="n">gin</span><span class="w"> </span><span class="p">(</span><span class="n">address</span><span class="w"> </span><span class="n">gin_trgm_ops</span><span class="p">);</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1">-- append-only журнал телеметрії: BRIN у сотні разів менший за B-tree</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">ix_gps_points_recorded_brin</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">gps_points</span><span class="w"> </span><span class="k">USING</span><span class="w"> </span><span class="n">brin</span><span class="w"> </span><span class="p">(</span><span class="n">recorded_at</span><span class="p">);</span></code></pre></div>
+      <div class="callout info"><div class="ic">💡</div><div class="body"><span class="tag">Як Postgres рахує, чи використати індекс</span><br>
+        Індекс-скан — це випадкові читання heap-сторінок, а Seq Scan — послідовні. Якщо умові відповідає велика частка
+        таблиці, Seq Scan дешевший, і planner правий, що ігнорує індекс. Тому «додав індекс, а він не
+        використовується» — не завжди баг.</div></div>
+    </section>
+
+    <!-- ============ 4 ============ -->
+    <section id="s4">
+      <h2><span class="num">04</span>Як проєктувати індекс</h2>
+      <p class="section-desc">Не «індекс на кожну колонку», а індекс під конкретний запит.</p>
+      <h3>4.1 Складений індекс: порядок колонок</h3>
+      <p>Правило: <b>спочатку колонки з рівністю, потім діапазон або сортування</b>. Індекс
+      <code>(organization_id, status, created_at)</code> обслуговує:</p>
+      <ul>
+        <li><code>WHERE organization_id = ?</code> ✅ (лівий префікс)</li>
+        <li><code>WHERE organization_id = ? AND status = ?  ORDER BY created_at</code> ✅</li>
+        <li><code>WHERE status = ?</code> ❌ без першої колонки (Postgres 18 вміє skip scan, але покладатися на це не варто)</li>
+        <li><code>WHERE organization_id = ? AND created_at &gt; ?</code> — частково: діапазон по created_at не
+          використовує індекс ефективно, бо між ними є status</li>
+      </ul>
+      <h3>4.2 Частковий індекс</h3>
+<div class="codecard"><div class="bar"><span class="path">тільки «живі» рядки</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="c1">-- геокодер щохвилини шукає доставки без координат; таких ~1% таблиці</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">CONCURRENTLY</span><span class="w"> </span><span class="n">ix_deliveries_pending_geocode</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">deliveries</span><span class="w"> </span><span class="p">(</span><span class="n">organization_id</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="w">    </span><span class="k">WHERE</span><span class="w"> </span><span class="n">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'pending_geocode'</span><span class="p">;</span></code></pre></div>
+      <p>Індекс у 100 разів менший і не оновлюється для решти 99% рядків. Запит мусить містити ту саму умову
+      <code>status = 'pending_geocode'</code>, інакше planner індекс не використає.</p>
+      <h3>4.3 Індекс по виразу</h3>
+<div class="codecard"><div class="bar"><span class="path">регістронезалежний логін</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">CREATE</span><span class="w"> </span><span class="k">UNIQUE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">ux_users_email_lower</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">users</span><span class="w"> </span><span class="p">(</span><span class="k">lower</span><span class="p">(</span><span class="n">email</span><span class="p">));</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1">-- працює тільки для WHERE lower(email) = lower(:email)</span></code></pre></div>
+      <h3>4.4 Покривний індекс (INCLUDE) і Index Only Scan</h3>
+<div class="codecard"><div class="bar"><span class="path">список стопів маршруту без читання таблиці</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">CREATE</span><span class="w"> </span><span class="k">INDEX</span><span class="w"> </span><span class="n">CONCURRENTLY</span><span class="w"> </span><span class="n">ix_route_stops_route_seq</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="w">    </span><span class="k">ON</span><span class="w"> </span><span class="n">route_stops</span><span class="w"> </span><span class="p">(</span><span class="n">route_id</span><span class="p">,</span><span class="w"> </span><span class="n">sequence</span><span class="p">)</span><span class="w"> </span><span class="n">INCLUDE</span><span class="w"> </span><span class="p">(</span><span class="n">status</span><span class="p">,</span><span class="w"> </span><span class="n">delivery_id</span><span class="p">);</span></code></pre></div>
+      <p>Якщо запит бере тільки колонки з індексу, Postgres може не ходити в heap. Але він перевіряє visibility map:
+      якщо сторінку змінювали після останнього VACUUM, читання heap однаково буде (<code>Heap Fetches</code> у плані).
+      Тому Index Only Scan гарний на таблицях, які не дуже часто оновлюються, або при агресивному autovacuum.</p>
+      <h3>4.5 Ціна індексу</h3>
+      <ul>
+        <li>Кожен INSERT пише в усі індекси таблиці; UPDATE — в усі, якщо не HOT-update.</li>
+        <li><b>HOT-update</b> (heap-only tuple): якщо змінені колонки не індексовані і на сторінці є місце, індекси не
+          чіпаються. Індекс на <code>updated_at</code> або <code>status</code>, які часто оновлюються, вбиває HOT.
+          Допомагає <code>fillfactor</code> 80–90 для «гарячих» таблиць.</li>
+        <li>Індекси займають пам'ять у <code>shared_buffers</code> і витісняють корисні дані.</li>
+        <li>Невикористані індекси шукай через <code>pg_stat_user_indexes.idx_scan = 0</code> (розділ 11).</li>
+      </ul>
+      <div class="callout bad"><div class="ic">🔑</div><div class="body"><span class="tag">Пастка: зовнішні ключі</span><br>
+        Postgres автоматично індексує тільки PRIMARY KEY і UNIQUE. <b>Колонку з FOREIGN KEY він не індексує.</b>
+        Наслідки: (1) повільні JOIN і фільтри по ній; (2) <code>DELETE FROM deliveries WHERE id = …</code> робить
+        Seq Scan по <code>route_stops</code>, щоб перевірити, чи на рядок ніхто не посилається. У цьому проєкті так
+        з <code>route_stops.route_id</code>, <code>route_stops.delivery_id</code> і <code>organization_id</code> у
+        більшості таблиць (розділ 13).</div></div>
+    </section>
+
+    <!-- ============ 5 ============ -->
+    <section id="s5">
+      <h2><span class="num">05</span>Запити, що ламають індекси</h2>
+      <p class="section-desc">Індекс є, а план однаково Seq Scan. Найчастіші причини.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Погано</th><th>Чому</th><th>Краще</th></tr></thead>
+        <tbody>
+          <tr><td><code>WHERE date(created_at) = '2026-11-10'</code></td><td>функція над колонкою: B-tree по <code>created_at</code> не застосовний</td><td><code>WHERE created_at &gt;= '2026-11-10' AND created_at &lt; '2026-11-11'</code></td></tr>
+          <tr><td><code>WHERE lower(email) = …</code> без індексу по виразу</td><td>те саме</td><td>індекс по <code>lower(email)</code> або тип <code>citext</code></td></tr>
+          <tr><td><code>WHERE address ILIKE '%street%'</code></td><td>початковий <code>%</code> → B-tree безсилий</td><td>GIN + <code>pg_trgm</code> або повнотекстовий пошук</td></tr>
+          <tr><td><code>WHERE a = 1 OR b = 2</code></td><td>один B-tree не покриває OR по різних колонках</td><td>два індекси (BitmapOr) або <code>UNION</code></td></tr>
+          <tr><td><code>WHERE phone = 380501234567</code> (колонка text)</td><td>неявне приведення типу колонки</td><td>порівнювати з тим самим типом</td></tr>
+          <tr><td><code>NOT IN (SELECT …)</code></td><td>погано оптимізується і має пастку з NULL</td><td><code>NOT EXISTS</code></td></tr>
+          <tr><td><code>SELECT COUNT(*) FROM big</code> щоразу</td><td>MVCC: кожен рядок треба перевірити на видимість</td><td>оцінка з <code>pg_class.reltuples</code>, кешований лічильник</td></tr>
+          <tr><td><code>SELECT *</code> у списках</td><td>тягне широкі колонки (<code>notes</code>), блокує Index Only Scan</td><td>тільки потрібні колонки</td></tr>
+        </tbody>
+      </table></div>
+      <p>Перший рядок таблиці — реальний код <code>DashboardService</code> цього проєкту:</p>
+<div class="codecard bad"><div class="bar"><span class="path">app/services/dashboard/service.py (main)</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="n">deliveries_today</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">select</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">count</span><span class="p">())</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="o">.</span><span class="n">select_from</span><span class="p">(</span><span class="n">Delivery</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="o">.</span><span class="n">where</span><span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">Delivery</span><span class="o">.</span><span class="n">organization_id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">organization_id</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">func</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="n">Delivery</span><span class="o">.</span><span class="n">created_at</span><span class="p">)</span> <span class="o">==</span> <span class="n">today</span><span class="p">,</span>   <span class="c1"># date() над колонкою → індекс по created_at не допоможе</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="p">)</span></code></pre></div>
+<div class="codecard good"><div class="bar"><span class="path">✅ sargable-діапазон + одна поїздка до БД замість кількох</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="n">day_start</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">combine</span><span class="p">(</span><span class="n">today</span><span class="p">,</span> <span class="n">time</span><span class="o">.</span><span class="n">min</span><span class="p">,</span> <span class="n">tzinfo</span><span class="o">=</span><span class="n">UTC</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">day_end</span> <span class="o">=</span> <span class="n">day_start</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">row</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">select</span><span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">func</span><span class="o">.</span><span class="n">count</span><span class="p">()</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">Delivery</span><span class="o">.</span><span class="n">created_at</span> <span class="o">&gt;=</span> <span class="n">day_start</span><span class="p">,</span> <span class="n">Delivery</span><span class="o">.</span><span class="n">created_at</span> <span class="o">&lt;</span> <span class="n">day_end</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="s2">"today"</span><span class="p">),</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">func</span><span class="o">.</span><span class="n">count</span><span class="p">()</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">Delivery</span><span class="o">.</span><span class="n">status</span> <span class="o">==</span> <span class="s2">"pending_geocode"</span><span class="p">)</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="s2">"pending_geocode"</span><span class="p">),</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Delivery</span><span class="o">.</span><span class="n">organization_id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">organization_id</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="p">))</span><span class="o">.</span><span class="n">one</span><span class="p">()</span></code></pre></div>
+      <p>Бонус: <code>date()</code> від <code>timestamptz</code> залежить від таймзони сесії Postgres, а явні UTC-межі —
+      ні. Агрегат з <code>FILTER (WHERE …)</code> рахує кілька метрик за один прохід, замість окремих запитів.</p>
+    </section>
+
+    <!-- ============ 6 ============ -->
+    <section id="s6">
+      <h2><span class="num">06</span>ORM: N+1 і bulk-операції</h2>
+      <p class="section-desc">Більшість проблем продуктивності в Python-бекендах — не повільний SQL, а забагато SQL.</p>
+      <h3>6.1 N+1</h3>
+<div class="codecard bad"><div class="bar"><span class="path">❌ N+1: 1 запит на маршрути + N на стопи</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="n">routes</span> <span class="o">=</span> <span class="k">await</span> <span class="n">route_repo</span><span class="o">.</span><span class="n">list</span><span class="p">()</span>                       <span class="c1"># 1 запит</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">for</span> <span class="n">route</span> <span class="ow">in</span> <span class="n">routes</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">route</span><span class="o">.</span><span class="n">stops</span> <span class="o">=</span> <span class="k">await</span> <span class="n">stop_repo</span><span class="o">.</span><span class="n">list_by_route</span><span class="p">(</span><span class="n">route</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>   <span class="c1"># +1 запит на КОЖЕН маршрут</span></code></pre></div>
+      <p>В async SQLAlchemy ліниве завантаження зв'язку (<code>route.stops</code> без eager loading) навіть не
+      спрацює тихо, а впаде з <code>MissingGreenlet</code>. Це корисний запобіжник: N+1 видно одразу.</p>
+<div class="codecard good"><div class="bar"><span class="path">✅ варіанти</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="c1"># 1) selectinload: 2 запити, другий — WHERE route_id IN (...)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">stmt</span> <span class="o">=</span> <span class="n">select</span><span class="p">(</span><span class="n">Route</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Route</span><span class="o">.</span><span class="n">organization_id</span> <span class="o">==</span> <span class="n">org_id</span><span class="p">)</span><span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="n">selectinload</span><span class="p">(</span><span class="n">Route</span><span class="o">.</span><span class="n">stops</span><span class="p">))</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1"># 2) joinedload: 1 запит з JOIN — добре для many-to-one (stop → delivery),</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1">#    погано для one-to-many (дублює рядки батька)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">stmt</span> <span class="o">=</span> <span class="n">select</span><span class="p">(</span><span class="n">RouteStop</span><span class="p">)</span><span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="n">joinedload</span><span class="p">(</span><span class="n">RouteStop</span><span class="o">.</span><span class="n">delivery</span><span class="p">))</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1"># 3) вручну батчем, як у get_route_with_stops цього проєкту:</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">stops</span> <span class="o">=</span> <span class="k">await</span> <span class="n">stop_repo</span><span class="o">.</span><span class="n">list_by_route</span><span class="p">(</span><span class="n">route_id</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">deliveries</span> <span class="o">=</span> <span class="k">await</span> <span class="n">delivery_repo</span><span class="o">.</span><span class="n">get_many</span><span class="p">([</span><span class="n">s</span><span class="o">.</span><span class="n">delivery_id</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">stops</span><span class="p">])</span>   <span class="c1"># один IN-запит</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1"># запобіжник: заборонити ліниве завантаження на рівні моделі</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="n">stops</span><span class="p">:</span> <span class="n">Mapped</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="n">RouteStop</span><span class="p">]]</span> <span class="o">=</span> <span class="n">relationship</span><span class="p">(</span><span class="n">lazy</span><span class="o">=</span><span class="s2">"raise"</span><span class="p">)</span></code></pre></div>
+      <p>У проєкті <code>relationship()</code> поки не використовуються, і зв'язані дані збираються вручну
+      батчем через <code>get_many</code> (<code>IN</code>-запит) — це правильний патерн, 3 запити на маршрут
+      незалежно від кількості стопів.</p>
+      <h3>6.2 Bulk-запис</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Спосіб</th><th>10 000 рядків</th><th>Коментар</th></tr></thead>
+        <tbody>
+          <tr><td>ORM-об'єкт + <code>commit()</code> на кожен рядок</td><td class="n">дуже повільно</td><td>10 000 транзакцій і fsync</td></tr>
+          <tr><td><code>session.add_all(objs)</code> + один commit</td><td class="m">прийнятно</td><td>SQLAlchemy 2.0 групує INSERT (insertmanyvalues)</td></tr>
+          <tr><td><code>await session.execute(insert(Delivery), rows)</code></td><td class="y">швидко</td><td>Core-рівень, без ORM-об'єктів</td></tr>
+          <tr><td><code>COPY</code> (asyncpg <code>copy_records_to_table</code>)</td><td class="y">найшвидше</td><td>для імпортів на сотні тисяч рядків</td></tr>
+        </tbody>
+      </table></div>
+<div class="codecard bad"><div class="bar"><span class="path">app/repositories/route_stop_repository.py (main)</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_by_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">uuid</span><span class="o">.</span><span class="n">UUID</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="w">    </span><span class="sd">"""Delete multiple stops by id. Loop-delete, matching this codebase's</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="sd">    simplicity level — no bulk SQL statement."""</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">for</span> <span class="n">stop_id</span> <span class="ow">in</span> <span class="n">ids</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">stop_id</span><span class="p">)</span>     <span class="c1"># на кожен id: SELECT + DELETE + COMMIT</span></code></pre></div>
+<div class="codecard good"><div class="bar"><span class="path">✅ один запит, одна транзакція</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">delete_by_ids</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ids</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">uuid</span><span class="o">.</span><span class="n">UUID</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">delete</span><span class="p">(</span><span class="n">RouteStop</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">RouteStop</span><span class="o">.</span><span class="n">id</span><span class="o">.</span><span class="n">in_</span><span class="p">(</span><span class="n">ids</span><span class="p">)))</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span></code></pre></div>
+      <p class="deeper">Глибше: <a href="18-databases-interview-qa.html">18 · ORM-пастки</a>, <a href="26-sentry-monitoring.html">26 · N+1 через APM</a>.</p>
+    </section>
+
+    <!-- ============ 7 ============ -->
+    <section id="s7">
+      <h2><span class="num">07</span>Пагінація: OFFSET vs keyset</h2>
+      <p class="section-desc">OFFSET 100000 змушує базу прочитати й викинути 100 000 рядків. Keyset починає одразу з потрібного місця.</p>
+      <figure class="db">
+        <svg viewBox="0 0 820 200" role="img" aria-label="OFFSET проти keyset">
+          <g font-size="12.5">
+            <text x="20" y="28" font-weight="700">OFFSET 2000 LIMIT 50</text>
+            <rect x="20" y="40" width="600" height="28" rx="6" class="box" style="stroke:var(--bad)"/>
+            <text x="320" y="59" text-anchor="middle" style="fill:var(--bad)">прочитати й викинути 2000 рядків</text>
+            <rect x="630" y="40" width="80" height="28" rx="6" class="box" style="stroke:var(--good)"/><text x="670" y="59" text-anchor="middle">50</text>
+            <text x="20" y="110" font-weight="700">WHERE (created_at, id) &lt; (:last_ts, :last_id) LIMIT 50</text>
+            <rect x="20" y="122" width="80" height="28" rx="6" class="box" style="stroke:var(--good)"/><text x="60" y="141" text-anchor="middle">50</text>
+            <text x="120" y="141" class="mut">індекс одразу «стрибає» на курсор → час не залежить від номера сторінки</text>
+            <text x="20" y="185" class="mut">+ OFFSET пропускає або дублює рядки, якщо між запитами сторінок додали нові записи</text>
+          </g>
+        </svg>
+      </figure>
+<div class="codecard good"><div class="bar"><span class="path">✅ keyset (cursor) пагінація для GET /deliveries</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_page</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span> <span class="n">cursor</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">datetime</span><span class="p">,</span> <span class="n">uuid</span><span class="o">.</span><span class="n">UUID</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">stmt</span> <span class="o">=</span> <span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">select</span><span class="p">(</span><span class="n">Delivery</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Delivery</span><span class="o">.</span><span class="n">organization_id</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">organization_id</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">Delivery</span><span class="o">.</span><span class="n">created_at</span><span class="o">.</span><span class="n">desc</span><span class="p">(),</span> <span class="n">Delivery</span><span class="o">.</span><span class="n">id</span><span class="o">.</span><span class="n">desc</span><span class="p">())</span>   <span class="c1"># id — тай-брейкер</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="n">limit</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>                                           <span class="c1"># +1, щоб знати, чи є наступна</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">if</span> <span class="n">cursor</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">stmt</span> <span class="o">=</span> <span class="n">stmt</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">tuple_</span><span class="p">(</span><span class="n">Delivery</span><span class="o">.</span><span class="n">created_at</span><span class="p">,</span> <span class="n">Delivery</span><span class="o">.</span><span class="n">id</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">cursor</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">rows</span> <span class="o">=</span> <span class="nb">list</span><span class="p">((</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">scalars</span><span class="p">(</span><span class="n">stmt</span><span class="p">))</span><span class="o">.</span><span class="n">all</span><span class="p">())</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">has_more</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">limit</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">return</span> <span class="n">rows</span><span class="p">[:</span><span class="n">limit</span><span class="p">],</span> <span class="n">has_more</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1"># індекс під цей запит:</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1"># CREATE INDEX CONCURRENTLY ix_deliveries_org_created_id</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1">#     ON deliveries (organization_id, created_at DESC, id DESC);</span></code></pre></div>
+      <ul>
+        <li>Курсор кодують у непрозорий рядок (base64 від <code>created_at|id</code>), фронтенд тільки передає його
+          назад — як <code>getNextPageParam</code> в <code>useInfiniteQuery</code>.</li>
+        <li>Мінус keyset: не можна стрибнути на «сторінку 37». Для адмінок з номерами сторінок OFFSET прийнятний на
+          невеликих обсягах.</li>
+        <li>Зараз <code>GET /deliveries</code> у проєкті віддає <b>усі</b> рядки організації без ліміту — це перше,
+          що зламається на великому клієнті.</li>
+      </ul>
+    </section>
+
+    <!-- ============ 8 ============ -->
+    <section id="s8">
+      <h2><span class="num">08</span>Пул з'єднань і PgBouncer</h2>
+      <p class="section-desc">З'єднання з Postgres — окремий процес на сервері (~5–10 МБ і fork). Їх мало, і вони дорогі.</p>
+      <figure class="db">
+        <svg viewBox="0 0 820 230" role="img" aria-label="Пули з'єднань і PgBouncer">
+          <defs><marker id="pb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" class="ar"/></marker></defs>
+          <g font-size="12.5">
+            <rect x="20" y="20" width="200" height="40" rx="8" class="box"/><text x="120" y="45" text-anchor="middle">API машина 1 · пул 5+10</text>
+            <rect x="20" y="72" width="200" height="40" rx="8" class="box"/><text x="120" y="97" text-anchor="middle">API машина 2 · пул 5+10</text>
+            <rect x="20" y="124" width="200" height="40" rx="8" class="box"/><text x="120" y="149" text-anchor="middle">Celery × 8 процесів</text>
+            <rect x="20" y="176" width="200" height="40" rx="8" class="box"/><text x="120" y="201" text-anchor="middle">cron / міграції / psql</text>
+            <rect x="320" y="70" width="180" height="96" rx="12" class="box" style="stroke:var(--accent)"/>
+            <text x="410" y="104" text-anchor="middle" font-weight="700" style="fill:var(--accent)">PgBouncer</text>
+            <text x="410" y="124" text-anchor="middle" class="mut">transaction mode</text>
+            <text x="410" y="144" text-anchor="middle" class="mut">сотні клієнтів → 20</text>
+            <rect x="600" y="70" width="200" height="96" rx="12" class="box"/>
+            <text x="700" y="104" text-anchor="middle" font-weight="700">PostgreSQL</text>
+            <text x="700" y="124" text-anchor="middle" class="mut">max_connections = 100</text>
+            <text x="700" y="144" text-anchor="middle" class="mut">процес на з'єднання</text>
+            <path d="M220 40 L318 100 M220 92 L318 110 M220 144 L318 126 M220 196 L318 140" class="ln" marker-end="url(#pb)"/>
+            <path d="M500 118 H598" class="ln" marker-end="url(#pb)"/>
+          </g>
+        </svg>
+        <figcaption>Без PgBouncer кожен процес приходить у Postgres зі своїм пулом. З ним сотні клієнтських з'єднань діляться кількома десятками серверних.</figcaption>
+      </figure>
+      <h3>8.1 Пул SQLAlchemy</h3>
+<div class="codecard good"><div class="bar"><span class="path">app/db/session.py (пропозиція з явними параметрами)</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="n">engine</span> <span class="o">=</span> <span class="n">create_async_engine</span><span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">settings</span><span class="o">.</span><span class="n">DATABASE_URL</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">pool_size</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>            <span class="c1"># постійні з'єднання на процес</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">max_overflow</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>         <span class="c1"># тимчасові понад pool_size під пік</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">pool_timeout</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>        <span class="c1"># скільки чекати вільного слота, перш ніж кинути помилку (за замовч. 30 с)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">pool_pre_ping</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>     <span class="c1"># перевірити з'єднання перед видачею (після рестарту БД / idle-обриву)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">pool_recycle</span><span class="o">=</span><span class="mi">1800</span><span class="p">,</span>      <span class="c1"># перевідкривати старі з'єднання</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">connect_args</span><span class="o">=</span><span class="p">{</span><span class="s2">"statement_cache_size"</span><span class="p">:</span> <span class="mi">0</span><span class="p">},</span>   <span class="c1"># як у проєкті: сумісність з PgBouncer</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="p">)</span></code></pre></div>
+      <ul>
+        <li><b>Бюджет:</b> Σ (процеси × (pool_size + max_overflow)) по всіх сервісах &lt; <code>max_connections</code>
+          мінус резерв для адмінів і міграцій.</li>
+        <li><b>Більше з'єднань ≠ швидше.</b> Postgres ефективно виконує приблизно «кілька × кількість ядер» активних
+          запитів; далі — контекстні перемикання і конкуренція за локи. Краще коротка черга в пулі, ніж 500 активних
+          бекендів.</li>
+        <li><code>QueuePool limit … overflow … reached, connection timed out</code> — пул вичерпано. Причина майже
+          завжди — з'єднання, які тримають надто довго (повільні запити або HTTP-виклики всередині транзакції), а не
+          малий розмір пулу.</li>
+      </ul>
+      <h3>8.2 PgBouncer: режими</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Режим</th><th>Серверне з'єднання видається на</th><th>Обмеження</th></tr></thead>
+        <tbody>
+          <tr><td>session</td><td>весь час клієнтського з'єднання</td><td>майже не економить з'єднання</td></tr>
+          <tr><td><b>transaction</b></td><td>одну транзакцію</td><td>не можна покладатися на стан сесії: <code>SET</code>, advisory locks на сесію, <code>LISTEN</code>; prepared statements — тільки з PgBouncer 1.21+ (<code>max_prepared_statements</code>)</td></tr>
+          <tr><td>statement</td><td>один запит</td><td>немає багатозапитних транзакцій</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout info"><div class="ic">🔎</div><div class="body"><span class="tag">Звідки в проєкті statement_cache_size=0</span><br>
+        asyncpg за замовчуванням готує (prepare) кожен запит і кешує prepared statement у з'єднанні. За PgBouncer у
+        transaction mode наступна транзакція може потрапити на інше серверне з'єднання, де такого statement немає →
+        помилка <code>prepared statement "__asyncpg_stmt_…" does not exist</code>. Вимкнений кеш — ціною трохи
+        більшого часу planning на кожен запит.</div></div>
+    </section>
+
+    <!-- ============ 9 ============ -->
+    <section id="s9">
+      <h2><span class="num">09</span>Транзакції, блокування, таймаути</h2>
+      <p class="section-desc">Довга транзакція шкодить усім: тримає з'єднання, локи і не дає VACUUM прибрати мертві рядки.</p>
+      <ul>
+        <li><b>Не роби мережевих викликів усередині транзакції</b> (OpenAI, геокодер, SMTP). 10-секундний виклик =
+          10 секунд тримання з'єднання і рядкових локів.</li>
+        <li><b><code>idle in transaction</code></b> у <code>pg_stat_activity</code> — застосунок відкрив транзакцію і
+          «забув» про неї. Захист: <code>idle_in_transaction_session_timeout</code>.</li>
+        <li><b><code>statement_timeout</code></b> на рівні ролі застосунку (наприклад, 5 с для API, більше для
+          звітів) — запобіжник від запиту, що з'їдає базу.</li>
+        <li><b>Довгі транзакції блокують VACUUM:</b> мертві версії рядків, які ще може бачити найстаріший знімок, не
+          можна прибрати → bloat і повільніші скани (<a href="19-postgres-storage-and-memory.html">туторіал 19</a>).</li>
+        <li><b>Рядкові локи</b> (<code>FOR UPDATE</code>) брати якомога пізніше і на мінімум рядків, в однаковому
+          порядку — інакше дедлоки (<a href="29-race-conditions.html">туторіал 29, B3</a>).</li>
+      </ul>
+<div class="codecard"><div class="bar"><span class="path">хто кого блокує</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">SELECT</span><span class="w"> </span><span class="n">pid</span><span class="p">,</span><span class="w"> </span><span class="k">state</span><span class="p">,</span><span class="w"> </span><span class="n">now</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">xact_start</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">xact_age</span><span class="p">,</span><span class="w"> </span><span class="n">wait_event_type</span><span class="p">,</span><span class="w"> </span><span class="k">left</span><span class="p">(</span><span class="n">query</span><span class="p">,</span><span class="w"> </span><span class="mi">80</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">query</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="w">       </span><span class="n">pg_blocking_pids</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">blocked_by</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">FROM</span><span class="w"> </span><span class="n">pg_stat_activity</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">WHERE</span><span class="w"> </span><span class="n">datname</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">current_database</span><span class="p">()</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="k">state</span><span class="w"> </span><span class="o">&lt;&gt;</span><span class="w"> </span><span class="s1">'idle'</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">xact_age</span><span class="w"> </span><span class="k">DESC</span><span class="w"> </span><span class="n">NULLS</span><span class="w"> </span><span class="k">LAST</span><span class="p">;</span></code></pre></div>
+    </section>
+
+    <!-- ============ 10 ============ -->
+    <section id="s10">
+      <h2><span class="num">10</span>Міграції без простою</h2>
+      <p class="section-desc">У проєкті міграції запускаються <code>release_command = "alembic upgrade head"</code> на Fly перед релізом. Якщо міграція бере ACCESS EXCLUSIVE лок на хвилину — хвилину лежить API.</p>
+      <div class="callout bad"><div class="ic">🚦</div><div class="body"><span class="tag">Черга локів</span><br>
+        <code>ALTER TABLE deliveries …</code> чекає, поки завершиться довгий SELECT. Поки він чекає, <b>усі нові
+        запити</b> до <code>deliveries</code> стають у чергу за ним. Навіть «миттєвий» ALTER може покласти сервіс.
+        Захист: <code>SET lock_timeout = '3s'</code> у міграції й ретрай.</div></div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Операція</th><th>Небезпечно</th><th>Безпечно</th></tr></thead>
+        <tbody>
+          <tr><td>Індекс</td><td><code>CREATE INDEX</code> — блокує запис на весь час побудови</td><td><code>CREATE INDEX CONCURRENTLY</code> (поза транзакцією)</td></tr>
+          <tr><td>Нова колонка з default</td><td>до PG 11 переписувала таблицю</td><td>PG 11+: константний default — миттєво</td></tr>
+          <tr><td>NOT NULL на існуючу колонку</td><td><code>SET NOT NULL</code> — повний скан під локом</td><td><code>CHECK (col IS NOT NULL) NOT VALID</code> → <code>VALIDATE</code> → <code>SET NOT NULL</code> (PG 12+ пропускає скан)</td></tr>
+          <tr><td>Foreign key</td><td>одразу валідує всю таблицю</td><td><code>NOT VALID</code>, потім <code>VALIDATE CONSTRAINT</code></td></tr>
+          <tr><td>Перейменування / зміна типу</td><td>ламає стару версію коду під час деплою</td><td>expand → migrate → contract: нова колонка, подвійний запис, бекфіл батчами, перемикання читання, видалення старої</td></tr>
+          <tr><td>Бекфіл</td><td>один <code>UPDATE</code> на мільйон рядків</td><td>батчі по 1–10 тис. з окремими commit'ами</td></tr>
+        </tbody>
+      </table></div>
+<div class="codecard good"><div class="bar"><span class="path">app/db/migrations/versions/…_add_tenant_indexes.py (пропозиція)</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">def</span><span class="w"> </span><span class="nf">upgrade</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="c1"># CONCURRENTLY can't run inside a transaction: Alembic's autocommit_block</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="c1"># commits the migration transaction around these statements.</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="k">with</span> <span class="n">op</span><span class="o">.</span><span class="n">get_context</span><span class="p">()</span><span class="o">.</span><span class="n">autocommit_block</span><span class="p">():</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">op</span><span class="o">.</span><span class="n">create_index</span><span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="s2">"ix_deliveries_org_created"</span><span class="p">,</span> <span class="s2">"deliveries"</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="p">[</span><span class="s2">"organization_id"</span><span class="p">,</span> <span class="n">sa</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">"created_at DESC"</span><span class="p">)],</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">postgresql_concurrently</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">if_not_exists</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">op</span><span class="o">.</span><span class="n">create_index</span><span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="s2">"ix_route_stops_route_seq"</span><span class="p">,</span> <span class="s2">"route_stops"</span><span class="p">,</span> <span class="p">[</span><span class="s2">"route_id"</span><span class="p">,</span> <span class="s2">"sequence"</span><span class="p">],</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">postgresql_concurrently</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">if_not_exists</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="n">op</span><span class="o">.</span><span class="n">create_index</span><span class="p">(</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="s2">"ix_route_stops_delivery_id"</span><span class="p">,</span> <span class="s2">"route_stops"</span><span class="p">,</span> <span class="p">[</span><span class="s2">"delivery_id"</span><span class="p">],</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="n">postgresql_concurrently</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">if_not_exists</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span>        <span class="p">)</span></code></pre></div>
+      <p>Якщо <code>CREATE INDEX CONCURRENTLY</code> упав посередині, лишається <code>INVALID</code> індекс: його
+      треба видалити (<code>DROP INDEX CONCURRENTLY</code>) і створити знову. Тому <code>if_not_exists</code> не
+      завжди рятує — перевіряй <code>pg_index.indisvalid</code>.</p>
+    </section>
+
+    <!-- ============ 11 ============ -->
+    <section id="s11">
+      <h2><span class="num">11</span>Моніторинг і діагностика</h2>
+      <p class="section-desc">П'ять запитів, які варто знати напам'ять.</p>
+<div class="codecard"><div class="bar"><span class="path">1. топ запитів за сумарним часом (pg_stat_statements)</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">SELECT</span><span class="w"> </span><span class="n">calls</span><span class="p">,</span><span class="w"> </span><span class="n">round</span><span class="p">(</span><span class="n">total_exec_time</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">total_ms</span><span class="p">,</span><span class="w"> </span><span class="n">round</span><span class="p">(</span><span class="n">mean_exec_time</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">mean_ms</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="w">       </span><span class="k">rows</span><span class="p">,</span><span class="w"> </span><span class="k">left</span><span class="p">(</span><span class="n">query</span><span class="p">,</span><span class="w"> </span><span class="mi">100</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">query</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">FROM</span><span class="w"> </span><span class="n">pg_stat_statements</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">total_exec_time</span><span class="w"> </span><span class="k">DESC</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">LIMIT</span><span class="w"> </span><span class="mi">10</span><span class="p">;</span></code></pre></div>
+      <p>Сортування за <b>сумарним</b> часом, а не середнім: запит на 2 мс, який викликають 5 млн разів на день, важить
+      більше за звіт на 3 с раз на годину.</p>
+<div class="codecard"><div class="bar"><span class="path">2. таблиці, які читаються послідовно</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">SELECT</span><span class="w"> </span><span class="n">relname</span><span class="p">,</span><span class="w"> </span><span class="n">seq_scan</span><span class="p">,</span><span class="w"> </span><span class="n">seq_tup_read</span><span class="p">,</span><span class="w"> </span><span class="n">idx_scan</span><span class="p">,</span><span class="w"> </span><span class="n">n_live_tup</span><span class="p">,</span><span class="w"> </span><span class="n">n_dead_tup</span><span class="p">,</span><span class="w"> </span><span class="n">last_autovacuum</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">FROM</span><span class="w"> </span><span class="n">pg_stat_user_tables</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">seq_tup_read</span><span class="w"> </span><span class="k">DESC</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">LIMIT</span><span class="w"> </span><span class="mi">10</span><span class="p">;</span></code></pre></div>
+<div class="codecard"><div class="bar"><span class="path">3. невикористані індекси (кандидати на видалення)</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">SELECT</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">relname</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="k">table</span><span class="p">,</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">indexrelname</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="k">index</span><span class="p">,</span><span class="w"> </span><span class="n">pg_size_pretty</span><span class="p">(</span><span class="n">pg_relation_size</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">indexrelid</span><span class="p">))</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="k">size</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">FROM</span><span class="w"> </span><span class="n">pg_stat_user_indexes</span><span class="w"> </span><span class="n">s</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">JOIN</span><span class="w"> </span><span class="n">pg_index</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">i</span><span class="p">.</span><span class="n">indexrelid</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">indexrelid</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">WHERE</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="n">idx_scan</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="w"> </span><span class="k">AND</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="n">i</span><span class="p">.</span><span class="n">indisunique</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">pg_relation_size</span><span class="p">(</span><span class="n">s</span><span class="p">.</span><span class="n">indexrelid</span><span class="p">)</span><span class="w"> </span><span class="k">DESC</span><span class="p">;</span></code></pre></div>
+<div class="codecard"><div class="bar"><span class="path">sql</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="w"> </span><span class="mi">99</span><span class="o">%</span><span class="w"> </span><span class="err">для</span><span class="w"> </span><span class="n">OLTP</span><span class="p">)</span><span class="err">"</span><span class="o">&gt;</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">SELECT</span><span class="w"> </span><span class="n">round</span><span class="p">(</span><span class="mi">100</span><span class="p">.</span><span class="mi">0</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">sum</span><span class="p">(</span><span class="n">blks_hit</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="k">nullif</span><span class="p">(</span><span class="k">sum</span><span class="p">(</span><span class="n">blks_hit</span><span class="p">)</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="k">sum</span><span class="p">(</span><span class="n">blks_read</span><span class="p">),</span><span class="w"> </span><span class="mi">0</span><span class="p">),</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">cache_hit_pct</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">FROM</span><span class="w"> </span><span class="n">pg_stat_database</span><span class="p">;</span></code></pre></div>
+      <ul>
+        <li><b>5. Лог повільних запитів:</b> <code>log_min_duration_statement = 500ms</code>, а
+          <code>auto_explain</code> (<code>auto_explain.log_min_duration</code>) пише в лог одразу й план.</li>
+        <li>На стороні застосунку: <code>echo=True</code> в SQLAlchemy локально (у проєкті вмикається через
+          <code>DEBUG</code>), APM-спани на кожен SQL у продакшені.</li>
+      </ul>
+    </section>
+
+    <!-- ============ 12 ============ -->
+    <section id="s12">
+      <h2><span class="num">12</span>Великі таблиці</h2>
+      <p class="section-desc">Коли індексів уже недостатньо: сотні мільйонів рядків, важкі аналітичні запити.</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Техніка</th><th>Що дає</th><th>Ціна</th></tr></thead>
+        <tbody>
+          <tr><td><b>Партиціонування</b> (<code>PARTITION BY RANGE (created_at)</code>)</td><td>partition pruning; видалення старих даних через <code>DETACH/DROP</code> замість <code>DELETE</code>; менші індекси</td><td>ключ партиції має бути в PK/unique; запити без ключа йдуть у всі партиції</td></tr>
+          <tr><td><b>Materialized view</b></td><td>готові агрегати для дашборду</td><td>застарівання; <code>REFRESH … CONCURRENTLY</code> потребує unique-індекс</td></tr>
+          <tr><td><b>Денормалізовані лічильники / зведені таблиці</b></td><td>O(1) читання метрик</td><td>треба оновлювати атомарно (тригер або в тій самій транзакції)</td></tr>
+          <tr><td><b>Read-репліки</b></td><td>знімають читання з primary</td><td>replication lag: read-your-writes (<a href="../system-design/05-replication-sharding.html">SD 5</a>)</td></tr>
+          <tr><td><b>Кеш (Redis)</b></td><td>гарячі ключі без БД</td><td>інвалідація, гонки (<a href="../system-design/03-caching.html">SD 3</a>)</td></tr>
+          <tr><td><b>OLAP-сховище</b> (ClickHouse)</td><td>агрегації по мільярдах рядків</td><td>ще одна система й ETL (<a href="28-databases-by-example.html">туторіал 28</a>)</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Корисний SQL, про який питають</h3>
+<div class="codecard"><div class="bar"><span class="path">віконні функції, CTE, DISTINCT ON</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="c1">-- останній статус кожного водія без self-join</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">SELECT</span><span class="w"> </span><span class="k">DISTINCT</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="p">(</span><span class="n">driver_id</span><span class="p">)</span><span class="w"> </span><span class="n">driver_id</span><span class="p">,</span><span class="w"> </span><span class="n">status</span><span class="p">,</span><span class="w"> </span><span class="n">recorded_at</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">FROM</span><span class="w"> </span><span class="n">driver_events</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">driver_id</span><span class="p">,</span><span class="w"> </span><span class="n">recorded_at</span><span class="w"> </span><span class="k">DESC</span><span class="p">;</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1">-- рейтинг маршрутів за пробігом всередині організації</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">SELECT</span><span class="w"> </span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">total_distance_km</span><span class="p">,</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="w">       </span><span class="n">rank</span><span class="p">()</span><span class="w"> </span><span class="n">OVER</span><span class="w"> </span><span class="p">(</span><span class="n">PARTITION</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">organization_id</span><span class="w"> </span><span class="k">ORDER</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">total_distance_km</span><span class="w"> </span><span class="k">DESC</span><span class="p">)</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="n">rnk</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">FROM</span><span class="w"> </span><span class="n">routes</span><span class="p">;</span>
+<span class="jb-ln" aria-hidden="true"></span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1">-- з PG 12 CTE інлайниться (оптимізується разом із запитом), якщо не MATERIALIZED</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="c1">-- і використовується один раз; MATERIALIZED — коли навмисно хочеш «бар'єр оптимізації»</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">WITH</span><span class="w"> </span><span class="n">recent</span><span class="w"> </span><span class="k">AS</span><span class="w"> </span><span class="p">(</span><span class="k">SELECT</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">deliveries</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">created_at</span><span class="w"> </span><span class="o">&gt;</span><span class="w"> </span><span class="n">now</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="nb">interval</span><span class="w"> </span><span class="s1">'7 days'</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">SELECT</span><span class="w"> </span><span class="n">status</span><span class="p">,</span><span class="w"> </span><span class="k">count</span><span class="p">(</span><span class="o">*</span><span class="p">)</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">recent</span><span class="w"> </span><span class="k">GROUP</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">status</span><span class="p">;</span></code></pre></div>
+      <p><b>JSONB</b> — зручно для гнучких атрибутів, але не замінює колонки: статистика по ключах JSONB слабка
+      (погані оцінки), кожне оновлення переписує весь документ, а для фільтрів потрібен GIN-індекс. Те, по чому
+      фільтрують і джойнять, — у звичайні колонки.</p>
+    </section>
+
+    <!-- ============ 13 ============ -->
+    <section id="s13">
+      <h2><span class="num">13</span>Аудит цього проєкту</h2>
+      <p class="section-desc">Готова історія для співбесіди: «ось що я знайшов у своєму проєкті і як би виправив».</p>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Що</th><th>Де</th><th>Наслідок</th><th>Виправлення</th></tr></thead>
+        <tbody>
+          <tr><td>Немає індексів на <code>organization_id</code></td><td><code>deliveries</code>, <code>routes</code>, <code>drivers</code>, <code>vehicles</code>, <code>depots</code></td><td>кожен запит тенанта — Seq Scan по всій таблиці всіх тенантів</td><td><code>(organization_id, created_at DESC)</code></td></tr>
+          <tr><td>FK без індексу</td><td><code>route_stops.route_id</code>, <code>route_stops.delivery_id</code></td><td>повільний <code>list_by_route</code>; DELETE доставки сканує <code>route_stops</code></td><td><code>(route_id, sequence)</code>, <code>(delivery_id)</code></td></tr>
+          <tr><td>Список без ліміту</td><td><code>TenantScopedRepository.list()</code> → <code>GET /deliveries</code></td><td>пам'ять і час ростуть лінійно з клієнтом</td><td>keyset-пагінація (розділ 7)</td></tr>
+          <tr><td><code>date(created_at) = today</code></td><td><code>DashboardService</code></td><td>індекс не застосовний; кілька окремих COUNT</td><td>діапазон + <code>FILTER</code> (розділ 5)</td></tr>
+          <tr><td>Loop-delete</td><td><code>RouteStopRepository.delete_by_ids</code></td><td>3N запитів і N commit'ів</td><td>один <code>DELETE … WHERE id IN</code></td></tr>
+          <tr><td>commit у репозиторії</td><td><code>BaseRepository.create/update</code></td><td>кілька записів в одному запиті не атомарні</td><td>Unit of Work на запит (<a href="31-fastapi-deep-dive.html">туторіал 31, розділ 3</a>)</td></tr>
+          <tr><td>Пул за замовчуванням</td><td><code>app/db/session.py</code></td><td>до 15 з'єднань на процес, <code>pool_timeout</code> 30 с</td><td>явні <code>pool_size</code>, <code>pool_timeout</code>, <code>pool_pre_ping</code></td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout good"><div class="ic">✅</div><div class="body"><span class="tag">Що вже зроблено добре</span><br>
+        Унікальний індекс на <code>users.email</code>; складені індекси <code>(organization_id, created_at)</code> на
+        <code>quantum_runs</code> і <code>(tenant_id, created_at)</code> на <code>quantum_job_ledger</code> — рівно під
+        запити «історія тенанта, новіші першими»; батчеве завантаження стопів через <code>IN</code> без N+1;
+        <code>statement_cache_size=0</code> під PgBouncer; міграції як <code>release_command</code> до старту нової
+        версії.</div></div>
+    </section>
+
+    <!-- ============ QA ============ -->
+    <section id="qa">
+      <h2><span class="num">14</span>20 питань співбесіди</h2>
+      <p class="section-desc">Спочатку відповідай уголос, потім відкривай.</p>
+
+      <details class="qa"><summary><span class="qnum">01</span>Чим EXPLAIN відрізняється від EXPLAIN ANALYZE?</summary><div class="a">
+        <p>EXPLAIN показує план і оцінки, не виконуючи запит. ANALYZE виконує його і додає фактичні час, рядки і loops.
+        Для змінювальних запитів — у транзакції з ROLLBACK. BUFFERS додає статистику сторінок.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">02</span>Індекс є, але planner робить Seq Scan. Чому?</summary><div class="a">
+        <p>(1) Умова повертає велику частку таблиці — Seq Scan справді дешевший; (2) функція або приведення типу над
+        колонкою; (3) застаріла статистика; (4) запит не використовує лівий префікс складеного індексу; (5) маленька
+        таблиця; (6) <code>LIKE '%x'</code>. Перевіряю EXPLAIN ANALYZE і <code>pg_stats</code>.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">03</span>Як вибрати порядок колонок у складеному індексі?</summary><div class="a">
+        <p>Колонки з рівністю першими, потім колонка діапазону або сортування. Враховувати, які запити мають
+        використовувати індекс як лівий префікс. Вибірковість — вторинний критерій.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">04</span>Що таке Index Only Scan і чому він іноді все одно читає таблицю?</summary><div class="a">
+        <p>Усі потрібні колонки є в індексі. Але видимість рядка зберігається в heap, тож Postgres перевіряє visibility
+        map: для сторінок, не позначених all-visible, читає heap (<code>Heap Fetches</code>). VACUUM оновлює visibility
+        map.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">05</span>Коли GIN, коли GiST, коли BRIN?</summary><div class="a">
+        <p>GIN — «багато ключів у значенні»: JSONB, масиви, повнотекстовий пошук, триграми. GiST — геометрія, діапазони,
+        найближчий сусід, exclusion constraints. BRIN — величезні append-only таблиці, де значення корелює з фізичним
+        порядком (час запису).</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">06</span>Чому OFFSET-пагінація повільна на дальніх сторінках?</summary><div class="a">
+        <p>Базі треба знайти і пропустити всі рядки до OFFSET. Час росте лінійно з номером сторінки; до того ж при вставках
+        рядки дублюються або губляться. Keyset: <code>WHERE (created_at, id) &lt; (:ts, :id) ORDER BY … LIMIT n</code> з
+        відповідним індексом.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">07</span>Що таке N+1 і як його знайти й виправити в SQLAlchemy?</summary><div class="a">
+        <p>Один запит на список + по запиту на кожен елемент. Знаходять за логами SQL / APM (однаковий запит повторюється
+        N разів). Лікують <code>selectinload</code> (one-to-many), <code>joinedload</code> (many-to-one), ручним
+        <code>IN</code>-батчем; <code>lazy="raise"</code> як запобіжник.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">08</span>Чому Postgres-з'єднання дорогі і навіщо PgBouncer?</summary><div class="a">
+        <p>Кожне з'єднання — окремий процес з власною пам'яттю; встановлення дороге, а сотні активних з'єднань погіршують
+        пропускну здатність. PgBouncer мультиплексує багато клієнтських з'єднань на кілька серверних (transaction mode).</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">09</span>Які обмеження PgBouncer у transaction mode?</summary><div class="a">
+        <p>Стан сесії не переживає транзакцію: <code>SET</code>, тимчасові таблиці, сесійні advisory locks,
+        <code>LISTEN/NOTIFY</code>. Prepared statements — проблема для старих версій (asyncpg:
+        <code>statement_cache_size=0</code>); PgBouncer 1.21+ підтримує їх на рівні протоколу.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">10</span>Як додати індекс на таблицю з 100 млн рядків у продакшені?</summary><div class="a">
+        <p><code>CREATE INDEX CONCURRENTLY</code> поза транзакцією (в Alembic — <code>autocommit_block</code>), з
+        <code>lock_timeout</code>; моніторити <code>pg_stat_progress_create_index</code>; після збою — видалити INVALID
+        індекс і повторити.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">11</span>Чим шкідливі довгі транзакції?</summary><div class="a">
+        <p>Тримають з'єднання з пулу і локи, блокують інші запити і DDL, не дають VACUUM прибрати мертві версії
+        (bloat, повільніші скани, ризик wraparound). Захист — короткі транзакції, без мережевих викликів,
+        <code>idle_in_transaction_session_timeout</code>, <code>statement_timeout</code>.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">12</span>Чому <code>COUNT(*)</code> у Postgres повільний на великій таблиці?</summary><div class="a">
+        <p>Через MVCC немає одного «поточного» лічильника: кожен рядок треба перевірити на видимість для знімка. Index Only
+        Scan допомагає, якщо visibility map свіжа. Альтернативи — оцінка <code>reltuples</code>, денормалізований
+        лічильник, кеш.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">13</span>Що робить VACUUM і чим він відрізняється від VACUUM FULL?</summary><div class="a">
+        <p>VACUUM позначає місце мертвих версій для перевикористання, оновлює visibility map і freeze-статуси, не блокуючи
+        читання й запис. VACUUM FULL переписує таблицю повністю з ACCESS EXCLUSIVE локом — у продакшені замість нього
+        <code>pg_repack</code>. Детально — <a href="19-postgres-storage-and-memory.html">туторіал 19</a>.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">14</span>Як знайти найповільніші запити в продакшені?</summary><div class="a">
+        <p><code>pg_stat_statements</code> за <code>total_exec_time</code>; <code>log_min_duration_statement</code> і
+        <code>auto_explain</code>; APM на стороні застосунку; <code>pg_stat_activity</code> для того, що виконується
+        зараз.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">15</span>Коли партиціонувати таблицю?</summary><div class="a">
+        <p>Коли таблиця дуже велика і більшість запитів фільтрує по ключу партиції (час, тенант), а старі дані треба
+        регулярно видаляти чи архівувати. Не як заміну індексам: запити без ключа партиції стануть повільнішими.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">16</span>Чим відрізняються <code>work_mem</code> і <code>shared_buffers</code>?</summary><div class="a">
+        <p><code>shared_buffers</code> — спільний кеш сторінок для всіх процесів (типово ~25% RAM). <code>work_mem</code>
+        — пам'ять на одну операцію сорту чи хешу в одному запиті; запит може взяти її кілька разів, тож великий
+        <code>work_mem</code> × багато з'єднань = OOM. Ознака нестачі — <code>external merge Disk</code> у плані.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">17</span>Як зробити bulk-вставку 1 млн рядків з Python?</summary><div class="a">
+        <p><code>COPY</code> (asyncpg <code>copy_records_to_table</code>, psycopg <code>copy</code>) — найшвидше. Далі
+        <code>insert()</code> з executemany і батчами в одній транзакції. Для дуже великих — тимчасово прибрати
+        некритичні індекси й створити після, потім <code>ANALYZE</code>.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">18</span>Як вибрати розмір пулу з'єднань?</summary><div class="a">
+        <p>Від бюджету БД: Σ процесів × (pool_size + max_overflow) &lt; max_connections − резерв. Для одного процесу
+        достатньо невеликого пулу (5–10): більший пул маскує повільні запити й довгі транзакції. Якщо процесів багато —
+        PgBouncer.</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">19</span>Чому важливо індексувати foreign key?</summary><div class="a">
+        <p>Postgres не робить цього сам. Без індексу JOIN і фільтр по FK — Seq Scan, а видалення/оновлення батьківського
+        рядка змушує сканувати дочірню таблицю для перевірки обмеження (і тримати локи довше).</p></div></details>
+
+      <details class="qa"><summary><span class="qnum">20</span>Як би ти прискорив дашборд цього проєкту на 1000 організацій?</summary><div class="a">
+        <p>Індекси <code>(organization_id, created_at)</code> і <code>(organization_id, status)</code>; один запит з
+        <code>FILTER</code> замість кількох COUNT; sargable-діапазон замість <code>date()</code>; кеш у Redis на 30–60 с
+        на організацію; для історії використання — щоденна зведена таблиця, яку наповнює Celery beat.</p></div></details>
+    </section>
+
+    <!-- ============ tasks ============ -->
+    <section id="tasks">
+      <h2><span class="num">15</span>Задачі</h2>
+      <p class="section-desc">Спершу подумай, потім відкривай розв'язок.</p>
+
+      <div class="task"><div class="tt">Задача 1. Прочитай план</div>
+<div class="codecard"><div class="bar"><span class="path">маршрути з кількістю стопів</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span>Nested Loop  (cost=0.29..16.85 rows=1 width=48) (actual time=0.05..2840.10 rows=48000 loops=1)
+<span class="jb-ln" aria-hidden="true"></span>  -&gt;  Seq Scan on routes r  (cost=0.00..8.50 rows=1 width=40) (actual time=0.02..3.80 rows=1200 loops=1)
+<span class="jb-ln" aria-hidden="true"></span>        Filter: ((organization_id = '5f0c…'::uuid) AND (status = 'active'::text))
+<span class="jb-ln" aria-hidden="true"></span>        Rows Removed by Filter: 8800
+<span class="jb-ln" aria-hidden="true"></span>  -&gt;  Seq Scan on route_stops s  (cost=0.00..8.33 rows=1 width=24) (actual time=0.40..2.30 rows=40 loops=1200)
+<span class="jb-ln" aria-hidden="true"></span>        Filter: (route_id = r.id)
+<span class="jb-ln" aria-hidden="true"></span>Execution Time: 2851.30 ms</code></pre></div>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <ol>
+            <li>Planner оцінив <code>routes</code> в 1 рядок, а їх 1200 — статистика застаріла або умови
+              <code>organization_id</code> і <code>status</code> корельовані. Через це обраний Nested Loop.</li>
+            <li>Внутрішній Seq Scan по <code>route_stops</code> виконано <b>1200 разів</b> (<code>loops=1200</code>):
+              2.3 мс × 1200 ≈ 2.8 с — майже весь час.</li>
+            <li>Виправлення: індекс <code>route_stops (route_id, sequence)</code> → внутрішній вузол стане Index Scan;
+              <code>ANALYZE routes</code> (і за потреби <code>CREATE STATISTICS</code>) → planner, ймовірно, обере
+              Hash Join; індекс <code>routes (organization_id, status)</code>.</li>
+          </ol></div></details>
+      </div>
+
+      <div class="task"><div class="tt">Задача 2. Чому сторінка 500 відкривається 4 секунди?</div>
+<div class="codecard"><div class="bar"><span class="path">app/api/deliveries/router.py</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"/"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span><span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">list_deliveries</span><span class="p">(</span><span class="n">page</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="n">size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span> <span class="n">service</span><span class="p">:</span> <span class="n">DeliveryServiceDep</span> <span class="o">=</span> <span class="o">...</span><span class="p">):</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">stmt</span> <span class="o">=</span> <span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">Delivery</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Delivery</span><span class="o">.</span><span class="n">organization_id</span> <span class="o">==</span> <span class="n">org_id</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>            <span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">Delivery</span><span class="o">.</span><span class="n">created_at</span><span class="o">.</span><span class="n">desc</span><span class="p">())</span><span class="o">.</span><span class="n">offset</span><span class="p">((</span><span class="n">page</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">size</span><span class="p">)</span><span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="n">size</span><span class="p">))</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">total</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">count</span><span class="p">())</span><span class="o">.</span><span class="n">select_from</span><span class="p">(</span><span class="n">Delivery</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>                                 <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">Delivery</span><span class="o">.</span><span class="n">organization_id</span> <span class="o">==</span> <span class="n">org_id</span><span class="p">))</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="o">...</span></code></pre></div>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <ul>
+            <li>OFFSET 24 950 — Postgres читає й відкидає ~25 тис. рядків; без індексу
+              <code>(organization_id, created_at)</code> ще й сортує всю вибірку.</li>
+            <li><code>COUNT(*)</code> на кожну сторінку — ще один повний прохід по рядках організації.</li>
+            <li>Виправлення: індекс, keyset-пагінація з курсором, <code>has_more</code> через <code>limit + 1</code>;
+              точний total — тільки якщо UI справді його показує, і кешований.</li>
+          </ul></div></details>
+      </div>
+
+      <div class="task"><div class="tt">Задача 3. Міграція поклала API на 2 хвилини</div>
+<div class="codecard"><div class="bar"><span class="path">alembic migration</span></div><pre class="jb"><code><span class="jb-ln" aria-hidden="true"></span><span class="k">def</span><span class="w"> </span><span class="nf">upgrade</span><span class="p">():</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">op</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="s2">"deliveries"</span><span class="p">,</span> <span class="n">sa</span><span class="o">.</span><span class="n">Column</span><span class="p">(</span><span class="s2">"region"</span><span class="p">,</span> <span class="n">sa</span><span class="o">.</span><span class="n">String</span><span class="p">(</span><span class="mi">100</span><span class="p">),</span> <span class="n">nullable</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">op</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"UPDATE deliveries SET region = 'unknown'"</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">op</span><span class="o">.</span><span class="n">alter_column</span><span class="p">(</span><span class="s2">"deliveries"</span><span class="p">,</span> <span class="s2">"region"</span><span class="p">,</span> <span class="n">nullable</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="jb-ln" aria-hidden="true"></span>    <span class="n">op</span><span class="o">.</span><span class="n">create_index</span><span class="p">(</span><span class="s2">"ix_deliveries_region"</span><span class="p">,</span> <span class="s2">"deliveries"</span><span class="p">,</span> <span class="p">[</span><span class="s2">"region"</span><span class="p">])</span></code></pre></div>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <ol>
+            <li><code>UPDATE</code> усієї таблиці в одній транзакції — рядкові локи на всі рядки, мільйони мертвих версій,
+              WAL-сплеск.</li>
+            <li><code>SET NOT NULL</code> — повний скан під ACCESS EXCLUSIVE.</li>
+            <li>Звичайний <code>CREATE INDEX</code> блокує запис на весь час побудови.</li>
+            <li>Усе в одній транзакції: локи тримаються до кінця міграції.</li>
+          </ol>
+          <p>Як треба: <code>add_column(..., server_default="unknown", nullable=False)</code> (у PG 11+ миттєво, без
+          переписування) або бекфіл батчами; індекс — <code>CONCURRENTLY</code> в <code>autocommit_block</code>;
+          <code>lock_timeout</code> на початку міграції.</p></div></details>
+      </div>
+
+      <div class="task"><div class="tt">Задача 4. Обери індекс</div>
+        <p>Для кожного запиту запропонуй індекс:
+        (a) <code>WHERE organization_id = ? AND status = 'pending_geocode'</code> (1% рядків);
+        (b) <code>WHERE address ILIKE '%хрещатик%'</code>;
+        (c) <code>WHERE recorded_at BETWEEN ? AND ?</code> на 2 млрд GPS-точок, які пишуться за часом;
+        (d) <code>WHERE lower(email) = ?</code>.</p>
+        <details class="ans"><summary>Розв'язок</summary><div class="a">
+          <p>(a) частковий <code>(organization_id) WHERE status = 'pending_geocode'</code>;
+          (b) GIN <code>gin_trgm_ops</code> з <code>pg_trgm</code>;
+          (c) BRIN по <code>recorded_at</code> (+ партиції за місяцями);
+          (d) унікальний індекс по виразу <code>lower(email)</code> або тип <code>citext</code>.</p></div></details>
+      </div>
+    </section>
+
+    <!-- ============ cheat ============ -->
+    <section id="cheat">
+      <h2><span class="num">16</span>Шпаргалка</h2>
+      <div class="cheat"><table>
+        <thead><tr><th>Ситуація</th><th>Дія</th></tr></thead>
+        <tbody>
+          <tr><td>Повільний ендпоінт</td><td>APM: кількість SQL + час у БД → N+1 чи один повільний запит</td></tr>
+          <tr><td>Повільний запит</td><td><code>EXPLAIN (ANALYZE, BUFFERS)</code>: Seq Scan, estimated vs actual, loops, Disk sort</td></tr>
+          <tr><td>Хибні оцінки</td><td><code>ANALYZE</code>, <code>SET STATISTICS</code>, <code>CREATE STATISTICS</code></td></tr>
+          <tr><td>Фільтр + сорт</td><td>складений індекс: рівність → діапазон/сорт</td></tr>
+          <tr><td>Мала підмножина</td><td>частковий індекс</td></tr>
+          <tr><td>Функція в WHERE</td><td>sargable-переписування або індекс по виразу</td></tr>
+          <tr><td>JSONB / масиви / <code>%текст%</code></td><td>GIN (jsonb_path_ops / pg_trgm)</td></tr>
+          <tr><td>Гео, діапазони</td><td>GiST</td></tr>
+          <tr><td>Величезний append-only журнал</td><td>BRIN + партиції</td></tr>
+          <tr><td>FK</td><td>завжди індекс на дочірній колонці</td></tr>
+          <tr><td>Пагінація</td><td>keyset <code>(created_at, id)</code>, не OFFSET</td></tr>
+          <tr><td>Масовий запис</td><td>COPY / executemany, одна транзакція, батчі</td></tr>
+          <tr><td>З'єднання</td><td>процеси × (pool + overflow) &lt; max_connections; PgBouncer transaction mode</td></tr>
+          <tr><td>Міграції</td><td>CONCURRENTLY, NOT VALID → VALIDATE, lock_timeout, expand/contract</td></tr>
+          <tr><td>Моніторинг</td><td>pg_stat_statements, pg_stat_user_tables/indexes, pg_stat_activity, auto_explain</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    </article>
+  </div>
+</div>
+
+<footer class="page">
+  Плани в прикладах — ілюстративні (синтетична таблиця на 200 000 доставок); на ваших даних числа будуть іншими, а форма плану — такою ж. Поведінка описана для PostgreSQL 14–17 і SQLAlchemy 2.0. Пов'язане: <a href="19-postgres-storage-and-memory.html">19 · MVCC і VACUUM</a>, <a href="29-race-conditions.html">29 · Блокування</a>, <a href="../system-design/04-databases-storage.html">SD 4 · Індекси й ізоляція</a>, <a href="31-fastapi-deep-dive.html">31 · FastAPI углиб</a>.
+</footer>
+
+<script>
+(function(){
+  var root = document.documentElement, btn = document.getElementById('theme-toggle');
+  if(!btn) return;
+  var mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+  function current(){
+    var t = root.getAttribute('data-theme');
+    return t === 'light' || t === 'dark' ? t : (mq && mq.matches ? 'dark' : 'light');
+  }
+  function render(){
+    var dark = current() === 'dark';
+    btn.textContent = dark ? '☀️ Світла тема' : '🌙 Темна тема';
+    btn.setAttribute('aria-label', dark ? 'Увімкнути світлу тему' : 'Увімкнути темну тему');
+  }
+  btn.addEventListener('click', function(){
+    var next = current() === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('docs-theme', next); }catch(e){}
+    render();
+  });
+  if(mq && mq.addEventListener) mq.addEventListener('change', render);
+  render();
+})();
+</script>
+<script src="../assets/mobile-nav.js"></script>
+</body>
+</html>
+
