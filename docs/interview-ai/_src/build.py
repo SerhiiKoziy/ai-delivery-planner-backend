@@ -5,7 +5,7 @@
 Outputs (next to _src/):
   01-python-databases.html — the tutorial page (human view + context builder)
   01-python-databases.md   — the full AI context: prompt + whole bank
-The bank lives in bank_python_db.py, the interviewer prompt in prompt.md.
+The bank lives in bank_python_db.py + bank_system_design.py, the interviewer prompt in prompt.md.
 """
 import html
 import json
@@ -17,7 +17,14 @@ SRC = Path(__file__).resolve().parent
 OUT = SRC.parent
 DOCS = OUT.parent
 sys.path.insert(0, str(SRC))
-from bank_python_db import TOPICS, DRILLS  # noqa: E402
+import bank_python_db as _py  # noqa: E402
+import bank_system_design as _sd  # noqa: E402
+
+# Python + DB topics, Redis joins the DB topic, System Design is its own topic.
+TOPICS = [dict(t, groups=list(t["groups"])) for t in _py.TOPICS]
+next(t for t in TOPICS if t["id"] == "db")["groups"].append(_sd.REDIS_GROUP)
+TOPICS.append(_sd.SD_TOPIC)
+DRILLS = _py.DRILLS + _sd.DRILLS
 
 SLUG = "01-python-databases"
 LVL_NAME = {"J": "Junior", "M": "Middle", "S": "Senior"}
@@ -26,18 +33,20 @@ esc = html.escape
 
 # ---------- tutorial links: "06#s1" -> file, page title, section title ----------
 TUT = {}
-for f in sorted((DOCS / "python-tutorials").glob("*.html")):
-    num = f.name.split("-")[0]
-    s = f.read_text()
-    title = re.search(r"<title>(.*?)</title>", s).group(1).split(" — ")[0]
-    title = re.sub(r"^\d+\.\s*", "", html.unescape(title))
-    secs = {}
-    for m in re.finditer(r'<section[^>]*id="([^"]+)"[^>]*>(?:(?!<section).)*?<h2[^>]*>(.*?)</h2>', s, re.S):
-        t = re.sub(r'<span class="(?:num|lvlbadge)[^"]*">.*?</span>', "", m.group(2))
-        t = html.unescape(t)
-        t = re.sub(r"<[^>]+>", " ", t)
-        secs[m.group(1)] = re.sub(r"\s+", " ", t).strip()
-    TUT[num] = dict(file=f.name, title=title, secs=secs)
+TUT_DIRS = {"": "python-tutorials", "sd": "system-design"}
+for prefix, folder in TUT_DIRS.items():
+    for f in sorted((DOCS / folder).glob("[0-9]*.html")):
+        num = prefix + f.name.split("-")[0]
+        s = f.read_text()
+        title = re.search(r"<title>(.*?)</title>", s).group(1).split(" — ")[0]
+        title = re.sub(r"^\d+\.\s*", "", html.unescape(title))
+        secs = {}
+        for m in re.finditer(r'<section[^>]*id="([^"]+)"[^>]*>(?:(?!<section).)*?<h2[^>]*>(.*?)</h2>', s, re.S):
+            t = re.sub(r'<span class="(?:num|lvlbadge)[^"]*">.*?</span>', "", m.group(2))
+            t = html.unescape(t)
+            t = re.sub(r"<[^>]+>", " ", t)
+            secs[m.group(1)] = re.sub(r"\s+", " ", t).strip()
+        TUT[num] = dict(folder=folder, file=f.name, title=title, secs=secs)
 
 
 def link(ref):
@@ -45,9 +54,10 @@ def link(ref):
     t = TUT[num]
     if anchor not in t["secs"]:
         raise SystemExit(f"anchor {ref} not found in {t['file']}")
+    short = ("SD " if num.startswith("sd") else "") + str(int(num.lstrip("sd")))
     return dict(
-        path=f"python-tutorials/{t['file']}#{anchor}",
-        label=f"{int(num)}. {t['title']} → {t['secs'][anchor]}",
+        path=f"{t['folder']}/{t['file']}#{anchor}",
+        label=f"{short}. {t['title']} → {t['secs'][anchor]}",
     )
 
 
@@ -74,10 +84,13 @@ assert not unused, f"unused drills: {unused}"
 
 # ---------- markdown (AI context) ----------
 def md_node(n, drill=False):
-    out = [f"### {n['id']} [{n['lvl']}] {n['title']}"]
+    case = n.get("kind") == "case"
+    out = [f"### {n['id']} [{n['lvl']}]{' [кейс]' if case else ''} {n['title']}"]
     if drill:
         out.append("Використовується в: " + ", ".join(USED_BY[n["id"]]))
     out.append(f"Питання: {n['q']}")
+    if case:
+        out.append(f"Вхідні дані (називай, коли кандидат питає про масштаб чи обмеження): {n['given']}")
     out.append(f"Еталон: {n['a']}")
     out.append("Ключові пункти (вага → уточнення, якщо пункт не прозвучав):")
     for w, text, probe in n["keys"]:
@@ -93,9 +106,9 @@ def md_node(n, drill=False):
 
 
 PROMPT = (SRC / "prompt.md").read_text().strip()
-DOC_TITLE = "Контекст для AI-інтерв'юера: Python і бази даних"
+DOC_TITLE = "Контекст для AI-інтерв'юера: Python, бази даних, системний дизайн"
 LEGEND = (
-    "Рівні: [J] Junior, [M] Middle, [S] Senior. Ваги ключових пунктів у питанні дають 100%. "
+    "Рівні: [J] Junior, [M] Middle, [S] Senior; [кейс] — відкрита задача на проєктування. Ваги ключових пунктів у питанні дають 100%. "
     "Посилання «Глибше» ведуть на туторіали, з яких складено банк."
 )
 
@@ -156,7 +169,9 @@ def node_html(n, drill=False):
     )
     parts = [
         f'<details class="iq{" iq-drill" if drill else ""}" id="{n["id"]}">',
-        f'<summary><span class="iq-id">{n["id"]}</span>{lvl_badge(n["lvl"])}<span class="iq-title">{esc(n["title"])}</span></summary>',
+        f'<summary><span class="iq-id">{n["id"]}</span>{lvl_badge(n["lvl"])}'
+        + ('<span class="lvl type">кейс</span>' if n.get("kind") == "case" else "")
+        + f'<span class="iq-title">{esc(n["title"])}</span></summary>',
         '<div class="iq-body">',
     ]
     if drill:
@@ -164,6 +179,10 @@ def node_html(n, drill=False):
             f'<a href="#{p}">{p}</a>' for p in USED_BY[n["id"]]) + "</div>")
     parts += [
         f'<p class="iq-q">{esc(n["q"])}</p>',
+    ]
+    if n.get("kind") == "case":
+        parts.append(f'<div class="iq-given"><span class="iq-label">Вхідні дані — агент називає, коли ви питаєте про масштаб</span>{esc(n["given"])}</div>')
+    parts += [
         '<div class="iq-label">Еталон</div>',
         f'<p class="iq-a">{esc(n["a"])}</p>',
         '<div class="iq-label">Ключові пункти · вага · уточнення</div>',
@@ -270,6 +289,8 @@ EXTRA_CSS = '''
   .iq-drill .iq-q{border-left-color:var(--interview); background:var(--interview-bg);}
   .iq-label{display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--fg-muted); margin:14px 0 6px;}
   .iq-a{margin:0; color:var(--fg);}
+  .iq-given{margin:4px 0 0; padding:8px 12px; border-radius:8px; background:var(--warn-bg); border:1px solid var(--warn-border); font-size:13.8px;}
+  .iq-given .iq-label{margin:0 0 2px; color:var(--warn);}
   .iq-used{font-size:13px; color:var(--fg-muted); margin-bottom:6px;}
   .iq-used a{font-family:"SF Mono",ui-monospace,Consolas,monospace; font-size:12px;}
   ul.kps{list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px;}
@@ -389,7 +410,7 @@ BUILDER_JS = r'''<script>
   document.getElementById('b-dl').addEventListener('click', function(){
     var blob = new Blob([refresh().text], {type:'text/markdown;charset=utf-8'});
     var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = 'ai-interviewer-python-db.md';
+    a.href = URL.createObjectURL(blob); a.download = 'ai-interviewer-backend.md';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
   });
@@ -432,8 +453,30 @@ def build_page():
                 f'<span class="cnt">{len(g["qs"])} питань · {count_lvls(g["qs"])}</span></div>')
         return head + "\n" + "\n".join(node_html(q) for q in g["qs"])
 
-    py, db = TOPICS
-    pg, perf = db["groups"]
+    topic_desc = {
+        "py": "Мова, ООП, генератори, конкурентність, пам'ять, FastAPI/Pydantic, екосистема. Джерела — туторіали 4–16, 21–31.",
+        "db": "PostgreSQL (транзакції, MVCC, блокування, міграції, реплікація), продуктивність запитів і Redis. Джерела — туторіали 17–20, 22, 26, 28, 29, 32.",
+        "sd": "Концептуальні питання (масштабування, кеш, шардинг, черги, надійність) і кейси «спроєктуй систему». Джерела — вкладка System Design і туторіал 25.",
+    }
+    case_note = (
+        '<div class="callout info"><span class="ic">🧩</span><div class="body"><span class="tag">Як агент веде кейс</span><br>'
+        "Кейс — відкрита задача на 15–25 хвилин. Структуру ведете ви: вимоги → оцінки → API і дані → схема → вузькі місця. "
+        "Агент не підказує етапи, на питання про масштаб називає «вхідні дані», а уточнення ставить у порядку етапів (до трьох). "
+        "Ключові пункти тут — етапи і рішення, які очікують на співбесіді.</div></div>"
+    )
+    sec_html = []
+    for i, t in enumerate(TOPICS):
+        qs = [q for g in t["groups"] for q in g["qs"]]
+        body = "".join(group_block(g) for g in t["groups"])
+        if t["id"] == "sd":
+            body = case_note + body
+        sec_html.append(
+            f'<section id="t-{t["id"]}">\n  <h2><span class="num">{4 + i}</span> {t["icon"]} {esc(t["title"])}</h2>\n'
+            f'  <p class="section-desc">{len(qs)} основних питань у {len(t["groups"])} групах. {topic_desc[t["id"]]} Розгорніть питання, щоб побачити, що саме агент очікує почути.</p>\n'
+            f"  {body}\n</section>"
+        )
+    topic_sections = "\n\n".join(sec_html)
+    n_drill_sec, n_ext_sec = 4 + len(TOPICS), 5 + len(TOPICS)
 
     content = f'''
 <section id="s0">
@@ -503,41 +546,27 @@ def build_page():
     <tr><td>Уточнення без підказок, максимум 2</td><td>Агент сам договорює відповідь або нескінченно «допитує»</td></tr>
     <tr><td>Підтеми з формулюванням батька, глибина ≤ 2</td><td>Заглиблення без зв'язку з контекстом або занадто глибоко</td></tr>
     <tr><td>Голосовий формат, толерантність до розпізнавання</td><td>Довгі монологи зі списками; штраф за «гіл» замість GIL</td></tr>
+    <tr><td>Кейси: кандидат веде, вхідні дані — на запит</td><td>Агент сам розписує дизайн або одразу вивалює всі цифри</td></tr>
     <tr><td>Команди кандидата</td><td>Немає способу керувати сесією голосом</td></tr>
     <tr><td>Підсумок зі звітом і посиланнями</td><td>Співбесіда закінчилась, а що робити далі — незрозуміло</td></tr>
   </table>
   <div class="codecard plain"><div class="bar"><span class="path">prompt.md · іде першим у контексті</span></div><pre><code class="prompt-box">{esc(PROMPT)}</code></pre></div>
 </section>
 
-<section id="s4">
-  <h2><span class="num">4</span> 🐍 Python</h2>
-  <p class="section-desc">{sum(len(g["qs"]) for g in py["groups"])} основних питань у {len(py["groups"])} групах, зібраних з туторіалів 4–16, 21–31. Розгорніть питання, щоб побачити, що саме агент очікує почути.</p>
-  {"".join(group_block(g) for g in py["groups"])}
-</section>
-
-<section id="s5">
-  <h2><span class="num">5</span> 🗄️ PostgreSQL</h2>
-  <p class="section-desc">Транзакції, MVCC, блокування, дизайн схеми, міграції, реплікація. Джерела — туторіали 17–19, 22, 28, 29.</p>
-  {group_block(pg)}
-</section>
-
-<section id="s6">
-  <h2><span class="num">6</span> ⚡ Продуктивність даних</h2>
-  <p class="section-desc">EXPLAIN, індекси, N+1, пагінація, пули з'єднань, міграції без простою, великі таблиці, кеш. Джерела — туторіали 20, 26, 29, 32.</p>
-  {group_block(perf)}
-</section>
+{topic_sections}
 
 <section id="s7">
-  <h2><span class="num">7</span> Бібліотека підтем</h2>
+  <h2><span class="num">{n_drill_sec}</span> Бібліотека підтем</h2>
   <p class="section-desc">{n_drill} спільних вузлів для заглиблення. У кожного вказано, з яких основних питань агент може в нього зайти.</p>
   {"".join(node_html(d, drill=True) for d in DRILLS)}
 </section>
 
 <section id="s8">
-  <h2><span class="num">8</span> Як розширювати банк</h2>
-  <p class="section-desc">Наступні теми (системний дизайн, Redis, Kubernetes, JS) додаються так само: дані окремо, сторінка генерується.</p>
+  <h2><span class="num">{n_ext_sec}</span> Як розширювати банк</h2>
+  <p class="section-desc">Наступні теми (Kubernetes, JS, Node.js) додаються так само: дані окремо, сторінка генерується.</p>
   <div class="codecard"><div class="bar"><span class="path">docs/interview-ai/_src/</span></div><pre><code>prompt.md            <span class="cmt"># головний промпт інтерв'юера</span>
-bank_python_db.py    <span class="cmt"># TOPICS → groups → питання, DRILLS → підтеми</span>
+bank_python_db.py    <span class="cmt"># Python і PostgreSQL: TOPICS → groups → питання, DRILLS → підтеми</span>
+bank_system_design.py <span class="cmt"># Redis (група в «Бази даних») і тема «Системний дизайн»</span>
 build.py             <span class="cmt"># валідація + HTML-сторінка + .md-контекст</span>
 
 python3 docs/interview-ai/_src/build.py</code></pre></div>
@@ -553,7 +582,12 @@ python3 docs/interview-ai/_src/build.py</code></pre></div>
 </section>
 '''
 
-    py_toc = "".join(f'<li><a href="#g-{g["id"]}">{esc(g["title"])}</a></li>' for g in py["groups"])
+    topic_toc = "".join(
+        f'<li><a href="#t-{t["id"]}">{4 + i}. {esc(t["title"])}</a><ol>'
+        + "".join(f'<li><a href="#g-{g["id"]}">{esc(g["title"])}</a></li>' for g in t["groups"])
+        + "</ol></li>"
+        for i, t in enumerate(TOPICS)
+    )
     toc = f'''    <div class="toc-group">Як це працює</div>
     <ol>
       <li><a href="#s0">0. Дерево питань</a></li>
@@ -563,30 +597,28 @@ python3 docs/interview-ai/_src/build.py</code></pre></div>
     </ol>
     <div class="toc-group">Банк питань</div>
     <ol>
-      <li><a href="#s4">4. Python</a><ol>{py_toc}</ol></li>
-      <li><a href="#s5">5. PostgreSQL</a></li>
-      <li><a href="#s6">6. Продуктивність даних</a></li>
-      <li><a href="#s7">7. Бібліотека підтем</a></li>
+      {topic_toc}
+      <li><a href="#s7">{n_drill_sec}. Бібліотека підтем</a></li>
     </ol>
     <div class="toc-group">Далі</div>
     <ol>
-      <li><a href="#s8">8. Як розширювати банк</a></li>
+      <li><a href="#s8">{n_ext_sec}. Як розширювати банк</a></li>
     </ol>'''
 
     data = dict(title=DOC_TITLE, legend=LEGEND, prompt=PROMPT, groups=groups_json, drills=drills_json)
     data_js = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
 
     pills = "\n".join(f'    <span class="pill">{p}</span>' for p in [
-        f"{n_par} основних питань", f"{n_drill} підтем", "Junior · Middle · Senior", "🎙️ голосовий режим", "📋 копіюється в будь-який AI"])
+        f"{n_par} основних питань", f"{n_drill} підтем", f"{sum(1 for q in PARENTS if q.get('kind') == 'case')} кейсів на дизайн", "Junior · Middle · Senior", "🎙️ голосовий режим", "📋 копіюється в будь-який AI"])
     page = (tpl
-            .replace("{{TITLE}}", "Python і бази даних")
+            .replace("{{TITLE}}", "Python, БД, System Design")
             .replace("{{KICKER}}", "🎙️ Підготовка до співбесіди з AI")
-            .replace("{{H1}}", "Тренажер співбесіди: Python і бази даних")
+            .replace("{{H1}}", "Тренажер співбесіди: Python, бази даних, системний дизайн")
             .replace("{{LEAD}}", "Промпт плюс розгалужений банк питань: з ним AI-асистент у голосовому режимі стає інтерв'юером. Він оцінює, на скільки відсотків ви покрили питання, ставить уточнення і йде вглиб у підтеми.")
             .replace("{{PILLS}}", pills)
             .replace("{{TOC}}", toc)
             .replace("{{CONTENT}}", content)
-            .replace("{{FOOTER}}", 'Банк зібрано з <a href="../python-tutorials/04-python-types.html">Python Doc</a>.')
+            .replace("{{FOOTER}}", 'Банк зібрано з <a href="../python-tutorials/04-python-types.html">Python Doc</a> і <a href="../system-design/01-interview-framework.html">System Design</a>.')
             .replace("</style>", EXTRA_CSS + "</style>", 1)
             .replace('<script src="../assets/mobile-nav.js"></script>',
                      f'<script type="application/json" id="bank-data">{data_js}</script>\n{BUILDER_JS}\n<script src="../assets/mobile-nav.js"></script>'))
