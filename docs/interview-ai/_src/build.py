@@ -5,7 +5,7 @@
 Outputs (next to _src/):
   01-python-databases.html — the tutorial page (human view + context builder)
   01-python-databases.md   — the full AI context: prompt + whole bank
-The bank lives in bank_python_db.py + bank_system_design.py, the interviewer prompt in prompt.md.
+The bank lives in bank_python_db.py + bank_system_design.py + bank_docker.py, the interviewer prompt in prompt.md.
 """
 import html
 import json
@@ -19,12 +19,14 @@ DOCS = OUT.parent
 sys.path.insert(0, str(SRC))
 import bank_python_db as _py  # noqa: E402
 import bank_system_design as _sd  # noqa: E402
+import bank_docker as _dk  # noqa: E402
 
-# Python + DB topics, Redis joins the DB topic, System Design is its own topic.
+# Python + DB topics, Redis joins the DB topic, System Design and Docker are their own topics.
 TOPICS = [dict(t, groups=list(t["groups"])) for t in _py.TOPICS]
 next(t for t in TOPICS if t["id"] == "db")["groups"].append(_sd.REDIS_GROUP)
 TOPICS.append(_sd.SD_TOPIC)
-DRILLS = _py.DRILLS + _sd.DRILLS
+TOPICS.append(_dk.DOCKER_TOPIC)
+DRILLS = _py.DRILLS + _sd.DRILLS + _dk.DRILLS
 
 SLUG = "01-python-databases"
 LVL_NAME = {"J": "Junior", "M": "Middle", "S": "Senior"}
@@ -106,7 +108,7 @@ def md_node(n, drill=False):
 
 
 PROMPT = (SRC / "prompt.md").read_text().strip()
-DOC_TITLE = "Контекст для AI-інтерв'юера: Python, бази даних, системний дизайн"
+DOC_TITLE = "Контекст для AI-інтерв'юера: Python, бази даних, системний дизайн, Docker"
 LEGEND = (
     "Рівні: [J] Junior, [M] Middle, [S] Senior; [кейс] — відкрита задача на проєктування. Ваги ключових пунктів у питанні дають 100%. "
     "Посилання «Глибше» ведуть на туторіали, з яких складено банк."
@@ -457,6 +459,7 @@ def build_page():
         "py": "Мова, ООП, генератори, конкурентність, пам'ять, FastAPI/Pydantic, екосистема. Джерела — туторіали 4–16, 21–31.",
         "db": "PostgreSQL (транзакції, MVCC, блокування, міграції, реплікація), продуктивність запитів і Redis. Джерела — туторіали 17–20, 22, 26, 28, 29, 32.",
         "sd": "Концептуальні питання (масштабування, кеш, шардинг, черги, надійність) і кейси «спроєктуй систему». Джерела — вкладка System Design і туторіал 25.",
+        "dk": "Образи й шари, Dockerfile для продакшну, секрети, compose, дебаг контейнерів, варіанти деплою і релізи без простою. Джерела — туторіали 27 і 33.",
     }
     case_note = (
         '<div class="callout info"><span class="ic">🧩</span><div class="body"><span class="tag">Як агент веде кейс</span><br>'
@@ -563,10 +566,11 @@ def build_page():
 
 <section id="s8">
   <h2><span class="num">{n_ext_sec}</span> Як розширювати банк</h2>
-  <p class="section-desc">Наступні теми (Kubernetes, JS, Node.js) додаються так само: дані окремо, сторінка генерується.</p>
+  <p class="section-desc">Наступні теми (JS, Node.js) додаються так само — як уже додано Docker: дані окремо, сторінка генерується.</p>
   <div class="codecard"><div class="bar"><span class="path">docs/interview-ai/_src/</span></div><pre><code>prompt.md            <span class="cmt"># головний промпт інтерв'юера</span>
 bank_python_db.py    <span class="cmt"># Python і PostgreSQL: TOPICS → groups → питання, DRILLS → підтеми</span>
 bank_system_design.py <span class="cmt"># Redis (група в «Бази даних») і тема «Системний дизайн»</span>
+bank_docker.py       <span class="cmt"># тема «Docker і деплой»</span>
 build.py             <span class="cmt"># валідація + HTML-сторінка + .md-контекст</span>
 
 python3 docs/interview-ai/_src/build.py</code></pre></div>
@@ -613,7 +617,7 @@ python3 docs/interview-ai/_src/build.py</code></pre></div>
     page = (tpl
             .replace("{{TITLE}}", "Python, БД, System Design")
             .replace("{{KICKER}}", "🎙️ Підготовка до співбесіди з AI")
-            .replace("{{H1}}", "Тренажер співбесіди: Python, бази даних, системний дизайн")
+            .replace("{{H1}}", "Тренажер співбесіди: Python, бази даних, системний дизайн, Docker")
             .replace("{{LEAD}}", "Промпт плюс розгалужений банк питань: з ним AI-асистент у голосовому режимі стає інтерв'юером. Він оцінює, на скільки відсотків ви покрили питання, ставить уточнення і йде вглиб у підтеми.")
             .replace("{{PILLS}}", pills)
             .replace("{{TOC}}", toc)
