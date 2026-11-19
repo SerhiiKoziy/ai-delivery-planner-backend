@@ -1,0 +1,202 @@
+/* Mobile navigation (≤768px): hides the sidebar and replaces it with a
+   two-level drawer opened from the header button. Built by mobile-nav.js
+   from the existing .nav-sidebar markup, so every page stays the source of
+   truth for its own links. Colours come from each page's CSS variables. */
+
+.mnav-toggle,
+.mnav { display: none; }
+
+/* Pages stack .layout into a column below 900px with align-items:flex-start,
+   which sizes the content column to its widest child (e.g. a long <pre>)
+   instead of the screen. Stretch it so wide blocks scroll inside themselves. */
+@media (max-width: 900px) {
+  .layout { align-items: stretch; }
+  .content-center, .content-center > article { width: 100%; min-width: 0; max-width: 100%; }
+  .layout { padding-left: 16px; padding-right: 16px; }
+}
+
+@media (max-width: 768px) {
+  .nav-sidebar { display: none !important; }
+
+  .top-row { justify-content: flex-start; }
+  .top-row .brand {
+    flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px;
+  }
+  .top-row .brand span { display: none; }
+  .top-row .theme-toggle { padding: 6px 10px; font-size: 12px; }
+
+  .mnav-toggle {
+    display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+    cursor: pointer; padding: 7px 12px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--card); color: var(--fg);
+    font: inherit; font-size: 14px; font-weight: 600; line-height: 1;
+  }
+  .mnav-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .mnav-toggle .mnav-burger { font-size: 17px; }
+
+  .mnav { display: block; position: fixed; inset: 0; z-index: 100; pointer-events: none; }
+  .mnav[hidden] { display: none; }
+  .mnav-backdrop {
+    position: absolute; inset: 0; background: rgba(0, 0, 0, .45);
+    opacity: 0; transition: opacity .2s ease;
+  }
+  .mnav-sheet {
+    position: absolute; top: 0; bottom: 0; left: 0; width: min(88vw, 360px);
+    display: flex; flex-direction: column; overflow: hidden;
+    background: var(--bg); color: var(--fg); border-right: 1px solid var(--border);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, .3);
+    transform: translateX(-100%); transition: transform .22s ease;
+  }
+  .mnav.is-open { pointer-events: auto; }
+  .mnav.is-open .mnav-backdrop { opacity: 1; }
+  .mnav.is-open .mnav-sheet { transform: none; }
+
+  .mnav-head {
+    display: flex; align-items: center; gap: 8px; padding: 12px 14px;
+    border-bottom: 1px solid var(--border); background: var(--bg-soft); min-height: 56px;
+  }
+  .mnav-title { flex: 1; min-width: 0; font-weight: 700; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mnav-icon-btn {
+    flex-shrink: 0; cursor: pointer; border: 1px solid var(--border); background: var(--card); color: var(--fg);
+    border-radius: 9px; padding: 6px 10px; font: inherit; font-size: 14px; line-height: 1.1;
+  }
+  .mnav-icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .mnav-back[hidden] { display: none; }
+
+  .mnav-views { position: relative; flex: 1; overflow: hidden; }
+  .mnav-view {
+    position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 10px 10px 28px; transition: transform .22s ease, visibility .22s;
+  }
+  .mnav-view.lvl1 { transform: none; }
+  .mnav-view.lvl2 { transform: translateX(100%); visibility: hidden; }
+  .mnav.show-lvl2 .mnav-view.lvl1 { transform: translateX(-30%); visibility: hidden; }
+  .mnav.show-lvl2 .mnav-view.lvl2 { transform: none; visibility: visible; }
+
+  .mnav-hint { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-muted); font-weight: 700; padding: 6px 8px 8px; }
+
+  .mnav-group {
+    width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; cursor: pointer;
+    padding: 13px 12px; margin: 0 0 6px; border-radius: 11px;
+    border: 1px solid var(--border); background: var(--card); color: var(--fg); font: inherit; font-size: 15px;
+  }
+  .mnav-group:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .mnav-group .mnav-glabel { flex: 1; font-weight: 600; }
+  .mnav-group .mnav-count {
+    font-size: 12px; color: var(--fg-muted); background: var(--bg-soft);
+    border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px;
+  }
+  .mnav-group .mnav-chev { color: var(--fg-muted); font-size: 18px; }
+  .mnav-group.is-current { border-color: var(--accent); background: var(--accent-soft); }
+  .mnav-group.is-current .mnav-glabel::after {
+    content: "ви тут"; margin-left: 8px; font-size: 11px; font-weight: 700; color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 999px; padding: 0 6px; vertical-align: 2px;
+  }
+
+  .mnav-links { display: flex; flex-direction: column; gap: 2px; }
+  .mnav-links a {
+    display: block; text-decoration: none; color: var(--fg); font-size: 15px; line-height: 1.35;
+    padding: 11px 12px; border-radius: 9px;
+  }
+  .mnav-links a:hover, .mnav-links a:focus-visible { background: var(--bg-soft); outline: none; }
+  .mnav-links a.active { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+
+  html.mnav-lock, html.mnav-lock body { overflow: hidden; }
+}
+
+@media (max-width: 768px) and (prefers-reduced-motion: reduce) {
+  .mnav-backdrop, .mnav-sheet, .mnav-view { transition: none; }
+}
+
+/* ----- "На цій сторінці": active section (scroll-spy in mobile-nav.js) ----- */
+aside.toc a.is-active {
+  background: var(--accent-soft); color: var(--accent); font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.toc-here { display: none; }
+
+@media (max-width: 768px) {
+  /* the stacked TOC pushed the whole article below a screen of links */
+  aside.toc { display: none !important; }
+  /* the mobile header is taller (menu button + "reading" bar), so anchors land lower */
+  article section, article [id] { scroll-margin-top: 112px; }
+
+  .toc-here {
+    display: block; position: relative;
+    border-top: 1px solid var(--border);
+  }
+  .toc-here[hidden] { display: none; }
+  .toc-here-btn {
+    width: 100%; display: flex; align-items: center; gap: 6px; cursor: pointer;
+    padding: 6px 16px; border: 0; background: transparent; color: var(--fg-muted);
+    font: inherit; font-size: 12px; line-height: 1.35; text-align: left;
+  }
+  .toc-here-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .toc-here-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .toc-here-text::before { content: "Ви читаєте: "; color: var(--fg-muted); opacity: .8; }
+  .toc-here-chev { flex-shrink: 0; transition: transform .15s ease; }
+  .toc-here.is-open .toc-here-chev { transform: rotate(180deg); }
+  .toc-here-list {
+    position: absolute; left: 8px; right: 8px; top: 100%; z-index: 30;
+    max-height: min(60vh, 420px); overflow-y: auto; -webkit-overflow-scrolling: touch;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .25); padding: 6px;
+  }
+  .toc-here-list[hidden] { display: none; }
+  .toc-here-list a {
+    display: block; text-decoration: none; color: var(--fg); font-size: 14px; line-height: 1.35;
+    padding: 9px 10px; border-radius: 8px;
+  }
+  .toc-here-list a:hover, .toc-here-list a:focus-visible { background: var(--bg-soft); outline: none; }
+  .toc-here-list a.is-active { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+}
+
+/* ----- Long text never pokes out of its box: boxes grow taller instead ----- */
+/* Identifiers, paths and URLs in inline code have no spaces to wrap at. */
+article :not(pre) > code, article kbd, article .tag { overflow-wrap: anywhere; }
+/* badge-like labels (.tag) are nowrap inline-blocks; long ones must wrap */
+article .tag { white-space: normal; max-width: 100%; }
+article p, article li, article td, article th, article dd, article dt,
+article .card, article .callout, article .qa .a, article summary { overflow-wrap: break-word; }
+/* Flex/grid children default to min-width:auto (= their longest word), so
+   they refuse to shrink below it; let them shrink and wrap. */
+.callout > .body, .callout > div:not(.ic), .verdict > div, .grid2 > *, .cards > *, .vs > *,
+.qa summary > *:not(.qnum):not(.difficulty) { min-width: 0; }
+.callout > .body { flex: 1 1 auto; }
+/* Tables that pages left without a scroll wrapper get one from mobile-nav.js. */
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; margin: 16px 0; }
+.table-scroll > table { margin: 0; }
+/* code blocks that sit outside .codecard still scroll inside themselves */
+article pre { max-width: 100%; overflow-x: auto; }
+/* headings are flex rows (number + title); let the title part shrink */
+article h2 > *, article h3 > * { min-width: 0; }
+article h2 > .num, article h3 > .num { flex-shrink: 0; }
+/* "Частина N · …" dividers: long labels wrap between the two rules */
+.part-divider .label { min-width: 0; white-space: normal; text-align: center; overflow-wrap: break-word; }
+.part-divider .line { min-width: 16px; }
+footer code { overflow-wrap: anywhere; }
+@media (max-width: 768px) {
+  /* inline formulas are nowrap; on a phone a long one may break at spaces */
+  article .math { white-space: normal; overflow-wrap: anywhere; }
+  /* tables that scroll sideways keep readable columns instead of ~100px slivers */
+  table.t-scrolls { table-layout: auto; }
+  table.t-scrolls.t-unblock { display: table; overflow: visible; }
+  table.t-scrolls th, table.t-scrolls td { min-width: 11em; }
+}
+
+/* ----- nested "На цій сторінці" entries: indented, with a bold dot ----- */
+aside.toc ol ol { margin: 2px 0 6px 12px; padding: 0; }
+aside.toc ol ol li { margin: 0 0 2px; }
+aside.toc ol ol a { position: relative; padding-left: 20px; font-size: 13px; }
+aside.toc ol ol a::before {
+  content: ""; position: absolute; left: 8px; top: calc(0.68em + 3px);
+  width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .75;
+}
+@media (max-width: 768px) {
+  .toc-here-list a.sub { position: relative; padding-left: 30px; font-size: 13.5px; }
+  .toc-here-list a.sub::before {
+    content: ""; position: absolute; left: 16px; top: calc(0.68em + 6px);
+    width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .75;
+  }
+}
+.toc-here code, .toc-here-list code { font-size: inherit; background: none; border: 0; padding: 0; }
